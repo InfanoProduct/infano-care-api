@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Example model to get started
+enum UserRole {
+  TEEN
+  PARENT
+  GUARDIAN
+}
+
+enum ConsentStatus {
+  PENDING
+  GRANTED
+  REVOKED
+}
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  password        String
+  role            UserRole       @default(TEEN)
+  birthMonth      Int?
+  birthYear       Int?
+  isVerified      Boolean        @default(false)
+  parentEmail     String?
+  consentStatus   ConsentStatus  @default(PENDING)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  profile         Profile?
+  cycleLogs       CycleLog[]
+  progress        UserProgress[]
+  userQuests      UserQuest[]
+  userBadges      UserBadge[]
+  subscription    Subscription?
+}
+
+model Profile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  firstName         String
+  pronouns          String?
+  avatarData        Json?
+  journeyName       String?
+  empowermentProfile Json?   // Quiz results
+  totalPoints       Int      @default(0)
+  level             Int      @default(1)
+}
+
+model CycleLog {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  date          DateTime
+  flow          String?  // Light, Medium, Heavy, etc.
+  symptoms      String[] // Cramps, Bloating, etc.
+  mood          String?
+  energy        Int?     // 1-5
+  sleepDuration Float?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model LearningJourney {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  ageBand     String
+  episodes    Episode[]
+}
+
+model Episode {
+  id                String          @id @default(uuid())
+  journeyId         String
+  journey           LearningJourney @relation(fields: [journeyId], references: [id])
+  order             Int
+  title             String
+  content           Json            // Hook, Story, etc.
+  points            Int             @default(50)
+  userProgress      UserProgress[]
+}
+
+model UserProgress {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  episodeId String
+  episode   Episode  @relation(fields: [episodeId], references: [id])
+  completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, episodeId])
+}
+
+model Quest {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  type        String      // DAILY, WEEKLY, MILESTONE
+  points      Int
+  userQuests  UserQuest[]
+}
+
+model UserQuest {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  questId     String
+  quest       Quest    @relation(fields: [questId], references: [id])
+  completedAt DateTime @default(now())
+}
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String
+  description String
+  iconUrl     String
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  awardedAt DateTime @default(now())
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  tier      String   // FREE, PRO, TOGETHER
+  status    String   // ACTIVE, CANCELLED, EXPIRED
+  expiresAt DateTime?
+}
