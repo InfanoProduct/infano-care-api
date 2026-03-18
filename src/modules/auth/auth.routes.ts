@@ -1,11 +1,21 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller.js";
-import { validate } from "../../common/middleware/validate.js";
-import { registerSchema, loginSchema } from "./auth.schema.js";
+import rateLimit from "express-rate-limit";
 
 const router = Router();
 
-router.post("/register", validate(registerSchema), AuthController.register);
-router.post("/login", validate(loginSchema), AuthController.login);
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: { error: "Too many OTP requests. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post("/otp/send",    otpLimiter, AuthController.sendOtp);
+router.post("/otp/verify",  otpLimiter, AuthController.verifyOtp);
+router.post("/register",               AuthController.register);
+router.post("/refresh",                AuthController.refresh);
+router.post("/logout",                 AuthController.logout);
 
 export default router;

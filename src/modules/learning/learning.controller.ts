@@ -5,7 +5,7 @@ export class LearningController {
   static async listJourneys(req: Request, res: Response, next: NextFunction) {
     try {
       const { ageBand } = req.query;
-      const result = await LearningService.listJourneys(ageBand as string | undefined);
+      const result = await LearningService.listJourneys(typeof ageBand === 'string' ? ageBand : undefined);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -14,7 +14,7 @@ export class LearningController {
 
   static async getJourney(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
+      const id = req.params['id'] as string;
       const result = await LearningService.getJourney(id);
       res.status(200).json(result);
     } catch (error) {
@@ -24,8 +24,8 @@ export class LearningController {
 
   static async completeEpisode(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user.id;
-      const { episodeId } = req.params;
+      const userId = (req as any).userId as string;
+      const episodeId = req.params['episodeId'] as string;
       const result = await LearningService.completeEpisode(userId, episodeId);
       res.status(200).json(result);
     } catch (error) {
@@ -35,7 +35,7 @@ export class LearningController {
 
   static async getMyProgress(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user.id;
+      const userId = (req as any).userId;
       const result = await LearningService.getUserProgress(userId);
       res.status(200).json(result);
     } catch (error) {

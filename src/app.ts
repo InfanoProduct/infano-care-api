@@ -6,11 +6,13 @@ import { pinoHttp } from "pino-http";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { errorHandler } from "./common/middleware/errorHandler.js";
-import authRoutes from "./modules/auth/auth.routes.js";
-import userRoutes from "./modules/user/user.routes.js";
-import trackerRoutes from "./modules/tracker/tracker.routes.js";
-import learningRoutes from "./modules/learning/learning.routes.js";
-import questRoutes from "./modules/quest/quest.routes.js";
+import authRoutes      from "./modules/auth/auth.routes.js";
+import consentRoutes   from "./modules/consent/consent.routes.js";
+import onboardingRoutes from "./modules/onboarding/onboarding.routes.js";
+import userRoutes      from "./modules/user/user.routes.js";
+import trackerRoutes   from "./modules/tracker/tracker.routes.js";
+import learningRoutes  from "./modules/learning/learning.routes.js";
+import questRoutes     from "./modules/quest/quest.routes.js";
 
 const app = express();
 
@@ -21,15 +23,17 @@ app.use(compression());
 app.use(express.json());
 app.use(pinoHttp({ logger }));
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/user", userRoutes);
-app.use("/api/tracker", trackerRoutes);
-app.use("/api/learning", learningRoutes);
-app.use("/api/quest", questRoutes);
+// ── Routes ────────────────────────────────────────────────────────────────────
+app.use("/api/auth",        authRoutes);
+app.use("/api/auth/consent", consentRoutes);
+app.use("/api/onboarding",  onboardingRoutes);
+app.use("/api/user",        userRoutes);
+app.use("/api/tracker",     trackerRoutes);
+app.use("/api/learning",    learningRoutes);
+app.use("/api/quest",       questRoutes);
 
 // Health check
-app.get("/health", (req, res) => {
+app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 

@@ -8,11 +8,10 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     return next(new AppError("Authentication required", 401));
   }
 
-  const token = authHeader.split(" ")[1];
+  const token = authHeader.split(" ")[1]!;
 
   try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) throw new Error("JWT_SECRET is not defined");
+    const secret = process.env.JWT_SECRET!;
     const decoded = jwt.verify(token, secret) as any;
     (req as any).user = { id: decoded.id };
     next();

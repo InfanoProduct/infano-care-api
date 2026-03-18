@@ -7,61 +7,211 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Example model to get started
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
 enum UserRole {
   TEEN
   PARENT
   GUARDIAN
 }
 
-enum ConsentStatus {
-  PENDING
-  GRANTED
-  REVOKED
+enum ContentTier {
+  JUNIOR      // under 13
+  TEEN_EARLY  // 13–15
+  TEEN_LATE   // 16–17
+  ADULT       // 18+
 }
+
+enum AccountStatus {
+  PENDING_SETUP    // onboarding in progress
+  PENDING_CONSENT  // awaiting COPPA parental approval
+  ACTIVE_MINOR     // under 13, parent approved
+  ACTIVE           // 13+, fully active
+  SUSPENDED
+  DELETED
+}
+
+enum TrackerMode {
+  ACTIVE   // has had first period
+  WAITING  // pre-menarche
+}
+
+enum PeriodContentTone {
+  GENTLE
+  MODERATE
+  DIRECT
+}
+
+enum ConsentRequestStatus {
+  PENDING
+  APPROVED
+  EXPIRED
+}
+
+// ─── Core User ────────────────────────────────────────────────────────────────
 
 model User {
-  id              String         @id @default(uuid())
-  email           String         @unique
-  password        String
-  role            UserRole       @default(TEEN)
-  birthMonth      Int?
-  birthYear       Int?
-  isVerified      Boolean        @default(false)
-  parentEmail     String?
-  consentStatus   ConsentStatus  @default(PENDING)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  profile         Profile?
-  cycleLogs       CycleLog[]
-  progress        UserProgress[]
-  userQuests      UserQuest[]
-  userBadges      UserBadge[]
-  subscription    Subscription?
+  id            String        @id @default(uuid())
+  phone         String        @unique  // E.164 format, e.g. +919876543210
+  role          UserRole      @default(TEEN)
+
+  // Age (month+year only, never exact date — privacy by design)
+  birthMonth    Int?          // 1–12
+  birthYear     Int?          // YYYY
+  ageAtSignup   Int?          // computed on register
+
+  // Onboarding state
+  contentTier       ContentTier?
+  accountStatus     AccountStatus   @default(PENDING_SETUP)
+  onboardingStage   Int             @default(0)
+  onboardingCompletedAt DateTime?
+
+  // Compliance
+  termsAcceptedAt    DateTime?
+  privacyAcceptedAt  DateTime?
+  marketingOptIn     Boolean         @default(false)
+  coppaConsentRequired Boolean       @default(false)
+  coppaConsentGranted  Boolean?
+  coppaConsentAt       DateTime?
+  parentEmail          String?
+
+  // Locale
+  locale        String        @default("en")
+  timezone      String?
+
+  // Timestamps
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  profile             Profile?
+  avatar              UserAvatar?
+  cycleProfile        CycleProfile?
+  personalization     PersonalizationProfile?
+  consentRequests     ConsentRequest[]
+  cycleLogs           CycleLog[]
+  progress            UserProgress[]
+  userQuests          UserQuest[]
+  userBadges          UserBadge[]
+  subscription        Subscription?
 }
 
+// ─── Profile ──────────────────────────────────────────────────────────────────
+
 model Profile {
-  id                String   @id @default(uuid())
-  userId            String   @unique
-  user              User     @relation(fields: [userId], references: [id])
-  firstName         String
-  pronouns          String?
-  avatarData        Json?
-  journeyName       String?
-  empowermentProfile Json?   // Quiz results
-  totalPoints       Int      @default(0)
-  level             Int      @default(1)
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName   String
+  pronouns      String?
+  journeyName   String?
+
+  // Gamification
+  totalPoints   Int      @default(0)
+  bloomLevel    Int      @default(1)
 }
+
+// ─── Personalization Profile (Stage 3 Quiz) ──────────────────────────────────
+
+model PersonalizationProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goals               String[] // e.g. ['body', 'period', 'confidence']
+  periodComfortScore  Int?     // 1–5
+  periodStatus        String   @default("waiting") // active | waiting | unsure
+  periodContentTone   String   @default("moderate")  // gentle | moderate | direct
+  interestTopics      String[] // e.g. ['body_health', 'mental_wellness']
+  contentWeights      Json     @default("{}")  // ML-updated weights
+
+  quizCompletedAt     DateTime?
+  lastUpdatedAt       DateTime @default(now()) @updatedAt
+}
+
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
+model UserAvatar {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bodyTypeId      Int      @default(1)
+  skinToneId      Int      @default(1)
+  hairStyleId     Int      @default(1)
+  hairColorId     Int      @default(1)
+  eyeShapeId      Int      @default(1)
+  eyeColorId      Int      @default(1)
+  outfitId        Int      @default(1)
+  accessories     Int[]    @default([])
+
+  unlockedOutfits      Int[] @default([1])
+  unlockedAccessories  Int[] @default([])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── COPPA Consent Requests ───────────────────────────────────────────────────
+
+model ConsentRequest {
+  id            String               @id @default(uuid())
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  parentEmail   String
+  token         String               @unique  // JWT-signed, 7-day expiry
+  status        ConsentRequestStatus @default(PENDING)
+
+  sentAt        DateTime             @default(now())
+  approvedAt    DateTime?
+  approvedIp    String?
+  expiresAt     DateTime
+
+  reminder1Sent Boolean              @default(false)
+  reminder2Sent Boolean              @default(false)
+}
+
+// ─── Cycle Profile (Period Tracker Setup) ────────────────────────────────────
+
+model CycleProfile {
+  id                       String      @id @default(uuid())
+  userId                   String      @unique
+  user                     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  trackerMode              TrackerMode @default(WAITING)
+
+  lastPeriodStart          DateTime?
+  lastPeriodEnd            DateTime?
+  avgPeriodLength          Float       @default(5.0)
+  avgCycleLength           Float       @default(28.0)
+  periodLengthEstimated    Boolean     @default(false)
+  cycleLengthEstimated     Boolean     @default(false)
+
+  cyclesLogged             Int         @default(0)
+
+  // Prediction cache
+  nextPeriodPredictedStart DateTime?
+  nextPeriodPredictedEnd   DateTime?
+  predictionConfidence     String      @default("low")
+
+  setupCompletedAt         DateTime?
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+}
+
+// ─── Cycle Logs (Daily Tracking) ─────────────────────────────────────────────
 
 model CycleLog {
   id            String   @id @default(uuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id])
   date          DateTime
-  flow          String?  // Light, Medium, Heavy, etc.
-  symptoms      String[] // Cramps, Bloating, etc.
+  flow          String?
+  symptoms      String[]
   mood          String?
-  energy        Int?     // 1-5
+  energy        Int?
   sleepDuration Float?
   notes         String?
   createdAt     DateTime @default(now())
@@ -69,23 +219,30 @@ model CycleLog {
   @@unique([userId, date])
 }
 
+// ─── Learning ─────────────────────────────────────────────────────────────────
+
 model LearningJourney {
   id          String    @id @default(uuid())
   title       String
   description String
   ageBand     String
+  topics      String[]
+  goals       String[]
+  tags        String[]
+  contentTone String    @default("moderate")
+  minContentTier ContentTier @default(TEEN_EARLY)
   episodes    Episode[]
 }
 
 model Episode {
-  id                String          @id @default(uuid())
-  journeyId         String
-  journey           LearningJourney @relation(fields: [journeyId], references: [id])
-  order             Int
-  title             String
-  content           Json            // Hook, Story, etc.
-  points            Int             @default(50)
-  userProgress      UserProgress[]
+  id           String          @id @default(uuid())
+  journeyId    String
+  journey      LearningJourney @relation(fields: [journeyId], references: [id])
+  order        Int
+  title        String
+  content      Json
+  points       Int             @default(50)
+  userProgress UserProgress[]
 }
 
 model UserProgress {
@@ -100,11 +257,13 @@ model UserProgress {
   @@unique([userId, episodeId])
 }
 
+// ─── Quests ───────────────────────────────────────────────────────────────────
+
 model Quest {
   id          String      @id @default(uuid())
   title       String
   description String
-  type        String      // DAILY, WEEKLY, MILESTONE
+  type        String
   points      Int
   userQuests  UserQuest[]
 }
@@ -117,6 +276,8 @@ model UserQuest {
   quest       Quest    @relation(fields: [questId], references: [id])
   completedAt DateTime @default(now())
 }
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
 
 model Badge {
   id          String      @id @default(uuid())
@@ -135,11 +296,13 @@ model UserBadge {
   awardedAt DateTime @default(now())
 }
 
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
 model Subscription {
   id        String   @id @default(uuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id])
-  tier      String   // FREE, PRO, TOGETHER
-  status    String   // ACTIVE, CANCELLED, EXPIRED
+  tier      String
+  status    String
   expiresAt DateTime?
 }

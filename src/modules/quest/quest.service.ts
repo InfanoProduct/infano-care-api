@@ -22,14 +22,14 @@ export class QuestService {
       data: { totalPoints: { increment: quest.points } },
     });
 
-    // Check for level up (simple logic: every 500 points = 1 level)
+    // Check for level up (simple logic: every 500 points = 1 bloom level)
     const profile = await prisma.profile.findUnique({ where: { userId } });
     if (profile) {
       const newLevel = Math.floor(profile.totalPoints / 500) + 1;
-      if (newLevel > profile.level) {
+      if (newLevel > profile.bloomLevel) {
         await prisma.profile.update({
           where: { userId },
-          data: { level: newLevel },
+          data: { bloomLevel: newLevel },
         });
       }
     }
