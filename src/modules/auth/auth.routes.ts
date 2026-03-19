@@ -17,5 +17,6 @@ router.post("/otp/verify",  otpLimiter, AuthController.verifyOtp);
 router.post("/register",               AuthController.register);
 router.post("/refresh",                AuthController.refresh);
 router.post("/logout",                 AuthController.logout);
+router.post("/login",                  AuthController.login);
 
 export default router;

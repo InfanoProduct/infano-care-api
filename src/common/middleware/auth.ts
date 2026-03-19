@@ -9,10 +9,10 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   }
 
   const token = authHeader.split(" ")[1]!;
+  const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "infano_access_secret_dev";
 
   try {
-    const secret = process.env.JWT_SECRET!;
-    const decoded = jwt.verify(token, secret) as any;
+    const decoded = jwt.verify(token, JWT_ACCESS_SECRET) as any;
     (req as any).user = { id: decoded.id };
     next();
   } catch (error) {

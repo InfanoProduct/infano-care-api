@@ -54,6 +54,11 @@ model User {
   id            String        @id @default(uuid())
   phone         String        @unique  // E.164 format, e.g. +919876543210
   role          UserRole      @default(TEEN)
+  
+  // Auth Tracking (Aligned with reference)
+  isTestNumber      Boolean       @default(false)
+  otpSendOn         DateTime?
+  otpRetryCount     Int           @default(0)
 
   // Age (month+year only, never exact date — privacy by design)
   birthMonth    Int?          // 1–12

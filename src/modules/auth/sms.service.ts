@@ -68,12 +68,33 @@ class TwilioSmsProvider implements SmsProvider {
   }
 }
 
+// ─── 2Factor.in Provider ──────────────────────────────────────────────────────
+class TwoFactorSmsProvider implements SmsProvider {
+  private apiKey: string;
+
+  constructor() {
+    this.apiKey = process.env.TWOFACTOR_API_KEY || "";
+  }
+
+  async send(phone: string, otp: string): Promise<void> {
+    // URL format: https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}/{template}
+    const url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${phone}/${otp}/InfanoOTPMessage`;
+    
+    const res = await fetch(url);
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`2Factor OTP send failed: ${body}`);
+    }
+  }
+}
+
 // ─── Factory ──────────────────────────────────────────────────────────────────
 function createProvider(): SmsProvider {
   const provider = (process.env.SMS_PROVIDER || "mock").toLowerCase();
   switch (provider) {
     case "msg91":  return new Msg91SmsProvider();
     case "twilio": return new TwilioSmsProvider();
+    case "twofactor": return new TwoFactorSmsProvider();
     default:       return new MockSmsProvider();
   }
 }
