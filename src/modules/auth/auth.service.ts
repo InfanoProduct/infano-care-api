@@ -140,39 +140,30 @@ export class AuthService {
       throw new AppError("Invalid user", 400);
     }
 
-    // 1. Test Number -> Direct Login (Skip OTP Verify)
+    // 1. Test Number -> Direct Login Bypass (Skip OTP Verify)
     if (user.isTestNumber) {
-      logger.info({ phone }, "Test number detected - direct login bypass");
-      const jti = crypto.randomUUID();
-      const payload = { sub: user.id, contentTier: user.contentTier, accountStatus: user.accountStatus, obStage: user.onboardingStage };
-
-      return {
-        tempToken: "", // not needed for direct login
-        isNewUser: false,
-        accessToken: signAccessToken(payload),
-        refreshToken: signRefreshToken(payload, jti)
-      };
-    }
-
-    // 2. Real OTP Verification via 2Factor.in /VERIFY3
-    const apiKey = process.env.TWOFACTOR_API_KEY || "29813cba-6fdc-11ef-8b17-0200cd936042";
-    const verifyUrl = `https://2factor.in/API/V1/${apiKey}/SMS/VERIFY3/${phone}/${otp}`;
-
-    // Fallback for mock mode
-    if (process.env.SMS_PROVIDER === "mock") {
-      const storedHash = await redis.get(`otp:${phone}`);
-      if (!storedHash || storedHash !== hashOtp(otp)) {
-        throw new AppError("Invalid OTP. Please try again.", 400);
-      }
+      logger.info({ phone }, "Test number detected - bypassing OTP verification");
     } else {
-      const res = await fetch(verifyUrl);
-      const data = await res.json() as any;
-      if (data.Status !== "Success") {
-        throw new AppError("OTP Authentication failed. Please retry...", 400);
+      // 2. Real OTP Verification via 2Factor.in /VERIFY3
+      const apiKey = process.env.TWOFACTOR_API_KEY || "29813cba-6fdc-11ef-8b17-0200cd936042";
+      const verifyUrl = `https://2factor.in/API/V1/${apiKey}/SMS/VERIFY3/${phone}/${otp}`;
+
+      // Fallback for mock mode
+      if (process.env.SMS_PROVIDER === "mock") {
+        const storedHash = await redis.get(`otp:${phone}`);
+        if (!storedHash || storedHash !== hashOtp(otp)) {
+          throw new AppError("Invalid OTP. Please try again.", 400);
+        }
+      } else {
+        const res = await fetch(verifyUrl);
+        const data = await res.json() as any;
+        if (data.Status !== "Success") {
+          throw new AppError("OTP Authentication failed. Please retry...", 400);
+        }
       }
     }
 
-    // OTP verified successfully
+    // OTP verified successfully (or bypassed for test)
     await prisma.user.update({
       where: { id: user.id },
       data: { otpRetryCount: 0 }
