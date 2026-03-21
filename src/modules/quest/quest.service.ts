@@ -17,9 +17,10 @@ export class QuestService {
     });
 
     // Add points up to user profile
-    await prisma.profile.update({
+    await prisma.profile.upsert({
       where: { userId },
-      data: { totalPoints: { increment: quest.points } },
+      create: { userId, displayName: "User", totalPoints: quest.points },
+      update: { totalPoints: { increment: quest.points } },
     });
 
     // Check for level up (simple logic: every 500 points = 1 bloom level)
@@ -27,9 +28,10 @@ export class QuestService {
     if (profile) {
       const newLevel = Math.floor(profile.totalPoints / 500) + 1;
       if (newLevel > profile.bloomLevel) {
-        await prisma.profile.update({
+        await prisma.profile.upsert({
           where: { userId },
-          data: { bloomLevel: newLevel },
+          create: { userId, displayName: "User", bloomLevel: newLevel },
+          update: { bloomLevel: newLevel },
         });
       }
     }

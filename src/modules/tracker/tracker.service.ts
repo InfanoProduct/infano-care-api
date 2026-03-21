@@ -134,7 +134,11 @@ export class TrackerService {
     });
 
     // Award Stage 5 points
-    await prisma.profile.update({ where: { userId }, data: { totalPoints: { increment: 50 } } });
+    await prisma.profile.upsert({
+      where: { userId },
+      create: { userId, displayName: "User", totalPoints: 50 },
+      update: { totalPoints: { increment: 50 } },
+    });
 
     return {
       trackerId:            profile.id,

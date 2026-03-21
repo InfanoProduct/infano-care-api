@@ -60,10 +60,11 @@ export class OnboardingService {
     // Update onboarding stage
     await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 3 } });
 
-    // Award quiz points (45 pts total: 15+10+10+20 across screens 7-10)
-    await prisma.profile.update({
+    // Award quiz points
+    await prisma.profile.upsert({
       where: { userId },
-      data:  { totalPoints: { increment: 45 } },
+      create: { userId, displayName: "User", totalPoints: 45 },
+      update: { totalPoints: { increment: 45 } },
     });
 
     // First-pass journey recommendations
@@ -99,7 +100,11 @@ export class OnboardingService {
       update: { ...data, accessories: data.accessories ?? [] },
     });
 
-    await prisma.profile.update({ where: { userId }, data: { totalPoints: { increment: 25 } } });
+    await prisma.profile.upsert({
+      where: { userId },
+      create: { userId, displayName: "User", totalPoints: 25 },
+      update: { totalPoints: { increment: 25 } },
+    });
     await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 4 } });
 
     return { avatarId: avatar.id };
@@ -107,7 +112,12 @@ export class OnboardingService {
 
   // ── POST /api/onboarding/journey-name ─────────────────────────────────────────
   static async saveJourneyName(userId: string, journeyName: string) {
-    await prisma.profile.update({ where: { userId }, data: { journeyName, totalPoints: { increment: 15 } } });
+    await prisma.profile.upsert({
+      where:  { userId },
+      create: { userId, displayName: "User", journeyName, totalPoints: 15 },
+      update: { journeyName, totalPoints: { increment: 15 } },
+    });
+    await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 4 } });
 
     const profile = await prisma.profile.findUnique({ where: { userId }, select: { totalPoints: true, displayName: true } });
     return { journeyName, pointsTotal: profile?.totalPoints ?? 0 };

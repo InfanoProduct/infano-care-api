@@ -29,9 +29,10 @@ export class LearningService {
     });
 
     // Add points to profile
-    await prisma.profile.update({
+    await prisma.profile.upsert({
       where: { userId },
-      data: { totalPoints: { increment: episode.points } },
+      create: { userId, displayName: "User", totalPoints: episode.points },
+      update: { totalPoints: { increment: episode.points } },
     });
 
     return progress;

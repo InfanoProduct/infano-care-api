@@ -125,7 +125,7 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ tempToken: string; isNewUser: boolean; accessToken?: string; refreshToken?: string }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ tempToken: string; isNewUser: boolean; onboardingStage: number; accountStatus: string; accessToken?: string; refreshToken?: string }> {
     const pattern = /^\+91\d{10}$/;
     if (!pattern.test(phone)) {
       throw new AppError("Invalid mobile number. Please add +91", 400);
@@ -180,7 +180,12 @@ export class AuthService {
       { expiresIn: TEMP_TOKEN_TTL },
     );
 
-    return { tempToken, isNewUser };
+    return {
+      tempToken,
+      isNewUser,
+      onboardingStage: user.onboardingStage,
+      accountStatus: user.accountStatus
+    };
   }
 
   // ── 3. Register ──────────────────────────────────────────────────────────────
@@ -252,6 +257,17 @@ export class AuthService {
         locale: data.locale ?? "en",
         timezone: data.timezone ?? "UTC",
         onboardingStage: 2,
+        profile: {
+          upsert: {
+            create: {
+              displayName: data.displayName,
+              totalPoints: 10,
+            },
+            update: {
+              displayName: data.displayName,
+            },
+          },
+        },
       },
       include: { profile: true },
     });
@@ -336,9 +352,9 @@ export class AuthService {
       throw new AppError("User not found. Please register first.", 404);
     }
 
-    const activeStatuses = ["ACTIVE", "ACTIVE_MINOR"];
-    if (!activeStatuses.includes(user.accountStatus)) {
-      throw new AppError("Account setup is incomplete. Please finish onboarding.", 400);
+    const allowedStatuses = ["ACTIVE", "ACTIVE_MINOR", "PENDING_SETUP", "PENDING_CONSENT"];
+    if (!allowedStatuses.includes(user.accountStatus)) {
+      throw new AppError("Account is suspended or deleted.", 403);
     }
 
     const jti = crypto.randomUUID();

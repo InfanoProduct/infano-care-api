@@ -11,10 +11,11 @@ export class UserService {
     return profile;
   }
 
-  static async updateDisplayName(userId: string, displayName: string) {
-    return prisma.profile.update({
+  static async updateProfile(userId: string, data: any) {
+    return prisma.profile.upsert({
       where: { userId },
-      data:  { displayName },
+      create: { userId, ...data },
+      update: data,
     });
   }
 }
