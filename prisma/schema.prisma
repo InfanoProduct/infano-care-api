@@ -99,7 +99,9 @@ model User {
   userQuests      UserQuest[]
   userBadges      UserBadge[]
   subscription    Subscription?
+  reflections     Reflection[]
 }
+
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
@@ -244,12 +246,12 @@ model LearningJourney {
   contentTone    String      @default("moderate")
   minContentTier ContentTier @default(TEEN_EARLY)
 
-  summaries Summary[]
+  episodes  Episode[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
 
-model Summary {
+model Episode {
   id          String          @id @default(uuid())
   journeyId   String
   journey     LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
@@ -257,11 +259,12 @@ model Summary {
   slug        String          @unique @default(uuid())
   description String?
   order       Int             @default(0)
-  content     Json            @default("[]") // Array of SummaryItem objects
+  content     Json            @default("[]") // Structured JSON for 5 segments
   points      Int             @default(50)
   isActive    Boolean         @default(true)
 
   userProgress UserProgress[]
+  reflections  Reflection[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 }
@@ -270,16 +273,34 @@ model UserProgress {
   id        String  @id @default(uuid())
   userId    String
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  summaryId String
-  summary   Summary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+  episodeId String
+  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 
   completed        Boolean @default(false)
   lastViewedItemId String?
-  completedItems   Json    @default("[]") // Tracking progress of items inside the Summary content
+  completedItems   Json    @default("[]") // Tracking progress within the episode segments
 
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, summaryId])
+  @@unique([userId, episodeId])
+}
+
+model Reflection {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episodeId String
+  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  content   String?  // Text journal entry
+  voiceUrl  String?  // Voice note URL
+  isPrivate Boolean  @default(true) // Toggle between Private Journal and Community Discussion
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([episodeId])
 }
 
 // ─── Quests ───────────────────────────────────────────────────────────────────

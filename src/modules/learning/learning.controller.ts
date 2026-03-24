@@ -22,12 +22,49 @@ export class LearningController {
     }
   }
 
-  static async completeSummary(req: Request, res: Response, next: NextFunction) {
+  static async getEpisode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = req.params['id'] as string;
+      const result = await LearningService.getEpisode(id);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateEpisodeProgress(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId as string;
-      const summaryId = req.params['summaryId'] as string;
+      const episodeId = req.params['episodeId'] as string;
       const { completedItems, lastViewedItemId } = req.body;
-      const result = await LearningService.completeSummary(userId, summaryId, completedItems, lastViewedItemId);
+      const result = await LearningService.updateEpisodeProgress(userId, episodeId, completedItems, lastViewedItemId);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async completeEpisode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId as string;
+      const episodeId = req.params['episodeId'] as string;
+      const { knowledgeCheckAccuracy, reflectionMode, reflectionContent, voiceUrl } = req.body;
+      const result = await LearningService.completeEpisode(userId, episodeId, {
+        knowledgeCheckAccuracy,
+        reflectionMode,
+        reflectionContent,
+        voiceUrl
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCommunityReflections(req: Request, res: Response, next: NextFunction) {
+    try {
+      const episodeId = req.params['episodeId'] as string;
+      const result = await LearningService.getCommunityReflections(episodeId);
       res.status(200).json(result);
     } catch (error) {
       next(error);
