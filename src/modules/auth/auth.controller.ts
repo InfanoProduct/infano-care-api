@@ -50,4 +50,13 @@ export class AuthController {
       res.status(200).json(result);
     } catch (e) { next(e); }
   }
+
+  static async updateStage(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { stage } = req.body;
+      const userId = (req as any).user.id;
+      const result = await AuthService.updateOnboardingStage(userId, stage);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
 }

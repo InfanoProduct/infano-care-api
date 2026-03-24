@@ -3,7 +3,6 @@ const prisma = new PrismaClient()
 
 async function main() {
   const testNumbers = [
-    { phone: '+917209536820', isTestNumber: false }, // Existing one
     { phone: '+911234567890', isTestNumber: true }   // New test number
   ]
 

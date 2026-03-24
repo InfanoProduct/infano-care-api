@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller.js";
+import { authenticate } from "../../common/middleware/auth.js";
 import rateLimit from "express-rate-limit";
 
 const router = Router();
@@ -18,5 +19,8 @@ router.post("/register",               AuthController.register);
 router.post("/refresh",                AuthController.refresh);
 router.post("/logout",                 AuthController.logout);
 router.post("/login",                  AuthController.login);
+
+// Onboarding Stage Sync
+router.patch("/stage", authenticate, AuthController.updateStage);
 
 export default router;

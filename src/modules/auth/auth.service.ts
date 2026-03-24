@@ -62,54 +62,55 @@ export class AuthService {
       throw new AppError("Invalid mobile number. Please add +91", 400);
     }
 
-    // 2. Rule 1: User Must Exist (Gated Access)
+    // 2. Rule 1: User Existence check (Optional for enrollment)
     const user = await prisma.user.findUnique({
       where: { phone },
       select: { id: true, isTestNumber: true, otpSendOn: true, otpRetryCount: true }
     });
 
-    if (!user) {
-      throw new AppError("You Are Not Enrolled. Please Register and Enroll", 400);
-    }
+    // We no longer throw error if user not found, 
+    // to allow new users to register.
 
     // 3. Rule 2: Test Number -> Bypass OTP
-    if (user.isTestNumber) {
+    if (user?.isTestNumber) {
       logger.info({ phone }, "Test number detected - bypassing OTP send");
       return;
     }
 
     // 4. Rule 3: Rate Limiting (1-minute cooldown + 3 retries in 24h)
     const now = new Date();
-    if (user.otpSendOn) {
-      const diffMs = now.getTime() - user.otpSendOn.getTime();
-      const diffMinutes = diffMs / (1000 * 60);
-      const diffHours = diffMs / (1000 * 60 * 60);
+    if (user) {
+      if (user.otpSendOn) {
+        const diffMs = now.getTime() - user.otpSendOn.getTime();
+        const diffMinutes = diffMs / (1000 * 60);
+        const diffHours = diffMs / (1000 * 60 * 60);
 
-      if (diffMinutes <= 1) {
-        throw new AppError("Please retry after 1 minute", 429);
-      }
+        if (diffMinutes <= 1) {
+          throw new AppError("Please retry after 1 minute", 429);
+        }
 
-      if (user.otpRetryCount < 3) {
-        // Increment retry count
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { otpSendOn: now, otpRetryCount: user.otpRetryCount + 1 }
-        });
-      } else if (diffHours > 24) {
-        // Reset after 24 hours
+        if (user.otpRetryCount < 3) {
+          // Increment retry count
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { otpSendOn: now, otpRetryCount: user.otpRetryCount + 1 }
+          });
+        } else if (diffHours > 24) {
+          // Reset after 24 hours
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { otpSendOn: now, otpRetryCount: 1 }
+          });
+        } else {
+          throw new AppError("Retry counts exceeded more than 3 attempts, please retry after 24 hours", 429);
+        }
+      } else {
+        // First attempt
         await prisma.user.update({
           where: { id: user.id },
           data: { otpSendOn: now, otpRetryCount: 1 }
         });
-      } else {
-        throw new AppError("Retry counts exceeded more than 3 attempts, please retry after 24 hours", 429);
       }
-    } else {
-      // First attempt
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { otpSendOn: now, otpRetryCount: 1 }
-      });
     }
 
     // 5. Send OTP via 2Factor.in
@@ -136,12 +137,10 @@ export class AuthService {
       select: { id: true, isTestNumber: true, accountStatus: true, onboardingStage: true, contentTier: true }
     });
 
-    if (!user) {
-      throw new AppError("Invalid user", 400);
-    }
+    // We no longer throw if user doesn't exist, as this could be a new user.
 
     // 1. Test Number -> Direct Login Bypass (Skip OTP Verify)
-    if (user.isTestNumber) {
+    if (user?.isTestNumber) {
       logger.info({ phone }, "Test number detected - bypassing OTP verification");
     } else {
       // 2. Real OTP Verification via 2Factor.in /VERIFY3
@@ -164,18 +163,20 @@ export class AuthService {
     }
 
     // OTP verified successfully (or bypassed for test)
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { otpRetryCount: 0 }
-    });
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { otpRetryCount: 0 }
+      });
+    }
 
     await redis.del(`otp:${phone}`);
 
-    const isNewUser = user.accountStatus === "PENDING_SETUP";
+    const isNewUser = !user || user.accountStatus === "PENDING_SETUP";
 
     // Issue temp token for registration flow
     const tempToken = jwt.sign(
-      { phone, userId: user.id },
+      { phone, userId: user?.id || null },
       JWT_TEMP_SECRET,
       { expiresIn: TEMP_TOKEN_TTL },
     );
@@ -183,8 +184,8 @@ export class AuthService {
     return {
       tempToken,
       isNewUser,
-      onboardingStage: user.onboardingStage,
-      accountStatus: user.accountStatus
+      onboardingStage: user?.onboardingStage ?? 0,
+      accountStatus: user?.accountStatus ?? "PENDING_SETUP"
     };
   }
 
@@ -378,5 +379,13 @@ export class AuthService {
       refreshToken,
       onboardingStage: user.onboardingStage,
     };
+  }
+
+  static async updateOnboardingStage(userId: string, stage: number) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { onboardingStage: stage },
+    });
+    return { success: true, onboardingStage: stage };
   }
 }
