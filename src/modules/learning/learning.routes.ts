@@ -8,7 +8,7 @@ router.use(authenticate);
 
 router.get("/journeys", LearningController.listJourneys);
 router.get("/journeys/:id", LearningController.getJourney);
-router.post("/episodes/:episodeId/complete", LearningController.completeEpisode);
+router.post("/summaries/:summaryId/complete", LearningController.completeSummary);
 router.get("/my-progress", LearningController.getMyProgress);
 
 export default router;

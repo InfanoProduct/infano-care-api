@@ -7,5 +7,6 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/me", UserController.getMe);
+router.patch("/onboarding-stage", UserController.updateOnboardingStage);
 
 export default router;

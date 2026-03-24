@@ -22,11 +22,12 @@ export class LearningController {
     }
   }
 
-  static async completeEpisode(req: Request, res: Response, next: NextFunction) {
+  static async completeSummary(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId as string;
-      const episodeId = req.params['episodeId'] as string;
-      const result = await LearningService.completeEpisode(userId, episodeId);
+      const summaryId = req.params['summaryId'] as string;
+      const { completedItems, lastViewedItemId } = req.body;
+      const result = await LearningService.completeSummary(userId, summaryId, completedItems, lastViewedItemId);
       res.status(200).json(result);
     } catch (error) {
       next(error);

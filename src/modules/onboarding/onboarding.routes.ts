@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(requireAuth);
 
+router.post("/profile",         OnboardingController.setupProfile);
 router.post("/personalization", OnboardingController.savePersonalization);
 router.post("/avatar",          OnboardingController.saveAvatar);
 router.post("/journey-name",    OnboardingController.saveJourneyName);
