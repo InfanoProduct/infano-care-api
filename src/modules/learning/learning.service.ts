@@ -70,25 +70,28 @@ export class LearningService {
     episodeId: string, 
     data: { 
       knowledgeCheckAccuracy: number; // 0-3
-      reflectionMode: 'private' | 'community';
+      reflectionMode: string;
       reflectionContent?: string;
       voiceUrl?: string;
+      isBingeBonus?: boolean;
     }
   ) {
     const episode = await prisma.episode.findUnique({ where: { id: episodeId } });
     if (!episode) throw new AppError("Episode not found", 404);
 
     // Points Calculation:
-    // 1. Knowledge Check Base: +20 (any accuracy)
+    // 1. Base completion: +75 (Quest Link baseline)
     // 2. Knowledge Check Answers: +5 * accuracy (max 15)
     // 3. Knowledge Check Bonus: +10 (if 3/3)
     // 4. Reflection: +10 (private) or +15 (community)
+    // 5. Binge Bonus: +15 if completed within 10s of arriving
     
-    let totalAwardedPoints = 20; // Base completion
+    let totalAwardedPoints = 75; // Quest Link Base
     totalAwardedPoints += (data.knowledgeCheckAccuracy * 5);
     if (data.knowledgeCheckAccuracy === 3) totalAwardedPoints += 10;
     
     totalAwardedPoints += (data.reflectionMode === 'community' ? 15 : 10);
+    if (data.isBingeBonus) totalAwardedPoints += 15;
 
     const progress = await prisma.userProgress.update({
       where: { userId_episodeId: { userId, episodeId } },

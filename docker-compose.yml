@@ -1,32 +1,89 @@
+version: "3.9"
+
 services:
+  # ── API ──────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: infano-care-api:dev
+    container_name: infano_api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/infano
+      REDIS_URL: memory
+      GRAYLOG_HOST: graylog
+      GRAYLOG_PORT: 12201
+    depends_on:
+      postgres:
+        condition: service_healthy
+      graylog:
+        condition: service_started
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: infano-postgres
+    container_name: infano_postgres
+    restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Umesh8907
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: infano
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  adminer:
-    image: adminer:latest
-    container_name: infano-adminer
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
-
-  redis:
-    image: redis:7-alpine
-    container_name: infano-redis
-    ports:
-      - "6379:6379"
+  # ── Graylog (GELF UDP 12201) ──────────────────────────────────────────────────
+  # Mirrors the production setup: api → graylog on UDP 12201
+  mongodb:
+    image: mongo:6-jammy
+    container_name: infano_mongo
+    restart: unless-stopped
     volumes:
-      - redis_data:/data
+      - mongo_data:/data/db
+
+  opensearch:
+    image: opensearchproject/opensearch:2.12.0
+    container_name: infano_opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Admin@1234!
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - os_data:/usr/share/opensearch/data
+
+  graylog:
+    image: graylog/graylog:6.0
+    container_name: infano_graylog
+    restart: unless-stopped
+    environment:
+      GRAYLOG_PASSWORD_SECRET: somepasswordsecret1234567890ab
+      # Default admin password: admin
+      GRAYLOG_ROOT_PASSWORD_SHA2: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      GRAYLOG_HTTP_EXTERNAL_URI: http://localhost:9000/
+    ports:
+      - "9000:9000"       # Graylog web UI
+      - "12201:12201/udp" # GELF UDP (matches production)
+    depends_on:
+      - mongodb
+      - opensearch
 
 volumes:
   postgres_data:
-  redis_data:
+  mongo_data:
+  os_data:

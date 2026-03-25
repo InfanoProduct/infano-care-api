@@ -48,12 +48,13 @@ export class LearningController {
     try {
       const userId = (req as any).userId as string;
       const episodeId = req.params['episodeId'] as string;
-      const { knowledgeCheckAccuracy, reflectionMode, reflectionContent, voiceUrl } = req.body;
+      const { knowledgeCheckAccuracy, reflectionMode, reflectionContent, voiceUrl, isBingeBonus } = req.body;
       const result = await LearningService.completeEpisode(userId, episodeId, {
         knowledgeCheckAccuracy,
         reflectionMode,
         reflectionContent,
-        voiceUrl
+        voiceUrl,
+        isBingeBonus
       });
       res.status(200).json(result);
     } catch (error) {
