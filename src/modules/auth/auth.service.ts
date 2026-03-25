@@ -28,14 +28,14 @@ function hashOtp(otp: string): string {
   return crypto.createHash("sha256").update(otp).digest("hex");
 }
 
-function computeContentTier(age: number): string {
+export function computeContentTier(age: number): string {
   if (age < 13) return "JUNIOR";
   if (age < 16) return "TEEN_EARLY";
   if (age < 18) return "TEEN_LATE";
   return "ADULT";
 }
 
-function computeAge(birthMonth: number, birthYear: number): number {
+export function computeAge(birthMonth: number, birthYear: number): number {
   const now = new Date();
   let age = now.getFullYear() - birthYear;
   // Adjust if birthday hasn't occurred yet this year
@@ -59,7 +59,7 @@ export class AuthService {
     // 1. Strict Validation (Match Reference Pattern: ^\+91\d{10}$)
     const pattern = /^\+91\d{10}$/;
     if (!pattern.test(phone)) {
-      throw new AppError("Invalid mobile number. Please add +91", 400);
+      throw new AppError("Invalid phone number, please try again", 400);
     }
 
     // 2. Rule 1: User Existence check (Optional for enrollment)
@@ -115,7 +115,14 @@ export class AuthService {
 
     // 5. Send OTP via 2Factor.in
     const otp = generateOtp();
-    await smsProvider.send(phone, otp);
+    try {
+      await smsProvider.send(phone, otp);
+    } catch (err: any) {
+      if (err.message && err.message.includes("Invalid Phone Number")) {
+        throw new AppError("Invalid phone number, please try again", 400);
+      }
+      throw err;
+    }
 
     // Also store in Redis cache for 'mock' fallback if needed, 
     // but the reference uses 2Factor's verify endpoint.
@@ -126,10 +133,10 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ tempToken: string; isNewUser: boolean; onboardingStage: number; accountStatus: string; accessToken?: string; refreshToken?: string }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStage: number; accountStatus: string }> {
     const pattern = /^\+91\d{10}$/;
     if (!pattern.test(phone)) {
-      throw new AppError("Invalid mobile number. Please add +91", 400);
+      throw new AppError("Invalid phone number, please try again", 400);
     }
 
     const user = await prisma.user.findUnique({
@@ -173,126 +180,50 @@ export class AuthService {
     await redis.del(`otp:${phone}`);
 
     const isNewUser = !user || user.accountStatus === "PENDING_SETUP";
+    let finalUser = user;
 
-    // Issue temp token for registration flow
-    const tempToken = jwt.sign(
-      { phone, userId: user?.id || null },
-      JWT_TEMP_SECRET,
-      { expiresIn: TEMP_TOKEN_TTL },
-    );
-
-    return {
-      tempToken,
-      isNewUser,
-      onboardingStage: user?.onboardingStage ?? 0,
-      accountStatus: user?.accountStatus ?? "PENDING_SETUP"
-    };
-  }
-
-  // ── 3. Register ──────────────────────────────────────────────────────────────
-  static async register(data: {
-    tempToken: string;
-    displayName: string;
-    birthMonth: number;
-    birthYear: number;
-    termsAccepted: boolean;
-    privacyAccepted: boolean;
-    marketingOptIn?: boolean;
-    locale?: string;
-    timezone?: string;
-  }) {
-    // Validate temp token
-    let tokenPayload: { phone: string; userId: string | null };
-    try {
-      tokenPayload = jwt.verify(data.tempToken, JWT_TEMP_SECRET) as any;
-    } catch {
-      throw new AppError("Session expired. Please verify your phone number again.", 401);
-    }
-
-    if (!data.termsAccepted || !data.privacyAccepted) {
-      throw new AppError("Terms and Privacy Policy must be accepted.", 400);
-    }
-
-    const { phone } = tokenPayload;
-    const age = computeAge(data.birthMonth, data.birthYear);
-
-    if (age < 6) {
-      throw new AppError("Infano.Care is for girls aged 10 and up.", 400);
-    }
-
-    const contentTier = computeContentTier(age) as any;
-    const coppaRequired = age < 13;
-
-    // Upsert user (handles re-registration after abandoned onboarding)
-    const user = await prisma.user.upsert({
-      where: { phone },
-      create: {
-        phone,
-        birthMonth: data.birthMonth,
-        birthYear: data.birthYear,
-        ageAtSignup: age,
-        contentTier,
-        accountStatus: coppaRequired ? "PENDING_CONSENT" : "PENDING_SETUP",
-        coppaConsentRequired: coppaRequired,
-        termsAcceptedAt: new Date(),
-        privacyAcceptedAt: new Date(),
-        marketingOptIn: data.marketingOptIn ?? false,
-        locale: data.locale ?? "en",
-        timezone: data.timezone ?? "UTC",
-        onboardingStage: 2,
-        profile: {
-          create: {
-            displayName: data.displayName,
-            totalPoints: 10, // points from Stage 1 name entry
-          },
-        },
-      },
-      update: {
-        birthMonth: data.birthMonth,
-        birthYear: data.birthYear,
-        ageAtSignup: age,
-        contentTier,
-        termsAcceptedAt: new Date(),
-        privacyAcceptedAt: new Date(),
-        marketingOptIn: data.marketingOptIn ?? false,
-        locale: data.locale ?? "en",
-        timezone: data.timezone ?? "UTC",
-        onboardingStage: 2,
-        profile: {
-          upsert: {
+    if (!finalUser) {
+      finalUser = await prisma.user.create({
+        data: {
+          phone,
+          accountStatus: "PENDING_SETUP",
+          onboardingStage: 1,
+          profile: {
             create: {
-              displayName: data.displayName,
-              totalPoints: 10,
-            },
-            update: {
-              displayName: data.displayName,
-            },
-          },
+              displayName: "",
+              totalPoints: 0,
+            }
+          }
         },
-      },
-      include: { profile: true },
-    });
+        select: { id: true, isTestNumber: true, accountStatus: true, onboardingStage: true, contentTier: true }
+      });
+      logger.info({ userId: finalUser.id }, "Created new user via OTP verify");
+    }
 
     const jti = crypto.randomUUID();
-    const tokenPayloadBase = { sub: user.id, contentTier: user.contentTier, accountStatus: user.accountStatus, obStage: user.onboardingStage };
+    const tokenPayloadBase = { 
+      sub: finalUser.id, 
+      contentTier: finalUser.contentTier, 
+      accountStatus: finalUser.accountStatus, 
+      obStage: finalUser.onboardingStage 
+    };
 
     const accessToken = signAccessToken(tokenPayloadBase);
     const refreshToken = signRefreshToken(tokenPayloadBase, jti);
 
     // Store refresh token in Redis (blacklist pattern — store jti)
-    await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, user.id);
+    await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, finalUser.id);
 
     return {
-      userId: user.id,
       accessToken,
       refreshToken,
-      onboardingStage: user.onboardingStage,
-      coppaConsentRequired: user.coppaConsentRequired,
-      initialPoints: user.profile?.totalPoints ?? 10,
+      isNewUser,
+      onboardingStage: finalUser.onboardingStage,
+      accountStatus: finalUser.accountStatus
     };
   }
 
-  // ── 4. Refresh ───────────────────────────────────────────────────────────────
+  // ── 3. Refresh ───────────────────────────────────────────────────────────────
   static async refresh(refreshToken: string) {
     let payload: any;
     try {
@@ -302,14 +233,9 @@ export class AuthService {
     }
 
     const { jti, sub } = payload;
-
-    // Check not blacklisted
     const stored = await redis.get(`rt:${jti}`);
-    if (!stored) {
-      throw new AppError("Refresh token revoked.", 401);
-    }
+    if (!stored) throw new AppError("Refresh token revoked.", 401);
 
-    // Blacklist old token
     await redis.del(`rt:${jti}`);
 
     const user = await prisma.user.findUnique({ where: { id: sub }, select: { id: true, contentTier: true, accountStatus: true, onboardingStage: true } });
@@ -325,7 +251,7 @@ export class AuthService {
     return { accessToken: newAccess, refreshToken: newRefresh };
   }
 
-  // ── 5. Logout ────────────────────────────────────────────────────────────────
+  // ── 4. Logout ────────────────────────────────────────────────────────────────
   static async logout(refreshToken: string) {
     try {
       const payload: any = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
@@ -333,52 +259,6 @@ export class AuthService {
     } catch {
       // Already expired — treat as success
     }
-  }
-
-  // ── 6. Login (returning user — phone already verified via verifyOtp) ──────────
-  static async login(tempToken: string) {
-    let tokenPayload: { phone: string; userId: string | null };
-    try {
-      tokenPayload = jwt.verify(tempToken, JWT_TEMP_SECRET) as any;
-    } catch {
-      throw new AppError("Session expired. Please verify your phone number again.", 401);
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { phone: tokenPayload.phone },
-      select: { id: true, contentTier: true, accountStatus: true, onboardingStage: true },
-    });
-
-    if (!user) {
-      throw new AppError("User not found. Please register first.", 404);
-    }
-
-    const allowedStatuses = ["ACTIVE", "ACTIVE_MINOR", "PENDING_SETUP", "PENDING_CONSENT"];
-    if (!allowedStatuses.includes(user.accountStatus)) {
-      throw new AppError("Account is suspended or deleted.", 403);
-    }
-
-    const jti = crypto.randomUUID();
-    const tokenPayloadBase = {
-      sub: user.id,
-      contentTier: user.contentTier,
-      accountStatus: user.accountStatus,
-      obStage: user.onboardingStage,
-    };
-
-    const accessToken = signAccessToken(tokenPayloadBase);
-    const refreshToken = signRefreshToken(tokenPayloadBase, jti);
-
-    await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, user.id);
-
-    logger.info({ userId: user.id }, "Returning user login");
-
-    return {
-      userId: user.id,
-      accessToken,
-      refreshToken,
-      onboardingStage: user.onboardingStage,
-    };
   }
 
   static async updateOnboardingStage(userId: string, stage: number) {
