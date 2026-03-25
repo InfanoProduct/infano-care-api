@@ -43,12 +43,17 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.12.0",
     "@types/pg": "^8.15.5",
+    "@eslint/js": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "dotenv-cli": "^8.0.0",
     "eslint": "^9.34.0",
+    "globals": "^15.9.0",
     "pino-pretty": "^13.1.1",
     "prisma": "^6.4.1",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.0.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
