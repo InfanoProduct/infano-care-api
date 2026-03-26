@@ -1,5 +1,6 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import { computeAge, computeContentTier } from "../auth/auth.service.js";
 
 // Journey scoring algorithm from product spec
 interface JourneyScore {
@@ -24,24 +25,80 @@ function scoreJourney(journey: any, profile: { interestTopics: string[]; goals: 
 }
 
 export class OnboardingService {
+  // ── POST /api/onboarding/profile ──────────────────────────────────────────────
+  static async setupProfile(userId: string, data: {
+    displayName: string;
+    birthMonth: number;
+    birthYear: number;
+    termsAccepted: boolean;
+    privacyAccepted: boolean;
+    marketingOptIn?: boolean;
+    locale?: string;
+    timezone?: string;
+  }) {
+    if (!data.termsAccepted || !data.privacyAccepted) {
+      throw new AppError("Terms and Privacy Policy must be accepted.", 400);
+    }
+
+    const age = computeAge(data.birthMonth, data.birthYear);
+    if (age < 6) {
+      throw new AppError("Infano.Care is for girls aged 10 and up.", 400);
+    }
+
+    const contentTier = computeContentTier(age) as any;
+    const coppaRequired = age < 13;
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        birthMonth: data.birthMonth,
+        birthYear: data.birthYear,
+        ageAtSignup: age,
+        contentTier,
+        accountStatus: coppaRequired ? "PENDING_CONSENT" : "PENDING_SETUP",
+        coppaConsentRequired: coppaRequired,
+        termsAcceptedAt: new Date(),
+        privacyAcceptedAt: new Date(),
+        marketingOptIn: data.marketingOptIn ?? false,
+        locale: data.locale ?? "en",
+        timezone: data.timezone ?? "UTC",
+        profile: {
+          update: {
+            displayName: data.displayName,
+            totalPoints: 10,
+          },
+        },
+      },
+      include: { profile: true },
+    });
+
+    return {
+      userId: user.id,
+      onboardingStage: user.onboardingStage,
+      coppaConsentRequired: user.coppaConsentRequired,
+      initialPoints: user.profile?.totalPoints ?? 10,
+    };
+  }
+
   // ── POST /api/onboarding/personalization ──────────────────────────────────────
   static async savePersonalization(userId: string, data: {
     goals: string[];
-    periodComfortScore: number;
+    periodComfortScore?: number;
     periodStatus: string;
     interestTopics: string[];
   }) {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { contentTier: true } });
     if (!user) throw new AppError("User not found.", 404);
 
-    const tone = data.periodComfortScore <= 2 ? "gentle" : data.periodComfortScore >= 4 ? "direct" : "moderate";
+    const score = data.periodComfortScore ?? 3;
+    const tone = score <= 2 ? "gentle" : score >= 4 ? "direct" : "moderate";
 
     const profile = await prisma.personalizationProfile.upsert({
       where:  { userId },
       create: {
         userId,
         goals:              data.goals,
-        periodComfortScore: data.periodComfortScore,
+        periodComfortScore: score,
         periodStatus:       data.periodStatus,
         periodContentTone:  tone,
         interestTopics:     data.interestTopics,
@@ -49,16 +106,16 @@ export class OnboardingService {
       },
       update: {
         goals:              data.goals,
-        periodComfortScore: data.periodComfortScore,
+        periodComfortScore: score,
         periodStatus:       data.periodStatus,
         periodContentTone:  tone,
         interestTopics:     data.interestTopics,
         quizCompletedAt:    new Date(),
-      },
+      }
     });
 
-    // Update onboarding stage
-    await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 3 } });
+    // Profile updated, skipping stage overwrite to avoid conflicting with mobile app sequence
+    // await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 3 } });
 
     // Award quiz points
     await prisma.profile.upsert({
@@ -105,7 +162,8 @@ export class OnboardingService {
       create: { userId, displayName: "User", totalPoints: 25 },
       update: { totalPoints: { increment: 25 } },
     });
-    await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 4 } });
+    // Avatar saved, skipping stage overwrite
+    // await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 4 } });
 
     return { avatarId: avatar.id };
   }
@@ -117,7 +175,8 @@ export class OnboardingService {
       create: { userId, displayName: "User", journeyName, totalPoints: 15 },
       update: { journeyName, totalPoints: { increment: 15 } },
     });
-    await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 4 } });
+    // Journey name saved, skipping stage overwrite
+    // await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 4 } });
 
     const profile = await prisma.profile.findUnique({ where: { userId }, select: { totalPoints: true, displayName: true } });
     return { journeyName, pointsTotal: profile?.totalPoints ?? 0 };
