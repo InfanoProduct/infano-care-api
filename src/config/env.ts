@@ -27,6 +27,8 @@ const envSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM_NUMBER: z.string().optional(),
   TWOFACTOR_API_KEY: z.string().optional(),
+  GRAYLOG_HOST: z.string().optional(),
+  GRAYLOG_PORT: z.coerce.number().int().positive().optional().default(12201),
 });
 
 export type Env = z.infer<typeof envSchema>;
