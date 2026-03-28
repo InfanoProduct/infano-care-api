@@ -5,16 +5,11 @@ services:
     restart: always
     ports:
       - "8085:4000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:DevPassword1@109.199.120.104:5432/infano_prod?schema=public
-      - NODE_ENV=production
-      - REDIS_URL=memory
-      - PORT=4000
-      - LOG_LEVEL=info
-      - ALLOWED_ORIGINS=https://infano.care
+    # Unified environment management via .env file on the VPS
+    env_file:
+      - .env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    network_mode: "host"

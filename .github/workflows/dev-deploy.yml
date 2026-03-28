@@ -55,6 +55,17 @@ jobs:
           docker pull registry.pocapi.in/infano.api:dev-latest
           mkdir -p /data/docker/infano-dev
           cd /data/docker/infano-dev
-          # Note: We assume docker-compose.dev.yml is managed on the server or synced via other means.
-          # For now, we point to the new filename and use the existing env file pattern if needed.
+          
+          # Create .env file from GitHub Secrets
+          cat <<EOF > .env
+          NODE_ENV=development
+          PORT=4000
+          DATABASE_URL=${{ secrets.DEV_DATABASE_URL }}
+          ALLOWED_ORIGINS=${{ secrets.DEV_ALLOWED_ORIGINS }}
+          LOG_LEVEL=debug
+          GRAYLOG_HOST=${{ secrets.DEV_GRAYLOG_HOST }}
+          GRAYLOG_PORT=${{ secrets.DEV_GRAYLOG_PORT }}
+          TWOFACTOR_API_KEY=${{ secrets.TWOFACTOR_API_KEY }}
+          EOF
+
           docker compose -f docker-compose.dev.yml up -d
