@@ -7,16 +7,16 @@ export class LearningService {
   static async listJourneys(ageBand?: string) {
     const logPath = path.join(process.cwd(), "learning-debug.log");
     fs.appendFileSync(logPath, `${new Date().toISOString()} - listJourneys(ageBand: ${ageBand})\n`);
-    
+
     const journeys = await prisma.learningJourney.findMany({
       where:
         ageBand
           ? {
-              OR: [
-                { ageBand },
-                { ageBand: null },
-              ],
-            }
+            OR: [
+              { ageBand },
+              { ageBand: null },
+            ],
+          }
           : undefined,
       include: { episodes: { orderBy: { order: "asc" } } },
     });
@@ -29,7 +29,7 @@ export class LearningService {
       where: { id: journeyId },
       include: { episodes: { orderBy: { order: "asc" } } },
     });
-    if (!journey) throw new AppError("Journey not found", 404);
+    if (!journey) throw new AppError("Learning Journey not found", 404);
     return journey;
   }
 
@@ -47,14 +47,14 @@ export class LearningService {
   static async updateEpisodeProgress(userId: string, episodeId: string, completedItems: any[] = [], lastViewedItemId?: string) {
     const progress = await prisma.userProgress.upsert({
       where: { userId_episodeId: { userId, episodeId } },
-      update: { 
+      update: {
         completedItems,
         lastViewedItemId,
         updatedAt: new Date(),
       },
-      create: { 
-        userId, 
-        episodeId, 
+      create: {
+        userId,
+        episodeId,
         completedItems,
         lastViewedItemId
       },
@@ -66,9 +66,9 @@ export class LearningService {
    * Finalizes an episode and awards points based on the 5-segment rules.
    */
   static async completeEpisode(
-    userId: string, 
-    episodeId: string, 
-    data: { 
+    userId: string,
+    episodeId: string,
+    data: {
       knowledgeCheckAccuracy: number; // 0-3
       reflectionMode: string;
       reflectionContent?: string;
@@ -85,11 +85,11 @@ export class LearningService {
     // 3. Knowledge Check Bonus: +10 (if 3/3)
     // 4. Reflection: +10 (private) or +15 (community)
     // 5. Binge Bonus: +15 if completed within 10s of arriving
-    
+
     let totalAwardedPoints = 75; // Quest Link Base
     totalAwardedPoints += (data.knowledgeCheckAccuracy * 5);
     if (data.knowledgeCheckAccuracy === 3) totalAwardedPoints += 10;
-    
+
     totalAwardedPoints += (data.reflectionMode === 'community' ? 15 : 10);
     if (data.isBingeBonus) totalAwardedPoints += 15;
 
@@ -114,13 +114,13 @@ export class LearningService {
     // Add points to profile
     await prisma.profile.upsert({
       where: { userId },
-      create: { 
-        userId, 
-        displayName: "User", 
-        totalPoints: totalAwardedPoints 
+      create: {
+        userId,
+        displayName: "User",
+        totalPoints: totalAwardedPoints
       },
-      update: { 
-        totalPoints: { increment: totalAwardedPoints } 
+      update: {
+        totalPoints: { increment: totalAwardedPoints }
       },
     });
 
