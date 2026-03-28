@@ -18,6 +18,7 @@
     "reset-test-user": "dotenv -e .env.development -e .env.local -- tsx prisma/reset-test-user.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.4.1",
     "@types/nodemailer": "^7.0.11",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
@@ -35,7 +36,6 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@prisma/client": "^6.4.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.8",
     "@types/cors": "^2.8.19",
