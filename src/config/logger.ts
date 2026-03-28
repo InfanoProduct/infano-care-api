@@ -23,7 +23,6 @@ if (!isProd) {
 }
 
 // Graylog GELF transport
-/*
 if (env.GRAYLOG_HOST) {
   transports.push({
     target: "pino-gelf",
@@ -35,10 +34,12 @@ if (env.GRAYLOG_HOST) {
     level: env.LOG_LEVEL,
   });
 }
-*/
 
 export const logger = pino({
   level: env.LOG_LEVEL,
+  transport: {
+    targets: transports,
+  },
   redact: {
     paths: [
       "req.headers.authorization",
