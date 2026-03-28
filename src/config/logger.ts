@@ -1,6 +1,8 @@
 import pino from "pino";
 import { env, isProd } from "./env.js";
 
+// Cache breaker: 2026-03-28-force-rebuild-v1
+
 const transports = [];
 
 // Local console transport
