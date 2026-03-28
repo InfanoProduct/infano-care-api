@@ -52,16 +52,6 @@ jobs:
           docker pull registry.pocapi.in/infano.api:prod-latest
           cd /data/docker/infano-prod
           
-          # Create .env file from GitHub Secrets
-          cat <<EOF > .env
-          NODE_ENV="production"
-          PORT="4000"
-          DATABASE_URL="${{ secrets.PROD_DATABASE_URL }}"
-          ALLOWED_ORIGINS="${{ secrets.PROD_ALLOWED_ORIGINS }}"
-          LOG_LEVEL="info"
-          GRAYLOG_HOST="${{ secrets.PROD_GRAYLOG_HOST }}"
-          GRAYLOG_PORT="${{ secrets.PROD_GRAYLOG_PORT }}"
-          TWOFACTOR_API_KEY="${{ secrets.TWOFACTOR_API_KEY }}"
-          EOF
-
+          # No longer creating .env file from secrets (VPS-Managed)
+          
           docker compose -f docker-compose.prod.yml up -d
