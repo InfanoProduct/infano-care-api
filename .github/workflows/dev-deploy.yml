@@ -39,9 +39,8 @@ jobs:
         username: root
         password: ${{ secrets.SSH_SERVER_PWD }}
         port: 22
-        envs: REGISTRY_UNAME,REGISTRY_PWD
         script: |
-          echo $REGISTRY_PWD | docker login registry.pocapi.in -u $REGISTRY_UNAME --password-stdin
+          docker login registry.pocapi.in -u "${{ secrets.REGISTRY_UNAME }}" -p "${{ secrets.REGISTRY_PWD }}"
           docker pull registry.pocapi.in/infano.api:latest
           cd /data/docker
           docker-compose -f infano.api.docker-compose.yml --env-file dev-global-variables.env up -d
