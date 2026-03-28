@@ -58,14 +58,14 @@ jobs:
           
           # Create .env file from GitHub Secrets
           cat <<EOF > .env
-          NODE_ENV=development
-          PORT=4000
-          DATABASE_URL=${{ secrets.DEV_DATABASE_URL }}
-          ALLOWED_ORIGINS=${{ secrets.DEV_ALLOWED_ORIGINS }}
-          LOG_LEVEL=debug
-          GRAYLOG_HOST=${{ secrets.DEV_GRAYLOG_HOST }}
-          GRAYLOG_PORT=${{ secrets.DEV_GRAYLOG_PORT }}
-          TWOFACTOR_API_KEY=${{ secrets.TWOFACTOR_API_KEY }}
+          NODE_ENV="development"
+          PORT="4000"
+          DATABASE_URL="${{ secrets.DEV_DATABASE_URL }}"
+          ALLOWED_ORIGINS="${{ secrets.DEV_ALLOWED_ORIGINS }}"
+          LOG_LEVEL="debug"
+          GRAYLOG_HOST="${{ secrets.DEV_GRAYLOG_HOST }}"
+          GRAYLOG_PORT="${{ secrets.DEV_GRAYLOG_PORT }}"
+          TWOFACTOR_API_KEY="${{ secrets.TWOFACTOR_API_KEY }}"
           EOF
 
           docker compose -f docker-compose.dev.yml up -d
