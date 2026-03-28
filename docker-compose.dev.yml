@@ -5,18 +5,14 @@ services:
     restart: always
     ports:
       - "8084:4000"
-    # env_file may be used, but environment overrides it for DB
-    environment:
-      - DATABASE_URL=postgresql://postgres:DevPassword1@109.199.120.104:5432/infano_dev?schema=public
-      - NODE_ENV=development
-      - REDIS_URL=memory
-      - PORT=4000
-      - LOG_LEVEL=debug
-      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+    # Unified environment management via .env file on the VPS
+    env_file:
+      - .env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    # Use the global docker network if you have one, or host mode for simplicity with the global DB
-    network_mode: "host" 
+    # Optional: ensure communication with other containers if needed
+    # networks:
+    #   - infano-net
