@@ -49,14 +49,5 @@ export const logger = pino({
     ],
     remove: true,
   },
-  transport:
-    !isProd
-      ? {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-          },
-        }
-      : undefined, // Default to stdout/stderr in production
 });
 
