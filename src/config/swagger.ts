@@ -14,8 +14,12 @@ const options: swaggerJsdoc.Options = {
         description: "Local Development Server",
       },
       {
-        url: "http://109.199.120.104:4005",
+        url: "http://109.199.120.104:8084",
         description: "Staging/Dev Remote Server",
+      },
+      {
+        url: "http://109.199.120.104:8085",
+        description: "Production Remote Server",
       },
     ],
     components: {
@@ -33,7 +37,12 @@ const options: swaggerJsdoc.Options = {
       },
     ],
   },
-  apis: ["./src/app.ts", "./src/modules/**/*.routes.ts"], // Scan these files for annotations
+  apis: [
+    "./src/app.ts",
+    "./src/modules/**/*.routes.ts",
+    "./dist/app.js",
+    "./dist/modules/**/*.routes.js",
+  ],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
