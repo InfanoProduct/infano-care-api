@@ -19,7 +19,16 @@ import { swaggerSpec } from "./config/swagger.js";
 const app = express();
 
 // Middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "upgrade-insecure-requests": null,
+      },
+    },
+  })
+);
 app.use(cors({ origin: env.ALLOWED_ORIGINS }));
 app.use(compression());
 app.use(express.json());
