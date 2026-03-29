@@ -1,33 +1,47 @@
 import pino from "pino";
 import { env, isProd } from "./env.js";
 
-// Cache breaker: 2026-03-28-force-rebuild-v1
+// Cache breaker: 2026-03-29-fix-v1
 
-const transports = [];
+/**
+ * Configure pino logger based on environment.
+ * In development (local), we use pino-pretty for readable logs.
+ * In production or remote environments, we use standard JSON logging (stdout)
+ * which can be picked up by Docker logging drivers (GELF/Graylog).
+ */
 
-// Local console transport
-if (!isProd) {
-  transports.push({
-    target: "pino-pretty",
-    options: {
-      colorize: true,
-    },
-    level: env.LOG_LEVEL,
-  });
-} else {
-  transports.push({
+const getTransport = () => {
+  // If explicitly requested GELF and pino-gelf is available
+  if (env.LOG_DRIVER === "gelf") {
+    return {
+      target: "pino-gelf/transport",
+      options: {
+        host: env.GRAYLOG_HOST || "localhost",
+        port: env.GRAYLOG_PORT || 12201,
+      },
+    };
+  }
+
+  // If local development and not in a container, use pretty printing
+  if (!isProd && process.stdout.isTTY) {
+    return {
+      target: "pino-pretty",
+      options: {
+        colorize: true,
+      },
+    };
+  }
+
+  // Default: Standard JSON logging to stdout
+  return {
     target: "pino/file",
-    options: { destination: 1 }, // 1 is stdout
-    level: env.LOG_LEVEL,
-  });
-}
+    options: { destination: 1 },
+  };
+};
 
 export const logger = pino({
   level: env.LOG_LEVEL,
-  transport: {
-    target: isProd ? "pino/file" : "pino-pretty",
-    options: isProd ? { destination: 1 } : { colorize: true },
-  },
+  transport: getTransport(),
   redact: {
     paths: [
       "req.headers.authorization",
@@ -39,4 +53,3 @@ export const logger = pino({
     remove: true,
   },
 });
-
