@@ -10,6 +10,11 @@ services:
       - .env
     networks:
       - portal_network
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://109.199.120.104:12201"
+        tag: "infano-api-dev"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
       interval: 30s

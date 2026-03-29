@@ -22,23 +22,11 @@ if (!isProd) {
   });
 }
 
-// Graylog GELF transport
-if (env.GRAYLOG_HOST) {
-  transports.push({
-    target: "pino-gelf",
-    options: {
-      host: env.GRAYLOG_HOST,
-      port: env.GRAYLOG_PORT,
-      protocol: "udp", // default GELF
-    },
-    level: env.LOG_LEVEL,
-  });
-}
-
 export const logger = pino({
   level: env.LOG_LEVEL,
   transport: {
-    targets: transports,
+    target: isProd ? "pino/file" : "pino-pretty",
+    options: isProd ? { destination: 1 } : { colorize: true },
   },
   redact: {
     paths: [
