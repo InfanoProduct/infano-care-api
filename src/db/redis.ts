@@ -55,33 +55,78 @@ class MockRedis {
 const globalForRedis = globalThis as unknown as { redis: any | undefined };
 
 function createRedisInstance() {
-  if (process.env.REDIS_URL === "memory" || process.env.NODE_ENV === "test") {
-    logger.info("Using in-memory MockRedis fallback");
-    return new MockRedis();
-  }
+  const isMemoryMode = process.env.REDIS_URL === "memory" || process.env.NODE_ENV === "test";
+  let client: any;
+  let useFallback = isMemoryMode;
+  const mock = new MockRedis();
 
-  try {
-    const client = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
-      maxRetriesPerRequest: 1, // fail fast to trigger fallback if desired, or keep retry
-      lazyConnect: true,
-      retryStrategy: (times) => {
-        if (times > 3) {
-           logger.error("Redis connection failed continuously. Falling back to memory storage.");
-           return null; // stop retrying
+  if (!isMemoryMode) {
+    try {
+      client = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+        maxRetriesPerRequest: 1, 
+        lazyConnect: true,
+        retryStrategy: (times) => {
+          if (times > 3) {
+            logger.error("Redis connection failed. Falling back to memory storage.");
+            useFallback = true;
+            return null; // stop retrying
+          }
+          return Math.min(times * 100, 3000);
         }
-        return Math.min(times * 50, 2000);
-      }
-    });
+      });
 
-    client.on("error", (err: any) => {
-      logger.warn({ err: err.message }, "Redis connection issue - check if Redis is running.");
-    });
+      client.on("error", (err: any) => {
+        // Only log warning, the retryStrategy handles the permanent fallback
+        logger.warn({ err: err.message }, "Redis connection issue.");
+      });
 
-    return client;
-  } catch (e) {
-    logger.error({ err: e }, "Failed to initialize Redis client. Using MockRedis.");
-    return new MockRedis();
+      client.on("end", () => {
+        logger.error("Redis client connection closed permanently. Operating in memory-only mode.");
+        useFallback = true;
+      });
+    } catch (e) {
+      logger.error({ err: e }, "Failed to initialize Redis client. Falling back to memory.");
+      useFallback = true;
+    }
   }
+
+  // Return a proxy that switches between the real client and the mock
+  return new Proxy({}, {
+    get: (_, prop: string) => {
+      const activeClient = useFallback ? mock : (client || mock);
+      
+      if (prop === "status") return activeClient.status;
+      if (prop === "on") return activeClient.on?.bind(activeClient);
+
+      const value = activeClient[prop];
+      if (typeof value === "function") {
+        return async (...args: any[]) => {
+          try {
+            const result = value.apply(activeClient, args);
+            // ioredis methods return promises or can be awaited
+            return await result;
+          } catch (err: any) {
+            // If we hit a connection error, switch to fallback and retry once
+            const isConnError = 
+              err.message.includes("Connection is closed") || 
+              err.message.includes("max retries") ||
+              err.message.includes("ECONNREFUSED");
+
+            if (!useFallback && isConnError) {
+              logger.error({ err: err.message }, "Redis operation failed. Switching to in-memory fallback.");
+              useFallback = true;
+              const fallbackMethod = (mock as any)[prop];
+              if (typeof fallbackMethod === "function") {
+                return fallbackMethod.apply(mock, args);
+              }
+            }
+            throw err;
+          }
+        };
+      }
+      return value;
+    }
+  });
 }
 
 export const redis: any = globalForRedis.redis ?? createRedisInstance();
