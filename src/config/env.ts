@@ -29,6 +29,7 @@ const envSchema = z.object({
   TWOFACTOR_API_KEY: z.string().optional(),
   GRAYLOG_HOST: z.string().optional(),
   GRAYLOG_PORT: z.coerce.number().int().positive().optional().default(12201),
+  LOG_DRIVER: z.enum(["pretty", "gelf", "json"]).optional().default("json"),
 });
 
 export type Env = z.infer<typeof envSchema>;
