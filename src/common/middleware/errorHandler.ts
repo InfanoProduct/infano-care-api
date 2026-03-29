@@ -33,5 +33,10 @@ export const errorHandler = (
     });
   }
 
-  res.status(500).json({ error: "Internal Server Error" });
+  if (err.name === "SyntaxError" && "body" in err) {
+    return res.status(400).json({ error: "Malformed JSON in request body" });
+  }
+
+  const message = process.env.NODE_ENV === "production" ? "Internal Server Error" : err.message;
+  res.status(500).json({ error: message });
 };
