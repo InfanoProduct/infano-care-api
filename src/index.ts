@@ -11,6 +11,7 @@ async function bootstrap() {
 
     const server = app.listen(env.PORT, "0.0.0.0", () => {
       logger.info(`Server running on http://0.0.0.0:${env.PORT} (LAN accessible)`);
+      logger.info(`Swagger docs available at http://localhost:${env.PORT}/api-docs`);
     });
 
     const shutdown = async () => {

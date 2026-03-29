@@ -13,6 +13,8 @@ import userRoutes      from "./modules/user/user.routes.js";
 import trackerRoutes   from "./modules/tracker/tracker.routes.js";
 import learningRoutes  from "./modules/learning/learning.routes.js";
 import questRoutes     from "./modules/quest/quest.routes.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
 
 const app = express();
 
@@ -23,6 +25,9 @@ app.use(compression());
 app.use(express.json());
 app.use(pinoHttp({ logger }));
 
+// Swagger Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth",        authRoutes);
 app.use("/api/auth/consent", consentRoutes);
@@ -32,7 +37,27 @@ app.use("/api/tracker",     trackerRoutes);
 app.use("/api/learning",    learningRoutes);
 app.use("/api/quest",       questRoutes);
 
-// Health check
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     summary: Health Check
+ *     description: Returns the health status of the API.
+ *     responses:
+ *       200:
+ *         description: API is healthy.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ */
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
