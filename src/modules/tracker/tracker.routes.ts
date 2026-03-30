@@ -7,11 +7,11 @@ import { z } from "zod";
 const router = Router();
 router.use(requireAuth);
 
-router.post("/setup", TrackerController.setup);
-router.post("/log",   (req, res, next) => {
-  try { dailyLogSchema.parse(req.body); next(); } catch (e) { next(e); }
-}, TrackerController.logDaily);
-router.get("/logs",       TrackerController.getLogs);
-router.get("/prediction", TrackerController.getPrediction);
+router.post("/setup",      TrackerController.setup);
+router.post("/log",        TrackerController.logDaily);
+router.get("/logs",        TrackerController.getLogs);
+router.get("/prediction",  TrackerController.getPrediction);
+router.get("/insights",    TrackerController.getInsights);
+router.get("/report",      TrackerController.getDoctorSummary);
 
 export default router;

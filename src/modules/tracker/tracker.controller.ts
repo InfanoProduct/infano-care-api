@@ -1,22 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { TrackerService } from "./tracker.service.js";
-import { z } from "zod";
-
-const setupSchema = z.object({
-  lastPeriodStart:       z.string().optional().nullable(),
-  lastPeriodEnd:         z.string().optional().nullable(),
-  periodLengthDays:      z.number().int().min(2).max(10).default(5),
-  cycleLengthDays:       z.number().int().min(21).max(45).default(28),
-  periodLengthEstimated: z.boolean().optional().default(false),
-  cycleLengthEstimated:  z.boolean().optional().default(false),
-});
+import { dailyLogSchema, trackerSetupSchema } from "./tracker.schema.js";
+import { InsightsService } from "./insights.service.js";
 
 export class TrackerController {
   static async setup(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId;
-      const data   = setupSchema.parse(req.body);
-      const result = await TrackerService.setup(userId, data);
+      const data   = trackerSetupSchema.parse(req);
+      const result = await TrackerService.setup(userId, data.body);
       res.status(201).json(result);
     } catch (e) { next(e); }
   }
@@ -24,7 +16,8 @@ export class TrackerController {
   static async logDaily(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId;
-      const result = await TrackerService.logDaily(userId, req.body);
+      const data   = dailyLogSchema.parse(req);
+      const result = await TrackerService.logDaily(userId, data.body);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -34,8 +27,8 @@ export class TrackerController {
   static async getLogs(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId;
-      const { startDate, endDate } = req.query;
-      const result = await TrackerService.getLogs(userId, startDate as string, endDate as string);
+      const { from, to } = req.query;
+      const result = await TrackerService.getLogs(userId, from as string, to as string);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -50,5 +43,22 @@ export class TrackerController {
     } catch (error) {
       next(error);
     }
+  }
+
+  static async getInsights(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const symptoms = await InsightsService.getSymptomFrequency(userId);
+      const moods = await InsightsService.getMoodByPhase(userId);
+      res.status(200).json({ symptoms, moods });
+    } catch (e) { next(e); }
+  }
+
+  static async getDoctorSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const result = await InsightsService.getDoctorSummary(userId);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
   }
 }

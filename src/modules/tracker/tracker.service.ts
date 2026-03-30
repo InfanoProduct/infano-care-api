@@ -1,151 +1,198 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
-
-// ─── Cycle prediction helpers ──────────────────────────────────────────────────
-
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-function toISODate(date: Date): string {
-  return date.toISOString().split("T")[0]!;
-}
-
-function computeCurrentPhase(lastPeriodStart: Date, avgPeriodLength: number, avgCycleLength: number): string {
-  const daysSinceLast = Math.floor((Date.now() - lastPeriodStart.getTime()) / 86400000);
-  if (daysSinceLast < avgPeriodLength) return "menstrual";
-  if (daysSinceLast < avgCycleLength * 0.45) return "follicular";
-  if (daysSinceLast < avgCycleLength * 0.55) return "ovulation";
-  return "luteal";
-}
+import { encryptNote, decryptNote } from "../../common/utils/encryption.js";
+import { PredictionEngine } from "./prediction.engine.js";
 
 export class TrackerService {
+  /**
+   * Daily Log Engine — Under-60-Second Design
+   * Handles 8 fields with smart defaults and streak tracking.
+   */
   static async logDaily(userId: string, data: any) {
-    const { date, ...details } = data;
+    const { date, noteText, ...details } = data;
     const logDate = new Date(date);
     logDate.setHours(0, 0, 0, 0);
 
+    // 1. Handle Note Encryption (AES-256-GCM)
+    let noteCiphertext: string | null = null;
+    let noteIv: string | null = null;
+    if (noteText) {
+      const encrypted = encryptNote(noteText);
+      noteCiphertext = encrypted.ciphertext;
+      noteIv = encrypted.iv;
+    }
+
+    // 2. Upsert Daily Log
     const log = await prisma.cycleLog.upsert({
-      where: {
-        userId_date: {
-          userId,
-          date: logDate,
-        },
+      where: { userId_date: { userId, date: logDate } },
+      update: {
+        ...details,
+        noteCiphertext,
+        noteIv,
+        updatedAt: new Date(),
       },
-      update: details,
       create: {
         userId,
         date: logDate,
         ...details,
+        noteCiphertext,
+        noteIv,
       },
     });
 
-    return log;
+    // 3. Update Streak & Statistics
+    const profile = await prisma.cycleProfile.findUnique({ where: { userId } });
+    let streakUpdate = {};
+    if (profile) {
+      const yesterday = new Date(logDate);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const lastLog = profile.lastLogDate ? new Date(profile.lastLogDate) : null;
+      let newStreak = 1;
+      
+      if (lastLog && lastLog.getTime() === yesterday.getTime()) {
+        newStreak = profile.currentLogStreak + 1;
+      } else if (lastLog && lastLog.getTime() === logDate.getTime()) {
+        newStreak = profile.currentLogStreak; // Already logged today
+      }
+
+      streakUpdate = {
+        currentLogStreak: newStreak,
+        longestLogStreak: Math.max(newStreak, profile.longestLogStreak),
+        lastLogDate: logDate,
+      };
+    }
+
+    // 4. Trigger Cycle Recalculation if Period Flow changed
+    let cycleUpdated = false;
+    if (details.flow && details.flow !== "none" && details.flow !== "ended") {
+      await this.handlePeriodStart(userId, logDate);
+      cycleUpdated = true;
+    }
+
+    // 5. Update Profile with new Prediction
+    const prediction = await PredictionEngine.predict(userId);
+    if (prediction) {
+      await prisma.cycleProfile.update({
+        where: { userId },
+        data: {
+          ...streakUpdate,
+          predictedNextStart: prediction.predictedStart,
+          windowEarly: prediction.windowEarly,
+          windowLate: prediction.windowLate,
+          confidenceLevel: prediction.confidenceLevel,
+          currentPhase: prediction.currentPhase,
+          currentCycleDay: prediction.cycleDay,
+        },
+      });
+    }
+
+    return {
+      log_id: log.id,
+      streak_day: (streakUpdate as any).currentLogStreak || 1,
+      cycle_updated: cycleUpdated,
+      prediction: prediction,
+    };
   }
 
-  static async getLogs(userId: string, startDate?: string, endDate?: string) {
+  /**
+   * Internal logic to manage cycle transitions
+   */
+  private static async handlePeriodStart(userId: string, date: Date) {
+    const profile = await prisma.cycleProfile.findUnique({ where: { userId } });
+    if (!profile) return;
+
+    // If it's the first day of a new period (after at least 14 days)
+    const lastStart = profile.lastPeriodStart ? new Date(profile.lastPeriodStart) : null;
+    const diffDays = lastStart ? (date.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24) : 999;
+
+    if (diffDays >= 14) {
+      // 1. Close current cycle record
+      if (lastStart) {
+        await prisma.cycleRecord.updateMany({
+          where: { userId, startDate: lastStart, isComplete: false },
+          data: {
+            endDate: date,
+            cycleLengthDays: Math.round(diffDays),
+            isComplete: true,
+          },
+        });
+      }
+
+      // 2. Start new cycle record
+      const cycleCount = await prisma.cycleRecord.count({ where: { userId } });
+      await prisma.cycleRecord.create({
+        data: {
+          userId,
+          cycleNumber: cycleCount + 1,
+          startDate: date,
+          periodStartDate: date,
+        },
+      });
+
+      // 3. Update profile baseline
+      await prisma.cycleProfile.update({
+        where: { userId },
+        data: {
+          lastPeriodStart: date,
+          trackerMode: "active",
+        },
+      });
+    }
+  }
+
+  static async getLogs(userId: string, from?: string, to?: string) {
     const logs = await prisma.cycleLog.findMany({
       where: {
         userId,
         date: {
-          gte: startDate ? new Date(startDate) : undefined,
-          lte: endDate ? new Date(endDate) : undefined,
+          gte: from ? new Date(from) : undefined,
+          lte: to ? new Date(to) : undefined,
         },
       },
       orderBy: { date: "asc" },
     });
 
-    return logs;
+    return logs.map(log => ({
+      ...log,
+      noteText: log.noteCiphertext && log.noteIv ? decryptNote(log.noteCiphertext, log.noteIv) : null,
+    }));
+  }
+
+  static async setup(userId: string, data: any) {
+    const lastStart = data.lastPeriodStart ? new Date(data.lastPeriodStart) : new Date();
+    
+    const profile = await prisma.cycleProfile.upsert({
+      where: { userId },
+      update: {
+        trackerMode: data.trackerMode,
+        avgCycleLength: data.avgCycleLength,
+        avgPeriodDuration: data.avgPeriodLength,
+        lastPeriodStart: lastStart,
+        federatedLearningConsent: data.federatedLearningConsent,
+        setupCompletedAt: new Date(),
+      },
+      create: {
+        userId,
+        trackerMode: data.trackerMode,
+        avgCycleLength: data.avgCycleLength,
+        avgPeriodDuration: data.avgPeriodLength,
+        lastPeriodStart: lastStart,
+        federatedLearningConsent: data.federatedLearningConsent,
+        setupCompletedAt: new Date(),
+      },
+    });
+
+    // Award Onboarding Points (existing logic)
+    await prisma.profile.update({
+      where: { userId },
+      data: { totalPoints: { increment: 50 } },
+    });
+
+    return profile;
   }
 
   static async getPrediction(userId: string) {
-    // Layer 1: Statistical baseline
-    // Simplified: Find average cycle length from last 3 cycles
-    // For now, return a basic prediction if data exists
-    const logs = await prisma.cycleLog.findMany({
-      where: { userId, flow: { not: null, notIn: ["NOT_STARTED", "ENDED"] } },
-      orderBy: { date: "desc" },
-      take: 20,
-    });
-
-    if (logs.length < 5) {
-      return { message: "More data needed for accurate prediction" };
-    }
-
-    // Very basic placeholder logic for prediction
-    const lastPeriodStart = logs[0]!.date;
-    const nextPredicted = new Date(lastPeriodStart);
-    nextPredicted.setDate(nextPredicted.getDate() + 28); // Default 28 days
-
-    return {
-      lastPeriodStart,
-      nextPredictedStart: nextPredicted,
-      averageCycleLength: 28,
-      confidence: "LOW",
-    };
-  }
-
-  // ── Setup (Stage 5 onboarding) ───────────────────────────────────────────────
-  static async setup(userId: string, data: {
-    lastPeriodStart?: string | null;
-    lastPeriodEnd?:   string | null;
-    periodLengthDays: number;
-    cycleLengthDays:  number;
-    periodLengthEstimated?: boolean;
-    cycleLengthEstimated?:  boolean;
-  }) {
-    const lastStart = data.lastPeriodStart
-      ? new Date(data.lastPeriodStart)
-      : addDays(new Date(), -(data.cycleLengthDays / 2));  // statistical fallback
-
-    const nextStart = addDays(lastStart, data.cycleLengthDays);
-    const nextEnd   = addDays(nextStart, data.periodLengthDays - 1);
-
-    const profile = await prisma.cycleProfile.upsert({
-      where:  { userId },
-      create: {
-        userId,
-        trackerMode:             "ACTIVE",
-        lastPeriodStart:         lastStart,
-        lastPeriodEnd:           data.lastPeriodEnd ? new Date(data.lastPeriodEnd) : undefined,
-        avgPeriodLength:         data.periodLengthDays,
-        avgCycleLength:          data.cycleLengthDays,
-        periodLengthEstimated:   data.periodLengthEstimated ?? false,
-        cycleLengthEstimated:    data.cycleLengthEstimated ?? false,
-        nextPeriodPredictedStart: nextStart,
-        nextPeriodPredictedEnd:   nextEnd,
-        predictionConfidence:    "low",
-        setupCompletedAt:        new Date(),
-      },
-      update: {
-        lastPeriodStart:         lastStart,
-        lastPeriodEnd:           data.lastPeriodEnd ? new Date(data.lastPeriodEnd) : undefined,
-        avgPeriodLength:         data.periodLengthDays,
-        avgCycleLength:          data.cycleLengthDays,
-        periodLengthEstimated:   data.periodLengthEstimated ?? false,
-        cycleLengthEstimated:    data.cycleLengthEstimated ?? false,
-        nextPeriodPredictedStart: nextStart,
-        nextPeriodPredictedEnd:   nextEnd,
-        predictionConfidence:    "low",
-        setupCompletedAt:        new Date(),
-      },
-    });
-
-    // Award Stage 5 points
-    await prisma.profile.upsert({
-      where: { userId },
-      create: { userId, displayName: "User", totalPoints: 50 },
-      update: { totalPoints: { increment: 50 } },
-    });
-
-    return {
-      trackerId:            profile.id,
-      nextPeriodPredicted:  { start: toISODate(nextStart), end: toISODate(nextEnd) },
-      predictionConfidence: "low" as const,
-      currentCycleDay:      Math.floor((Date.now() - lastStart.getTime()) / 86400000) + 1,
-      currentPhase:         computeCurrentPhase(lastStart, data.periodLengthDays, data.cycleLengthDays),
-    };
+    return await PredictionEngine.predict(userId);
   }
 }
