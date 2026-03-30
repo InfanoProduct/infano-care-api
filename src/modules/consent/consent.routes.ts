@@ -6,7 +6,34 @@ import { z } from "zod";
 
 const router = Router();
 
-// POST /api/auth/consent/send — authenticated teen sends parent email
+/**
+ * @openapi
+ * tags:
+ *   name: Parental Consent
+ *   description: Handling parental approval for teen accounts
+ */
+
+/**
+ * @openapi
+ * /api/auth/consent/send:
+ *   post:
+ *     summary: Send consent request email to parent
+ *     tags: [Parental Consent]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [parentEmail]
+ *             properties:
+ *               parentEmail: { type: string, format: email }
+ *     responses:
+ *       200:
+ *         description: Email sent successfully
+ */
 router.post("/send", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { parentEmail } = z.object({ parentEmail: z.string().email() }).parse(req.body);
@@ -15,7 +42,18 @@ router.post("/send", requireAuth, async (req: Request, res: Response, next: Next
   } catch (e) { next(e); }
 });
 
-// GET /api/auth/consent/status — teen polls for approval
+/**
+ * @openapi
+ * /api/auth/consent/status:
+ *   get:
+ *     summary: Check current consent status for a teen
+ *     tags: [Parental Consent]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Consent status details
+ */
 router.get("/status", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await ConsentService.getConsentStatus((req as any).userId);
@@ -23,7 +61,26 @@ router.get("/status", requireAuth, async (req: Request, res: Response, next: Nex
   } catch (e) { next(e); }
 });
 
-// POST /api/auth/consent/approve — parent clicks link (no auth required, token carries identity)
+/**
+ * @openapi
+ * /api/auth/consent/approve:
+ *   post:
+ *     summary: Approve consent (Parent Endpoint)
+ *     description: Endpoint called by parents clicking the email link
+ *     tags: [Parental Consent]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token: { type: string }
+ *     responses:
+ *       200:
+ *         description: Consent approved successfully
+ */
 router.post("/approve", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { token } = z.object({ token: z.string() }).parse(req.body);
