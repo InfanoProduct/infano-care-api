@@ -8,20 +8,6 @@ const options: swaggerJsdoc.Options = {
       version: "0.1.0",
       description: "API documentation for the Infano Care backend services.",
     },
-    servers: [
-      {
-        url: "http://localhost:4005",
-        description: "Local Development Server",
-      },
-      {
-        url: "http://109.199.120.104:8084",
-        description: "Staging/Dev Remote Server",
-      },
-      {
-        url: "http://109.199.120.104:8085",
-        description: "Production Remote Server",
-      },
-    ],
     components: {
       securitySchemes: {
         bearerAuth: {
