@@ -41,24 +41,24 @@ export class TrackerService {
     });
 
     // 3. Update Streak & Statistics
-    const profile = await prisma.cycleProfile.findUnique({ where: { userId } });
+    const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
     let streakUpdate = {};
     if (profile) {
       const yesterday = new Date(logDate);
       yesterday.setDate(yesterday.getDate() - 1);
       
-      const lastLog = profile.lastLogDate ? new Date(profile.lastLogDate) : null;
+      const lastLog = (profile as any).lastLogDate ? new Date((profile as any).lastLogDate) : null;
       let newStreak = 1;
       
       if (lastLog && lastLog.getTime() === yesterday.getTime()) {
-        newStreak = profile.currentLogStreak + 1;
+        newStreak = (profile as any).currentLogStreak + 1;
       } else if (lastLog && lastLog.getTime() === logDate.getTime()) {
-        newStreak = profile.currentLogStreak; // Already logged today
+        newStreak = (profile as any).currentLogStreak; // Already logged today
       }
 
       streakUpdate = {
         currentLogStreak: newStreak,
-        longestLogStreak: Math.max(newStreak, profile.longestLogStreak),
+        longestLogStreak: Math.max(newStreak, (profile as any).longestLogStreak),
         lastLogDate: logDate,
       };
     }
@@ -73,13 +73,13 @@ export class TrackerService {
     // 5. Update Profile with new Prediction
     const prediction = await PredictionEngine.predict(userId);
     if (prediction) {
-      await prisma.cycleProfile.update({
+      await (prisma as any).cycleProfile.update({
         where: { userId },
         data: {
           ...streakUpdate,
           predictedNextStart: prediction.predictedStart,
-          windowEarly: prediction.windowEarly,
-          windowLate: prediction.windowLate,
+          predictionWindowEarly: prediction.windowEarly,
+          predictionWindowLate: prediction.windowLate,
           confidenceLevel: prediction.confidenceLevel,
           currentPhase: prediction.currentPhase,
           currentCycleDay: prediction.cycleDay,
@@ -109,7 +109,7 @@ export class TrackerService {
     if (diffDays >= 14) {
       // 1. Close current cycle record
       if (lastStart) {
-        await prisma.cycleRecord.updateMany({
+        await (prisma as any).cycleRecord.updateMany({
           where: { userId, startDate: lastStart, isComplete: false },
           data: {
             endDate: date,
@@ -120,8 +120,8 @@ export class TrackerService {
       }
 
       // 2. Start new cycle record
-      const cycleCount = await prisma.cycleRecord.count({ where: { userId } });
-      await prisma.cycleRecord.create({
+      const cycleCount = await (prisma as any).cycleRecord.count({ where: { userId } });
+      await (prisma as any).cycleRecord.create({
         data: {
           userId,
           cycleNumber: cycleCount + 1,
@@ -131,11 +131,11 @@ export class TrackerService {
       });
 
       // 3. Update profile baseline
-      await prisma.cycleProfile.update({
+      await (prisma as any).cycleProfile.update({
         where: { userId },
         data: {
           lastPeriodStart: date,
-          trackerMode: "active",
+          trackerMode: "active" as any,
         },
       });
     }
@@ -153,7 +153,7 @@ export class TrackerService {
       orderBy: { date: "asc" },
     });
 
-    return logs.map(log => ({
+    return logs.map((log: any) => ({
       ...log,
       noteText: log.noteCiphertext && log.noteIv ? decryptNote(log.noteCiphertext, log.noteIv) : null,
     }));
@@ -162,7 +162,7 @@ export class TrackerService {
   static async setup(userId: string, data: any) {
     const lastStart = data.lastPeriodStart ? new Date(data.lastPeriodStart) : new Date();
     
-    const profile = await prisma.cycleProfile.upsert({
+    const profile = await (prisma as any).cycleProfile.upsert({
       where: { userId },
       update: {
         trackerMode: data.trackerMode,

@@ -5,15 +5,15 @@ export class InsightsService {
    * Aggregates symptom frequency by cycle phase for the last 3 cycles.
    */
   static async getSymptomFrequency(userId: string) {
-    const logs = await prisma.cycleLog.findMany({
+    const logs = await (prisma as any).cycleLog.findMany({
       where: { userId, symptoms: { isEmpty: false } },
       orderBy: { date: "desc" },
       take: 90, // last 3 months
     });
 
     const frequency: Record<string, number> = {};
-    logs.forEach(log => {
-      log.symptoms.forEach(s => {
+    logs.forEach((log: any) => {
+      log.symptoms.forEach((s: string) => {
         frequency[s] = (frequency[s] || 0) + 1;
       });
     });
@@ -28,7 +28,7 @@ export class InsightsService {
    * Aggregates primary mood score/frequency by cycle phase.
    */
   static async getMoodByPhase(userId: string) {
-    const profile = await prisma.cycleProfile.findUnique({ where: { userId } });
+    const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
     if (!profile) return null;
 
     return [
