@@ -32,8 +32,9 @@ enum AccountStatus {
 }
 
 enum TrackerMode {
-  ACTIVE // has had first period
-  WAITING // pre-menarche
+  active
+  watching_waiting
+  irregular_support
 }
 
 enum PeriodContentTone {
@@ -100,6 +101,7 @@ model User {
   userBadges      UserBadge[]
   subscription    Subscription?
   reflections     Reflection[]
+  cycleRecords    CycleRecord[]
 }
 
 
@@ -187,25 +189,43 @@ model CycleProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  trackerMode TrackerMode @default(WAITING)
+  trackerMode TrackerMode @default(watching_waiting)
 
+  // Baseline statistics (updated after each complete cycle)
+  avgCycleLength      Float?
+  stdCycleLength      Float?
+  avgPeriodDuration   Float?
+  coefficientOfVar    Float?    // CV% for irregular classification
+
+  // Prediction state
   lastPeriodStart       DateTime?
   lastPeriodEnd         DateTime?
-  avgPeriodLength       Float     @default(5.0)
-  avgCycleLength        Float     @default(28.0)
-  periodLengthEstimated Boolean   @default(false)
-  cycleLengthEstimated  Boolean   @default(false)
+  predictedNextStart    DateTime?
+  predictedNextEnd      DateTime?
+  predictionWindowEarly DateTime?
+  predictionWindowLate  DateTime?
 
-  cyclesLogged Int @default(0)
+  confidenceLevel      String    @default("none") // none | getting_started | building | confident | high | irregular
+  currentPhase         String    @default("waiting") // menstrual | follicular | ovulation | luteal | waiting
+  currentCycleDay      Int?
 
-  // Prediction cache
-  nextPeriodPredictedStart DateTime?
-  nextPeriodPredictedEnd   DateTime?
-  predictionConfidence     String    @default("low")
+  // Settings
+  showFertilityWindow      Boolean @default(false)
+  federatedLearningConsent Boolean @default(false)
+
+  // Log streak
+  currentLogStreak    Int       @default(0)
+  longestLogStreak    Int       @default(0)
+  lastLogDate         DateTime?
 
   setupCompletedAt DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  // Cache for ML insights
+  patternCache Json?
+
+  @@index([userId])
 }
 
 // ─── Cycle Logs (Daily Tracking) ─────────────────────────────────────────────
@@ -215,15 +235,66 @@ model CycleLog {
   userId        String
   user          User     @relation(fields: [userId], references: [id])
   date          DateTime
-  flow          String?
-  symptoms      String[]
-  mood          String?
-  energy        Int?
-  sleepDuration Float?
-  notes         String?
+  isRetroactive Boolean  @default(false)
+
+  // Period Flow
+  flow          String?  // none | light | medium | heavy | spotting | ended
+
+  // Physical Symptoms
+  crampIntensity Int?     // 1–5 intensity
+  symptoms       String[] // standardized codes array
+
+  // Mood Wheel (16-state)
+  moodPrimary    String?
+  moodSecondary  String[]
+
+  // Wellbeing
+  energyLevel    Int?     // 1–5
+  sleepQuality   Int?     // 1–5
+  sleepHours     Float?
+
+  // Lifestyle
+  nutritionTags  String[]
+  activityTags   String[]
+
+  // Private Note (Encrypted)
+  noteCiphertext String?
+  noteIv         String?
+  hasVoiceNote   Boolean  @default(false)
+
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([userId, date])
+  @@index([userId, date])
+}
+
+// ─── Cycle Records (Historical Cycles) ───────────────────────────────────────
+
+model CycleRecord {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleNumber         Int
+  startDate           DateTime
+  endDate             DateTime?
+  periodStartDate     DateTime
+  periodEndDate       DateTime?
+  cycleLengthDays     Int?
+  periodDurationDays  Int?
+  isComplete          Boolean  @default(false)
+
+  // Aggregated stats
+  avgCrampIntensity   Float?
+  mostCommonSymptoms  String[]
+  
+  // Prediction comparison
+  predictedStartDate  DateTime?
+  predictionErrorDays Int?
+
+  createdAt           DateTime @default(now())
+
+  @@index([userId, cycleNumber])
 }
 
 // ─── Learning ─────────────────────────────────────────────────────────────────
