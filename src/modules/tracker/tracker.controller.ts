@@ -61,4 +61,15 @@ export class TrackerController {
       res.status(200).json(result);
     } catch (e) { next(e); }
   }
+
+  static async getProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const result = await TrackerService.getProfile(userId);
+      if (!result) {
+        return res.status(404).json({ message: "Tracker profile not found" });
+      }
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
 }

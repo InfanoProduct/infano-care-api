@@ -40,6 +40,8 @@ router.use(requireAuth);
  *         description: Profile created successfully
  */
 router.post("/setup",      TrackerController.setup);
+router.get("/profile",      TrackerController.getProfile);
+
 
 /**
  * @openapi
