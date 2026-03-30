@@ -33,10 +33,10 @@ export const dailyLogSchema = z.object({
 
 export const trackerSetupSchema = z.object({
   body: z.object({
-    lastPeriodStart: z.string().datetime().optional().nullable(),
-    lastPeriodEnd: z.string().datetime().optional().nullable(),
-    avgPeriodLength: z.number().int().min(1).max(14).default(5),
-    avgCycleLength: z.number().int().min(21).max(45).default(28),
+    lastPeriodStart: z.coerce.date().optional().nullable(),
+    lastPeriodEnd: z.coerce.date().optional().nullable(),
+    periodLengthDays: z.number().int().min(1).max(14).default(5),
+    cycleLengthDays: z.number().int().min(21).max(45).default(28),
     trackerMode: z.enum(["active", "watching_waiting", "irregular_support"]).default("watching_waiting"),
     federatedLearningConsent: z.boolean().optional().default(false),
   }),

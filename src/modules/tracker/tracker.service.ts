@@ -43,6 +43,8 @@ export class TrackerService {
     // 3. Update Streak & Statistics
     const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
     let streakUpdate = {};
+    const wasWatching = profile?.trackerMode === "watching_waiting";
+
     if (profile) {
       const yesterday = new Date(logDate);
       yesterday.setDate(yesterday.getDate() - 1);
@@ -61,13 +63,21 @@ export class TrackerService {
         longestLogStreak: Math.max(newStreak, (profile as any).longestLogStreak),
         lastLogDate: logDate,
       };
+
+      // Award 30 points for daily logging
+      await prisma.profile.update({
+        where: { userId },
+        data: { totalPoints: { increment: 30 } },
+      });
     }
 
     // 4. Trigger Cycle Recalculation if Period Flow changed
     let cycleUpdated = false;
+    let milestone: string | null = null;
     if (details.flow && details.flow !== "none" && details.flow !== "ended") {
-      await this.handlePeriodStart(userId, logDate);
+      const result = await this.handlePeriodStart(userId, logDate, wasWatching);
       cycleUpdated = true;
+      if (result.firstPeriod) milestone = "first_period";
     }
 
     // 5. Update Profile with new Prediction
@@ -92,19 +102,23 @@ export class TrackerService {
       streak_day: (streakUpdate as any).currentLogStreak || 1,
       cycle_updated: cycleUpdated,
       prediction: prediction,
+      milestone: milestone,
+      points_earned: milestone === "first_period" ? 230 : 30, // 30 (log) + 200 (milestone)
     };
   }
 
   /**
    * Internal logic to manage cycle transitions
    */
-  private static async handlePeriodStart(userId: string, date: Date) {
+  private static async handlePeriodStart(userId: string, date: Date, wasWatching: boolean = false) {
     const profile = await prisma.cycleProfile.findUnique({ where: { userId } });
-    if (!profile) return;
+    if (!profile) return { firstPeriod: false };
 
     // If it's the first day of a new period (after at least 14 days)
     const lastStart = profile.lastPeriodStart ? new Date(profile.lastPeriodStart) : null;
     const diffDays = lastStart ? (date.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24) : 999;
+
+    let firstPeriod = false;
 
     if (diffDays >= 14) {
       // 1. Close current cycle record
@@ -138,7 +152,19 @@ export class TrackerService {
           trackerMode: "active" as any,
         },
       });
+
+      // 4. Milestone: Detect Watching -> Active transition
+      if (wasWatching) {
+        firstPeriod = true;
+        // Award 200 points for first period milestone
+        await prisma.profile.update({
+          where: { userId },
+          data: { totalPoints: { increment: 200 } },
+        });
+      }
     }
+
+    return { firstPeriod };
   }
 
   static async getLogs(userId: string, from?: string, to?: string) {
@@ -166,8 +192,8 @@ export class TrackerService {
       where: { userId },
       update: {
         trackerMode: data.trackerMode,
-        avgCycleLength: data.avgCycleLength,
-        avgPeriodDuration: data.avgPeriodLength,
+        avgCycleLength: data.cycleLengthDays,
+        avgPeriodDuration: data.periodLengthDays,
         lastPeriodStart: lastStart,
         federatedLearningConsent: data.federatedLearningConsent,
         setupCompletedAt: new Date(),
@@ -175,8 +201,8 @@ export class TrackerService {
       create: {
         userId,
         trackerMode: data.trackerMode,
-        avgCycleLength: data.avgCycleLength,
-        avgPeriodDuration: data.avgPeriodLength,
+        avgCycleLength: data.cycleLengthDays,
+        avgPeriodDuration: data.periodLengthDays,
         lastPeriodStart: lastStart,
         federatedLearningConsent: data.federatedLearningConsent,
         setupCompletedAt: new Date(),
