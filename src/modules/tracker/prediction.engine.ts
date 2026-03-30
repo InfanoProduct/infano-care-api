@@ -4,10 +4,14 @@ export interface PredictionResult {
   predictedStart: Date;
   windowEarly: Date;
   windowLate: Date;
+  ovulationDate: Date;
+  fertilityStart: Date;
+  fertilityEnd: Date;
   confidenceLevel: "none" | "getting_started" | "building" | "confident" | "high" | "irregular";
   daysUntilPrediction: number;
   currentPhase: "menstrual" | "follicular" | "ovulation" | "luteal" | "waiting";
   cycleDay: number;
+  insights: string[];
 }
 
 export class PredictionEngine {
@@ -44,17 +48,46 @@ export class PredictionEngine {
   }
 
   /**
-   * Layer 2: Pattern Recognition
-   * Adjusts for stress/sleep patterns (Simplified for MVP).
+   * Layer 2: Adaptive Signal Processing (Signals)
+   * Adjusts for stress, sleep, and energy patterns based on recent logs.
    */
-  static calculateLayer2(baseline: number, recentStressScore: number, recentSleepQuality: number): number {
+  static async calculateAdaptiveLayer(userId: string, baselineLength: number): Promise<{ adjustment: number; insights: string[] }> {
+    const last14Days = new Date();
+    last14Days.setDate(last14Days.getDate() - 14);
+
+    const logs = await prisma.cycleLog.findMany({
+      where: {
+        userId,
+        date: { gte: last14Days },
+      },
+    });
+
+    if (logs.length === 0) return { adjustment: 0, insights: [] };
+
     let adjustment = 0;
-    // If stress is high (e.g. 4-5), cycle might be slightly elongated
-    if (recentStressScore >= 4) adjustment += 1;
-    // If sleep is poor, cycle might shift
-    if (recentSleepQuality <= 2) adjustment += 0.5;
-    
-    return baseline + adjustment;
+    const insights: string[] = [];
+
+    // 1. Stress Aggregation
+    const stressLogs = logs.filter(l => (l as any).crampIntensity && (l as any).crampIntensity >= 4);
+    if (stressLogs.length >= 3) {
+      adjustment += 1.5;
+      insights.push("High stress levels detected — this might slightly delay your next period. 🧘‍♀️");
+    }
+
+    // 2. Sleep Quality
+    const avgSleep = logs.reduce((acc, curr) => acc + (curr.sleepQuality || 3), 0) / logs.length;
+    if (avgSleep <= 2.5) {
+      adjustment += 0.5;
+      insights.push("Your sleep quality has been low lately. REST is your magic superpower right now! 💤");
+    }
+
+    // 3. Energy Peaks
+    const energyLogs = logs.filter(l => (l.energyLevel || 0) >= 4);
+    if (energyLogs.length >= 3) {
+      insights.push("Your energy is high! It's a great time for creative projects or movement. ⚡");
+    }
+
+    return { adjustment, insights };
   }
 
   /**
@@ -77,14 +110,18 @@ export class PredictionEngine {
     if (!profile || !profile.lastPeriodStart) return null;
 
     const l1 = await this.calculateLayer1(userId);
-    const avgLength = l1?.avgCycleLength || 28;
+    const avgLength = l1?.avgCycleLength || profile.avgCycleLength || 28;
     const stdDev = l1?.stdDev || 0;
     const count = l1?.count || 0;
     const cv = l1 ? (stdDev / avgLength) * 100 : 15;
 
-    // Basic calculation
+    // Adaptive adjustment
+    const adaptive = await this.calculateAdaptiveLayer(userId, avgLength);
+    const totalLength = avgLength + adaptive.adjustment;
+
+    // Period Prediction
     const predictedStart = new Date(profile.lastPeriodStart);
-    predictedStart.setDate(predictedStart.getDate() + Math.round(avgLength));
+    predictedStart.setDate(predictedStart.getDate() + Math.round(totalLength));
 
     // Confidence Window
     let windowDays = 2;
@@ -98,29 +135,43 @@ export class PredictionEngine {
     const windowLate = new Date(predictedStart);
     windowLate.setDate(windowLate.getDate() + windowDays);
 
+    // Fertility Window (Standard Days Method fallback)
+    const ovulationDate = new Date(predictedStart);
+    ovulationDate.setDate(ovulationDate.getDate() - 14);
+
+    const fertilityStart = new Date(ovulationDate);
+    fertilityStart.setDate(fertilityStart.getDate() - 4);
+
+    const fertilityEnd = new Date(ovulationDate);
+    fertilityEnd.setDate(fertilityEnd.getDate() + 1);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const diffMs = predictedStart.getTime() - today.getTime();
     const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
     const daysSinceStart = Math.ceil((today.getTime() - profile.lastPeriodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     return {
       predictedStart,
       windowEarly,
       windowLate,
+      ovulationDate,
+      fertilityStart,
+      fertilityEnd,
       confidenceLevel: this.getConfidenceLevel(count, cv) as any,
       daysUntilPrediction: daysUntil,
       currentPhase: this.calculatePhase(daysSinceStart, avgLength),
       cycleDay: daysSinceStart,
+      insights: adaptive.insights,
     };
   }
 
   private static calculatePhase(day: number, avgLength: number): any {
     if (day <= 5) return "menstrual";
     if (day <= avgLength * 0.45) return "follicular";
-    if (day <= avgLength * 0.55) return "ovulation";
+    // Ovulation is roughly 14 days before the next period, but we'll show a window
+    if (day >= avgLength * 0.45 && day <= avgLength * 0.55) return "ovulation";
     if (day <= avgLength) return "luteal";
     return "waiting";
   }
