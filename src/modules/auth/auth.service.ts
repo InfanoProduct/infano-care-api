@@ -133,7 +133,7 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStage: number; accountStatus: string }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean }> {
     const pattern = /^\+91\d{10}$/;
     if (!pattern.test(phone)) {
       throw new AppError("Invalid phone number, please try again", 400);
@@ -141,7 +141,7 @@ export class AuthService {
 
     const user = await prisma.user.findUnique({
       where: { phone },
-      select: { id: true, isTestNumber: true, accountStatus: true, onboardingStage: true, contentTier: true }
+      select: { id: true, isTestNumber: true, accountStatus: true, onboardingStage: true, contentTier: true, onboardingCompletedAt: true }
     });
 
     // We no longer throw if user doesn't exist, as this could be a new user.
@@ -195,7 +195,7 @@ export class AuthService {
             }
           }
         },
-        select: { id: true, isTestNumber: true, accountStatus: true, onboardingStage: true, contentTier: true }
+        select: { id: true, isTestNumber: true, accountStatus: true, onboardingStage: true, contentTier: true, onboardingCompletedAt: true }
       });
       logger.info({ userId: finalUser.id }, "Created new user via OTP verify");
     }
@@ -219,7 +219,8 @@ export class AuthService {
       refreshToken,
       isNewUser,
       onboardingStage: finalUser.onboardingStage,
-      accountStatus: finalUser.accountStatus
+      accountStatus: finalUser.accountStatus,
+      isOnboardingCompleted: finalUser.onboardingCompletedAt !== null
     };
   }
 
