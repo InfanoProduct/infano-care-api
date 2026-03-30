@@ -12,7 +12,13 @@ export class UserController {
         include: { profile: true },
       });
       if (!user) throw new AppError("User not found", 404);
-      res.status(200).json(user);
+
+      const { onboardingCompletedAt, ...userWithoutDate } = user;
+      res.status(200).json({
+        ...userWithoutDate,
+        onboardingCompletedAt,
+        isOnboardingCompleted: onboardingCompletedAt !== null,
+      });
     } catch (error) {
       next(error);
     }
