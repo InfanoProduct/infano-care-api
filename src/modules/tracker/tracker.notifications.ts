@@ -21,7 +21,7 @@ export class TrackerNotificationService {
    */
   static async evaluateDailyNotifications() {
     // 1. Get all active cycle profiles
-    const profiles = await prisma.cycleProfile.findMany({
+    const profiles = await (prisma as any).cycleProfile.findMany({
       where: { trackerMode: { not: "watching_waiting" as any } },
     });
 
@@ -41,11 +41,11 @@ export class TrackerNotificationService {
       if (profile.predictedNextStart) {
         const diffDays = Math.ceil((today.getTime() - new Date(profile.predictedNextStart).getTime()) / (1000 * 60 * 60 * 24));
         if (diffDays === 5) {
-          const recentLog = await prisma.cycleLog.findFirst({
+          const recentLog = await (prisma as any).cycleLog.findFirst({
             where: { 
-              userId: profile.userId, 
+              userId: (profile as any).userId, 
               flow: { not: "none" }, // light, medium, heavy, spotting
-              date: { gte: new Date(profile.predictedNextStart) } 
+              date: { gte: new Date((profile as any).predictedNextStart) } 
             }
           });
           if (!recentLog) {
@@ -69,7 +69,7 @@ export class TrackerNotificationService {
     });
     const loggedUserIds = new Set(loggedToday.map(l => l.userId));
 
-    const activeUsers = await prisma.cycleProfile.findMany({ 
+    const activeUsers = await (prisma as any).cycleProfile.findMany({ 
       select: { userId: true, currentLogStreak: true } as any 
     });
 
