@@ -195,4 +195,19 @@ export class TrackerService {
   static async getPrediction(userId: string) {
     return await PredictionEngine.predict(userId);
   }
+
+  static async getProfile(userId: string) {
+    const profile = await (prisma as any).cycleProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) return null;
+
+    // Convert potential floats back to integers for safety (schema uses Float for avgCycleLength)
+    return {
+      ...profile,
+      avgCycleLength: profile.avgCycleLength ? Math.round(profile.avgCycleLength) : 28,
+      avgPeriodDuration: profile.avgPeriodDuration ? Math.round(profile.avgPeriodDuration) : 5,
+    };
+  }
 }
