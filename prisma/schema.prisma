@@ -69,7 +69,7 @@ model User {
   // Onboarding state
   contentTier           ContentTier?
   accountStatus         AccountStatus @default(PENDING_SETUP)
-  onboardingStage       Int           @default(0)
+  onboardingStep        Int           @default(0)
   onboardingCompletedAt DateTime?
 
   // Compliance

@@ -24,15 +24,15 @@ export class UserController {
     }
   }
 
-  static async updateOnboardingStage(req: Request, res: Response, next: NextFunction) {
+  static async updateOnboardingStep(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId || (req as any).user?.id;
-      const { stage } = req.body;
+      const { step } = req.body;
       const user = await prisma.user.update({
         where: { id: userId },
-        data: { onboardingStage: stage },
+        data: { onboardingStep: step },
       });
-      res.status(200).json({ success: true, onboardingStage: user.onboardingStage });
+      res.status(200).json({ success: true, onboardingStep: user.onboardingStep });
     } catch (error) {
       next(error);
     }

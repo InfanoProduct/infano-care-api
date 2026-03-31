@@ -74,7 +74,7 @@ export class OnboardingService {
 
     return {
       userId: user.id,
-      onboardingStage: user.onboardingStage,
+      onboardingStep: user.onboardingStep,
       coppaConsentRequired: user.coppaConsentRequired,
       initialPoints: user.profile?.totalPoints ?? 10,
     };
@@ -115,7 +115,7 @@ export class OnboardingService {
     });
 
     // Profile updated, skipping stage overwrite to avoid conflicting with mobile app sequence
-    // await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 3 } });
+    // await prisma.user.update({ where: { id: userId }, data: { onboardingStep: 3 } });
 
     // Award quiz points
     await prisma.profile.upsert({
@@ -163,7 +163,7 @@ export class OnboardingService {
       update: { totalPoints: { increment: 25 } },
     });
     // Avatar saved, skipping stage overwrite
-    // await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 4 } });
+    // await prisma.user.update({ where: { id: userId }, data: { onboardingStep: 4 } });
 
     return { avatarId: avatar.id };
   }
@@ -176,7 +176,7 @@ export class OnboardingService {
       update: { journeyName, totalPoints: { increment: 15 } },
     });
     // Journey name saved, skipping stage overwrite
-    // await prisma.user.update({ where: { id: userId }, data: { onboardingStage: 4 } });
+    // await prisma.user.update({ where: { id: userId }, data: { onboardingStep: 4 } });
 
     const profile = await prisma.profile.findUnique({ where: { userId }, select: { totalPoints: true, displayName: true } });
     return { journeyName, pointsTotal: profile?.totalPoints ?? 0 };
@@ -188,10 +188,10 @@ export class OnboardingService {
       where: { id: userId },
       data:  {
         accountStatus:          "ACTIVE",
-        onboardingStage:        5,
+        onboardingStep:        5,
         onboardingCompletedAt:  new Date(),
       },
     });
-    return { accountStatus: user.accountStatus, onboardingStage: user.onboardingStage };
+    return { accountStatus: user.accountStatus, onboardingStep: user.onboardingStep };
   }
 }
