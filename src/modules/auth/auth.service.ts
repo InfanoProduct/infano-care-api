@@ -56,20 +56,23 @@ function signRefreshToken(payload: object, jti: string): string {
 export class AuthService {
   // ── 1. Send OTP ─────────────────────────────────────────────────────────────
   static async sendOtp(phone: string): Promise<void> {
-    // 1. Strict Validation (Match Reference Pattern: ^\+91\d{10}$)
+    logger.info({ phone }, "[AUTH] sendOtp request received");
+    // 1. Strict Validation
     const pattern = /^\+91\d{10}$/;
     if (!pattern.test(phone)) {
+      logger.warn({ phone }, "[AUTH] Invalid phone number pattern");
       throw new AppError("Invalid phone number, please try again", 400);
     }
 
     // 2. Rule 1: User Existence check (Optional for enrollment)
     const user = await prisma.user.findUnique({
       where: { phone },
-      select: { id: true, isTestNumber: true, otpSendOn: true, otpRetryCount: true }
+      select: { id: true, isTestNumber: true, otpSendOn: true, otpRetryCount: true, accountStatus: true }
     });
 
     // We no longer throw error if user not found, 
     // to allow new users to register.
+    logger.debug({ phone, userStatus: user?.accountStatus, isTest: user?.isTestNumber }, "[AUTH] User lookup result");
 
     // 3. Rule 2: Test Number -> Bypass OTP
     if (user?.isTestNumber) {
@@ -152,7 +155,8 @@ export class AuthService {
     } else {
       // 2. Real OTP Verification via 2Factor.in /VERIFY3
       const apiKey = process.env.TWOFACTOR_API_KEY || "29813cba-6fdc-11ef-8b17-0200cd936042";
-      const verifyUrl = `https://2factor.in/API/V1/${apiKey}/SMS/VERIFY3/${phone}/${otp}`;
+      const encodedPhone = encodeURIComponent(phone);
+      const verifyUrl = `https://2factor.in/API/V1/${apiKey}/SMS/VERIFY3/${encodedPhone}/${otp}`;
 
       // Fallback for mock mode
       if (process.env.SMS_PROVIDER === "mock") {
