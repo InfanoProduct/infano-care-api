@@ -36,7 +36,7 @@ async function main() {
           phone,
           isTestNumber: true,
           accountStatus: 'PENDING_SETUP',
-          onboardingStage: 1,
+          onboardingStep: 1,
         }
       });
       console.log(`Test user ${phone} created successfully.`);
@@ -68,7 +68,7 @@ async function main() {
         ageAtSignup: null,
         contentTier: null,
         accountStatus: "PENDING_SETUP",
-        onboardingStage: 1,
+        onboardingStep: 1,
         onboardingCompletedAt: null,
         termsAcceptedAt: null,
         privacyAcceptedAt: null,

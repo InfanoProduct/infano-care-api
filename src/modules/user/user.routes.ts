@@ -29,9 +29,9 @@ router.get("/me", UserController.getMe);
 
 /**
  * @openapi
- * /api/user/onboarding-stage:
+ * /api/user/onboarding-step:
  *   patch:
- *     summary: Update the user's current onboarding stage
+ *     summary: Update the user's current onboarding step
  *     tags: [User]
  *     security:
  *       - bearerAuth: []
@@ -41,13 +41,13 @@ router.get("/me", UserController.getMe);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [onboardingStage]
+ *             required: [step]
  *             properties:
- *               onboardingStage: { type: string }
+ *               step: { type: integer }
  *     responses:
  *       200:
- *         description: Stage updated successfully
+ *         description: Step updated successfully
  */
-router.patch("/onboarding-stage", UserController.updateOnboardingStage);
+router.patch("/onboarding-step", UserController.updateOnboardingStep);
 
 export default router;

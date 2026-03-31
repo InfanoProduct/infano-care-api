@@ -48,7 +48,7 @@ async function main() {
       ageAtSignup: null,
       contentTier: null,
       accountStatus: "PENDING_SETUP",
-      onboardingStage: 1,
+      onboardingStep: 0,
       onboardingCompletedAt: null,
       termsAcceptedAt: null,
       privacyAcceptedAt: null,

@@ -37,7 +37,7 @@ async function main() {
         phone,
         isTestNumber: true,
         accountStatus: 'PENDING_SETUP',
-        onboardingStage: 1,
+        onboardingStep: 0,
       }
     });
     console.log(`Test User ${phone} created successfully.`);

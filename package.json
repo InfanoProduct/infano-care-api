@@ -15,7 +15,8 @@
     "prisma:studio": "prisma studio",
     "delete-all-users": "dotenv -e .env.development -e .env.local -- tsx prisma/delete-all-users.ts",
     "create-test-user": "dotenv -e .env.development -e .env.local -- tsx prisma/create-test-user.ts",
-    "reset-test-user": "dotenv -e .env.development -e .env.local -- tsx prisma/reset-test-user.ts"
+    "reset-test-user": "dotenv -e .env.development -e .env.local -- tsx prisma/reset-test-user.ts",
+    "delete-test-user": "dotenv -e .env.development -e .env.local -- tsx prisma/delete-test-user.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

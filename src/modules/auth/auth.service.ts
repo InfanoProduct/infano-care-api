@@ -133,7 +133,7 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; accountStatus: string; isOnboardingCompleted: boolean }> {
     const pattern = /^\+91\d{10}$/;
     if (!pattern.test(phone)) {
       throw new AppError("Invalid phone number, please try again", 400);
@@ -141,7 +141,7 @@ export class AuthService {
 
     const user = await prisma.user.findUnique({
       where: { phone },
-      select: { id: true, isTestNumber: true, accountStatus: true, onboardingStage: true, contentTier: true, onboardingCompletedAt: true }
+      select: { id: true, isTestNumber: true, accountStatus: true, onboardingStep: true, contentTier: true, onboardingCompletedAt: true }
     });
 
     // We no longer throw if user doesn't exist, as this could be a new user.
@@ -187,7 +187,7 @@ export class AuthService {
         data: {
           phone,
           accountStatus: "PENDING_SETUP",
-          onboardingStage: 1,
+          onboardingStep: 1,
           profile: {
             create: {
               displayName: "",
@@ -195,7 +195,7 @@ export class AuthService {
             }
           }
         },
-        select: { id: true, isTestNumber: true, accountStatus: true, onboardingStage: true, contentTier: true, onboardingCompletedAt: true }
+        select: { id: true, isTestNumber: true, accountStatus: true, onboardingStep: true, contentTier: true, onboardingCompletedAt: true }
       });
       logger.info({ userId: finalUser.id }, "Created new user via OTP verify");
     }
@@ -205,7 +205,7 @@ export class AuthService {
       sub: finalUser.id, 
       contentTier: finalUser.contentTier, 
       accountStatus: finalUser.accountStatus, 
-      obStage: finalUser.onboardingStage 
+      obStep: finalUser.onboardingStep 
     };
 
     const accessToken = signAccessToken(tokenPayloadBase);
@@ -218,7 +218,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       isNewUser,
-      onboardingStage: finalUser.onboardingStage,
+      onboardingStep: finalUser.onboardingStep,
       accountStatus: finalUser.accountStatus,
       isOnboardingCompleted: finalUser.onboardingCompletedAt !== null
     };
@@ -239,11 +239,11 @@ export class AuthService {
 
     await redis.del(`rt:${jti}`);
 
-    const user = await prisma.user.findUnique({ where: { id: sub }, select: { id: true, contentTier: true, accountStatus: true, onboardingStage: true } });
+    const user = await prisma.user.findUnique({ where: { id: sub }, select: { id: true, contentTier: true, accountStatus: true, onboardingStep: true } });
     if (!user) throw new AppError("User not found.", 404);
 
     const newJti = crypto.randomUUID();
-    const tokenPayloadBase = { sub: user.id, contentTier: user.contentTier, accountStatus: user.accountStatus, obStage: user.onboardingStage };
+    const tokenPayloadBase = { sub: user.id, contentTier: user.contentTier, accountStatus: user.accountStatus, obStep: user.onboardingStep };
     const newAccess = signAccessToken(tokenPayloadBase);
     const newRefresh = signRefreshToken(tokenPayloadBase, newJti);
 
@@ -262,11 +262,11 @@ export class AuthService {
     }
   }
 
-  static async updateOnboardingStage(userId: string, stage: number) {
+  static async updateOnboardingStep(userId: string, step: number) {
     await prisma.user.update({
       where: { id: userId },
-      data: { onboardingStage: stage },
+      data: { onboardingStep: step },
     });
-    return { success: true, onboardingStage: stage };
+    return { success: true, onboardingStep: step };
   }
 }
