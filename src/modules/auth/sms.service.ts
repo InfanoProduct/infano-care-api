@@ -8,7 +8,7 @@ export interface SmsProvider {
 // ─── Mock Provider (dev) ──────────────────────────────────────────────────────
 class MockSmsProvider implements SmsProvider {
   async send(phone: string, otp: string): Promise<void> {
-    logger.info(`[SMS MOCK] OTP for ${phone}: ${otp}`);
+    logger.info({ phone }, `[SMS MOCK] OTP generated and would be sent in production.`);
   }
 }
 
@@ -77,13 +77,26 @@ class TwoFactorSmsProvider implements SmsProvider {
   }
 
   async send(phone: string, otp: string): Promise<void> {
+    // 2Factor.in expects the phone number with prefix (e.g. +91), encoded for URL
+    const encodedPhone = encodeURIComponent(phone);
     // URL format: https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}/{template}
-    const url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${phone}/${otp}/InfanoOTPMessage`;
+    const url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/InfanoOTPMessage`;
     
-    const res = await fetch(url);
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`2Factor OTP send failed: ${body}`);
+    logger.info({ phone: encodedPhone }, `[SMS 2FACTOR] Sending OTP via 2Factor.in...`);
+    
+    try {
+      const res = await fetch(url);
+      const data = await res.json() as any;
+      
+      if (!res.ok || data.Status !== "Success") {
+        logger.error({ phone: encodedPhone, response: data }, `[SMS 2FACTOR] Failed to send OTP`);
+        throw new Error(`2Factor OTP send failed: ${data.Details || res.statusText}`);
+      }
+      
+      logger.info({ phone: encodedPhone, sessionId: data.Details }, `[SMS 2FACTOR] OTP sent successfully via 2Factor.in`);
+    } catch (error: any) {
+      logger.error({ phone: encodedPhone, error: error.message }, `[SMS 2FACTOR] Exception while sending OTP`);
+      throw error;
     }
   }
 }
