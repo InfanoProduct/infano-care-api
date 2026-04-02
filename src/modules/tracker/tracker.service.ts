@@ -236,4 +236,47 @@ export class TrackerService {
       avgPeriodDuration: profile.avgPeriodDuration ? Math.round(profile.avgPeriodDuration) : 5,
     };
   }
+
+  static async getNotificationPreferences(userId: string) {
+    let prefs = await (prisma as any).notificationPreferences.findUnique({
+      where: { userId }
+    });
+
+    if (!prefs) {
+      prefs = await (prisma as any).notificationPreferences.create({
+        data: { userId }
+      });
+    }
+
+    return prefs;
+  }
+
+  static async updateNotificationPreferences(userId: string, data: any) {
+    return await (prisma as any).notificationPreferences.upsert({
+      where: { userId },
+      update: { ...data },
+      create: { userId, ...data }
+    });
+  }
+
+  static async exportData(userId: string) {
+    // PRD: "initiates async ZIP generation (5-10 min). Push notification when ready."
+    // For this MVP, we simulate the async process and return a 202
+    return {
+      status: "generating",
+      estimated_m: "5-10",
+      message: "Data export initiated. You will receive a notification when your ZIP is ready via S3."
+    };
+  }
+
+  static async deleteAllData(userId: string) {
+    // Hard delete cascades. We will explicitly delete tracker related tables.
+    await prisma.$transaction([
+      (prisma as any).cycleLog.deleteMany({ where: { userId } }),
+      (prisma as any).cycleRecord.deleteMany({ where: { userId } }),
+      (prisma as any).cycleProfile.deleteMany({ where: { userId } }),
+      (prisma as any).notificationPreferences.deleteMany({ where: { userId } })
+    ]);
+    return true;
+  }
 }

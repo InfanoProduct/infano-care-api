@@ -90,20 +90,20 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  profile         Profile?
-  avatar          UserAvatar?
-  cycleProfile    CycleProfile?
-  personalization PersonalizationProfile?
-  consentRequests ConsentRequest[]
-  cycleLogs       CycleLog[]
-  progress        UserProgress[]
-  userQuests      UserQuest[]
-  userBadges      UserBadge[]
-  subscription    Subscription?
-  reflections     Reflection[]
-  cycleRecords    CycleRecord[]
+  profile                 Profile?
+  avatar                  UserAvatar?
+  cycleProfile            CycleProfile?
+  personalization         PersonalizationProfile?
+  consentRequests         ConsentRequest[]
+  cycleLogs               CycleLog[]
+  progress                UserProgress[]
+  userQuests              UserQuest[]
+  userBadges              UserBadge[]
+  subscription            Subscription?
+  reflections             Reflection[]
+  cycleRecords            CycleRecord[]
+  NotificationPreferences NotificationPreferences?
 }
-
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
@@ -192,10 +192,10 @@ model CycleProfile {
   trackerMode TrackerMode @default(watching_waiting)
 
   // Baseline statistics (updated after each complete cycle)
-  avgCycleLength      Float?
-  stdCycleLength      Float?
-  avgPeriodDuration   Float?
-  coefficientOfVar    Float?    // CV% for irregular classification
+  avgCycleLength    Float?
+  stdCycleLength    Float?
+  avgPeriodDuration Float?
+  coefficientOfVar  Float? // CV% for irregular classification
 
   // Prediction state
   lastPeriodStart       DateTime?
@@ -205,18 +205,18 @@ model CycleProfile {
   predictionWindowEarly DateTime?
   predictionWindowLate  DateTime?
 
-  confidenceLevel      String    @default("none") // none | getting_started | building | confident | high | irregular
-  currentPhase         String    @default("waiting") // menstrual | follicular | ovulation | luteal | waiting
-  currentCycleDay      Int?
+  confidenceLevel String @default("none") // none | getting_started | building | confident | high | irregular
+  currentPhase    String @default("waiting") // menstrual | follicular | ovulation | luteal | waiting
+  currentCycleDay Int?
 
   // Settings
   showFertilityWindow      Boolean @default(false)
   federatedLearningConsent Boolean @default(false)
 
   // Log streak
-  currentLogStreak    Int       @default(0)
-  longestLogStreak    Int       @default(0)
-  lastLogDate         DateTime?
+  currentLogStreak Int       @default(0)
+  longestLogStreak Int       @default(0)
+  lastLogDate      DateTime?
 
   setupCompletedAt DateTime?
   createdAt        DateTime  @default(now())
@@ -238,32 +238,32 @@ model CycleLog {
   isRetroactive Boolean  @default(false)
 
   // Period Flow
-  flow          String?  // none | light | medium | heavy | spotting | ended
+  flow String? // none | light | medium | heavy | spotting | ended
 
   // Physical Symptoms
-  crampIntensity Int?     // 1–5 intensity
+  crampIntensity Int? // 1–5 intensity
   symptoms       String[] // standardized codes array
 
   // Mood Wheel (16-state)
-  moodPrimary    String?
-  moodSecondary  String[]
+  moodPrimary   String?
+  moodSecondary String[]
 
   // Wellbeing
-  energyLevel    Int?     // 1–5
-  sleepQuality   Int?     // 1–5
-  sleepHours     Float?
+  energyLevel  Int? // 1–5
+  sleepQuality Int? // 1–5
+  sleepHours   Float?
 
   // Lifestyle
-  nutritionTags  String[]
-  activityTags   String[]
+  nutritionTags String[]
+  activityTags  String[]
 
   // Private Note (Encrypted)
   noteCiphertext String?
   noteIv         String?
-  hasVoiceNote   Boolean  @default(false)
+  hasVoiceNote   Boolean @default(false)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date])
@@ -272,27 +272,27 @@ model CycleLog {
 // ─── Cycle Records (Historical Cycles) ───────────────────────────────────────
 
 model CycleRecord {
-  id                  String   @id @default(uuid())
-  userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cycleNumber         Int
-  startDate           DateTime
-  endDate             DateTime?
-  periodStartDate     DateTime
-  periodEndDate       DateTime?
-  cycleLengthDays     Int?
-  periodDurationDays  Int?
-  isComplete          Boolean  @default(false)
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleNumber        Int
+  startDate          DateTime
+  endDate            DateTime?
+  periodStartDate    DateTime
+  periodEndDate      DateTime?
+  cycleLengthDays    Int?
+  periodDurationDays Int?
+  isComplete         Boolean   @default(false)
 
   // Aggregated stats
-  avgCrampIntensity   Float?
-  mostCommonSymptoms  String[]
-  
+  avgCrampIntensity  Float?
+  mostCommonSymptoms String[]
+
   // Prediction comparison
   predictedStartDate  DateTime?
   predictionErrorDays Int?
 
-  createdAt           DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId, cycleNumber])
 }
@@ -357,15 +357,15 @@ model UserProgress {
 }
 
 model Reflection {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   episodeId String
-  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
 
-  content   String?  // Text journal entry
-  voiceUrl  String?  // Voice note URL
-  isPrivate Boolean  @default(true) // Toggle between Private Journal and Community Discussion
+  content   String? // Text journal entry
+  voiceUrl  String? // Voice note URL
+  isPrivate Boolean @default(true) // Toggle between Private Journal and Community Discussion
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -422,4 +422,22 @@ model Subscription {
   tier      String
   status    String
   expiresAt DateTime?
+}
+
+// ─── Tracker Settings ─────────────────────────────────────────────────────────
+
+model NotificationPreferences {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  periodPrediction  Boolean @default(true)
+  dailyReminder     Boolean @default(true)
+  dailyReminderTime String  @default("20:00") // HH:MM
+  symptomPatterns   Boolean @default(true)
+  latePeriod        Boolean @default(true)
+  streakAtRisk      Boolean @default(true)
+  monthlyInsights   Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
 }

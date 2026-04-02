@@ -136,4 +136,43 @@ router.get("/insights",    TrackerController.getInsights);
  */
 router.get("/report",      TrackerController.getDoctorSummary);
 
+/**
+ * @openapi
+ * /api/tracker/notification-preferences:
+ *   get:
+ *     summary: Get user notification preferences for the tracker
+ *     tags: [Cycle Tracker]
+ *     security:
+ *       - bearerAuth: []
+ *   put:
+ *     summary: Update notification preferences
+ *     tags: [Cycle Tracker]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/notification-preferences", TrackerController.getNotificationPreferences);
+router.put("/notification-preferences", TrackerController.updateNotificationPreferences);
+
+/**
+ * @openapi
+ * /api/tracker/data/export:
+ *   post:
+ *     summary: Export all health tracker data (GDPR)
+ *     tags: [Cycle Tracker]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/data/export", TrackerController.exportData);
+
+/**
+ * @openapi
+ * /api/tracker/data/all:
+ *   delete:
+ *     summary: Hard delete all health tracker data
+ *     tags: [Cycle Tracker]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.delete("/data/all", TrackerController.deleteAllData);
+
 export default router;
