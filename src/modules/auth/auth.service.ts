@@ -88,11 +88,15 @@ export class AuthService {
         const diffMinutes = diffMs / (1000 * 60);
         const diffHours = diffMs / (1000 * 60 * 60);
 
+        // Relaxed: Removed 1-minute cooldown block
+        /*
         if (diffMinutes <= 1) {
           throw new AppError("Please retry after 1 minute", 429);
         }
+        */
 
-        if (user.otpRetryCount < 3) {
+        // Relaxed: Removed 3-attempts limit block
+        if (user.otpRetryCount < 100) { // Increased limit significantly or effectively removed
           // Increment retry count
           await prisma.user.update({
             where: { id: user.id },
@@ -105,7 +109,12 @@ export class AuthService {
             data: { otpSendOn: now, otpRetryCount: 1 }
           });
         } else {
-          throw new AppError("Retry counts exceeded more than 3 attempts, please retry after 24 hours", 429);
+           // still keep a very high fallback just in case, but user asked to "remove it"
+           // throw new AppError("Retry counts exceeded more than 3 attempts, please retry after 24 hours", 429);
+           await prisma.user.update({
+             where: { id: user.id },
+             data: { otpSendOn: now, otpRetryCount: user.otpRetryCount + 1 }
+           });
         }
       } else {
         // First attempt

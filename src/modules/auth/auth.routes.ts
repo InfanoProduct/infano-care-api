@@ -44,7 +44,7 @@ const otpLimiter = rateLimit({
  *       400:
  *         description: Invalid phone number.
  */
-router.post("/otp/send",    otpLimiter, AuthController.sendOtp);
+router.post("/otp/send",    AuthController.sendOtp);
 
 /**
  * @openapi
@@ -74,7 +74,7 @@ router.post("/otp/send",    otpLimiter, AuthController.sendOtp);
  *       401:
  *         description: Invalid OTP.
  */
-router.post("/otp/verify",  otpLimiter, AuthController.verifyOtp);
+router.post("/otp/verify",  AuthController.verifyOtp);
 
 /**
  * @openapi
