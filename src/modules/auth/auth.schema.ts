@@ -6,7 +6,8 @@ const phoneSchema = z
   .regex(/^\+91\d{10}$/, "Phone must be in +91XXXXXXXXXX format");
 
 export const sendOtpSchema = z.object({
-  phone: phoneSchema,
+  phone:    phoneSchema,
+  appHash:  z.string().optional(),
 });
 
 export const verifyOtpSchema = z.object({

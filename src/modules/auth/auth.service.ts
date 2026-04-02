@@ -55,8 +55,8 @@ function signRefreshToken(payload: object, jti: string): string {
 
 export class AuthService {
   // ── 1. Send OTP ─────────────────────────────────────────────────────────────
-  static async sendOtp(phone: string): Promise<void> {
-    logger.info({ phone }, "[AUTH] sendOtp request received");
+  static async sendOtp(phone: string, appHash?: string): Promise<void> {
+    logger.info({ phone, appHash }, "[AUTH] sendOtp request received");
     // 1. Strict Validation
     const pattern = /^\+91\d{10}$/;
     if (!pattern.test(phone)) {
@@ -116,10 +116,10 @@ export class AuthService {
       }
     }
 
-    // 5. Send OTP via 2Factor.in
+    // 5. Send OTP via configured provider
     const otp = generateOtp();
     try {
-      await smsProvider.send(phone, otp);
+      await smsProvider.send(phone, otp, appHash);
     } catch (err: any) {
       if (err.message && err.message.includes("Invalid Phone Number")) {
         throw new AppError("Invalid phone number, please try again", 400);
