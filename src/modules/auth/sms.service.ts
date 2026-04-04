@@ -84,8 +84,9 @@ class TwoFactorSmsProvider implements SmsProvider {
   }
 
   async send(phone: string, otp: string, appHash?: string): Promise<void> {
-    // 2Factor.in expects the phone number with prefix (e.g. +91), encoded for URL
-    const encodedPhone = encodeURIComponent(phone);
+    // 2Factor.in expects the phone number with prefix (e.g. 919876543210), usually without the '+' for the SMS URL
+    const mobile = phone.replace("+", "");
+    const encodedPhone = encodeURIComponent(mobile);
     // URL format: https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}/{template}
     const url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/InfanoOTPMessage`;
     

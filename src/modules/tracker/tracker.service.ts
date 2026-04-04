@@ -209,6 +209,22 @@ export class TrackerService {
       },
     });
 
+    // 3. Recalculate Predictions Immediately
+    const prediction = await PredictionEngine.predict(userId);
+    if (prediction) {
+      await (prisma as any).cycleProfile.update({
+        where: { userId },
+        data: {
+          predictedNextStart: prediction.predictedStart,
+          predictionWindowEarly: prediction.windowEarly,
+          predictionWindowLate: prediction.windowLate,
+          confidenceLevel: prediction.confidenceLevel,
+          currentPhase: prediction.currentPhase,
+          currentCycleDay: prediction.cycleDay,
+        },
+      });
+    }
+
     // Award Onboarding Points (existing logic)
     await prisma.profile.update({
       where: { userId },
@@ -219,7 +235,21 @@ export class TrackerService {
   }
 
   static async getPrediction(userId: string) {
-    return await PredictionEngine.predict(userId);
+    const rawPrediction = await PredictionEngine.predict(userId);
+    const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
+    
+    if (!rawPrediction || !profile) return rawPrediction;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lastLog = profile.lastLogDate ? new Date(profile.lastLogDate) : null;
+    const hasLoggedToday = lastLog && lastLog.getTime() === today.getTime();
+
+    return {
+      ...rawPrediction,
+      currentLogStreak: profile.currentLogStreak || 0,
+      hasLoggedToday: !!hasLoggedToday,
+    };
   }
 
   static async getProfile(userId: string) {

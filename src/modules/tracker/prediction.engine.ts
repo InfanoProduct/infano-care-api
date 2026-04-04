@@ -11,6 +11,7 @@ export interface PredictionResult {
   daysUntilPrediction: number;
   currentPhase: "menstrual" | "follicular" | "ovulation" | "luteal" | "waiting";
   cycleDay: number;
+  cyclesLogged: number;
   insights: string[];
 }
 
@@ -163,6 +164,7 @@ export class PredictionEngine {
       daysUntilPrediction: daysUntil,
       currentPhase: this.calculatePhase(daysSinceStart, avgLength),
       cycleDay: daysSinceStart,
+      cyclesLogged: count,
       insights: adaptive.insights,
     };
   }

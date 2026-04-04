@@ -54,29 +54,38 @@ function signRefreshToken(payload: object, jti: string): string {
 // ─── Auth Service ─────────────────────────────────────────────────────────────
 
 export class AuthService {
-  // ── 1. Send OTP ─────────────────────────────────────────────────────────────
   static async sendOtp(phone: string, appHash?: string): Promise<void> {
     logger.info({ phone, appHash }, "[AUTH] sendOtp request received");
-    // 1. Strict Validation
+    
+    // 1. Validation (Support 10-digit or +91 format)
+    let processedPhone = phone;
+    const is10Digit = /^\d{10}$/.test(phone);
+    if (is10Digit) {
+      processedPhone = `+91${phone}`;
+    }
+
     const pattern = /^\+91\d{10}$/;
-    if (!pattern.test(phone)) {
+    if (!pattern.test(processedPhone)) {
       logger.warn({ phone }, "[AUTH] Invalid phone number pattern");
       throw new AppError("Invalid phone number, please try again", 400);
     }
+    
+    // Normalize phone for lookup and further processing
+    const finalPhone = processedPhone;
 
     // 2. Rule 1: User Existence check (Optional for enrollment)
     const user = await prisma.user.findUnique({
-      where: { phone },
+      where: { phone: finalPhone },
       select: { id: true, isTestNumber: true, otpSendOn: true, otpRetryCount: true, accountStatus: true }
     });
 
     // We no longer throw error if user not found, 
     // to allow new users to register.
-    logger.debug({ phone, userStatus: user?.accountStatus, isTest: user?.isTestNumber }, "[AUTH] User lookup result");
+    logger.debug({ phone: finalPhone, userStatus: user?.accountStatus, isTest: user?.isTestNumber }, "[AUTH] User lookup result");
 
     // 3. Rule 2: Test Number -> Bypass OTP
     if (user?.isTestNumber) {
-      logger.info({ phone }, "Test number detected - bypassing OTP send");
+      logger.info({ phone: finalPhone }, "Test number detected - bypassing OTP send");
       return;
     }
 
@@ -85,19 +94,10 @@ export class AuthService {
     if (user) {
       if (user.otpSendOn) {
         const diffMs = now.getTime() - user.otpSendOn.getTime();
-        const diffMinutes = diffMs / (1000 * 60);
         const diffHours = diffMs / (1000 * 60 * 60);
 
-        // Relaxed: Removed 1-minute cooldown block
-        /*
-        if (diffMinutes <= 1) {
-          throw new AppError("Please retry after 1 minute", 429);
-        }
-        */
-
-        // Relaxed: Removed 3-attempts limit block
-        if (user.otpRetryCount < 100) { // Increased limit significantly or effectively removed
-          // Increment retry count
+        // Increased limit significantly or effectively removed
+        if (user.otpRetryCount < 100) {
           await prisma.user.update({
             where: { id: user.id },
             data: { otpSendOn: now, otpRetryCount: user.otpRetryCount + 1 }
@@ -109,8 +109,6 @@ export class AuthService {
             data: { otpSendOn: now, otpRetryCount: 1 }
           });
         } else {
-           // still keep a very high fallback just in case, but user asked to "remove it"
-           // throw new AppError("Retry counts exceeded more than 3 attempts, please retry after 24 hours", 429);
            await prisma.user.update({
              where: { id: user.id },
              data: { otpSendOn: now, otpRetryCount: user.otpRetryCount + 1 }
@@ -128,7 +126,7 @@ export class AuthService {
     // 5. Send OTP via configured provider
     const otp = generateOtp();
     try {
-      await smsProvider.send(phone, otp, appHash);
+      await smsProvider.send(finalPhone, otp, appHash);
     } catch (err: any) {
       if (err.message && err.message.includes("Invalid Phone Number")) {
         throw new AppError("Invalid phone number, please try again", 400);
@@ -136,49 +134,60 @@ export class AuthService {
       throw err;
     }
 
-    // Also store in Redis cache for 'mock' fallback if needed, 
-    // but the reference uses 2Factor's verify endpoint.
-    // For now we store it just in case we need it, but 2Factor is primary.
-    await redis.setex(`otp:${phone}`, OTP_TTL_SECONDS, hashOtp(otp));
+    // Also store in Redis cache for 'mock' fallback if needed
+    await redis.setex(`otp:${finalPhone}`, OTP_TTL_SECONDS, hashOtp(otp));
 
-    logger.info({ phone }, "OTP sent successfully");
+    logger.info({ phone: finalPhone }, "OTP sent successfully");
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
   static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; accountStatus: string; isOnboardingCompleted: boolean }> {
+    let processedPhone = phone;
+    if (/^\d{10}$/.test(phone)) {
+      processedPhone = `+91${phone}`;
+    }
+
     const pattern = /^\+91\d{10}$/;
-    if (!pattern.test(phone)) {
+    if (!pattern.test(processedPhone)) {
       throw new AppError("Invalid phone number, please try again", 400);
     }
 
+    const finalPhone = processedPhone;
+    
+    // Select all potential fields to satisfy type requirements across logical paths
     const user = await prisma.user.findUnique({
-      where: { phone },
-      select: { id: true, isTestNumber: true, accountStatus: true, onboardingStep: true, contentTier: true, onboardingCompletedAt: true }
+      where: { phone: finalPhone },
+      select: { 
+        id: true, 
+        isTestNumber: true, 
+        accountStatus: true, 
+        onboardingStep: true, 
+        contentTier: true, 
+        onboardingCompletedAt: true,
+        otpSendOn: true,
+        otpRetryCount: true
+      }
     });
 
-    // We no longer throw if user doesn't exist, as this could be a new user.
-
-    // 1. Test Number -> Direct Login Bypass (Skip OTP Verify)
+    // 1. Test Number -> Allow ANY OTP
     if (user?.isTestNumber) {
-      logger.info({ phone }, "Test number detected - bypassing OTP verification");
+      logger.info({ phone: finalPhone }, "Test number detected - allowing ANY OTP bypass");
+      // Bypass external verification for test users
+    } else if (process.env.SMS_PROVIDER === "mock") {
+      const storedHash = await redis.get(`otp:${finalPhone}`);
+      if (!storedHash || storedHash !== hashOtp(otp)) {
+        throw new AppError("Invalid OTP. Please try again.", 400);
+      }
     } else {
-      // 2. Real OTP Verification via 2Factor.in /VERIFY3
       const apiKey = process.env.TWOFACTOR_API_KEY || "29813cba-6fdc-11ef-8b17-0200cd936042";
-      const encodedPhone = encodeURIComponent(phone);
+      const mobile = finalPhone.replace("+", "");
+      const encodedPhone = encodeURIComponent(mobile);
       const verifyUrl = `https://2factor.in/API/V1/${apiKey}/SMS/VERIFY3/${encodedPhone}/${otp}`;
 
-      // Fallback for mock mode
-      if (process.env.SMS_PROVIDER === "mock") {
-        const storedHash = await redis.get(`otp:${phone}`);
-        if (!storedHash || storedHash !== hashOtp(otp)) {
-          throw new AppError("Invalid OTP. Please try again.", 400);
-        }
-      } else {
-        const res = await fetch(verifyUrl);
-        const data = await res.json() as any;
-        if (data.Status !== "Success") {
-          throw new AppError("OTP Authentication failed. Please retry...", 400);
-        }
+      const res = await fetch(verifyUrl);
+      const data = await res.json() as any;
+      if (data.Status !== "Success") {
+        throw new AppError("OTP Authentication failed. Please retry...", 400);
       }
     }
 
@@ -190,17 +199,17 @@ export class AuthService {
       });
     }
 
-    await redis.del(`otp:${phone}`);
+    await redis.del(`otp:${finalPhone}`);
 
     const isNewUser = !user || user.accountStatus === "PENDING_SETUP";
-    let finalUser = user;
+    let finalUser: any = user;
 
     if (!finalUser) {
       finalUser = await prisma.user.create({
         data: {
-          phone,
+          phone: finalPhone,
           accountStatus: "PENDING_SETUP",
-          onboardingStep: 1,
+          onboardingStep: 0,
           profile: {
             create: {
               displayName: "",
@@ -208,7 +217,16 @@ export class AuthService {
             }
           }
         },
-        select: { id: true, isTestNumber: true, accountStatus: true, onboardingStep: true, contentTier: true, onboardingCompletedAt: true }
+        select: { 
+          id: true, 
+          isTestNumber: true, 
+          accountStatus: true, 
+          onboardingStep: true, 
+          contentTier: true, 
+          onboardingCompletedAt: true,
+          otpSendOn: true,
+          otpRetryCount: true
+        }
       });
       logger.info({ userId: finalUser.id }, "Created new user via OTP verify");
     }
@@ -224,7 +242,6 @@ export class AuthService {
     const accessToken = signAccessToken(tokenPayloadBase);
     const refreshToken = signRefreshToken(tokenPayloadBase, jti);
 
-    // Store refresh token in Redis (blacklist pattern — store jti)
     await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, finalUser.id);
 
     return {
