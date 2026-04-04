@@ -11,7 +11,10 @@ export class TrackerService {
   static async logDaily(userId: string, data: any) {
     const { date, noteText, ...details } = data;
     const logDate = new Date(date);
-    logDate.setHours(0, 0, 0, 0);
+    logDate.setUTCHours(0, 0, 0, 0);
+
+    console.log(`[Tracker] Logging daily for User: ${userId}, Date: ${logDate.toISOString()}`);
+    console.log(`[Tracker] Details: ${JSON.stringify(details, null, 2)}`);
 
     // 1. Handle Note Encryption (AES-256-GCM)
     let noteCiphertext: string | null = null;
@@ -80,22 +83,22 @@ export class TrackerService {
       if (result.firstPeriod) milestone = "first_period";
     }
 
-    // 5. Update Profile with new Prediction
+    // 5. Update Profile with new Prediction (And always update streak/lastLogDate)
     const prediction = await PredictionEngine.predict(userId);
-    if (prediction) {
-      await (prisma as any).cycleProfile.update({
-        where: { userId },
-        data: {
-          ...streakUpdate,
+    await (prisma as any).cycleProfile.update({
+      where: { userId },
+      data: {
+        ...streakUpdate,
+        ...(prediction ? {
           predictedNextStart: prediction.predictedStart,
           predictionWindowEarly: prediction.windowEarly,
           predictionWindowLate: prediction.windowLate,
           confidenceLevel: prediction.confidenceLevel,
           currentPhase: prediction.currentPhase,
           currentCycleDay: prediction.cycleDay,
-        },
-      });
-    }
+        } : {}),
+      },
+    });
 
     return {
       log_id: log.id,
@@ -241,7 +244,7 @@ export class TrackerService {
     if (!rawPrediction || !profile) return rawPrediction;
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
     const lastLog = profile.lastLogDate ? new Date(profile.lastLogDate) : null;
     const hasLoggedToday = lastLog && lastLog.getTime() === today.getTime();
 
