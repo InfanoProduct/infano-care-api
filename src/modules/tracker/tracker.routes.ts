@@ -41,6 +41,7 @@ router.use(requireAuth);
  */
 router.post("/setup",      TrackerController.setup);
 router.get("/profile",      TrackerController.getProfile);
+router.get("/history",      TrackerController.getHistory);
 
 
 /**

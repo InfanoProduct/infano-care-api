@@ -255,6 +255,14 @@ export class TrackerService {
     };
   }
 
+  static async getHistory(userId: string) {
+    return await prisma.cycleRecord.findMany({
+      where: { userId, isComplete: true },
+      orderBy: { startDate: "desc" },
+      take: 6,
+    });
+  }
+
   static async getProfile(userId: string) {
     const profile = await (prisma as any).cycleProfile.findUnique({
       where: { userId },
