@@ -110,7 +110,7 @@ export class TrackerNotificationService {
 
     const users = await prisma.user.findMany({
       where: { fcmToken: { not: null } },
-      include: { NotificationPreferences: true, cycleProfile: true }
+      include: { NotificationPreferences: true, cycleProfile: true, profile: true }
     });
 
     for (const user of users) {
