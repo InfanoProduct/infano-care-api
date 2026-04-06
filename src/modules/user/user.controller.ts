@@ -37,4 +37,20 @@ export class UserController {
       next(error);
     }
   }
+
+  static async registerFcmToken(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId || (req as any).user?.id;
+      const { fcmToken } = req.body;
+      if (!fcmToken) throw new AppError("FCM Token is required", 400);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { fcmToken },
+      });
+      res.status(200).json({ success: true, message: "FCM token registered successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
