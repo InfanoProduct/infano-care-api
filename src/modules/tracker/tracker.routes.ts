@@ -73,6 +73,7 @@ router.get("/history",      TrackerController.getHistory);
  *         description: Log recorded successfully
  */
 router.post("/log",        TrackerController.logDaily);
+router.post("/period-range", TrackerController.updatePeriodRange);
 
 /**
  * @openapi

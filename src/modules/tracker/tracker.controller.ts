@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { TrackerService } from "./tracker.service.js";
-import { dailyLogSchema, trackerSetupSchema } from "./tracker.schema.js";
+import { dailyLogSchema, trackerSetupSchema, updatePeriodRangeSchema } from "./tracker.schema.js";
 import { InsightsService } from "./insights.service.js";
 
 export class TrackerController {
@@ -18,6 +18,17 @@ export class TrackerController {
       const userId = (req as any).userId;
       const data   = dailyLogSchema.parse(req);
       const result = await TrackerService.logDaily(userId, data.body);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updatePeriodRange(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const data = updatePeriodRangeSchema.parse(req).body;
+      const result = await TrackerService.updatePeriodRange(userId, data.startDate, data.endDate);
       res.status(200).json(result);
     } catch (error) {
       next(error);

@@ -111,6 +111,99 @@ export class TrackerService {
   }
 
   /**
+   * Batch Period Range Update — \"Edit Mode\" Engine
+   * Marks a range of days as a period, updates CycleLogs, and modifies/creates CycleRecord.
+   */
+  static async updatePeriodRange(userId: string, startDate: string, endDate: string) {
+    const start = new Date(startDate);
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setUTCHours(0, 0, 0, 0);
+
+    if (start > end) throw new AppError("Start date must be before end date", 400);
+
+    console.log(`[Tracker] Updating period range for User: ${userId}, Range: ${start.toISOString()} to ${end.toISOString()}`);
+
+    // 1. Update/Upsert CycleLogs for every day in the range
+    const days: Date[] = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      days.push(new Date(d));
+    }
+
+    await prisma.$transaction(
+      days.map((date) =>
+        prisma.cycleLog.upsert({
+          where: { userId_date: { userId, date } },
+          update: { flow: "medium", updatedAt: new Date() },
+          create: { userId, date, flow: "medium" },
+        })
+      )
+    );
+
+    // 2. Manage CycleRecord
+    // We look for a record that starts near this range or create a new one.
+    // If a record already exists for this startDate, update it.
+    const existingRecord = await (prisma as any).cycleRecord.findFirst({
+      where: { userId, startDate: start },
+    });
+
+    if (existingRecord) {
+      await (prisma as any).cycleRecord.update({
+        where: { id: existingRecord.id },
+        data: {
+          periodStartDate: start,
+          periodEndDate: end,
+          periodDurationDays: Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+        },
+      });
+    } else {
+      const cycleCount = await (prisma as any).cycleRecord.count({ where: { userId } });
+      await (prisma as any).cycleRecord.create({
+        data: {
+          userId,
+          cycleNumber: cycleCount + 1,
+          startDate: start,
+          periodStartDate: start,
+          periodEndDate: end,
+          periodDurationDays: Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+          isComplete: false,
+        },
+      });
+    }
+
+    // 3. Update Profile Baseline
+    await (prisma as any).cycleProfile.update({
+      where: { userId },
+      data: {
+        lastPeriodStart: start,
+        lastPeriodEnd: end,
+        trackerMode: "active" as any,
+      },
+    });
+
+    // 4. Recalculate Baselines (Auto-update profile from history)
+    await this.recalculateBaselines(userId);
+
+    // 5. Recalculate Predictions
+    const prediction = await PredictionEngine.predict(userId);
+    if (prediction) {
+       await (prisma as any).cycleProfile.update({
+        where: { userId },
+        data: {
+          predictedNextStart: prediction.predictedStart,
+          predictionWindowEarly: prediction.windowEarly,
+          predictionWindowLate: prediction.windowLate,
+          confidenceLevel: prediction.confidenceLevel,
+          currentPhase: prediction.currentPhase,
+          currentCycleDay: prediction.cycleDay,
+        },
+      });
+    }
+
+    return { success: true, prediction };
+  }
+
+  /**
    * Internal logic to manage cycle transitions
    */
   private static async handlePeriodStart(userId: string, date: Date, wasWatching: boolean = false) {
@@ -156,7 +249,10 @@ export class TrackerService {
         },
       });
 
-      // 4. Milestone: Detect Watching -> Active transition
+      // 4. Recalculate Baselines
+      await this.recalculateBaselines(userId);
+
+      // 5. Milestone: Detect Watching -> Active transition
       if (wasWatching) {
         firstPeriod = true;
         // Award 200 points for first period milestone
@@ -168,6 +264,49 @@ export class TrackerService {
     }
 
     return { firstPeriod };
+  }
+
+  /**
+   * Baseline Recalculation Engine
+   * Derives average cycle length and period duration from historical records.
+   */
+  private static async recalculateBaselines(userId: string) {
+    console.log(`[Tracker] Recalculating baselines for User: ${userId}`);
+    
+    const completedRecords = await (prisma as any).cycleRecord.findMany({
+      where: { userId, isComplete: true },
+    });
+
+    if (completedRecords.length === 0) return;
+
+    // Calculate Averages
+    const totalCycleLength = completedRecords.reduce((sum: number, r: any) => sum + (r.cycleLengthDays || 0), 0);
+    const validCycleCount = completedRecords.filter((r: any) => r.cycleLengthDays).length;
+    
+    const totalPeriodDuration = completedRecords.reduce((sum: number, r: any) => sum + (r.periodDurationDays || 0), 0);
+    const validPeriodCount = completedRecords.filter((r: any) => r.periodDurationDays).length;
+
+    const avgCycleLength = validCycleCount > 0 ? totalCycleLength / validCycleCount : 28;
+    const avgPeriodDuration = validPeriodCount > 0 ? totalPeriodDuration / validPeriodCount : 5;
+
+    // Standard Deviation for Irregularity Detection (Simple version)
+    let stdCycleLength = 0;
+    if (validCycleCount > 1) {
+      const variance = completedRecords
+        .filter((r: any) => r.cycleLengthDays)
+        .reduce((sum: number, r: any) => sum + Math.pow(r.cycleLengthDays - avgCycleLength, 2), 0) / validCycleCount;
+      stdCycleLength = Math.sqrt(variance);
+    }
+
+    await (prisma as any).cycleProfile.update({
+      where: { userId },
+      data: {
+        avgCycleLength,
+        avgPeriodDuration,
+        stdCycleLength,
+        coefficientOfVar: avgCycleLength > 0 ? (stdCycleLength / avgCycleLength) * 100 : 0,
+      },
+    });
   }
 
   static async getLogs(userId: string, from?: string, to?: string) {
