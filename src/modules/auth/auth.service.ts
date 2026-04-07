@@ -89,15 +89,15 @@ export class AuthService {
       return;
     }
 
-    // 4. Rule 3: Rate Limiting (1-minute cooldown + 3 retries in 24h)
+    // 4. Rule 3: Rate Limiting (1-minute cooldown + 5 retries in 24h)
     const now = new Date();
     if (user) {
       if (user.otpSendOn) {
         const diffMs = now.getTime() - user.otpSendOn.getTime();
         const diffHours = diffMs / (1000 * 60 * 60);
 
-        // Increased limit significantly or effectively removed
-        if (user.otpRetryCount < 100) {
+        // Standard rate limit: Max 5 OTPs per 24 hours
+        if (user.otpRetryCount < 5) {
           await prisma.user.update({
             where: { id: user.id },
             data: { otpSendOn: now, otpRetryCount: user.otpRetryCount + 1 }
@@ -109,13 +109,10 @@ export class AuthService {
             data: { otpSendOn: now, otpRetryCount: 1 }
           });
         } else {
-           await prisma.user.update({
-             where: { id: user.id },
-             data: { otpSendOn: now, otpRetryCount: user.otpRetryCount + 1 }
-           });
+           throw new AppError("Too many OTP requests. Please try again after 24 hours.", 429);
         }
       } else {
-        // First attempt
+        // First attempt ever
         await prisma.user.update({
           where: { id: user.id },
           data: { otpSendOn: now, otpRetryCount: 1 }

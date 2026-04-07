@@ -25,11 +25,16 @@ class Msg91SmsProvider implements SmsProvider {
   async send(phone: string, otp: string, appHash?: string): Promise<void> {
     // Remove + prefix, MSG91 uses country-code prefixed numbers without +
     const mobile = phone.replace("+", "");
-    // Note: To use App Hash with MSG91, it usually needs to be part of the template body or passed as a separate param if supported.
-    const url = `https://api.msg91.com/api/v5/otp?template_id=${this.templateId}&mobile=${mobile}&authkey=${this.authKey}&otp=${otp}`;
+    
+    // Construct URL with optional appHash as a template variable if your template supports it
+    // Most MSG91 templates use {#var#} for variables.
+    let url = `https://api.msg91.com/api/v5/otp?template_id=${this.templateId}&mobile=${mobile}&authkey=${this.authKey}&otp=${otp}`;
     
     if (appHash) {
-      logger.info({ phone, appHash }, "[SMS MSG91] App Hash provided. Ensure your template contains {#var#} at the end for the hash.");
+      // MSG91 allows passing extra variables. We'll assume the template has a variable for the hash.
+      // This is a common pattern for Android SMS Retriever API.
+      url += `&extra_param=${encodeURIComponent(JSON.stringify({ hash: appHash }))}`;
+      logger.info({ phone, appHash }, "[SMS MSG91] App Hash included in request.");
     }
 
     const res = await fetch(url, { method: "POST" });
@@ -54,7 +59,8 @@ class TwilioSmsProvider implements SmsProvider {
 
   async send(phone: string, otp: string, appHash?: string): Promise<void> {
     const url = `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`;
-    const messageBody = `Your Infano.Care OTP is ${otp}. Valid for 10 minutes. Do not share this code.${appHash ? " " + appHash : ""}`;
+    // Match the Airtel/Production style: <#> OTP is your code. [HASH]
+    const messageBody = `<#> ${otp} is your Infano code. Please do not share this with anyone. ${appHash || ""}`;
     const body = new URLSearchParams({
       From: this.from,
       To:   phone,
@@ -87,12 +93,18 @@ class TwoFactorSmsProvider implements SmsProvider {
     // 2Factor.in expects the phone number with prefix (e.g. 919876543210), usually without the '+' for the SMS URL
     const mobile = phone.replace("+", "");
     const encodedPhone = encodeURIComponent(mobile);
-    // URL format: https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}/{template}
-    const url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/InfanoOTPMessage`;
     
-    logger.info({ phone: encodedPhone, appHash }, `[SMS 2FACTOR] Sending OTP via 2Factor.in...`);
+    // URL format: https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}/{template}
+    // Note: To include the hash and <#> prefix, the dashboard template 'InfanoOTPMessage' must be updated.
+    // Recommended Template: "<#> Your OTP is {otp}. {hash}"
+    let url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/InfanoOTPMessage`;
+    
     if (appHash) {
-      logger.info(`[SMS 2FACTOR] 💡 TIP: Add ${appHash} to the end of your 'InfanoOTPMessage' template on 2Factor dashboard for completely silent Auto-OTP.`);
+      // Pass the hash as an extra variable (template dependent)
+      url += `?var1=${encodeURIComponent(appHash)}`;
+      logger.info({ phone: encodedPhone, appHash }, `[SMS 2FACTOR] Sending OTP with appHash (and expected <#> prefix in template) via 2Factor.in...`);
+    } else {
+      logger.info({ phone: encodedPhone }, `[SMS 2FACTOR] Sending OTP via 2Factor.in...`);
     }
     
     try {
