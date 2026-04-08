@@ -47,7 +47,10 @@ export class ExpertController {
   async getMessages(req: Request, res: Response) {
     try {
       const { sessionId } = req.params;
-      const messages = await expertService.getMessages(sessionId);
+      if (!sessionId) {
+        return res.status(400).json({ error: 'sessionId is required' });
+      }
+      const messages = await expertService.getMessages(sessionId as string);
       res.json(messages);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch expert messages' });
@@ -58,7 +61,10 @@ export class ExpertController {
     try {
       const { sessionId } = req.params;
       const userId = (req as any).userId;
-      await expertService.markAsRead(sessionId, userId);
+      if (!sessionId) {
+        return res.status(400).json({ error: 'sessionId is required' });
+      }
+      await expertService.markAsRead(sessionId as string, userId);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: 'Failed to mark messages as read' });

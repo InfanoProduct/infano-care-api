@@ -239,7 +239,7 @@ export class AuthService {
     // But if we need a separate login call:
     let payload: any;
     try {
-      payload = jwt.verify(tempToken, env.JWT_ACCESS_SECRET);
+      payload = jwt.verify(tempToken, JWT_ACCESS_SECRET);
     } catch (err) {
       throw new AppError("Invalid or expired session. Please login again.", 401);
     }
