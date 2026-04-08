@@ -5,8 +5,8 @@ import { sendOtpSchema, verifyOtpSchema, refreshSchema } from "./auth.schema.js"
 export class AuthController {
   static async sendOtp(req: Request, res: Response, next: NextFunction) {
     try {
-      const { phone } = sendOtpSchema.parse(req.body);
-      await AuthService.sendOtp(phone);
+      const { phone, appHash } = sendOtpSchema.parse(req.body);
+      await AuthService.sendOtp(phone, appHash);
       res.status(200).json({ message: "OTP sent successfully." });
     } catch (e) { next(e); }
   }

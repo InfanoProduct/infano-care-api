@@ -21,16 +21,17 @@ import { swaggerSpec } from "./config/swagger.js";
 const app = express();
 
 // Middleware
-/*
 app.use(
   helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "upgrade-insecure-requests": null,
+      },
+    },
   })
 );
-*/
-app.use(cors({ origin: true, credentials: true })); // origin: true allows all origins in development and reflects the request origin
+app.use(cors({ origin: env.ALLOWED_ORIGINS }));
 app.use(compression());
 app.use(express.json());
 app.use(pinoHttp({ logger }));
@@ -48,7 +49,6 @@ app.use("/api/learning",    learningRoutes);
 app.use("/api/quest",       questRoutes);
 app.use("/api/chat",        chatRoutes);
 app.use("/api/expert",      expertRoutes);
-
 
 
 /**

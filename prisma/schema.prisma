@@ -67,6 +67,9 @@ model User {
   birthYear   Int? // YYYY
   ageAtSignup Int? // computed on register
 
+  // Push Notifications
+  fcmToken String? // Firebase Cloud Messaging Token
+
   // Onboarding state
   contentTier           ContentTier?
   accountStatus         AccountStatus @default(PENDING_SETUP)
@@ -91,18 +94,20 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  profile         Profile?
-  avatar          UserAvatar?
-  cycleProfile    CycleProfile?
-  personalization PersonalizationProfile?
-  consentRequests ConsentRequest[]
-  cycleLogs       CycleLog[]
-  progress        UserProgress[]
-  userQuests      UserQuest[]
-  userBadges      UserBadge[]
-  subscription    Subscription?
-  reflections     Reflection[]
-  cycleRecords    CycleRecord[]
+  profile                 Profile?
+  avatar                  UserAvatar?
+  cycleProfile            CycleProfile?
+  personalization         PersonalizationProfile?
+  consentRequests         ConsentRequest[]
+  cycleLogs               CycleLog[]
+  progress                UserProgress[]
+  userQuests              UserQuest[]
+  userBadges              UserBadge[]
+  subscription            Subscription?
+  reflections             Reflection[]
+  cycleRecords            CycleRecord[]
+  NotificationPreferences NotificationPreferences?
+  notificationHistory     NotificationHistory[]
 
   // Gigi Chat
   chatSessions    ChatSession[]
@@ -111,6 +116,367 @@ model User {
   // Expert Chat
   expertSessions  ExpertChatSession[] @relation("UserSessions")
   expertChats     ExpertChatSession[] @relation("ExpertSessions")
+}
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+
+model Profile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName String
+  pronouns    String?
+  journeyName String?
+
+  // Gamification
+  totalPoints Int @default(0)
+  bloomLevel  Int @default(1)
+}
+
+// ─── Personalization Profile (Stage 3 Quiz) ──────────────────────────────────
+
+model PersonalizationProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goals              String[] // e.g. ['body', 'period', 'confidence']
+  periodComfortScore Int? // 1–5
+  periodStatus       String   @default("waiting") // active | waiting | unsure
+  periodContentTone  String   @default("moderate") // gentle | moderate | direct
+  interestTopics     String[] // e.g. ['body_health', 'mental_wellness']
+  contentWeights     Json     @default("{}") // ML-updated weights
+
+  quizCompletedAt DateTime?
+  lastUpdatedAt   DateTime  @default(now()) @updatedAt
+}
+
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
+model UserAvatar {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bodyTypeId  Int   @default(1)
+  skinToneId  Int   @default(1)
+  hairStyleId Int   @default(1)
+  hairColorId Int   @default(1)
+  eyeShapeId  Int   @default(1)
+  eyeColorId  Int   @default(1)
+  outfitId    Int   @default(1)
+  accessories Int[] @default([])
+
+  unlockedOutfits     Int[] @default([1])
+  unlockedAccessories Int[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── COPPA Consent Requests ───────────────────────────────────────────────────
+
+model ConsentRequest {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  parentEmail String
+  token       String               @unique // JWT-signed, 7-day expiry
+  status      ConsentRequestStatus @default(PENDING)
+
+  sentAt     DateTime  @default(now())
+  approvedAt DateTime?
+  approvedIp String?
+  expiresAt  DateTime
+
+  reminder1Sent Boolean @default(false)
+  reminder2Sent Boolean @default(false)
+}
+
+// ─── Cycle Profile (Period Tracker Setup) ────────────────────────────────────
+
+model CycleProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  trackerMode TrackerMode @default(watching_waiting)
+
+  // Baseline statistics (updated after each complete cycle)
+  avgCycleLength    Float?
+  stdCycleLength    Float?
+  avgPeriodDuration Float?
+  coefficientOfVar  Float? // CV% for irregular classification
+
+  // Prediction state
+  lastPeriodStart       DateTime?
+  lastPeriodEnd         DateTime?
+  predictedNextStart    DateTime?
+  predictedNextEnd      DateTime?
+  predictionWindowEarly DateTime?
+  predictionWindowLate  DateTime?
+
+  confidenceLevel String @default("none") // none | getting_started | building | confident | high | irregular
+  currentPhase    String @default("waiting") // menstrual | follicular | ovulation | luteal | waiting
+  currentCycleDay Int?
+
+  // Settings
+  showFertilityWindow      Boolean @default(false)
+  federatedLearningConsent Boolean @default(false)
+
+  // Log streak
+  currentLogStreak Int       @default(0)
+  longestLogStreak Int       @default(0)
+  lastLogDate      DateTime?
+
+  setupCompletedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Cache for ML insights
+  patternCache Json?
+
+  @@index([userId])
+}
+
+// ─── Cycle Logs (Daily Tracking) ─────────────────────────────────────────────
+
+model CycleLog {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  date          DateTime
+  isRetroactive Boolean  @default(false)
+
+  // Period Flow
+  flow String? // none | light | medium | heavy | spotting | ended
+
+  // Physical Symptoms
+  crampIntensity Int? // 1–5 intensity
+  symptoms       String[] // standardized codes array
+
+  // Mood Wheel (16-state)
+  moodPrimary   String?
+  moodSecondary String[]
+
+  // Wellbeing
+  energyLevel  Int? // 1–5
+  sleepQuality Int? // 1–5
+  sleepHours   Float?
+
+  // Lifestyle
+  nutritionTags String[]
+  activityTags  String[]
+
+  // Private Note (Encrypted)
+  noteCiphertext String?
+  noteIv         String?
+  hasVoiceNote   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+// ─── Cycle Records (Historical Cycles) ───────────────────────────────────────
+
+model CycleRecord {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleNumber        Int
+  startDate          DateTime
+  endDate            DateTime?
+  periodStartDate    DateTime
+  periodEndDate      DateTime?
+  cycleLengthDays    Int?
+  periodDurationDays Int?
+  isComplete         Boolean   @default(false)
+
+  // Aggregated stats
+  avgCrampIntensity  Float?
+  mostCommonSymptoms String[]
+
+  // Prediction comparison
+  predictedStartDate  DateTime?
+  predictionErrorDays Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, cycleNumber])
+}
+
+// ─── Learning ─────────────────────────────────────────────────────────────────
+
+model LearningJourney {
+  id           String  @id @default(uuid())
+  title        String
+  slug         String  @unique @default(uuid())
+  description  String
+  thumbnailUrl String?
+  bannerImage  String?
+  totalXP      Int     @default(0)
+  category     String?
+  isActive     Boolean @default(true)
+
+  ageBand        String?
+  topics         String[]    @default([])
+  goals          String[]    @default([])
+  tags           String[]    @default([])
+  contentTone    String      @default("moderate")
+  minContentTier ContentTier @default(TEEN_EARLY)
+
+  episodes  Episode[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Episode {
+  id          String          @id @default(uuid())
+  journeyId   String
+  journey     LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String          @unique @default(uuid())
+  description String?
+  order       Int             @default(0)
+  content     Json            @default("[]") // Structured JSON for 5 segments
+  points      Int             @default(50)
+  isActive    Boolean         @default(true)
+
+  userProgress UserProgress[]
+  reflections  Reflection[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model UserProgress {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episodeId String
+  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  completed        Boolean @default(false)
+  lastViewedItemId String?
+  completedItems   Json    @default("[]") // Tracking progress within the episode segments
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, episodeId])
+}
+
+model Reflection {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episodeId String
+  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  content   String? // Text journal entry
+  voiceUrl  String? // Voice note URL
+  isPrivate Boolean @default(true) // Toggle between Private Journal and Community Discussion
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([episodeId])
+}
+
+// ─── Quests ───────────────────────────────────────────────────────────────────
+
+model Quest {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  type        String
+  points      Int
+  userQuests  UserQuest[]
+}
+
+model UserQuest {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  questId     String
+  quest       Quest    @relation(fields: [questId], references: [id])
+  completedAt DateTime @default(now())
+}
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String
+  description String
+  iconUrl     String
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  awardedAt DateTime @default(now())
+}
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+model Subscription {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id])
+  tier      String
+  status    String
+  expiresAt DateTime?
+}
+
+// ─── Tracker Settings ─────────────────────────────────────────────────────────
+
+model NotificationPreferences {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  periodPrediction  Boolean @default(true)
+  dailyReminder     Boolean @default(true)
+  dailyReminderTime String  @default("20:00") // HH:MM
+  symptomPatterns   Boolean @default(true)
+  latePeriod        Boolean @default(true)
+  streakAtRisk      Boolean @default(true)
+  monthlyInsights   Boolean @default(false)
+
+  // New Smart Notification Types
+  phaseChange      Boolean @default(false)
+  doctorConnect    Boolean @default(true)
+  cycleMilestones  Boolean @default(true)
+  globalEnabled    Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Notification History ─────────────────────────────────────────────────────
+
+model NotificationHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // PREDICTION_ALERT, DAILY_LOG, etc.
+  title     String
+  body      String
+  deepLink  String?
+  payload   Json?    @default("{}")
+  sentAt    DateTime @default(now())
+  openedAt  DateTime?
+
+  @@index([userId, type])
+  @@index([sentAt])
 }
 
 // ─── Expert Chat ─────────────────────────────────────────────────────────────
@@ -216,324 +582,4 @@ model EscalationEvent {
   createdAt DateTime @default(now())
 
   @@index([userId])
-}
-
-
-// ─── Profile ──────────────────────────────────────────────────────────────────
-
-model Profile {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  displayName String
-  pronouns    String?
-  journeyName String?
-
-  // Gamification
-  totalPoints Int @default(0)
-  bloomLevel  Int @default(1)
-}
-
-// ─── Personalization Profile (Stage 3 Quiz) ──────────────────────────────────
-
-model PersonalizationProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  goals              String[] // e.g. ['body', 'period', 'confidence']
-  periodComfortScore Int? // 1–5
-  periodStatus       String   @default("waiting") // active | waiting | unsure
-  periodContentTone  String   @default("moderate") // gentle | moderate | direct
-  interestTopics     String[] // e.g. ['body_health', 'mental_wellness']
-  contentWeights     Json     @default("{}") // ML-updated weights
-
-  quizCompletedAt DateTime?
-  lastUpdatedAt   DateTime  @default(now()) @updatedAt
-}
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-model UserAvatar {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  bodyTypeId  Int   @default(1)
-  skinToneId  Int   @default(1)
-  hairStyleId Int   @default(1)
-  hairColorId Int   @default(1)
-  eyeShapeId  Int   @default(1)
-  eyeColorId  Int   @default(1)
-  outfitId    Int   @default(1)
-  accessories Int[] @default([])
-
-  unlockedOutfits     Int[] @default([1])
-  unlockedAccessories Int[] @default([])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ─── COPPA Consent Requests ───────────────────────────────────────────────────
-
-model ConsentRequest {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  parentEmail String
-  token       String               @unique // JWT-signed, 7-day expiry
-  status      ConsentRequestStatus @default(PENDING)
-
-  sentAt     DateTime  @default(now())
-  approvedAt DateTime?
-  approvedIp String?
-  expiresAt  DateTime
-
-  reminder1Sent Boolean @default(false)
-  reminder2Sent Boolean @default(false)
-}
-
-// ─── Cycle Profile (Period Tracker Setup) ────────────────────────────────────
-
-model CycleProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  trackerMode TrackerMode @default(watching_waiting)
-
-  // Baseline statistics (updated after each complete cycle)
-  avgCycleLength      Float?
-  stdCycleLength      Float?
-  avgPeriodDuration   Float?
-  coefficientOfVar    Float?    // CV% for irregular classification
-
-  // Prediction state
-  lastPeriodStart       DateTime?
-  lastPeriodEnd         DateTime?
-  predictedNextStart    DateTime?
-  predictedNextEnd      DateTime?
-  predictionWindowEarly DateTime?
-  predictionWindowLate  DateTime?
-
-  confidenceLevel      String    @default("none") // none | getting_started | building | confident | high | irregular
-  currentPhase         String    @default("waiting") // menstrual | follicular | ovulation | luteal | waiting
-  currentCycleDay      Int?
-
-  // Settings
-  showFertilityWindow      Boolean @default(false)
-  federatedLearningConsent Boolean @default(false)
-
-  // Log streak
-  currentLogStreak    Int       @default(0)
-  longestLogStreak    Int       @default(0)
-  lastLogDate         DateTime?
-
-  setupCompletedAt DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  // Cache for ML insights
-  patternCache Json?
-
-  @@index([userId])
-}
-
-// ─── Cycle Logs (Daily Tracking) ─────────────────────────────────────────────
-
-model CycleLog {
-  id            String   @id @default(uuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  date          DateTime
-  isRetroactive Boolean  @default(false)
-
-  // Period Flow
-  flow          String?  // none | light | medium | heavy | spotting | ended
-
-  // Physical Symptoms
-  crampIntensity Int?     // 1–5 intensity
-  symptoms       String[] // standardized codes array
-
-  // Mood Wheel (16-state)
-  moodPrimary    String?
-  moodSecondary  String[]
-
-  // Wellbeing
-  energyLevel    Int?     // 1–5
-  sleepQuality   Int?     // 1–5
-  sleepHours     Float?
-
-  // Lifestyle
-  nutritionTags  String[]
-  activityTags   String[]
-
-  // Private Note (Encrypted)
-  noteCiphertext String?
-  noteIv         String?
-  hasVoiceNote   Boolean  @default(false)
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@unique([userId, date])
-  @@index([userId, date])
-}
-
-// ─── Cycle Records (Historical Cycles) ───────────────────────────────────────
-
-model CycleRecord {
-  id                  String   @id @default(uuid())
-  userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cycleNumber         Int
-  startDate           DateTime
-  endDate             DateTime?
-  periodStartDate     DateTime
-  periodEndDate       DateTime?
-  cycleLengthDays     Int?
-  periodDurationDays  Int?
-  isComplete          Boolean  @default(false)
-
-  // Aggregated stats
-  avgCrampIntensity   Float?
-  mostCommonSymptoms  String[]
-  
-  // Prediction comparison
-  predictedStartDate  DateTime?
-  predictionErrorDays Int?
-
-  createdAt           DateTime @default(now())
-
-  @@index([userId, cycleNumber])
-}
-
-// ─── Learning ─────────────────────────────────────────────────────────────────
-
-model LearningJourney {
-  id           String  @id @default(uuid())
-  title        String
-  slug         String  @unique @default(uuid())
-  description  String
-  thumbnailUrl String?
-  bannerImage  String?
-  totalXP      Int     @default(0)
-  category     String?
-  isActive     Boolean @default(true)
-
-  ageBand        String?
-  topics         String[]    @default([])
-  goals          String[]    @default([])
-  tags           String[]    @default([])
-  contentTone    String      @default("moderate")
-  minContentTier ContentTier @default(TEEN_EARLY)
-
-  episodes  Episode[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Episode {
-  id          String          @id @default(uuid())
-  journeyId   String
-  journey     LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
-  title       String
-  slug        String          @unique @default(uuid())
-  description String?
-  order       Int             @default(0)
-  content     Json            @default("[]") // Structured JSON for 5 segments
-  points      Int             @default(50)
-  isActive    Boolean         @default(true)
-
-  userProgress UserProgress[]
-  reflections  Reflection[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-}
-
-model UserProgress {
-  id        String  @id @default(uuid())
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  episodeId String
-  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-
-  completed        Boolean @default(false)
-  lastViewedItemId String?
-  completedItems   Json    @default("[]") // Tracking progress within the episode segments
-
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, episodeId])
-}
-
-model Reflection {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  episodeId String
-  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-
-  content   String?  // Text journal entry
-  voiceUrl  String?  // Voice note URL
-  isPrivate Boolean  @default(true) // Toggle between Private Journal and Community Discussion
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([episodeId])
-}
-
-// ─── Quests ───────────────────────────────────────────────────────────────────
-
-model Quest {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  type        String
-  points      Int
-  userQuests  UserQuest[]
-}
-
-model UserQuest {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  questId     String
-  quest       Quest    @relation(fields: [questId], references: [id])
-  completedAt DateTime @default(now())
-}
-
-// ─── Badges ───────────────────────────────────────────────────────────────────
-
-model Badge {
-  id          String      @id @default(uuid())
-  name        String
-  description String
-  iconUrl     String
-  userBadges  UserBadge[]
-}
-
-model UserBadge {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  badgeId   String
-  badge     Badge    @relation(fields: [badgeId], references: [id])
-  awardedAt DateTime @default(now())
-}
-
-// ─── Subscription ─────────────────────────────────────────────────────────────
-
-model Subscription {
-  id        String    @id @default(uuid())
-  userId    String    @unique
-  user      User      @relation(fields: [userId], references: [id])
-  tier      String
-  status    String
-  expiresAt DateTime?
 }
