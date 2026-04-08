@@ -124,33 +124,62 @@ export class TrackerService {
 
     console.log(`[Tracker] Updating period range for User: ${userId}, Range: ${start.toISOString()} to ${end.toISOString()}`);
 
-    // 1. Update/Upsert CycleLogs for every day in the range
-    const days: Date[] = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      days.push(new Date(d));
+    // 1. Manage CycleRecord (Find closest record in +/- 14 day window)
+    const windowStart = new Date(start);
+    windowStart.setDate(windowStart.getDate() - 14);
+    const windowEnd = new Date(start);
+    windowEnd.setDate(windowEnd.getDate() + 14);
+
+    const existingRecord = await (prisma as any).cycleRecord.findFirst({
+      where: {
+        userId,
+        startDate: { gte: windowStart, lte: windowEnd },
+      },
+      orderBy: { startDate: "asc" },
+    });
+
+    let oldDays: Date[] = [];
+    if (existingRecord && existingRecord.periodStartDate && existingRecord.periodEndDate) {
+      const os = new Date(existingRecord.periodStartDate);
+      const oe = new Date(existingRecord.periodEndDate);
+      for (let d = new Date(os); d <= oe; d.setDate(d.getDate() + 1)) {
+        oldDays.push(new Date(d));
+      }
     }
 
-    await prisma.$transaction(
-      days.map((date) =>
+    // 2. Identify transitions
+    const newDays: Date[] = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      newDays.push(new Date(d));
+    }
+
+    const newDaysStr = new Set(newDays.map(d => d.toISOString()));
+    const orphanedDays = oldDays.filter(d => !newDaysStr.has(d.toISOString()));
+
+    await prisma.$transaction([
+      // A. Reclaim orphaned days
+      ...orphanedDays.map((date) =>
+        prisma.cycleLog.updateMany({
+          where: { userId, date, flow: { not: "none" } },
+          data: { flow: "none", updatedAt: new Date() },
+        })
+      ),
+      // B. Update/Upsert new days (Medium flow if not already set to something meaningful)
+      ...newDays.map((date) =>
         prisma.cycleLog.upsert({
           where: { userId_date: { userId, date } },
           update: { flow: "medium", updatedAt: new Date() },
           create: { userId, date, flow: "medium" },
         })
       )
-    );
+    ]);
 
-    // 2. Manage CycleRecord
-    // We look for a record that starts near this range or create a new one.
-    // If a record already exists for this startDate, update it.
-    const existingRecord = await (prisma as any).cycleRecord.findFirst({
-      where: { userId, startDate: start },
-    });
-
+    // 3. Update/Create Record
     if (existingRecord) {
       await (prisma as any).cycleRecord.update({
         where: { id: existingRecord.id },
         data: {
+          startDate: start, // Pivot the cycle to new start date
           periodStartDate: start,
           periodEndDate: end,
           periodDurationDays: Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
@@ -171,7 +200,7 @@ export class TrackerService {
       });
     }
 
-    // 3. Update Profile Baseline
+    // 4. Update Profile Baseline
     await (prisma as any).cycleProfile.update({
       where: { userId },
       data: {
@@ -219,10 +248,12 @@ export class TrackerService {
     if (diffDays >= 14) {
       // 1. Close current cycle record
       if (lastStart) {
+        const endDate = new Date(date);
+        endDate.setDate(endDate.getDate() - 1);
         await (prisma as any).cycleRecord.updateMany({
           where: { userId, startDate: lastStart, isComplete: false },
           data: {
-            endDate: date,
+            endDate: endDate,
             cycleLengthDays: Math.round(diffDays),
             isComplete: true,
           },
