@@ -19,6 +19,14 @@ export class AuthController {
     } catch (e) { next(e); }
   }
 
+  static async login(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { tempToken } = req.body;
+      const result = await AuthService.login(tempToken);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
 
 
   static async refresh(req: Request, res: Response, next: NextFunction) {

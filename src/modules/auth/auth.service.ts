@@ -20,7 +20,8 @@ const TEMP_TOKEN_TTL = "15m";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateOtp(): string {
-  // 4-digit OTP as per reference code random.Next(1000, 9999)
+  // Hardcode 1234 for dev mock mode, otherwise random
+  if (process.env.SMS_PROVIDER === "mock") return "1234";
   return String(crypto.randomInt(1000, 9999));
 }
 
@@ -136,7 +137,7 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; accountStatus: string; isOnboardingCompleted: boolean }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string; userId: string; tempToken: string }> {
     const pattern = /^\+91\d{10}$/;
     if (!pattern.test(phone)) {
       throw new AppError("Invalid phone number, please try again", 400);
@@ -144,7 +145,7 @@ export class AuthService {
 
     const user = await prisma.user.findUnique({
       where: { phone },
-      select: { id: true, isTestNumber: true, accountStatus: true, onboardingStep: true, contentTier: true, onboardingCompletedAt: true }
+      select: { id: true, isTestNumber: true, accountStatus: true, onboardingStep: true, contentTier: true, onboardingCompletedAt: true, role: true }
     });
 
     // We no longer throw if user doesn't exist, as this could be a new user.
@@ -199,7 +200,7 @@ export class AuthService {
             }
           }
         },
-        select: { id: true, isTestNumber: true, accountStatus: true, onboardingStep: true, contentTier: true, onboardingCompletedAt: true }
+        select: { id: true, isTestNumber: true, accountStatus: true, onboardingStep: true, contentTier: true, onboardingCompletedAt: true, role: true }
       });
       logger.info({ userId: finalUser.id }, "Created new user via OTP verify");
     }
@@ -221,10 +222,42 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
+      tempToken: accessToken, // Frontend expects tempToken
       isNewUser,
       onboardingStep: finalUser.onboardingStep,
+      onboardingStage: finalUser.onboardingStep, // Frontend expects onboardingStage
       accountStatus: finalUser.accountStatus,
-      isOnboardingCompleted: finalUser.onboardingCompletedAt !== null
+      isOnboardingCompleted: finalUser.onboardingCompletedAt !== null,
+      role: finalUser.role,
+      userId: finalUser.id
+    };
+  }
+
+  // ── 2b. Login (Returning User) ──────────────────────────────────────────────
+  static async login(tempToken: string) {
+    // In this system, tempToken is usually the accessToken from verifyOtp
+    // But if we need a separate login call:
+    let payload: any;
+    try {
+      payload = jwt.verify(tempToken, env.JWT_ACCESS_SECRET);
+    } catch (err) {
+      throw new AppError("Invalid or expired session. Please login again.", 401);
+    }
+
+    const userId = payload.sub || payload.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, accountStatus: true, onboardingStep: true, role: true }
+    });
+
+    if (!user) throw new AppError("User not found.", 404);
+
+    return {
+      accessToken: tempToken,
+      refreshToken: "", // Refresh tokens usually come from verifyOtp
+      userId: user.id,
+      onboardingStage: user.onboardingStep,
+      role: user.role
     };
   }
 

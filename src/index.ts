@@ -3,6 +3,8 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { prisma } from "./db/client.js";
 import { initTrackerJobs } from "./jobs/tracker.cron.js";
+import { Server } from "socket.io";
+import { setupExpertSocket } from "./modules/expert/socket.service.js";
 
 async function bootstrap() {
   try {
@@ -18,8 +20,20 @@ async function bootstrap() {
       logger.info(`Swagger docs available at http://localhost:${env.PORT}/api-docs`);
     });
 
+    // Initialize Socket.io for Real-time Expert Chat
+    const io = new Server(server, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+      }
+    });
+
+    setupExpertSocket(io);
+    logger.info("Socket.io initialized and attached to Expert Chat.");
+
     const shutdown = async () => {
       logger.info("Gracefully shutting down...");
+      io.close(); // Close socket server
       server.close(async () => {
         await prisma.$disconnect();
         logger.info("Server and database connections closed.");

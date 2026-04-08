@@ -13,6 +13,7 @@ enum UserRole {
   TEEN
   PARENT
   GUARDIAN
+  EXPERT
 }
 
 enum ContentTier {
@@ -102,6 +103,119 @@ model User {
   subscription    Subscription?
   reflections     Reflection[]
   cycleRecords    CycleRecord[]
+
+  // Gigi Chat
+  chatSessions    ChatSession[]
+  escalations     EscalationEvent[]
+
+  // Expert Chat
+  expertSessions  ExpertChatSession[] @relation("UserSessions")
+  expertChats     ExpertChatSession[] @relation("ExpertSessions")
+}
+
+// ─── Expert Chat ─────────────────────────────────────────────────────────────
+
+model ExpertChatSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  
+  expertId  String
+  expert    User     @relation("ExpertSessions", fields: [expertId], references: [id], onDelete: Cascade)
+  
+  status    String   @default("active") // active | resolved | closed
+  
+  messages  ExpertChatMessage[]
+  
+  lastMsgAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expertId])
+}
+
+model ExpertChatMessage {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   ExpertChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  senderId  String
+  content   String   @db.Text
+  isRead    Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+// ─── Gigi Chat ───────────────────────────────────────────────────────────────
+
+enum ChatSender {
+  USER
+  GIGI
+  MODERATOR
+}
+
+enum EscalationLevel {
+  LEVEL_0 // Passive
+  LEVEL_1 // Watchlist
+  LEVEL_2 // Active Flag
+  LEVEL_3 // Priority Alert
+  LEVEL_4 // CRITICAL
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title     String?  // Optional session title
+  isActive  Boolean  @default(true)
+  
+  // High-level session metadata
+  maxDistressLevel EscalationLevel @default(LEVEL_0)
+  lastMsgAt        DateTime        @default(now())
+  
+  messages  ChatMessage[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  sender    ChatSender
+  content   String      @db.Text
+  
+  // Metadata for safety and analytics
+  metadata  Json?       // Store sentiment, moderation flags, etc.
+  
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model EscalationEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  sessionId String?
+  level     EscalationLevel
+  reason    String     // e.g., "Harm detected", "User requested human"
+  
+  resolvedAt DateTime?
+  resolvedBy String?    // Admin/Moderator ID
+  
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 

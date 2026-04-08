@@ -7,7 +7,7 @@ const router = Router();
 
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: 100, // Increased for development testing
   message: { error: "Too many OTP requests. Please try again in 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -109,6 +109,7 @@ router.post("/refresh",                AuthController.refresh);
  *       200:
  *         description: Logged out successfully.
  */
+router.post("/login",                  AuthController.login);
 router.post("/logout",                 AuthController.logout);
 
 export default router;

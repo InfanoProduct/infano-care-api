@@ -14,11 +14,11 @@ function scoreJourney(journey: any, profile: { interestTopics: string[]; goals: 
   let score = 0;
   const intersection = (a: string[], b: string[]) => a.filter((x) => b.includes(x));
 
-  score += intersection(journey.topics  || [], profile.interestTopics).length * 40;
-  score += intersection(journey.goals   || [], profile.goals).length * 30;
+  score += intersection(journey.topics || [], profile.interestTopics).length * 40;
+  score += intersection(journey.goals || [], profile.goals).length * 30;
   if (journey.minContentTier === contentTier) score += 20;
-  if (profile.periodStatus === "waiting" && (journey.tags || []).includes("pre_period"))  score += 25;
-  if (profile.periodStatus === "active"  && (journey.tags || []).includes("cycle_aware")) score += 25;
+  if (profile.periodStatus === "waiting" && (journey.tags || []).includes("pre_period")) score += 25;
+  if (profile.periodStatus === "active" && (journey.tags || []).includes("cycle_aware")) score += 25;
   if (journey.contentTone === profile.periodContentTone) score += 15;
 
   return score;
@@ -94,23 +94,23 @@ export class OnboardingService {
     const tone = score <= 2 ? "gentle" : score >= 4 ? "direct" : "moderate";
 
     const profile = await prisma.personalizationProfile.upsert({
-      where:  { userId },
+      where: { userId },
       create: {
         userId,
-        goals:              data.goals,
+        goals: data.goals,
         periodComfortScore: score,
-        periodStatus:       data.periodStatus,
-        periodContentTone:  tone,
-        interestTopics:     data.interestTopics,
-        quizCompletedAt:    new Date(),
+        periodStatus: data.periodStatus,
+        periodContentTone: tone,
+        interestTopics: data.interestTopics,
+        quizCompletedAt: new Date(),
       },
       update: {
-        goals:              data.goals,
+        goals: data.goals,
         periodComfortScore: score,
-        periodStatus:       data.periodStatus,
-        periodContentTone:  tone,
-        interestTopics:     data.interestTopics,
-        quizCompletedAt:    new Date(),
+        periodStatus: data.periodStatus,
+        periodContentTone: tone,
+        interestTopics: data.interestTopics,
+        quizCompletedAt: new Date(),
       }
     });
 
@@ -134,9 +134,9 @@ export class OnboardingService {
     const userProfile = await prisma.profile.findUnique({ where: { userId }, select: { totalPoints: true } });
 
     return {
-      profileId:           profile.id,
+      profileId: profile.id,
       recommendedJourneys: ranked,
-      pointsTotal:         userProfile?.totalPoints ?? 55,
+      pointsTotal: userProfile?.totalPoints ?? 55,
     };
   }
 
@@ -152,7 +152,7 @@ export class OnboardingService {
     accessories?: number[];
   }) {
     const avatar = await prisma.userAvatar.upsert({
-      where:  { userId },
+      where: { userId },
       create: { userId, ...data, accessories: data.accessories ?? [] },
       update: { ...data, accessories: data.accessories ?? [] },
     });
@@ -171,7 +171,7 @@ export class OnboardingService {
   // ── POST /api/onboarding/journey-name ─────────────────────────────────────────
   static async saveJourneyName(userId: string, journeyName: string) {
     await prisma.profile.upsert({
-      where:  { userId },
+      where: { userId },
       create: { userId, displayName: "User", journeyName, totalPoints: 15 },
       update: { journeyName, totalPoints: { increment: 15 } },
     });
@@ -186,10 +186,10 @@ export class OnboardingService {
   static async completeOnboarding(userId: string) {
     const user = await prisma.user.update({
       where: { id: userId },
-      data:  {
-        accountStatus:          "ACTIVE",
-        onboardingStep:        5,
-        onboardingCompletedAt:  new Date(),
+      data: {
+        accountStatus: "ACTIVE",
+        onboardingStep: 5,
+        onboardingCompletedAt: new Date(),
       },
     });
     return { accountStatus: user.accountStatus, onboardingStep: user.onboardingStep };

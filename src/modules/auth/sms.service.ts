@@ -8,7 +8,7 @@ export interface SmsProvider {
 // ─── Mock Provider (dev) ──────────────────────────────────────────────────────
 class MockSmsProvider implements SmsProvider {
   async send(phone: string, otp: string): Promise<void> {
-    logger.info({ phone }, `[SMS MOCK] OTP generated and would be sent in production.`);
+    logger.info({ phone, otp }, `[SMS MOCK] OTP Generated: ${otp}. This code would be sent via SMS in production.`);
   }
 }
 

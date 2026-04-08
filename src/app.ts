@@ -13,23 +13,24 @@ import userRoutes      from "./modules/user/user.routes.js";
 import trackerRoutes   from "./modules/tracker/tracker.routes.js";
 import learningRoutes  from "./modules/learning/learning.routes.js";
 import questRoutes     from "./modules/quest/quest.routes.js";
+import chatRoutes      from "./modules/chat/chat.routes.js";
+import expertRoutes    from "./modules/expert/expert.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
 const app = express();
 
 // Middleware
+/*
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        "upgrade-insecure-requests": null,
-      },
-    },
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
-app.use(cors({ origin: env.ALLOWED_ORIGINS }));
+*/
+app.use(cors({ origin: true, credentials: true })); // origin: true allows all origins in development and reflects the request origin
 app.use(compression());
 app.use(express.json());
 app.use(pinoHttp({ logger }));
@@ -45,6 +46,10 @@ app.use("/api/user",        userRoutes);
 app.use("/api/tracker",     trackerRoutes);
 app.use("/api/learning",    learningRoutes);
 app.use("/api/quest",       questRoutes);
+app.use("/api/chat",        chatRoutes);
+app.use("/api/expert",      expertRoutes);
+
+
 
 /**
  * @openapi
