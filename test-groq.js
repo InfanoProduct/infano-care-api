@@ -2,7 +2,7 @@ import { env } from 'process';
 
 async function testGroq() {
   const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-  const apiKey = "GROQ_API_KEY_REDACTED"; // from .env.local
+  const apiKey = process.env.GROQ_API_KEY; // loaded from environment
 
   console.log("Testing Groq API with Llama3-70b-8192...");
 
