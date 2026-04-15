@@ -7,7 +7,418 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Enums ────────────────────────────────────────────────────────────────────
+model User {
+  id                      String                   @id @default(uuid())
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  accountStatus           AccountStatus            @default(PENDING_SETUP)
+  ageAtSignup             Int?
+  birthMonth              Int?
+  birthYear               Int?
+  contentTier             ContentTier?
+  coppaConsentAt          DateTime?
+  coppaConsentGranted     Boolean?
+  coppaConsentRequired    Boolean                  @default(false)
+  isTestNumber            Boolean                  @default(false)
+  locale                  String                   @default("en")
+  marketingOptIn          Boolean                  @default(false)
+  onboardingCompletedAt   DateTime?
+  otpRetryCount           Int                      @default(0)
+  otpSendOn               DateTime?
+  parentEmail             String?
+  phone                   String                   @unique
+  privacyAcceptedAt       DateTime?
+  role                    UserRole                 @default(TEEN)
+  termsAcceptedAt         DateTime?
+  timezone                String?
+  onboardingStep          Int                      @default(0)
+  fcmToken                String?
+  chatSessions            ChatSession[]
+  consentRequests         ConsentRequest[]
+  cycleLogs               CycleLog[]
+  cycleProfile            CycleProfile?
+  cycleRecords            CycleRecord[]
+  escalations             EscalationEvent[]
+  expertChats             ExpertChatSession[]      @relation("ExpertSessions")
+  expertSessions          ExpertChatSession[]      @relation("UserSessions")
+  NotificationHistory     NotificationHistory[]
+  NotificationPreferences NotificationPreferences?
+  personalization         PersonalizationProfile?
+  profile                 Profile?
+  reflections             Reflection[]
+  subscription            Subscription?
+  avatar                  UserAvatar?
+  userBadges              UserBadge[]
+  progress                UserProgress[]
+  userQuests              UserQuest[]
+
+  // Community & PeerLine
+  communityPosts    CommunityPost[]
+  communityReplies   CommunityReply[]
+  communityBookmarks CommunityBookmark[]
+  postReactions      PostReaction[]
+  moderatedContent   ModerationLog[]
+  moderationAppeals  ModerationAppeal[]
+  communityActivityLogs CommunityActivityLog[]
+  peerlineMenteeSessions PeerLineSession[] @relation("MenteeSessions")
+  peerlineMentorSessions PeerLineSession[] @relation("MentorSessions")
+}
+
+model ExpertChatSession {
+  id        String              @id @default(uuid())
+  userId    String
+  expertId  String
+  status    String              @default("active")
+  lastMsgAt DateTime            @default(now())
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  messages  ExpertChatMessage[]
+  expert    User                @relation("ExpertSessions", fields: [expertId], references: [id], onDelete: Cascade)
+  user      User                @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expertId])
+}
+
+model ExpertChatMessage {
+  id        String            @id @default(uuid())
+  sessionId String
+  senderId  String
+  content   String
+  createdAt DateTime          @default(now())
+  isRead    Boolean           @default(false)
+  session   ExpertChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model ChatSession {
+  id               String          @id @default(uuid())
+  userId           String
+  title            String?
+  isActive         Boolean         @default(true)
+  maxDistressLevel EscalationLevel @default(LEVEL_0)
+  lastMsgAt        DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  messages         ChatMessage[]
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String      @id @default(uuid())
+  sessionId String
+  sender    ChatSender
+  content   String
+  metadata  Json?
+  createdAt DateTime    @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model EscalationEvent {
+  id         String          @id @default(uuid())
+  userId     String
+  sessionId  String?
+  level      EscalationLevel
+  reason     String
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime        @default(now())
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Profile {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  displayName String
+  pronouns    String?
+  journeyName String?
+  totalPoints Int     @default(0)
+  bloomLevel  Int     @default(1)
+  mentorStatus String  @default("none") // "none" or "certified"
+  certifiedTopicIds String[] @default([])
+  isAvailable Boolean @default(true)
+  unavailableUntil DateTime?
+  pendingSafetyCheckin Boolean @default(false)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PersonalizationProfile {
+  id                 String    @id @default(uuid())
+  userId             String    @unique
+  goals              String[]
+  periodComfortScore Int?
+  periodStatus       String    @default("waiting")
+  periodContentTone  String    @default("moderate")
+  interestTopics     String[]
+  contentWeights     Json      @default("{}")
+  quizCompletedAt    DateTime?
+  lastUpdatedAt      DateTime  @default(now()) @updatedAt
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserAvatar {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  bodyTypeId          Int      @default(1)
+  skinToneId          Int      @default(1)
+  hairStyleId         Int      @default(1)
+  hairColorId         Int      @default(1)
+  eyeShapeId          Int      @default(1)
+  eyeColorId          Int      @default(1)
+  outfitId            Int      @default(1)
+  accessories         Int[]    @default([])
+  unlockedOutfits     Int[]    @default([1])
+  unlockedAccessories Int[]    @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ConsentRequest {
+  id            String               @id @default(uuid())
+  userId        String
+  parentEmail   String
+  token         String               @unique
+  status        ConsentRequestStatus @default(PENDING)
+  sentAt        DateTime             @default(now())
+  approvedAt    DateTime?
+  approvedIp    String?
+  expiresAt     DateTime
+  reminder1Sent Boolean              @default(false)
+  reminder2Sent Boolean              @default(false)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CycleProfile {
+  id                       String      @id @default(uuid())
+  userId                   String      @unique
+  trackerMode              TrackerMode @default(watching_waiting)
+  lastPeriodStart          DateTime?
+  lastPeriodEnd            DateTime?
+  avgCycleLength           Float?
+  setupCompletedAt         DateTime?
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+  avgPeriodDuration        Float?
+  coefficientOfVar         Float?
+  confidenceLevel          String      @default("none")
+  currentCycleDay          Int?
+  currentLogStreak         Int         @default(0)
+  currentPhase             String      @default("waiting")
+  federatedLearningConsent Boolean     @default(false)
+  lastLogDate              DateTime?
+  longestLogStreak         Int         @default(0)
+  patternCache             Json?
+  predictedNextEnd         DateTime?
+  predictedNextStart       DateTime?
+  predictionWindowEarly    DateTime?
+  predictionWindowLate     DateTime?
+  showFertilityWindow      Boolean     @default(false)
+  stdCycleLength           Float?
+  user                     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CycleLog {
+  id             String   @id @default(uuid())
+  userId         String
+  date           DateTime
+  flow           String?
+  symptoms       String[]
+  createdAt      DateTime @default(now())
+  activityTags   String[]
+  crampIntensity Int?
+  energyLevel    Int?
+  hasVoiceNote   Boolean  @default(false)
+  isRetroactive  Boolean  @default(false)
+  moodPrimary    String?
+  moodSecondary  String[]
+  noteCiphertext String?
+  noteIv         String?
+  nutritionTags  String[]
+  sleepHours     Float?
+  sleepQuality   Int?
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model CycleRecord {
+  id                  String    @id @default(uuid())
+  userId              String
+  cycleNumber         Int
+  startDate           DateTime
+  endDate             DateTime?
+  periodStartDate     DateTime
+  periodEndDate       DateTime?
+  cycleLengthDays     Int?
+  periodDurationDays  Int?
+  isComplete          Boolean   @default(false)
+  avgCrampIntensity   Float?
+  mostCommonSymptoms  String[]
+  predictedStartDate  DateTime?
+  predictionErrorDays Int?
+  createdAt           DateTime  @default(now())
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, cycleNumber])
+}
+
+model LearningJourney {
+  id             String      @id @default(uuid())
+  title          String
+  description    String
+  ageBand        String?
+  topics         String[]    @default([])
+  goals          String[]    @default([])
+  tags           String[]    @default([])
+  contentTone    String      @default("moderate")
+  minContentTier ContentTier @default(TEEN_EARLY)
+  bannerImage    String?
+  category       String?
+  createdAt      DateTime    @default(now())
+  isActive       Boolean     @default(true)
+  slug           String      @unique @default(uuid())
+  thumbnailUrl   String?
+  totalXP        Int         @default(0)
+  updatedAt      DateTime    @updatedAt
+  episodes       Episode[]
+}
+
+model Episode {
+  id           String          @id @default(uuid())
+  journeyId    String
+  order        Int             @default(0)
+  title        String
+  content      Json            @default("[]")
+  points       Int             @default(50)
+  createdAt    DateTime        @default(now())
+  description  String?
+  isActive     Boolean         @default(true)
+  slug         String          @unique @default(uuid())
+  updatedAt    DateTime        @updatedAt
+  journey      LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  reflections  Reflection[]
+  userProgress UserProgress[]
+}
+
+model UserProgress {
+  id               String   @id @default(uuid())
+  userId           String
+  episodeId        String
+  completed        Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+  completedItems   Json     @default("[]")
+  lastViewedItemId String?
+  episode          Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, episodeId])
+}
+
+model Reflection {
+  id        String   @id @default(uuid())
+  userId    String
+  episodeId String
+  content   String?
+  voiceUrl  String?
+  isPrivate Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([episodeId])
+}
+
+model Quest {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  type        String
+  points      Int
+  userQuests  UserQuest[]
+}
+
+model UserQuest {
+  id          String   @id @default(uuid())
+  userId      String
+  questId     String
+  completedAt DateTime @default(now())
+  quest       Quest    @relation(fields: [questId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String
+  description String
+  iconUrl     String
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  badgeId   String
+  awardedAt DateTime @default(now())
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Subscription {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  tier      String
+  status    String
+  expiresAt DateTime?
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model NotificationHistory {
+  id       String    @id
+  userId   String
+  type     String
+  title    String
+  body     String
+  deepLink String?
+  payload  Json?     @default("{}")
+  sentAt   DateTime  @default(now())
+  openedAt DateTime?
+  User     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sentAt])
+  @@index([userId, type])
+}
+
+model NotificationPreferences {
+  id                String   @id
+  userId            String   @unique
+  periodPrediction  Boolean  @default(true)
+  dailyReminder     Boolean  @default(true)
+  dailyReminderTime String   @default("20:00")
+  symptomPatterns   Boolean  @default(true)
+  latePeriod        Boolean  @default(true)
+  streakAtRisk      Boolean  @default(true)
+  monthlyInsights   Boolean  @default(false)
+  phaseChange       Boolean  @default(false)
+  doctorConnect     Boolean  @default(true)
+  cycleMilestones   Boolean  @default(true)
+  globalEnabled     Boolean  @default(true)
+  updatedAt         DateTime
+  User              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
 enum UserRole {
   TEEN
@@ -17,17 +428,17 @@ enum UserRole {
 }
 
 enum ContentTier {
-  JUNIOR // under 13
-  TEEN_EARLY // 13–15
-  TEEN_LATE // 16–17
-  ADULT // 18+
+  JUNIOR
+  TEEN_EARLY
+  TEEN_LATE
+  ADULT
 }
 
 enum AccountStatus {
-  PENDING_SETUP // onboarding in progress
-  PENDING_CONSENT // awaiting COPPA parental approval
-  ACTIVE_MINOR // under 13, parent approved
-  ACTIVE // 13+, fully active
+  PENDING_SETUP
+  PENDING_CONSENT
+  ACTIVE_MINOR
+  ACTIVE
   SUSPENDED
   DELETED
 }
@@ -50,107 +461,6 @@ enum ConsentRequestStatus {
   EXPIRED
 }
 
-// ─── Core User ────────────────────────────────────────────────────────────────
-
-model User {
-  id    String   @id @default(uuid())
-  phone String   @unique // E.164 format, e.g. +919876543210
-  role  UserRole @default(TEEN)
-
-  // Auth Tracking (Aligned with reference)
-  isTestNumber  Boolean   @default(false)
-  otpSendOn     DateTime?
-  otpRetryCount Int       @default(0)
-
-  // Age (month+year only, never exact date — privacy by design)
-  birthMonth  Int? // 1–12
-  birthYear   Int? // YYYY
-  ageAtSignup Int? // computed on register
-
-  // Onboarding state
-  contentTier           ContentTier?
-  accountStatus         AccountStatus @default(PENDING_SETUP)
-  onboardingStep        Int           @default(0)
-  onboardingCompletedAt DateTime?
-
-  // Compliance
-  termsAcceptedAt      DateTime?
-  privacyAcceptedAt    DateTime?
-  marketingOptIn       Boolean   @default(false)
-  coppaConsentRequired Boolean   @default(false)
-  coppaConsentGranted  Boolean?
-  coppaConsentAt       DateTime?
-  parentEmail          String?
-
-  // Locale
-  locale   String  @default("en")
-  timezone String?
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  profile         Profile?
-  avatar          UserAvatar?
-  cycleProfile    CycleProfile?
-  personalization PersonalizationProfile?
-  consentRequests ConsentRequest[]
-  cycleLogs       CycleLog[]
-  progress        UserProgress[]
-  userQuests      UserQuest[]
-  userBadges      UserBadge[]
-  subscription    Subscription?
-  reflections     Reflection[]
-  cycleRecords    CycleRecord[]
-
-  // Gigi Chat
-  chatSessions    ChatSession[]
-  escalations     EscalationEvent[]
-
-  // Expert Chat
-  expertSessions  ExpertChatSession[] @relation("UserSessions")
-  expertChats     ExpertChatSession[] @relation("ExpertSessions")
-}
-
-// ─── Expert Chat ─────────────────────────────────────────────────────────────
-
-model ExpertChatSession {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
-  
-  expertId  String
-  expert    User     @relation("ExpertSessions", fields: [expertId], references: [id], onDelete: Cascade)
-  
-  status    String   @default("active") // active | resolved | closed
-  
-  messages  ExpertChatMessage[]
-  
-  lastMsgAt DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([expertId])
-}
-
-model ExpertChatMessage {
-  id        String   @id @default(uuid())
-  sessionId String
-  session   ExpertChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  senderId  String
-  content   String   @db.Text
-  isRead    Boolean  @default(false)
-  
-  createdAt DateTime @default(now())
-
-  @@index([sessionId])
-}
-
-// ─── Gigi Chat ───────────────────────────────────────────────────────────────
-
 enum ChatSender {
   USER
   GIGI
@@ -158,382 +468,291 @@ enum ChatSender {
 }
 
 enum EscalationLevel {
-  LEVEL_0 // Passive
-  LEVEL_1 // Watchlist
-  LEVEL_2 // Active Flag
-  LEVEL_3 // Priority Alert
-  LEVEL_4 // CRITICAL
+  LEVEL_0
+  LEVEL_1
+  LEVEL_2
+  LEVEL_3
+  LEVEL_4
 }
 
-model ChatSession {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+// ─── Community & PeerLine ───────────────────────────────────────────────────
+
+enum PostStatus {
+  PENDING_AI
+  PENDING_HUMAN
+  APPROVED
+  REMOVED
+  AUTHOR_DELETED
+}
+
+enum ModerationDecision {
+  APPROVE
+  HOLD
+  REMOVE
+  ESCALATE
+}
+
+enum PeerLineStatus {
+  MATCHING
+  QUEUED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum CrisisSeverity {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AppealStatus {
+  PENDING
+  UPHELD
+  OVERTURNED
+}
+
+model CommunityCircle {
+  id                String          @id @default(uuid())
+  slug              String          @unique
+  name              String
+  description       String?
+  iconEmoji         String?
+  accentColor       String?         // hex color
+  minContentTier    ContentTier?
+  maxContentTier    ContentTier?
+  requiresPreReview Boolean         @default(false)
+  isAgeSpecific     Boolean         @default(false)
+  sortOrder         Int             @default(0)
+  isActive          Boolean         @default(true)
   
-  title     String?  // Optional session title
-  isActive  Boolean  @default(true)
+  posts             CommunityPost[]
+  activityLogs      CommunityActivityLog[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model CommunityEvent {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  venue           String?
+  city            String?
+  startDate       DateTime
+  endDate         DateTime?
+  imageUrl        String?
+  isOnline        Boolean  @default(false)
+  link            String?
+  isAgeRestricted Boolean  @default(false)
+  minAge          Int?
+  maxAge          Int?
   
-  // High-level session metadata
-  maxDistressLevel EscalationLevel @default(LEVEL_0)
-  lastMsgAt        DateTime        @default(now())
+  attendeeCount   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model WeeklyChallenge {
+  id                String          @id @default(uuid())
+  theme             String
+  description       String?
+  startDate         DateTime
+  endDate           DateTime
+  promptsByCircle   Json            // { circleId: prompt }
   
-  messages  ChatMessage[]
+  posts             CommunityPost[]
+  createdAt         DateTime        @default(now())
+}
+
+model CommunityPost {
+  id                  String          @id @default(uuid())
+  circleId            String
+  circle              CommunityCircle @relation(fields: [circleId], references: [id])
+  authorId            String
+  author              User            @relation(fields: [authorId], references: [id])
   
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model ChatMessage {
-  id        String   @id @default(uuid())
-  sessionId String
-  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  content             String          @db.Text
+  status              PostStatus      @default(PENDING_AI)
+  isPinned            Boolean         @default(false)
   
-  sender    ChatSender
-  content   String      @db.Text
+  isChallengeResponse Boolean         @default(false)
+  challengeId         String?
+  challenge           WeeklyChallenge? @relation(fields: [challengeId], references: [id])
+  isFeatured          Boolean         @default(false)
+
+  // Moderation
+  aiDecision          ModerationDecision?
+  aiConfidence        Float?
+  aiFlags             Json            @default("{}")
+  crisisSeverity      CrisisSeverity  @default(NONE)
+  humanReviewed       Boolean         @default(false)
+  humanDecision       ModerationDecision?
+  reviewedBy          String?         // moderator user id
+  reviewedAt          DateTime?
   
-  // Metadata for safety and analytics
-  metadata  Json?       // Store sentiment, moderation flags, etc.
+  // Aggregates
+  reactionHeart       Int             @default(0)
+  reactionHug         Int             @default(0)
+  reactionBulb        Int             @default(0)
+  reactionFist        Int             @default(0)
+  replyCount          Int             @default(0)
+
+  replies             CommunityReply[]
+  bookmarks           CommunityBookmark[]
+  createdAt           DateTime        @default(now())
+  publishedAt         DateTime?
+  updatedAt           DateTime        @updatedAt
+  deletedAt           DateTime?
+
+  @@index([circleId, publishedAt(sort: Desc)])
+}
+
+model CommunityReply {
+  id              String          @id @default(uuid())
+  postId          String
+  post            CommunityPost   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentReplyId   String?
+  parentReply     CommunityReply? @relation("Thread", fields: [parentReplyId], references: [id])
+  childReplies    CommunityReply[] @relation("Thread")
   
-  createdAt DateTime @default(now())
-
-  @@index([sessionId])
-}
-
-model EscalationEvent {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  depth           Int             @default(1)
+  authorId        String
+  author          User            @relation(fields: [authorId], references: [id])
+  content         String          @db.Text
   
-  sessionId String?
-  level     EscalationLevel
-  reason    String     // e.g., "Harm detected", "User requested human"
+  status          PostStatus      @default(PENDING_AI)
+  aiDecision      ModerationDecision?
+  crisisSeverity  CrisisSeverity  @default(NONE)
+  humanReviewed   Boolean         @default(false)
   
-  resolvedAt DateTime?
-  resolvedBy String?    // Admin/Moderator ID
+  reactionHeart   Int             @default(0)
+  reactionHug     Int             @default(0)
+  reactionBulb    Int             @default(0)
+  reactionFist    Int             @default(0)
+  bookmarks       CommunityBookmark[]
   
-  createdAt DateTime @default(now())
+  createdAt       DateTime        @default(now())
+  publishedAt     DateTime?
+  deletedAt       DateTime?
 
-  @@index([userId])
+  @@index([postId, publishedAt(sort: Asc)])
 }
 
+model PostReaction {
+  id          String   @id @default(uuid())
+  contentId   String   // post_id or reply_id
+  contentType String   // 'post' | 'reply'
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  reaction    String   // 'heart' | 'hug' | 'bulb' | 'fist'
+  createdAt   DateTime @default(now())
 
-// ─── Profile ──────────────────────────────────────────────────────────────────
-
-model Profile {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  displayName String
-  pronouns    String?
-  journeyName String?
-
-  // Gamification
-  totalPoints Int @default(0)
-  bloomLevel  Int @default(1)
+  @@unique([contentId, contentType, userId, reaction])
 }
 
-// ─── Personalization Profile (Stage 3 Quiz) ──────────────────────────────────
-
-model PersonalizationProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  goals              String[] // e.g. ['body', 'period', 'confidence']
-  periodComfortScore Int? // 1–5
-  periodStatus       String   @default("waiting") // active | waiting | unsure
-  periodContentTone  String   @default("moderate") // gentle | moderate | direct
-  interestTopics     String[] // e.g. ['body_health', 'mental_wellness']
-  contentWeights     Json     @default("{}") // ML-updated weights
-
-  quizCompletedAt DateTime?
-  lastUpdatedAt   DateTime  @default(now()) @updatedAt
+model ModerationLog {
+  id          String             @id @default(uuid())
+  contentId   String
+  contentType String
+  layer       String             // 'ai' | 'human' | 'senior' | 'clinical'
+  decision    ModerationDecision
+  reasonCode  String?
+  moderatorId String?
+  moderator   User?              @relation(fields: [moderatorId], references: [id])
+  createdAt   DateTime           @default(now())
 }
 
-// ─── Avatar ───────────────────────────────────────────────────────────────────
+model ModerationAppeal {
+  id          String       @id @default(uuid())
+  contentId   String
+  contentType String       // 'post' | 'reply'
+  authorId    String
+  author      User         @relation(fields: [authorId], references: [id])
+  reason      String       @db.Text
+  status      AppealStatus @default(PENDING)
+  decisionAt  DateTime?
+  decidedBy   String?      // moderator user id
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
-model UserAvatar {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  bodyTypeId  Int   @default(1)
-  skinToneId  Int   @default(1)
-  hairStyleId Int   @default(1)
-  hairColorId Int   @default(1)
-  eyeShapeId  Int   @default(1)
-  eyeColorId  Int   @default(1)
-  outfitId    Int   @default(1)
-  accessories Int[] @default([])
-
-  unlockedOutfits     Int[] @default([1])
-  unlockedAccessories Int[] @default([])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([contentId])
+  @@index([authorId])
 }
 
-// ─── COPPA Consent Requests ───────────────────────────────────────────────────
-
-model ConsentRequest {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  parentEmail String
-  token       String               @unique // JWT-signed, 7-day expiry
-  status      ConsentRequestStatus @default(PENDING)
-
-  sentAt     DateTime  @default(now())
-  approvedAt DateTime?
-  approvedIp String?
-  expiresAt  DateTime
-
-  reminder1Sent Boolean @default(false)
-  reminder2Sent Boolean @default(false)
-}
-
-// ─── Cycle Profile (Period Tracker Setup) ────────────────────────────────────
-
-model CycleProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  trackerMode TrackerMode @default(watching_waiting)
-
-  // Baseline statistics (updated after each complete cycle)
-  avgCycleLength      Float?
-  stdCycleLength      Float?
-  avgPeriodDuration   Float?
-  coefficientOfVar    Float?    // CV% for irregular classification
-
-  // Prediction state
-  lastPeriodStart       DateTime?
-  lastPeriodEnd         DateTime?
-  predictedNextStart    DateTime?
-  predictedNextEnd      DateTime?
-  predictionWindowEarly DateTime?
-  predictionWindowLate  DateTime?
-
-  confidenceLevel      String    @default("none") // none | getting_started | building | confident | high | irregular
-  currentPhase         String    @default("waiting") // menstrual | follicular | ovulation | luteal | waiting
-  currentCycleDay      Int?
-
-  // Settings
-  showFertilityWindow      Boolean @default(false)
-  federatedLearningConsent Boolean @default(false)
-
-  // Log streak
-  currentLogStreak    Int       @default(0)
-  longestLogStreak    Int       @default(0)
-  lastLogDate         DateTime?
-
-  setupCompletedAt DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  // Cache for ML insights
-  patternCache Json?
-
-  @@index([userId])
-}
-
-// ─── Cycle Logs (Daily Tracking) ─────────────────────────────────────────────
-
-model CycleLog {
-  id            String   @id @default(uuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  date          DateTime
-  isRetroactive Boolean  @default(false)
-
-  // Period Flow
-  flow          String?  // none | light | medium | heavy | spotting | ended
-
-  // Physical Symptoms
-  crampIntensity Int?     // 1–5 intensity
-  symptoms       String[] // standardized codes array
-
-  // Mood Wheel (16-state)
-  moodPrimary    String?
-  moodSecondary  String[]
-
-  // Wellbeing
-  energyLevel    Int?     // 1–5
-  sleepQuality   Int?     // 1–5
-  sleepHours     Float?
-
-  // Lifestyle
-  nutritionTags  String[]
-  activityTags   String[]
-
-  // Private Note (Encrypted)
-  noteCiphertext String?
-  noteIv         String?
-  hasVoiceNote   Boolean  @default(false)
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@unique([userId, date])
-  @@index([userId, date])
-}
-
-// ─── Cycle Records (Historical Cycles) ───────────────────────────────────────
-
-model CycleRecord {
-  id                  String   @id @default(uuid())
-  userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cycleNumber         Int
-  startDate           DateTime
-  endDate             DateTime?
-  periodStartDate     DateTime
-  periodEndDate       DateTime?
-  cycleLengthDays     Int?
-  periodDurationDays  Int?
-  isComplete          Boolean  @default(false)
-
-  // Aggregated stats
-  avgCrampIntensity   Float?
-  mostCommonSymptoms  String[]
+model PeerLineSession {
+  id                String          @id @default(uuid())
+  menteeId          String
+  mentee            User            @relation("MenteeSessions", fields: [menteeId], references: [id])
+  mentorId          String?
+  mentor            User?           @relation("MentorSessions", fields: [mentorId], references: [id])
   
-  // Prediction comparison
-  predictedStartDate  DateTime?
-  predictionErrorDays Int?
+  topicIds          String[]
+  status            PeerLineStatus  @default(MATCHING)
+  requestedVerified Boolean         @default(false)
+  
+  matchedAt         DateTime?
+  startedAt         DateTime?
+  endedAt           DateTime?
+  endReason         String?         // 'mentee_ended'|'mentor_ended'|'timeout'|'crisis'
+  
+  menteeRating      Int?
+  mentorRating      Int?
+  hadCrisisFlag     Boolean         @default(false)
+  
+  // Feedback & Moderation
+  menteeNote        String?         @db.Text
+  mentorSelfRating  Int?
+  mentorWellbeingOk Boolean?
+  mentorNeedsSupport Boolean?
+  mentorReadyForNext Boolean?
+  mentorModerationFlag Boolean?
+  mentorNote        String?         @db.Text
 
-  createdAt           DateTime @default(now())
-
-  @@index([userId, cycleNumber])
+  
+  messages          PeerLineMessage[]
+  createdAt         DateTime        @default(now())
 }
 
-// ─── Learning ─────────────────────────────────────────────────────────────────
-
-model LearningJourney {
-  id           String  @id @default(uuid())
-  title        String
-  slug         String  @unique @default(uuid())
-  description  String
-  thumbnailUrl String?
-  bannerImage  String?
-  totalXP      Int     @default(0)
-  category     String?
-  isActive     Boolean @default(true)
-
-  ageBand        String?
-  topics         String[]    @default([])
-  goals          String[]    @default([])
-  tags           String[]    @default([])
-  contentTone    String      @default("moderate")
-  minContentTier ContentTier @default(TEEN_EARLY)
-
-  episodes  Episode[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Episode {
+model PeerLineMessage {
   id          String          @id @default(uuid())
-  journeyId   String
-  journey     LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
-  title       String
-  slug        String          @unique @default(uuid())
-  description String?
-  order       Int             @default(0)
-  content     Json            @default("[]") // Structured JSON for 5 segments
-  points      Int             @default(50)
-  isActive    Boolean         @default(true)
+  sessionId   String
+  session     PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  senderRole  String          // 'mentee' | 'mentor' | 'system'
+  content     String          @db.Text
+  crisisFlag  Boolean         @default(false)
+  isRead      Boolean         @default(false)
+  sentAt      DateTime        @default(now())
 
-  userProgress UserProgress[]
-  reflections  Reflection[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  @@index([sessionId, sentAt(sort: Asc)])
 }
 
-model UserProgress {
-  id        String  @id @default(uuid())
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  episodeId String
-  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+model CommunityActivityLog {
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  circleId      String
+  circle        CommunityCircle @relation(fields: [circleId], references: [id])
+  lastVisitedAt DateTime        @default(now())
 
-  completed        Boolean @default(false)
-  lastViewedItemId String?
-  completedItems   Json    @default("[]") // Tracking progress within the episode segments
-
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, episodeId])
+  @@unique([userId, circleId])
+  @@index([userId, circleId])
 }
 
-model Reflection {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  episodeId String
-  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-
-  content   String?  // Text journal entry
-  voiceUrl  String?  // Voice note URL
-  isPrivate Boolean  @default(true) // Toggle between Private Journal and Community Discussion
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([episodeId])
-}
-
-// ─── Quests ───────────────────────────────────────────────────────────────────
-
-model Quest {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  type        String
-  points      Int
-  userQuests  UserQuest[]
-}
-
-model UserQuest {
+model CommunityBookmark {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id])
-  questId     String
-  quest       Quest    @relation(fields: [questId], references: [id])
-  completedAt DateTime @default(now())
-}
+  postId      String?
+  post        CommunityPost? @relation(fields: [postId], references: [id])
+  replyId     String?
+  reply       CommunityReply? @relation(fields: [replyId], references: [id])
+  createdAt   DateTime @default(now())
 
-// ─── Badges ───────────────────────────────────────────────────────────────────
-
-model Badge {
-  id          String      @id @default(uuid())
-  name        String
-  description String
-  iconUrl     String
-  userBadges  UserBadge[]
-}
-
-model UserBadge {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  badgeId   String
-  badge     Badge    @relation(fields: [badgeId], references: [id])
-  awardedAt DateTime @default(now())
-}
-
-// ─── Subscription ─────────────────────────────────────────────────────────────
-
-model Subscription {
-  id        String    @id @default(uuid())
-  userId    String    @unique
-  user      User      @relation(fields: [userId], references: [id])
-  tier      String
-  status    String
-  expiresAt DateTime?
+  @@unique([userId, postId])
+  @@unique([userId, replyId])
+  @@index([userId, postId])
+  @@index([userId, replyId])
 }

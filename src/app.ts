@@ -15,6 +15,10 @@ import learningRoutes  from "./modules/learning/learning.routes.js";
 import questRoutes     from "./modules/quest/quest.routes.js";
 import chatRoutes      from "./modules/chat/chat.routes.js";
 import expertRoutes    from "./modules/expert/expert.routes.js";
+import communityRoutes from "./modules/community/community.routes.js";
+import peerlineRoutes  from "./modules/peerline/peerline.routes.js";
+import eventRoutes     from "./modules/events/events.routes.js";
+import safetyRoutes    from "./modules/safety/safety.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -48,6 +52,10 @@ app.use("/api/learning",    learningRoutes);
 app.use("/api/quest",       questRoutes);
 app.use("/api/chat",        chatRoutes);
 app.use("/api/expert",      expertRoutes);
+app.use("/api/community",   communityRoutes);
+app.use("/api/peerline",    peerlineRoutes);
+app.use("/api/events",      eventRoutes);
+app.use("/api/safety",      safetyRoutes);
 
 
 

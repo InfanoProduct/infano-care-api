@@ -5,6 +5,8 @@ import { prisma } from "./db/client.js";
 import { initTrackerJobs } from "./jobs/tracker.cron.js";
 import { Server } from "socket.io";
 import { setupExpertSocket } from "./modules/expert/socket.service.js";
+import { setupPeerLineSocket } from "./modules/peerline/peerline.socket.js";
+import { setupEventsSocket } from "./modules/events/events.socket.js";
 
 async function bootstrap() {
   try {
@@ -29,7 +31,9 @@ async function bootstrap() {
     });
 
     setupExpertSocket(io);
-    logger.info("Socket.io initialized and attached to Expert Chat.");
+    setupPeerLineSocket(io);
+    setupEventsSocket(io);
+    logger.info("Socket.io initialized and attached to Expert Chat, PeerLine, and Events.");
 
     const shutdown = async () => {
       logger.info("Gracefully shutting down...");
