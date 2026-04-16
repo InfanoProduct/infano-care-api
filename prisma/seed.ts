@@ -46,47 +46,126 @@ async function main() {
       points: 50,
       content: {
         hook: {
-          type: "A",
-          text: "Amara is in class and she feels it — a warm trickle. Her period has started. She has 3 hours until lunch. This is what she does next."
+          type: "cinematic",
+          text: "Meera is in class and she feels it — a warm trickle. Her period has started. She has 3 hours until lunch. But this time, she isn't panicking. She's ready. This is where her story begins."
         },
         story: {
-          title: "Meera's Discovery",
-          text: "Meera was nervous, but she remembered what her mom told her. She reached for her kit and realized she was prepared. 'It's not so bad,' she thought.",
-          interactiveMoments: [
-            { type: "tap-to-reveal", title: "Wait, what's a kit?", text: "A period kit contains pads, a clean pair of underwear, and maybe a small snack!" }
+          pages: [
+            "assets/images/book/page1.png",
+            "assets/images/book/page2.png",
+            "assets/images/book/page3.png",
+            "assets/images/book/page4.png",
+            "assets/images/book/page5.png",
+            "assets/images/book/page6.png",
+            "assets/images/book/page7.png"
           ]
         },
         knowledgeCheck: {
           questions: [
             {
-              type: "Single-choice",
-              question: "What is the first thing Meera did?",
-              options: ["Panicked", "Remembered her prep", "Left school", "Cried"],
-              correctIndex: 1,
-              explanation: "Being prepared helps stay calm!"
+              question: "Which of the following best describes puberty?",
+              options: [
+                "It starts at the same age for everyone.",
+                "It begins only after age 12.",
+                "It happens within a wide age range, unique to each person.",
+                "It depends only on lifestyle choices"
+              ],
+              correctIndex: 2,
+              feedback: "Puberty is a range (8–16), not a fixed timeline."
             },
             {
-              type: "True/False",
-              question: "A period kit is only for emergencies?",
+              question: "Meera starts noticing body changes at 12, while her friend hasn’t yet. What is the most accurate interpretation?",
+              options: [
+                "Meera is developing too early",
+                "Her friend is developing too late",
+                "One of them may have a health issue",
+                "They are on different but normal timelines"
+              ],
+              correctIndex: 3,
+              feedback: "Different timelines = normal variation."
+            },
+            {
+              question: "Meera feels overwhelmed by these changes. According to the story, what is the best way to handle this?",
+              options: [
+                "Ignore the feeling until it goes away",
+                "Acknowledge it and talk to a trusted person",
+                "Keep it a secret to avoid embarrassment",
+                "Compare yourself to others to see if it's normal"
+              ],
+              correctIndex: 1,
+              feedback: "Sharing your journey makes it less confusing."
+            },
+            {
+              question: "True or False: Most physical growth and repair happens while you are wide awake and active.",
               options: ["True", "False"],
               correctIndex: 1,
-              explanation: "It's for whenever you need it!"
+              feedback: "Sleep is when your body does its heavy lifting/growth!"
             },
             {
-              type: "Single-choice",
-              question: "How did Meera feel at the end?",
-              options: ["Scared", "Ready/Empowered", "Tired", "Angry"],
-              correctIndex: 1,
-              explanation: "Knowledge is power!"
+              question: "Meera sees a social media post of a girl who looks 'perfect.' How should she process this?",
+              options: [
+                "Filters and lighting create unrealistic standards",
+                "She should try to look exactly like that",
+                "Everyone else is developing faster than her",
+                "She is doing something wrong"
+              ],
+              correctIndex: 0,
+              feedback: "Pixel-perfect isn't real life."
+            },
+            {
+              question: "At the end of the day, Meera looks in the mirror. What is her most important realization?",
+              options: [
+                "Change is scary and bad",
+                "She needs to change her style",
+                "Her body is unique and on its own perfect clock",
+                "Puberty ends very quickly"
+              ],
+              correctIndex: 2,
+              feedback: "Acceptance is your greatest superpower."
             }
           ]
         },
-        reflection: {
-          prompt: "What's one thing you'd put in your own period kit?",
-          modes: ["private", "community"]
+        reflectionJournal: {
+          sections: [
+            {
+              id: "notice",
+              type: "text",
+              prompt: "Think about a moment recently when you noticed a change in your body… and it confused you.",
+              hint: "It could be anything—height, skin, feelings, energy, or something you didn’t expect."
+            },
+            {
+              id: "feelings",
+              type: "emotion-chips",
+              prompt: "How did that moment make you feel?",
+              options: ["Confused", "Worried", "Embarrassed", "Curious", "Neutral", "Something else"]
+            },
+            {
+              id: "comparison",
+              type: "choice-conditional",
+              prompt: "Were you comparing yourself to someone in that moment?",
+              options: ["Yes", "No", "Not sure"],
+              followUp: {
+                trigger: "Yes",
+                prompt: "Who were you comparing yourself to? And what felt different?",
+                hint: "Maybe a friend, a sibling, or someone online?"
+              }
+            },
+            {
+              id: "reframe",
+              type: "text",
+              prompt: "If you could go back to that moment, what would you tell yourself?",
+              hint: "Example: 'It’s okay to be different,' or 'I’m not late, I’m just me.'"
+            },
+            {
+              id: "affirmation",
+              type: "completion",
+              prompt: "Complete this sentence: My body is not late or early. It is...",
+              hint: "e.g., 'Exactly where it needs to be', 'Growing in its own way'"
+            }
+          ]
         },
         summary: {
-          text: "You're off to a great start! You've learned that being prepared is half the battle."
+          text: "You've taken a huge step today. Understanding your timeline is the first key to owning your story. Remember: your body is on your side!"
         }
       }
     }
