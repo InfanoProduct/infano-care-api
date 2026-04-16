@@ -44,19 +44,21 @@ export class LearningService {
   /**
    * Updates progress within an episode (e.g. segment navigation).
    */
-  static async updateEpisodeProgress(userId: string, episodeId: string, completedItems: any[] = [], lastViewedItemId?: string) {
+  static async updateEpisodeProgress(userId: string, episodeId: string, completedItems: any[] = [], lastViewedItemId?: string, history?: any) {
     const progress = await prisma.userProgress.upsert({
       where: { userId_episodeId: { userId, episodeId } },
       update: {
         completedItems,
         lastViewedItemId,
+        history,
         updatedAt: new Date(),
       },
       create: {
         userId,
         episodeId,
         completedItems,
-        lastViewedItemId
+        lastViewedItemId,
+        history
       },
     });
     return progress;

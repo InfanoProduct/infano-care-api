@@ -50,4 +50,27 @@ router.get("/me", UserController.getMe);
  */
 router.patch("/onboarding-step", UserController.updateOnboardingStep);
 
+/**
+ * @openapi
+ * /api/user/register-fcm-token:
+ *   post:
+ *     summary: Register an FCM token for the current user
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fcmToken]
+ *             properties:
+ *               fcmToken: { type: string }
+ *     responses:
+ *       200:
+ *         description: Token registered successfully
+ */
+router.post("/register-fcm-token", UserController.registerFcmToken);
+
 export default router;

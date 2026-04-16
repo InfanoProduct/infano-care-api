@@ -45,71 +45,10 @@ const otpLimiter = rateLimit({
  *         description: Invalid phone number.
  */
 router.post("/otp/send",    otpLimiter, AuthController.sendOtp);
-
-/**
- * @openapi
- * /api/auth/otp/verify:
- *   post:
- *     summary: Verify OTP and Login
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - phone
- *               - otp
- *             properties:
- *               phone:
- *                 type: string
- *                 example: "+919876543210"
- *               otp:
- *                 type: string
- *                 example: "1234"
- *     responses:
- *       200:
- *         description: Login successful.
- *       401:
- *         description: Invalid OTP.
- */
 router.post("/otp/verify",  otpLimiter, AuthController.verifyOtp);
+router.post("/login",       AuthController.login);
+router.post("/refresh",     AuthController.refresh);
 
-/**
- * @openapi
- * /api/auth/refresh:
- *   post:
- *     summary: Refresh Access Token
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - refreshToken
- *             properties:
- *               refreshToken:
- *                 type: string
- *     responses:
- *       200:
- *         description: Tokens refreshed.
- */
-router.post("/refresh",                AuthController.refresh);
-
-/**
- * @openapi
- * /api/auth/logout:
- *   post:
- *     summary: Logout
- *     tags: [Auth]
- *     responses:
- *       200:
- *         description: Logged out successfully.
- */
-router.post("/login",                  AuthController.login);
 router.post("/logout",                 AuthController.logout);
 
 export default router;

@@ -32,6 +32,8 @@ const envSchema = z.object({
   LOG_DRIVER: z.enum(["pretty", "gelf", "json"]).optional().default("json"),
   CRYPTO_KEY: z.string().length(64).default("0".repeat(64)), // 32 bytes in hex
   JWT_ACCESS_SECRET: z.string().default("infano_access_secret_dev"),
+  FIREBASE_SERVICE_ACCOUNT_PATH: z.string().optional(),
+  FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

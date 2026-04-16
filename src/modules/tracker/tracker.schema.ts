@@ -41,3 +41,10 @@ export const trackerSetupSchema = z.object({
     federatedLearningConsent: z.boolean().optional().default(false),
   }),
 });
+
+export const updatePeriodRangeSchema = z.object({
+  body: z.object({
+    startDate: z.string().datetime(),
+    endDate: z.string().datetime(),
+  }),
+});
