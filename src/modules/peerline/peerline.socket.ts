@@ -36,6 +36,18 @@ export function setupPeerLineSocket(serverIo: Server) {
       socket.leave('availability_updates');
     });
 
+    socket.on('subscribe_mentor_updates', async () => {
+      socket.join('mentor_updates');
+      logger.info({ socketId: socket.id }, 'Socket joined mentor_updates channel');
+      // Send initial queue count
+      const stats = await getPeerLineService().getMentorStats((socket as any).userId);
+      socket.emit('queue_count_update', { count: stats.queueCount });
+    });
+
+    socket.on('unsubscribe_mentor_updates', () => {
+      socket.leave('mentor_updates');
+    });
+
     socket.on('subscribe_session', (sessionId: string) => {
       socket.join(`session_${sessionId}`);
       logger.info({ socketId: socket.id, sessionId }, 'Socket joined session channel');
@@ -50,14 +62,19 @@ export function setupPeerLineSocket(serverIo: Server) {
       socket.leave(`session_${sessionId}`);
     });
 
-    socket.on('send_message', async (data: { sessionId: string; content: string; senderRole: 'mentee' | 'mentor' }) => {
+    socket.on('send_message', async (data: { sessionId: string; content: string; senderRole: 'mentee' | 'mentor'; clientId?: string }) => {
       try {
         const uid = (socket as any).userId;
         logger.info({ uid, data }, 'Received send_message on socket');
         const message = await getPeerLineService().createMessage(uid, data.sessionId, data.content, data.senderRole);
 
         logger.info({ sessionId: data.sessionId, messageId: message.id }, 'Message created, broadcasting to room');
-        nsp.to(`session_${data.sessionId}`).emit('message', { type: 'message', ...message });
+        nsp.to(`session_${data.sessionId}`).emit('message', { 
+          type: 'message', 
+          sessionId: data.sessionId,
+          clientId: data.clientId, // Echo back the clientId for deduplication
+          ...message 
+        });
 
         if (message.crisisFlag) {
           const resources = await new (await import('../safety/safety.service.js')).SafetyService().getCrisisResources('en-IN');
@@ -131,4 +148,15 @@ export async function broadcastSessionReady(sessionId: string, menteeId: string)
   nsp.to(`session_${sessionId}`).emit('session_ready', { sessionId });
   nsp.to(`user_${menteeId}`).emit('session_ready', { sessionId });
   logger.info({ sessionId, menteeId }, 'Broadcasted session ready');
+}
+
+export async function broadcastQueueUpdate() {
+  if (!nsp) return;
+  try {
+    // This is a simplified version. For true accuracy, we'd need to emit per topic.
+    // For now, we broadcast a general update alert, and mentors fetch their specific count.
+    nsp.to('mentor_updates').emit('queue_count_changed');
+  } catch (error) {
+    logger.error({ error }, 'Failed to broadcast queue update');
+  }
 }

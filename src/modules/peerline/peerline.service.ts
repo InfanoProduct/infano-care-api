@@ -94,6 +94,22 @@ export class PeerLineService {
     });
 
     if (existingSession) {
+      if (existingSession.status === PeerLineStatus.ACTIVE && existingSession.mentorId) {
+        const mentorProfile = await prisma.profile.findUnique({
+          where: { userId: existingSession.mentorId }
+        });
+        
+        // If mentor is no longer available, reset the session to QUEUED
+        const now = new Date();
+        const isOffline = !mentorProfile?.isAvailable || (mentorProfile?.unavailableUntil && mentorProfile.unavailableUntil > now);
+        
+        if (isOffline) {
+          return await prisma.peerLineSession.update({
+            where: { id: existingSession.id },
+            data: { status: PeerLineStatus.QUEUED, mentorId: null }
+          });
+        }
+      }
       return existingSession;
     }
 
@@ -110,6 +126,14 @@ export class PeerLineService {
         requestedVerified: input.requestVerified ?? false,
       },
     });
+
+    // 4. Update queue for mentors via socket
+    try {
+      const socketModule = await import('./peerline.socket.js');
+      await socketModule.broadcastQueueUpdate();
+    } catch (e) {
+      console.error('[PeerLine] Socket broadcast failed after request:', e);
+    }
 
     return session;
   }
@@ -342,6 +366,10 @@ export class PeerLineService {
 
     if (!session || (session.menteeId !== userId && session.mentorId !== userId)) {
       throw new Error('Unauthorized');
+    }
+
+    if (session.status === PeerLineStatus.COMPLETED || session.status === PeerLineStatus.CANCELLED) {
+      return session; // Already ended
     }
 
     const updatedSession = await prisma.peerLineSession.update({
@@ -595,6 +623,7 @@ export class PeerLineService {
     try {
       const socketModule = await import('./peerline.socket.js');
       socketModule.broadcastSessionReady(claimedSession.id, claimedSession.menteeId);
+      socketModule.broadcastQueueUpdate(); // Notify other mentors that queue size changed
     } catch (socketError) {
       console.error('[PeerLine] Socket broadcast failed after successful claim:', socketError);
     }
