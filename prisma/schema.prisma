@@ -36,8 +36,8 @@ model User {
   chatSessions                                   ChatSession[]
   CommunityActivityLog                           CommunityActivityLog[]
   CommunityBookmark                              CommunityBookmark[]
-  CommunityPost                                  CommunityPost[]
-  CommunityReply                                 CommunityReply[]
+  posts                                          CommunityPost[]          @relation("UserPosts")
+  replies                                        CommunityReply[]         @relation("UserReplies")
   consentRequests                                ConsentRequest[]
   cycleLogs                                      CycleLog[]
   cycleProfile                                   CycleProfile?
@@ -48,8 +48,8 @@ model User {
   ModerationLog                                  ModerationLog[]
   notificationHistory                            NotificationHistory[]
   NotificationPreferences                        NotificationPreferences?
-  PeerLineSession_PeerLineSession_menteeIdToUser PeerLineSession[]        @relation("PeerLineSession_menteeIdToUser")
-  PeerLineSession_PeerLineSession_mentorIdToUser PeerLineSession[]        @relation("PeerLineSession_mentorIdToUser")
+  menteeSessions                                 PeerLineSession[]        @relation("PeerLineSession_menteeIdToUser")
+  mentorSessions                                 PeerLineSession[]        @relation("PeerLineSession_mentorIdToUser")
   personalization                                PersonalizationProfile?
   PostReaction                                   PostReaction[]
   profile                                        Profile?
@@ -59,19 +59,23 @@ model User {
   userBadges                                     UserBadge[]
   progress                                       UserProgress[]
   userQuests                                     UserQuest[]
+  ModerationAppeal                               ModerationAppeal[]
 }
 
 model Profile {
-  id                String   @id @default(uuid())
-  userId            String   @unique
-  displayName       String
-  pronouns          String?
-  journeyName       String?
-  totalPoints       Int      @default(0)
-  bloomLevel        Int      @default(1)
-  mentorStatus      String   @default("none")
-  certifiedTopicIds String[] @default([])
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  displayName          String
+  pronouns             String?
+  journeyName          String?
+  totalPoints          Int       @default(0)
+  bloomLevel           Int       @default(1)
+  mentorStatus         String    @default("none")
+  certifiedTopicIds    String[]  @default([])
+  isAvailable          Boolean   @default(false)
+  unavailableUntil     DateTime?
+  pendingSafetyCheckin Boolean   @default(false)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PersonalizationProfile {
@@ -416,7 +420,7 @@ model EscalationEvent {
 }
 
 model CommunityActivityLog {
-  id              String          @id
+  id              String          @id @default(uuid())
   userId          String
   circleId        String
   lastVisitedAt   DateTime        @default(now())
@@ -428,13 +432,13 @@ model CommunityActivityLog {
 }
 
 model CommunityBookmark {
-  id             String          @id
+  id             String          @id @default(uuid())
   userId         String
   postId         String?
   createdAt      DateTime        @default(now())
   replyId        String?
-  CommunityPost  CommunityPost?  @relation(fields: [postId], references: [id])
-  CommunityReply CommunityReply? @relation(fields: [replyId], references: [id])
+  post           CommunityPost?  @relation("PostBookmarks", fields: [postId], references: [id])
+  reply          CommunityReply? @relation("ReplyBookmarks", fields: [replyId], references: [id])
   User           User            @relation(fields: [userId], references: [id])
 
   @@unique([userId, postId])
@@ -444,7 +448,7 @@ model CommunityBookmark {
 }
 
 model CommunityCircle {
-  id                   String                 @id
+  id                   String                 @id @default(uuid())
   slug                 String                 @unique
   name                 String
   description          String?
@@ -457,13 +461,13 @@ model CommunityCircle {
   sortOrder            Int                    @default(0)
   isActive             Boolean                @default(true)
   createdAt            DateTime               @default(now())
-  updatedAt            DateTime
+  updatedAt            DateTime               @updatedAt
   CommunityActivityLog CommunityActivityLog[]
   CommunityPost        CommunityPost[]
 }
 
 model CommunityEvent {
-  id              String    @id
+  id              String    @id @default(uuid())
   title           String
   description     String?
   venue           String?
@@ -478,11 +482,11 @@ model CommunityEvent {
   maxAge          Int?
   attendeeCount   Int       @default(0)
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime  @updatedAt
 }
 
 model CommunityPost {
-  id                  String              @id
+  id                  String              @id @default(uuid())
   circleId            String
   authorId            String
   content             String
@@ -506,19 +510,19 @@ model CommunityPost {
   replyCount          Int                 @default(0)
   createdAt           DateTime            @default(now())
   publishedAt         DateTime?
-  updatedAt           DateTime
+  updatedAt           DateTime            @updatedAt
   deletedAt           DateTime?
-  CommunityBookmark   CommunityBookmark[]
-  User                User                @relation(fields: [authorId], references: [id])
-  WeeklyChallenge     WeeklyChallenge?    @relation(fields: [challengeId], references: [id])
-  CommunityCircle     CommunityCircle     @relation(fields: [circleId], references: [id])
+  bookmarks           CommunityBookmark[] @relation("PostBookmarks")
+  author              User                @relation("UserPosts", fields: [authorId], references: [id])
+  challenge           WeeklyChallenge?    @relation(fields: [challengeId], references: [id])
+  circle              CommunityCircle     @relation(fields: [circleId], references: [id])
   CommunityReply      CommunityReply[]
 
   @@index([circleId, publishedAt(sort: Desc)])
 }
 
 model CommunityReply {
-  id                   String              @id
+  id                   String              @id @default(uuid())
   postId               String
   parentReplyId        String?
   depth                Int                 @default(1)
@@ -535,17 +539,17 @@ model CommunityReply {
   deletedAt            DateTime?
   reactionBulb         Int                 @default(0)
   reactionFist         Int                 @default(0)
-  CommunityBookmark    CommunityBookmark[]
-  User                 User                @relation(fields: [authorId], references: [id])
+  bookmarks            CommunityBookmark[] @relation("ReplyBookmarks")
+  author               User                @relation("UserReplies", fields: [authorId], references: [id])
   CommunityReply       CommunityReply?     @relation("CommunityReplyToCommunityReply", fields: [parentReplyId], references: [id])
-  other_CommunityReply CommunityReply[]    @relation("CommunityReplyToCommunityReply")
+  childReplies         CommunityReply[]    @relation("CommunityReplyToCommunityReply")
   CommunityPost        CommunityPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId, publishedAt])
 }
 
 model ModerationLog {
-  id          String             @id
+  id          String             @id @default(uuid())
   contentId   String
   contentType String
   layer       String
@@ -557,19 +561,20 @@ model ModerationLog {
 }
 
 model PeerLineMessage {
-  id              String          @id
+  id              String          @id @default(uuid())
   sessionId       String
   senderRole      String
   content         String
   crisisFlag      Boolean         @default(false)
   sentAt          DateTime        @default(now())
-  PeerLineSession PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  isRead          Boolean         @default(false)
+  session         PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, sentAt])
 }
 
 model PeerLineSession {
-  id                                  String            @id
+  id                                  String            @id @default(uuid())
   menteeId                            String
   mentorId                            String?
   topicIds                            String[]
@@ -582,14 +587,21 @@ model PeerLineSession {
   menteeRating                        Int?
   mentorRating                        Int?
   hadCrisisFlag                       Boolean           @default(false)
+  menteeNote                          String?
+  mentorSelfRating                    Int?
+  mentorWellbeingOk                   Boolean?
+  mentorNeedsSupport                  Boolean?
+  mentorReadyForNext                  Boolean?
+  mentorModerationFlag                Boolean?
+  mentorNote                          String?
   createdAt                           DateTime          @default(now())
   PeerLineMessage                     PeerLineMessage[]
-  User_PeerLineSession_menteeIdToUser User              @relation("PeerLineSession_menteeIdToUser", fields: [menteeId], references: [id])
-  User_PeerLineSession_mentorIdToUser User?             @relation("PeerLineSession_mentorIdToUser", fields: [mentorId], references: [id])
+  mentee                              User              @relation("PeerLineSession_menteeIdToUser", fields: [menteeId], references: [id])
+  mentor                              User?             @relation("PeerLineSession_mentorIdToUser", fields: [mentorId], references: [id])
 }
 
 model PostReaction {
-  id          String   @id
+  id          String   @id @default(uuid())
   contentId   String
   contentType String
   userId      String
@@ -601,7 +613,7 @@ model PostReaction {
 }
 
 model WeeklyChallenge {
-  id              String          @id
+  id              String          @id @default(uuid())
   theme           String
   description     String?
   startDate       DateTime
@@ -609,6 +621,18 @@ model WeeklyChallenge {
   promptsByCircle Json
   createdAt       DateTime        @default(now())
   CommunityPost   CommunityPost[]
+}
+
+model ModerationAppeal {
+  id          String   @id @default(uuid())
+  contentId   String
+  contentType String
+  authorId    String
+  reason      String
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      User     @relation(fields: [authorId], references: [id])
 }
 
 enum UserRole {
