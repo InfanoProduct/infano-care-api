@@ -3,20 +3,59 @@ const prisma = new PrismaClient()
 
 async function main() {
   const testNumbers = [
-    { phone: '+911234567890', isTestNumber: true }   // New test number
+    { phone: '+911234567890', isTestNumber: true, role: 'TEEN', isMentor: false },
+    { phone: '+911112223333', isTestNumber: true, role: 'TEEN', isMentor: true }
   ]
 
   for (const item of testNumbers) {
     const user = await prisma.user.upsert({
       where: { phone: item.phone },
-      update: { isTestNumber: item.isTestNumber },
+      update: { 
+        isTestNumber: item.isTestNumber,
+        accountStatus: 'ACTIVE',
+        onboardingStep: 13,
+        contentTier: 'ADULT',
+        birthMonth: 1,
+        birthYear: 2005,
+        profile: {
+          upsert: {
+            create: {
+              displayName: item.isMentor ? 'Expert Mentor' : 'Test User',
+              pronouns: 'they/them',
+              totalPoints: 100,
+              bloomLevel: 2,
+              mentorStatus: item.isMentor ? 'certified' : 'none',
+              certifiedTopicIds: item.isMentor ? ['periods-body', 'mind-space'] : []
+            },
+            update: {
+              displayName: item.isMentor ? 'Expert Mentor' : 'Test User',
+              mentorStatus: item.isMentor ? 'certified' : 'none',
+              certifiedTopicIds: item.isMentor ? ['periods-body', 'mind-space'] : []
+            }
+          }
+        }
+      },
       create: {
         phone: item.phone,
         isTestNumber: item.isTestNumber,
-        accountStatus: 'PENDING_SETUP'
+        accountStatus: 'ACTIVE',
+        onboardingStep: 13,
+        contentTier: 'ADULT',
+        birthMonth: 1,
+        birthYear: 2005,
+        profile: {
+          create: {
+            displayName: item.isMentor ? 'Expert Mentor' : 'Test User',
+            pronouns: 'they/them',
+            totalPoints: 100,
+            bloomLevel: 2,
+            mentorStatus: item.isMentor ? 'certified' : 'none',
+            certifiedTopicIds: item.isMentor ? ['periods-body', 'mind-space'] : []
+          }
+        }
       },
     })
-    console.log(`Upserted user: ${user.phone}, isTestNumber: ${user.isTestNumber}`)
+    console.log(`Upserted user: ${user.phone}, isTestNumber: ${user.isTestNumber}, isMentor: ${item.isMentor}`)
   }
 
   // --- Seed Learning Journeys ---
