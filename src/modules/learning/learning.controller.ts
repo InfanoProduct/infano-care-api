@@ -36,8 +36,8 @@ export class LearningController {
     try {
       const userId = (req as any).userId as string;
       const episodeId = req.params['episodeId'] as string;
-      const { completedItems, lastViewedItemId } = req.body;
-      const result = await LearningService.updateEpisodeProgress(userId, episodeId, completedItems, lastViewedItemId);
+      const { completedItems, lastViewedItemId, history } = req.body;
+      const result = await LearningService.updateEpisodeProgress(userId, episodeId, completedItems, lastViewedItemId, history);
       res.status(200).json(result);
     } catch (error) {
       next(error);

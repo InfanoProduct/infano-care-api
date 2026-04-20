@@ -12,7 +12,10 @@ async function bootstrap() {
   try {
     // Test database connection
     await prisma.$connect();
-    logger.info("Database connection established.");
+    const dbUrl = new URL(env.DATABASE_URL);
+    logger.info(
+      `Database connection established: ${dbUrl.hostname}${dbUrl.port ? ":" + dbUrl.port : ""}${dbUrl.pathname}`,
+    );
 
     // Initialize background jobs
     initTrackerJobs();
