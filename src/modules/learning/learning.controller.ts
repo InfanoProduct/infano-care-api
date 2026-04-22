@@ -3,11 +3,15 @@ import { LearningService } from "./learning.service.js";
 
 export class LearningController {
   static async listJourneys(req: Request, res: Response, next: NextFunction) {
+    console.log(`[LearningController] listJourneys called with query: ${JSON.stringify(req.query)}`);
     try {
       const { ageBand } = req.query;
+      console.log(`[LearningController] Calling LearningService.listJourneys with ageBand: ${ageBand}`);
       const result = await LearningService.listJourneys(typeof ageBand === 'string' ? ageBand : undefined);
+      console.log(`[LearningController] LearningService.listJourneys returned ${result.length} items`);
       res.status(200).json(result);
     } catch (error) {
+      console.error(`[LearningController] Error in listJourneys:`, error);
       next(error);
     }
   }

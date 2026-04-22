@@ -5,23 +5,14 @@ import path from "path";
 
 export class LearningService {
   static async listJourneys(ageBand?: string) {
-    const logPath = path.join(process.cwd(), "learning-debug.log");
-    fs.appendFileSync(logPath, `${new Date().toISOString()} - listJourneys(ageBand: ${ageBand})\n`);
-
-    const journeys = await prisma.learningJourney.findMany({
-      where:
-        ageBand
-          ? {
-            OR: [
-              { ageBand },
-              { ageBand: null },
-            ],
-          }
-          : undefined,
-      include: { episodes: { orderBy: { order: "asc" } } },
+    return prisma.learningJourney.findMany({
+      where: {
+        isActive: true,
+        ...(ageBand ? { ageBand } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      include: { episodes: true },
     });
-    console.log(`[LearningService] listJourneys(ageBand: ${ageBand}) found ${journeys.length} journeys`);
-    return journeys;
   }
 
   static async getJourney(journeyId: string) {
@@ -140,7 +131,7 @@ export class LearningService {
 
   static async getUserProgress(userId: string) {
     return prisma.userProgress.findMany({
-      where: { userId, completed: true },
+      where: { userId },
       include: { episode: true },
     });
   }
