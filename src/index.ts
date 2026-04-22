@@ -46,6 +46,7 @@ async function bootstrap() {
 
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
+    console.log("[HEARTBEAT] Server bootstrap completed.");
   } catch (error) {
     logger.error({ err: error }, "Failed to start server:");
     process.exit(1);

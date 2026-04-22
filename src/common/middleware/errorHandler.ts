@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { logger } from "../../config/logger.js";
+import fs from "fs";
+import path from "path";
 
 export class AppError extends Error {
   public statusCode: number;
@@ -18,6 +20,12 @@ export const errorHandler = (
   next: NextFunction,
 ) => {
   logger.error(err);
+  try {
+    const logPath = path.join(process.cwd(), "server-errors.log");
+    fs.appendFileSync(logPath, `${new Date().toISOString()} - ERROR: ${err.message}\n${err.stack}\n\n`);
+  } catch (e) {
+    // ignore
+  }
 
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({ error: err.message });
