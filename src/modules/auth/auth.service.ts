@@ -324,6 +324,7 @@ export class AuthService {
       await redis.del(`rt:${payload.jti}`);
     } catch {
       // Already expired — treat as success
+    }
   }
 
   // ── 5. Admin Login ──────────────────────────────────────────────────────────
