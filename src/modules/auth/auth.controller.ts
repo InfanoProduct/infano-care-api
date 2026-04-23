@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "./auth.service.js";
-import { sendOtpSchema, verifyOtpSchema, refreshSchema } from "./auth.schema.js";
+import { sendOtpSchema, verifyOtpSchema, refreshSchema, adminLoginSchema } from "./auth.schema.js";
 
 export class AuthController {
   static async sendOtp(req: Request, res: Response, next: NextFunction) {
@@ -23,6 +23,14 @@ export class AuthController {
     try {
       const { tempToken } = req.body;
       const result = await AuthService.login(tempToken);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async adminLogin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { username, password } = adminLoginSchema.parse(req.body);
+      const result = await AuthService.adminLogin(username, password);
       res.status(200).json(result);
     } catch (e) { next(e); }
   }

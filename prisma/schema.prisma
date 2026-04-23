@@ -60,6 +60,8 @@ model User {
   progress                                       UserProgress[]
   userQuests                                     UserQuest[]
   ModerationAppeal                               ModerationAppeal[]
+  username                                       String?                  @unique
+  password                                       String?
 }
 
 model Profile {
@@ -640,6 +642,7 @@ enum UserRole {
   PARENT
   GUARDIAN
   EXPERT
+  ADMIN
 }
 
 enum ContentTier {

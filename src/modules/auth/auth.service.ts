@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import { prisma } from "../../db/client.js";
 import { redis } from "../../db/redis.js";
 import { smsProvider } from "./sms.service.js";
@@ -323,7 +324,46 @@ export class AuthService {
       await redis.del(`rt:${payload.jti}`);
     } catch {
       // Already expired — treat as success
+  }
+
+  // ── 5. Admin Login ──────────────────────────────────────────────────────────
+  static async adminLogin(username: string, password: string) {
+    logger.info({ username }, "[AUTH] adminLogin attempt");
+
+    const user = await prisma.user.findUnique({
+      where: { username },
+    });
+
+    if (!user || user.role !== "ADMIN" || !user.password) {
+      logger.warn({ username }, "[AUTH] Admin login failed: Invalid credentials or role");
+      throw new AppError("Invalid username or password.", 401);
     }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      logger.warn({ username }, "[AUTH] Admin login failed: Password mismatch");
+      throw new AppError("Invalid username or password.", 401);
+    }
+
+    const jti = crypto.randomUUID();
+    const tokenPayloadBase = { 
+      sub: user.id, 
+      role: user.role,
+      accountStatus: user.accountStatus 
+    };
+
+    const accessToken = signAccessToken(tokenPayloadBase);
+    const refreshToken = signRefreshToken(tokenPayloadBase, jti);
+
+    await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, user.id);
+
+    return {
+      accessToken,
+      refreshToken,
+      userId: user.id,
+      role: user.role,
+      username: user.username,
+    };
   }
 
   static async updateOnboardingStep(userId: string, step: number) {
