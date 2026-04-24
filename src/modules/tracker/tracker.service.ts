@@ -437,9 +437,18 @@ export class TrackerService {
 
     if (!profile) return null;
 
-    // Convert potential floats back to integers for safety (schema uses Float for avgCycleLength)
+    // Refresh prediction to get latest cycle day, phase, and next phase info
+    const prediction = await PredictionEngine.predict(userId);
+
+    // Convert potential floats back to integers for safety
     return {
       ...profile,
+      ...(prediction ? {
+        currentCycleDay: prediction.cycleDay,
+        currentPhase: prediction.currentPhase,
+        nextPhase: (prediction as any).nextPhase,
+        daysUntilNextPhase: (prediction as any).daysUntilNextPhase,
+      } : {}),
       avgCycleLength: profile.avgCycleLength ? Math.round(profile.avgCycleLength) : 28,
       avgPeriodDuration: profile.avgPeriodDuration ? Math.round(profile.avgPeriodDuration) : 5,
     };

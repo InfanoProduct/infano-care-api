@@ -10,6 +10,8 @@ export interface PredictionResult {
   confidenceLevel: "none" | "getting_started" | "building" | "confident" | "high" | "irregular";
   daysUntilPrediction: number;
   currentPhase: "menstrual" | "follicular" | "ovulation" | "luteal" | "waiting";
+  nextPhase: "menstrual" | "follicular" | "ovulation" | "luteal" | "waiting" | "period";
+  daysUntilNextPhase: number;
   cycleDay: number;
   cyclesLogged: number;
   coefficientOfVar: number;
@@ -154,6 +156,9 @@ export class PredictionEngine {
     const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     const daysSinceStart = Math.ceil((today.getTime() - profile.lastPeriodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
+    const currentPhase = this.calculatePhase(daysSinceStart, avgLength);
+    const nextPhaseInfo = this.calculateNextPhase(daysSinceStart, avgLength);
+
     return {
       predictedStart,
       windowEarly,
@@ -163,7 +168,9 @@ export class PredictionEngine {
       fertilityEnd,
       confidenceLevel: this.getConfidenceLevel(count, cv) as any,
       daysUntilPrediction: daysUntil,
-      currentPhase: this.calculatePhase(daysSinceStart, avgLength),
+      currentPhase,
+      nextPhase: nextPhaseInfo.name,
+      daysUntilNextPhase: nextPhaseInfo.daysLeft,
       cycleDay: daysSinceStart,
       cyclesLogged: count,
       coefficientOfVar: cv,
@@ -174,9 +181,29 @@ export class PredictionEngine {
   private static calculatePhase(day: number, avgLength: number): any {
     if (day <= 5) return "menstrual";
     if (day <= avgLength * 0.45) return "follicular";
-    // Ovulation is roughly 14 days before the next period, but we'll show a window
-    if (day >= avgLength * 0.45 && day <= avgLength * 0.55) return "ovulation";
+    if (day <= avgLength * 0.55) return "ovulation";
     if (day <= avgLength) return "luteal";
     return "waiting";
+  }
+
+  private static calculateNextPhase(day: number, avgLength: number): { name: any; daysLeft: number } {
+    const follicularStart = 6;
+    const ovulationStart = Math.floor(avgLength * 0.45) + 1;
+    const lutealStart = Math.floor(avgLength * 0.55) + 1;
+    const periodStart = Math.floor(avgLength) + 1;
+
+    if (day < follicularStart) {
+      return { name: "follicular", daysLeft: follicularStart - day };
+    }
+    if (day < ovulationStart) {
+      return { name: "ovulation", daysLeft: ovulationStart - day };
+    }
+    if (day < lutealStart) {
+      return { name: "luteal", daysLeft: lutealStart - day };
+    }
+    if (day < periodStart) {
+      return { name: "period", daysLeft: periodStart - day };
+    }
+    return { name: "period", daysLeft: 0 };
   }
 }
