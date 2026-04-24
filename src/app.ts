@@ -19,6 +19,7 @@ import communityRoutes from "./modules/community/community.routes.js";
 import peerlineRoutes  from "./modules/peerline/peerline.routes.js";
 import eventRoutes     from "./modules/events/events.routes.js";
 import safetyRoutes    from "./modules/safety/safety.routes.js";
+import adminRoutes     from "./modules/admin/admin.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -35,10 +36,11 @@ app.use(
     },
   })
 );
-app.use(cors({ origin: env.ALLOWED_ORIGINS }));
+app.use(cors({ origin: "*" }));
 app.use(compression());
 app.use(express.json());
 app.use(pinoHttp({ logger }));
+logger.info({ allowedOrigins: env.ALLOWED_ORIGINS }, "CORS configuration");
 
 // Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -57,6 +59,7 @@ app.use("/api/community",   communityRoutes);
 app.use("/api/peerline",    peerlineRoutes);
 app.use("/api/events",      eventRoutes);
 app.use("/api/safety",      safetyRoutes);
+app.use("/api/admin",       adminRoutes);
 
 
 /**
