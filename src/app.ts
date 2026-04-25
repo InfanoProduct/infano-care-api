@@ -60,6 +60,7 @@ app.use("/api/peerline",    peerlineRoutes);
 app.use("/api/events",      eventRoutes);
 app.use("/api/safety",      safetyRoutes);
 app.use("/api/admin",       adminRoutes);
+app.use("/uploads",         express.static("uploads"));
 
 
 /**

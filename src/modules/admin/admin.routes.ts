@@ -3,6 +3,8 @@ import { AdminController } from "./admin.controller.js";
 import { authenticate } from "../../common/middleware/auth.js";
 import { requireAdmin } from "../../common/middleware/requireAdmin.js";
 
+import { upload } from "../../common/middleware/upload.js";
+
 const router = Router();
 
 // All admin routes require authentication and admin role
@@ -23,5 +25,8 @@ router.delete("/learning/journeys/:id", AdminController.deleteJourney);
 router.post("/learning/journeys/:journeyId/episodes", AdminController.createEpisode);
 router.patch("/learning/episodes/:id", AdminController.updateEpisode);
 router.delete("/learning/episodes/:id", AdminController.deleteEpisode);
+
+// File Upload
+router.post("/upload", upload.single("file"), AdminController.upload);
 
 export default router;

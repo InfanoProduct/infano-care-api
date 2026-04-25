@@ -96,4 +96,24 @@ export class AdminController {
       next(error);
     }
   }
+
+  static async upload(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Return the public URL for the uploaded file
+      const protocol = req.protocol;
+      const host = req.get('host');
+      const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+
+      res.status(200).json({ 
+        url: fileUrl,
+        filename: req.file.filename 
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

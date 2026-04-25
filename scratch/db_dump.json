@@ -1,0 +1,106 @@
+﻿[
+  {
+    "id": "8018bab8-237c-47d7-b6a5-425e11da3123",
+    "title": "First Period: The Essentials",
+    "description": "Everything you need to know about your first period, from products to feelings.",
+    "ageBand": "TEEN_EARLY",
+    "topics": [
+      "puberty",
+      "period_health"
+    ],
+    "goals": [
+      "confidence",
+      "body_health"
+    ],
+    "tags": [],
+    "contentTone": "moderate",
+    "minContentTier": "TEEN_EARLY",
+    "bannerImage": null,
+    "category": null,
+    "createdAt": "2026-04-13T15:44:12.035Z",
+    "isActive": true,
+    "slug": "first-period-basics",
+    "thumbnailUrl": null,
+    "totalXP": 150,
+    "updatedAt": "2026-04-13T15:44:12.035Z",
+    "episodes": [
+      {
+        "id": "67ffb360-a2a3-4c3e-bed8-32b3d0b1306a",
+        "journeyId": "8018bab8-237c-47d7-b6a5-425e11da3123",
+        "order": 1,
+        "title": "Welcome to the Club",
+        "content": {
+          "hook": {
+            "text": "Amara is in class and she feels it ΓÇö a warm trickle. Her period has started. She has 3 hours until lunch. This is what she does next.",
+            "type": "A"
+          },
+          "story": {
+            "text": "Meera was nervous, but she remembered what her mom told her. She reached for her kit and realized she was prepared. 'It's not so bad,' she thought.",
+            "title": "Meera's Discovery",
+            "interactiveMoments": [
+              {
+                "text": "A period kit contains pads, a clean pair of underwear, and maybe a small snack!",
+                "type": "tap-to-reveal",
+                "title": "Wait, what's a kit?"
+              }
+            ]
+          },
+          "summary": {
+            "text": "You're off to a great start! You've learned that being prepared is half the battle."
+          },
+          "reflection": {
+            "modes": [
+              "private",
+              "community"
+            ],
+            "prompt": "What's one thing you'd put in your own period kit?"
+          },
+          "knowledgeCheck": {
+            "questions": [
+              {
+                "type": "Single-choice",
+                "options": [
+                  "Panicked",
+                  "Remembered her prep",
+                  "Left school",
+                  "Cried"
+                ],
+                "question": "What is the first thing Meera did?",
+                "explanation": "Being prepared helps stay calm!",
+                "correctIndex": 1
+              },
+              {
+                "type": "True/False",
+                "options": [
+                  "True",
+                  "False"
+                ],
+                "question": "A period kit is only for emergencies?",
+                "explanation": "It's for whenever you need it!",
+                "correctIndex": 1
+              },
+              {
+                "type": "Single-choice",
+                "options": [
+                  "Scared",
+                  "Ready/Empowered",
+                  "Tired",
+                  "Angry"
+                ],
+                "question": "How did Meera feel at the end?",
+                "explanation": "Knowledge is power!",
+                "correctIndex": 1
+              }
+            ]
+          }
+        },
+        "points": 50,
+        "createdAt": "2026-04-13T15:44:13.746Z",
+        "description": "Your body is doing something amazing. Let's find out why.",
+        "isActive": true,
+        "slug": "welcome-to-the-club",
+        "updatedAt": "2026-04-13T15:44:13.746Z"
+      }
+    ]
+  }
+]
