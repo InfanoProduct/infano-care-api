@@ -71,7 +71,6 @@ export function setupPeerLineSocket(serverIo: Server) {
         logger.info({ sessionId: data.sessionId, messageId: message.id }, 'Message created, broadcasting to room');
         nsp.to(`session_${data.sessionId}`).emit('message', { 
           type: 'message', 
-          sessionId: data.sessionId,
           clientId: data.clientId, // Echo back the clientId for deduplication
           ...message 
         });
