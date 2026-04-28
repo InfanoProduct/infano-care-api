@@ -69,11 +69,12 @@ export function setupPeerLineSocket(serverIo: Server) {
         const message = await getPeerLineService().createMessage(uid, data.sessionId, data.content, data.senderRole);
 
         logger.info({ sessionId: data.sessionId, messageId: message.id }, 'Message created, broadcasting to room');
+        const { sessionId: _sId, ...msgRest } = message;
         nsp.to(`session_${data.sessionId}`).emit('message', { 
           type: 'message', 
           sessionId: data.sessionId,
-          clientId: data.clientId, // Echo back the clientId for deduplication
-          ...message 
+          clientId: data.clientId, 
+          ...msgRest 
         });
 
         if (message.crisisFlag) {

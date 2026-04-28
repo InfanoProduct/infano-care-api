@@ -7,6 +7,7 @@ import { Server } from "socket.io";
 import { setupExpertSocket } from "./modules/expert/socket.service.js";
 import { setupPeerLineSocket } from "./modules/peerline/peerline.socket.js";
 import { setupEventsSocket } from "./modules/events/events.socket.js";
+import { setupFriendsSocket } from "./modules/friends/friends.socket.js";
 
 async function bootstrap() {
   try {
@@ -36,7 +37,8 @@ async function bootstrap() {
     setupExpertSocket(io);
     setupPeerLineSocket(io);
     setupEventsSocket(io);
-    logger.info("Socket.io initialized and attached to Expert Chat, PeerLine, and Events.");
+    setupFriendsSocket(io);
+    logger.info("Socket.io initialized and attached to Expert Chat, PeerLine, Events, and Friends.");
 
     const shutdown = async () => {
       logger.info("Gracefully shutting down...");

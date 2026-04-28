@@ -19,6 +19,7 @@ import communityRoutes from "./modules/community/community.routes.js";
 import peerlineRoutes  from "./modules/peerline/peerline.routes.js";
 import eventRoutes     from "./modules/events/events.routes.js";
 import safetyRoutes    from "./modules/safety/safety.routes.js";
+import friendsRoutes   from "./modules/friends/friends.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -57,6 +58,7 @@ app.use("/api/community",   communityRoutes);
 app.use("/api/peerline",    peerlineRoutes);
 app.use("/api/events",      eventRoutes);
 app.use("/api/safety",      safetyRoutes);
+app.use("/api/friends",     friendsRoutes);
 
 
 /**

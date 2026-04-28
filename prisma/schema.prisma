@@ -8,6 +8,7 @@ datasource db {
 }
 
 model User {
+  friendProfile FriendProfile?
   id                                             String                   @id @default(uuid())
   createdAt                                      DateTime                 @default(now())
   updatedAt                                      DateTime                 @updatedAt
@@ -640,6 +641,7 @@ enum UserRole {
   PARENT
   GUARDIAN
   EXPERT
+  ADMIN
 }
 
 enum ContentTier {
@@ -720,4 +722,62 @@ enum PostStatus {
   APPROVED
   REMOVED
   AUTHOR_DELETED
+}
+
+model FriendProfile {
+  id              String        @id @default(uuid())
+  userId          String        @unique
+  isActive        Boolean       @default(false)
+  nickname        String?
+  vibeTags        String[]      @default([])
+  intent          String[]      @default([])
+  geohash         String?
+  discoveryRadius String?
+  photoUrl        String?
+  status          ProfileStatus @default(PENDING_REVIEW)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchesAsUser   FriendMatch[] @relation("MatchesAsUser")
+  matchesAsTarget FriendMatch[] @relation("MatchesAsTarget")
+}
+
+enum ProfileStatus {
+  ACTIVE
+  PENDING_REVIEW
+  SUSPENDED
+}
+
+model FriendMatch {
+  id        String      @id @default(uuid())
+  userId    String
+  targetId  String
+  status    MatchStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      FriendProfile @relation("MatchesAsUser", fields: [userId], references: [id], onDelete: Cascade)
+  target    FriendProfile @relation("MatchesAsTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  messages  FriendMessage[]
+
+  @@unique([userId, targetId])
+}
+
+model FriendMessage {
+  id        String   @id @default(uuid())
+  matchId   String
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+  isRead    Boolean  @default(false)
+  match     FriendMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
+}
+
+enum MatchStatus {
+  PENDING
+  MATCHED
+  REJECTED
+  SAVED
+  UNMATCHED
 }
