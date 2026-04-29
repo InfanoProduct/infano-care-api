@@ -237,6 +237,7 @@ model Episode {
   createdAt    DateTime        @default(now())
   description  String?
   isActive     Boolean         @default(true)
+  isPremium    Boolean         @default(false)
   slug         String          @unique @default(uuid())
   updatedAt    DateTime        @updatedAt
   journey      LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
