@@ -58,7 +58,7 @@ export class AdminService {
           select: { episodes: true }
         }
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "asc" }
     });
   }
 

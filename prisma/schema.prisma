@@ -222,6 +222,7 @@ model LearningJourney {
   slug           String      @unique @default(uuid())
   thumbnailUrl   String?
   totalXP        Int         @default(0)
+  isPremium      Boolean     @default(false)
   updatedAt      DateTime    @updatedAt
   episodes       Episode[]
 }

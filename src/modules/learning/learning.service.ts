@@ -10,7 +10,7 @@ export class LearningService {
         isActive: true,
         ...(ageBand ? { ageBand } : {}),
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
       include: { episodes: true },
     });
   }
