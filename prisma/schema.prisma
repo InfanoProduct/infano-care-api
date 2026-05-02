@@ -222,6 +222,7 @@ model LearningJourney {
   slug           String      @unique @default(uuid())
   thumbnailUrl   String?
   totalXP        Int         @default(0)
+  isPremium      Boolean     @default(false)
   updatedAt      DateTime    @updatedAt
   episodes       Episode[]
 }
@@ -236,6 +237,7 @@ model Episode {
   createdAt    DateTime        @default(now())
   description  String?
   isActive     Boolean         @default(true)
+  isPremium    Boolean         @default(false)
   slug         String          @unique @default(uuid())
   updatedAt    DateTime        @updatedAt
   journey      LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)

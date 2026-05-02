@@ -52,14 +52,23 @@ export class AdminService {
   }
 
   static async getJourneys() {
-    return prisma.learningJourney.findMany({
+    const journeys = await prisma.learningJourney.findMany({
       include: {
         _count: {
           select: { episodes: true }
+        },
+        episodes: {
+          select: { isPremium: true }
         }
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "asc" }
     });
+
+    return journeys.map(journey => ({
+      ...journey,
+      freeEpisodesCount: journey.episodes.filter(e => !e.isPremium).length,
+      premiumEpisodesCount: journey.episodes.filter(e => e.isPremium).length,
+    }));
   }
 
   static async getJourneyById(id: string) {

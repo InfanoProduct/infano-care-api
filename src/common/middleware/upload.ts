@@ -11,7 +11,14 @@ if (!fs.existsSync(uploadDir)) {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    const folder = (req.query.folder as string) || '';
+    const targetDir = path.join(uploadDir, folder);
+    
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    
+    cb(null, targetDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${uuidv4()}`;

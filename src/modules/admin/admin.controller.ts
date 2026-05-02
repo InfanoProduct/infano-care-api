@@ -106,7 +106,9 @@ export class AdminController {
       // Return the public URL for the uploaded file
       const protocol = req.protocol;
       const host = req.get('host');
-      const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+      const folder = (req.query.folder as string) || '';
+      const folderPath = folder ? `${folder}/`.replace(/\\/g, '/') : '';
+      const fileUrl = `${protocol}://${host}/uploads/${folderPath}${req.file.filename}`;
 
       res.status(200).json({ 
         url: fileUrl,
