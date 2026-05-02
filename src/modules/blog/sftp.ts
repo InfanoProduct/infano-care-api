@@ -18,7 +18,7 @@ export const uploadToSftp = async (buffer: Buffer, originalName: string): Promis
     }
 
     conn.on('ready', () => {
-      conn.sftp((err, sftp) => {
+      conn.sftp((err: Error | undefined, sftp: any) => {
         if (err) {
           conn.end();
           return reject(err);
@@ -32,7 +32,7 @@ export const uploadToSftp = async (buffer: Buffer, originalName: string): Promis
         // Recursive mkdir function for SFTP
         const ensureDir = (dir: string): Promise<void> => {
           return new Promise((resDir, rejDir) => {
-            sftp.stat(dir, (err, stats) => {
+            sftp.stat(dir, (err: any, stats: any) => {
               if (!err) {
                 if (stats.isDirectory()) return resDir();
                 else return rejDir(new Error(`${dir} exists but is not a directory`));
@@ -41,7 +41,7 @@ export const uploadToSftp = async (buffer: Buffer, originalName: string): Promis
               // Directory doesn't exist, try parent
               const parent = path.posix.dirname(dir);
               if (parent === dir || parent === '.' || parent === '/') {
-                sftp.mkdir(dir, (err2) => {
+                sftp.mkdir(dir, (err2: any) => {
                   if (!err2) resDir();
                   else rejDir(err2);
                 });
@@ -50,9 +50,9 @@ export const uploadToSftp = async (buffer: Buffer, originalName: string): Promis
 
               ensureDir(parent)
                 .then(() => {
-                  sftp.mkdir(dir, (err2) => {
+                  sftp.mkdir(dir, (err2: any) => {
                     // Ignore error if it means directory already exists
-                    if (!err2 || err2.code === 4) resDir();
+                    if (!err2 || (err2 as any).code === 4) resDir();
                     else rejDir(err2);
                   });
                 })
@@ -72,19 +72,19 @@ export const uploadToSftp = async (buffer: Buffer, originalName: string): Promis
               resolve(filename);
             });
 
-            writeStream.on('error', (err) => {
+            writeStream.on('error', (err: Error) => {
               conn.end();
               reject(err);
             });
 
             writeStream.end(buffer);
           })
-          .catch((err) => {
+          .catch((err: Error) => {
             conn.end();
             reject(err);
           });
       });
-    }).on('error', (err) => {
+    }).on('error', (err: Error) => {
       reject(err);
     }).connect({
       host,
