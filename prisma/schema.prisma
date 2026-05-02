@@ -724,3 +724,74 @@ enum PostStatus {
   REMOVED
   AUTHOR_DELETED
 }
+
+// Blog Management Models
+model BlogAuthor {
+  id          String   @id @default(uuid())
+  name        String
+  role        String?
+  bio         String?
+  avatarUrl   String?
+  twitterUrl  String?
+  linkedInUrl String?
+  email       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       BlogPost[]
+}
+
+model BlogCategory {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  iconUrl     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       BlogPost[] @relation("PostCategories")
+}
+
+model BlogPost {
+  id            String   @id @default(uuid())
+  title         String
+  slug          String   @unique
+  summary       String?
+  content       String?
+  thumbnailUrl  String?
+  galleryImages String[] @default([])
+  tags          String[] @default([])
+  
+  authorId      String?
+  author        BlogAuthor? @relation(fields: [authorId], references: [id])
+  
+  categories    BlogCategory[] @relation("PostCategories")
+  
+  seo           Json?    // Stores SeoMetadata
+  
+  isPublished   Boolean  @default(false)
+  publishedAt   DateTime?
+  isDeleted     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  views         Int      @default(0)
+  readTime      Int      @default(5)
+  
+  ctas          BlogCTA[] @relation("PostCTAs")
+}
+
+model BlogCTA {
+  id          String   @id @default(uuid())
+  title       String?
+  description String?
+  buttonText  String?
+  buttonLink  String?
+  imageUrl    String?
+  type        String?  // e.g., "primary", "secondary"
+  isActive    Boolean  @default(true)
+  clicks      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       BlogPost[] @relation("PostCTAs")
+}
