@@ -1,4 +1,5 @@
 import { prisma } from "../../db/client.js";
+import { ShopService } from "../shop/shop.service.js";
 
 export class AdminService {
   static async getStats() {
@@ -159,10 +160,7 @@ export class AdminService {
   }
 
   static async updateOrderStatus(id: string, status: any) {
-    return prisma.order.update({
-      where: { id },
-      data: { orderStatus: status }
-    });
+    return ShopService.updateStatus(id, status);
   }
 
   // Book Management

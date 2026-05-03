@@ -35,6 +35,29 @@ router.get("/books/:id", ShopController.getBook);
 
 /**
  * @openapi
+ * /shop/coupons/validate:
+ *   post:
+ *     summary: Validate a discount coupon
+ *     tags: [Shop]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code: { type: string }
+ *               amount: { type: number }
+ *     responses:
+ *       200:
+ *         description: Coupon valid
+ *       400:
+ *         description: Invalid coupon
+ */
+router.post("/coupons/validate", ShopController.validateCoupon);
+
+/**
+ * @openapi
  * /shop/orders:
  *   post:
  *     summary: Create a new order

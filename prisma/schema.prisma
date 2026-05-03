@@ -820,7 +820,11 @@ model Order {
   guestName         String?
   guestPhone        String?
   
+  subtotal          Float
+  gstAmount         Float         @default(0)
+  discountAmount    Float         @default(0)
   totalAmount       Float
+  
   paymentMethod     PaymentMethod
   paymentStatus     PaymentStatus @default(PENDING)
   orderStatus       OrderStatus   @default(PLACED)
@@ -836,10 +840,36 @@ model Order {
   
   items             OrderItem[]
   
+  couponId          String?
+  coupon            DiscountCoupon? @relation(fields: [couponId], references: [id])
+  
+  gstNumber         String?       // Optional GST number from customer
+  
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   
   user              User?         @relation(fields: [userId], references: [id])
+}
+
+model DiscountCoupon {
+  id              String      @id @default(uuid())
+  code            String      @unique
+  type            CouponType
+  value           Float       // Percentage or Flat amount
+  minOrderAmount  Float       @default(0)
+  maxDiscount     Float?      // Cap for percentage discounts
+  expiryDate      DateTime?
+  usageLimit      Int         @default(100)
+  usedCount       Int         @default(0)
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  orders          Order[]
+}
+
+enum CouponType {
+  PERCENTAGE
+  FLAT
 }
 
 model OrderItem {

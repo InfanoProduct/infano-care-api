@@ -21,6 +21,16 @@ export class ShopController {
     }
   }
 
+  static async validateCoupon(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { code, amount } = req.body;
+      const result = await ShopService.validateCoupon(code, amount);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+
   static async createOrder(req: Request, res: Response, next: NextFunction) {
     try {
       const order = await ShopService.createOrder(req.body);
