@@ -116,4 +116,63 @@ export class AdminController {
       next(error);
     }
   }
+
+  // Order Management
+  static async getOrders(req: Request, res: Response, next: NextFunction) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const result = await AdminService.getOrders(page, limit);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getOrder(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.getOrderById(req.params.id);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.updateOrderStatus(req.params.id, req.body.status);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Book Management
+  static async createBook(req: Request, res: Response, next: NextFunction) {
+    try {
+      const book = await AdminService.createBook(req.body);
+      res.status(201).json(book);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateBook(req: Request, res: Response, next: NextFunction) {
+    try {
+      const book = await AdminService.updateBook(req.params.id, req.body);
+      res.status(200).json(book);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteBook(req: Request, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteBook(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
 }

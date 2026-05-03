@@ -114,4 +114,70 @@ export class AdminService {
   static async deleteEpisode(id: string) {
     return prisma.episode.delete({ where: { id } });
   }
+
+  // Order Management
+  static async getOrders(page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        skip,
+        take: limit,
+        include: {
+          items: {
+            include: { book: true }
+          },
+          user: {
+            select: { phone: true, username: true }
+          }
+        },
+        orderBy: { createdAt: "desc" }
+      }),
+      prisma.order.count()
+    ]);
+
+    return {
+      orders,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  static async getOrderById(id: string) {
+    return prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: { book: true }
+        },
+        user: true
+      }
+    });
+  }
+
+  static async updateOrderStatus(id: string, status: any) {
+    return prisma.order.update({
+      where: { id },
+      data: { orderStatus: status }
+    });
+  }
+
+  // Book Management
+  static async createBook(data: any) {
+    return prisma.book.create({ data });
+  }
+
+  static async updateBook(id: string, data: any) {
+    return prisma.book.update({
+      where: { id },
+      data
+    });
+  }
+
+  static async deleteBook(id: string) {
+    return prisma.book.delete({ where: { id } });
+  }
 }

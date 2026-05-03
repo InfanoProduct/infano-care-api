@@ -62,6 +62,7 @@ model User {
   ModerationAppeal                               ModerationAppeal[]
   username                                       String?                  @unique
   password                                       String?
+  orders                                         Order[]
 }
 
 model Profile {
@@ -796,4 +797,77 @@ model BlogCTA {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   posts       BlogPost[] @relation("PostCTAs")
+}
+
+// Book Selling Models
+model Book {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  imageUrl    String?
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id                String        @id @default(uuid())
+  userId            String?       // Optional for guest users
+  guestEmail        String?
+  guestName         String?
+  guestPhone        String?
+  
+  totalAmount       Float
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(PENDING)
+  orderStatus       OrderStatus   @default(PLACED)
+  
+  shippingAddress   String
+  city              String
+  state             String
+  pincode           String
+  
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  
+  items             OrderItem[]
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  user              User?         @relation(fields: [userId], references: [id])
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  bookId    String
+  quantity  Int
+  price     Float    // Price at the time of purchase
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id])
+}
+
+enum PaymentMethod {
+  ONLINE
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum OrderStatus {
+  PLACED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }

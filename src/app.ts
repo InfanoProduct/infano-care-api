@@ -21,6 +21,7 @@ import eventRoutes     from "./modules/events/events.routes.js";
 import safetyRoutes    from "./modules/safety/safety.routes.js";
 import adminRoutes     from "./modules/admin/admin.routes.js";
 import blogRoutes      from "./modules/blog/blog.routes.js";
+import shopRoutes      from "./modules/shop/shop.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -63,6 +64,7 @@ app.use("/api/events",      eventRoutes);
 app.use("/api/safety",      safetyRoutes);
 app.use("/api/admin",       adminRoutes);
 app.use("/api/blog",        blogRoutes);
+app.use("/api/shop",        shopRoutes);
 app.use("/uploads",         express.static("uploads"));
 
 

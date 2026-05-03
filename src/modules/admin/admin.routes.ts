@@ -29,4 +29,14 @@ router.delete("/learning/episodes/:id", AdminController.deleteEpisode);
 // File Upload
 router.post("/upload", upload.single("file"), AdminController.upload);
 
+// Order Management
+router.get("/orders", AdminController.getOrders);
+router.get("/orders/:id", AdminController.getOrder);
+router.patch("/orders/:id/status", AdminController.updateOrderStatus);
+
+// Book Management
+router.post("/books", AdminController.createBook);
+router.patch("/books/:id", AdminController.updateBook);
+router.delete("/books/:id", AdminController.deleteBook);
+
 export default router;
