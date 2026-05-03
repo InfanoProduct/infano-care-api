@@ -34,7 +34,7 @@ export class AdminController {
 
   static async getJourney(req: Request, res: Response, next: NextFunction) {
     try {
-      const journey = await AdminService.getJourneyById(req.params.id);
+      const journey = await AdminService.getJourneyById(req.params.id as string);
       if (!journey) return res.status(404).json({ message: "Journey not found" });
       res.status(200).json(journey);
     } catch (error) {
@@ -53,7 +53,7 @@ export class AdminController {
 
   static async updateJourney(req: Request, res: Response, next: NextFunction) {
     try {
-      const journey = await AdminService.updateJourney(req.params.id, req.body);
+      const journey = await AdminService.updateJourney(req.params.id as string, req.body);
       res.status(200).json(journey);
     } catch (error) {
       next(error);
@@ -62,7 +62,7 @@ export class AdminController {
 
   static async deleteJourney(req: Request, res: Response, next: NextFunction) {
     try {
-      await AdminService.deleteJourney(req.params.id);
+      await AdminService.deleteJourney(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);
@@ -71,7 +71,7 @@ export class AdminController {
 
   static async createEpisode(req: Request, res: Response, next: NextFunction) {
     try {
-      const episode = await AdminService.createEpisode(req.params.journeyId, req.body);
+      const episode = await AdminService.createEpisode(req.params.journeyId as string, req.body);
       res.status(201).json(episode);
     } catch (error) {
       next(error);
@@ -80,7 +80,7 @@ export class AdminController {
 
   static async updateEpisode(req: Request, res: Response, next: NextFunction) {
     try {
-      const episode = await AdminService.updateEpisode(req.params.id, req.body);
+      const episode = await AdminService.updateEpisode(req.params.id as string, req.body);
       res.status(200).json(episode);
     } catch (error) {
       next(error);
@@ -89,7 +89,7 @@ export class AdminController {
 
   static async deleteEpisode(req: Request, res: Response, next: NextFunction) {
     try {
-      await AdminService.deleteEpisode(req.params.id);
+      await AdminService.deleteEpisode(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);

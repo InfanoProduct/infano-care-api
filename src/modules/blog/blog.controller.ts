@@ -18,7 +18,7 @@ export class BlogController {
 
   static async getPost(req: Request, res: Response, next: NextFunction) {
     try {
-      const post = await BlogService.getPostById(req.params.id);
+      const post = await BlogService.getPostById(req.params.id as string);
       if (!post) return res.status(404).json({ message: "Post not found" });
       res.status(200).json(post);
     } catch (error) {
@@ -28,7 +28,7 @@ export class BlogController {
 
   static async getPostBySlug(req: Request, res: Response, next: NextFunction) {
     try {
-      const post = await BlogService.getPostBySlug(req.params.slug);
+      const post = await BlogService.getPostBySlug(req.params.slug as string);
       if (!post) return res.status(404).json({ message: "Post not found" });
       res.status(200).json(post);
     } catch (error) {
@@ -47,7 +47,7 @@ export class BlogController {
 
   static async updatePost(req: Request, res: Response, next: NextFunction) {
     try {
-      const post = await BlogService.updatePost(req.params.id, req.body);
+      const post = await BlogService.updatePost(req.params.id as string, req.body);
       res.status(200).json(post);
     } catch (error) {
       next(error);
@@ -56,7 +56,7 @@ export class BlogController {
 
   static async deletePost(req: Request, res: Response, next: NextFunction) {
     try {
-      await BlogService.deletePost(req.params.id);
+      await BlogService.deletePost(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);
@@ -84,7 +84,7 @@ export class BlogController {
 
   static async updateAuthor(req: Request, res: Response, next: NextFunction) {
     try {
-      const author = await BlogService.updateAuthor(req.params.id, req.body);
+      const author = await BlogService.updateAuthor(req.params.id as string, req.body);
       res.status(200).json(author);
     } catch (error) {
       next(error);
@@ -93,7 +93,7 @@ export class BlogController {
 
   static async deleteAuthor(req: Request, res: Response, next: NextFunction) {
     try {
-      await BlogService.deleteAuthor(req.params.id);
+      await BlogService.deleteAuthor(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);
@@ -121,7 +121,7 @@ export class BlogController {
 
   static async updateCategory(req: Request, res: Response, next: NextFunction) {
     try {
-      const category = await BlogService.updateCategory(req.params.id, req.body);
+      const category = await BlogService.updateCategory(req.params.id as string, req.body);
       res.status(200).json(category);
     } catch (error) {
       next(error);
@@ -130,7 +130,7 @@ export class BlogController {
 
   static async deleteCategory(req: Request, res: Response, next: NextFunction) {
     try {
-      await BlogService.deleteCategory(req.params.id);
+      await BlogService.deleteCategory(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);
@@ -158,7 +158,7 @@ export class BlogController {
 
   static async updateCTA(req: Request, res: Response, next: NextFunction) {
     try {
-      const cta = await BlogService.updateCTA(req.params.id, req.body);
+      const cta = await BlogService.updateCTA(req.params.id as string, req.body);
       res.status(200).json(cta);
     } catch (error) {
       next(error);
@@ -167,7 +167,7 @@ export class BlogController {
 
   static async deleteCTA(req: Request, res: Response, next: NextFunction) {
     try {
-      await BlogService.deleteCTA(req.params.id);
+      await BlogService.deleteCTA(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);
