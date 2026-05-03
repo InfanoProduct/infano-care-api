@@ -1,6 +1,4 @@
 import { prisma } from "../../db/client.js";
-import { uploadToSftp } from "./sftp.js";
-import streamifier from "streamifier";
 
 export class BlogService {
   // --- Posts ---
@@ -19,7 +17,21 @@ export class BlogService {
         where,
         skip,
         take: limit,
-        include: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          summary: true,
+          thumbnailUrl: true,
+          tags: true,
+          authorId: true,
+          isPublished: true,
+          publishedAt: true,
+          isDeleted: true,
+          createdAt: true,
+          updatedAt: true,
+          views: true,
+          readTime: true,
           author: true,
           categories: true,
         },
@@ -204,10 +216,5 @@ export class BlogService {
       totalCategories,
       totalAuthors,
     };
-  }
-
-  // --- SFTP Upload ---
-  static async uploadImage(buffer: Buffer, originalName: string = "image.jpg"): Promise<string> {
-    return uploadToSftp(buffer, originalName);
   }
 }

@@ -1,11 +1,16 @@
 import { Router } from "express";
-import multer from "multer";
 import { BlogController } from "./blog.controller.js";
 import { authenticate } from "../../common/middleware/auth.js";
 import { requireAdmin } from "../../common/middleware/requireAdmin.js";
+import { upload } from "../../common/middleware/upload.js";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+
+// Middleware to set upload folder
+const blogUploadFolder = (req: any, res: any, next: any) => {
+  req.query.folder = 'blog';
+  next();
+};
 
 // Public routes (for the main site)
 router.get("/posts/slug/:slug", BlogController.getPostBySlug);
@@ -43,6 +48,6 @@ router.patch("/ctas/:id", BlogController.updateCTA);
 router.delete("/ctas/:id", BlogController.deleteCTA);
 
 // Image Upload
-router.post("/upload-image", upload.single("image"), BlogController.uploadImage);
+router.post("/upload-image", blogUploadFolder, upload.single("file"), BlogController.uploadImage);
 
 export default router;

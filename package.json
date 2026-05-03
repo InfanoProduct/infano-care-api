@@ -40,6 +40,7 @@
     "pino": "^9.9.0",
     "pino-gelf": "^3.0.0",
     "pino-http": "^10.5.0",
+    "sharp": "^0.34.5",
     "socket.io": "^4.8.3",
     "ssh2": "^1.17.0",
     "streamifier": "^0.1.1",
