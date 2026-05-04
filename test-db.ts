@@ -17,9 +17,9 @@ async function testConnection() {
     await prisma.$connect();
     console.log('Connected successfully!');
     
-    console.log('Checking tables...');
-    const result = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
-    console.log('Tables in public schema:', result);
+    console.log('Checking for Book and Order tables...');
+    const result = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('Book', 'Order', 'OrderItem', 'DiscountCoupon')`;
+    console.log('Target tables found:', result);
   } catch (error) {
     console.error('Connection failed:', error);
   } finally {

@@ -175,4 +175,41 @@ export class AdminController {
       next(error);
     }
   }
+
+  // Circle Management
+  static async getCircles(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const circles = await AdminService.getCircles();
+      res.status(200).json(circles);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createCircle(req: Request, res: Response, next: NextFunction) {
+    try {
+      const circle = await AdminService.createCircle(req.body);
+      res.status(201).json(circle);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateCircle(req: Request, res: Response, next: NextFunction) {
+    try {
+      const circle = await AdminService.updateCircle(req.params.id, req.body);
+      res.status(200).json(circle);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteCircle(req: Request, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteCircle(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -178,4 +178,26 @@ export class AdminService {
   static async deleteBook(id: string) {
     return prisma.book.delete({ where: { id } });
   }
+
+  // Circle Management
+  static async getCircles() {
+    return prisma.communityCircle.findMany({
+      orderBy: { sortOrder: "asc" }
+    });
+  }
+
+  static async createCircle(data: any) {
+    return prisma.communityCircle.create({ data });
+  }
+
+  static async updateCircle(id: string, data: any) {
+    return prisma.communityCircle.update({
+      where: { id },
+      data
+    });
+  }
+
+  static async deleteCircle(id: string) {
+    return prisma.communityCircle.delete({ where: { id } });
+  }
 }

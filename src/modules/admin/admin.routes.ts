@@ -39,4 +39,10 @@ router.post("/books", AdminController.createBook);
 router.patch("/books/:id", AdminController.updateBook);
 router.delete("/books/:id", AdminController.deleteBook);
 
+// Circle Management
+router.get("/circles", AdminController.getCircles);
+router.post("/circles", AdminController.createCircle);
+router.patch("/circles/:id", AdminController.updateCircle);
+router.delete("/circles/:id", AdminController.deleteCircle);
+
 export default router;

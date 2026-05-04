@@ -8,61 +8,62 @@ datasource db {
 }
 
 model User {
-  id                                             String                   @id @default(uuid())
-  createdAt                                      DateTime                 @default(now())
-  updatedAt                                      DateTime                 @updatedAt
-  accountStatus                                  AccountStatus            @default(PENDING_SETUP)
-  ageAtSignup                                    Int?
-  birthMonth                                     Int?
-  birthYear                                      Int?
-  contentTier                                    ContentTier?
-  coppaConsentAt                                 DateTime?
-  coppaConsentGranted                            Boolean?
-  coppaConsentRequired                           Boolean                  @default(false)
-  isTestNumber                                   Boolean                  @default(false)
-  locale                                         String                   @default("en")
-  marketingOptIn                                 Boolean                  @default(false)
-  onboardingCompletedAt                          DateTime?
-  otpRetryCount                                  Int                      @default(0)
-  otpSendOn                                      DateTime?
-  parentEmail                                    String?
-  phone                                          String                   @unique
-  privacyAcceptedAt                              DateTime?
-  role                                           UserRole                 @default(TEEN)
-  termsAcceptedAt                                DateTime?
-  timezone                                       String?
-  onboardingStep                                 Int                      @default(0)
-  fcmToken                                       String?
-  chatSessions                                   ChatSession[]
-  CommunityActivityLog                           CommunityActivityLog[]
-  CommunityBookmark                              CommunityBookmark[]
-  posts                                          CommunityPost[]          @relation("UserPosts")
-  replies                                        CommunityReply[]         @relation("UserReplies")
-  consentRequests                                ConsentRequest[]
-  cycleLogs                                      CycleLog[]
-  cycleProfile                                   CycleProfile?
-  cycleRecords                                   CycleRecord[]
-  escalations                                    EscalationEvent[]
-  expertChats                                    ExpertChatSession[]      @relation("ExpertSessions")
-  expertSessions                                 ExpertChatSession[]      @relation("UserSessions")
-  ModerationLog                                  ModerationLog[]
-  notificationHistory                            NotificationHistory[]
-  NotificationPreferences                        NotificationPreferences?
-  menteeSessions                                 PeerLineSession[]        @relation("PeerLineSession_menteeIdToUser")
-  mentorSessions                                 PeerLineSession[]        @relation("PeerLineSession_mentorIdToUser")
-  personalization                                PersonalizationProfile?
-  PostReaction                                   PostReaction[]
-  profile                                        Profile?
-  reflections                                    Reflection[]
-  subscription                                   Subscription?
-  avatar                                         UserAvatar?
-  userBadges                                     UserBadge[]
-  progress                                       UserProgress[]
-  userQuests                                     UserQuest[]
-  ModerationAppeal                               ModerationAppeal[]
-  username                                       String?                  @unique
-  password                                       String?
-  orders                                         Order[]
+  userQuests              UserQuest[]
+  progress                UserProgress[]
+  userBadges              UserBadge[]
+  avatar                  UserAvatar?
+  subscription            Subscription?
+  personalization         PersonalizationProfile?
+  mentorSessions          PeerLineSession[]        @relation("PeerLineSession_mentorIdToUser")
+  menteeSessions          PeerLineSession[]        @relation("PeerLineSession_menteeIdToUser")
+  NotificationPreferences NotificationPreferences?
+  notificationHistory     NotificationHistory[]
+  ModerationLog           ModerationLog[]
+  expertSessions          ExpertChatSession[]      @relation("UserSessions")
+  expertChats             ExpertChatSession[]      @relation("ExpertSessions")
+  escalations             EscalationEvent[]
+  cycleRecords            CycleRecord[]
+  cycleProfile            CycleProfile?
+  cycleLogs               CycleLog[]
+  consentRequests         ConsentRequest[]
+  replies                 CommunityReply[]         @relation("UserReplies")
+  posts                   CommunityPost[]          @relation("UserPosts")
+  CommunityBookmark       CommunityBookmark[]
+  CommunityActivityLog    CommunityActivityLog[]
+  chatSessions            ChatSession[]
+  fcmToken                String?
+  onboardingStep          Int                      @default(0)
+  timezone                String?
+  termsAcceptedAt         DateTime?
+  role                    UserRole                 @default(TEEN)
+  privacyAcceptedAt       DateTime?
+  phone                   String                   @unique
+  parentEmail             String?
+  otpSendOn               DateTime?
+  otpRetryCount           Int                      @default(0)
+  onboardingCompletedAt   DateTime?
+  marketingOptIn          Boolean                  @default(false)
+  locale                  String                   @default("en")
+  isTestNumber            Boolean                  @default(false)
+  coppaConsentRequired    Boolean                  @default(false)
+  coppaConsentGranted     Boolean?
+  coppaConsentAt          DateTime?
+  contentTier             ContentTier?
+  birthYear               Int?
+  birthMonth              Int?
+  ageAtSignup             Int?
+  updatedAt               DateTime                 @updatedAt
+  createdAt               DateTime                 @default(now())
+  id                      String                   @id @default(uuid())
+  ModerationAppeal        ModerationAppeal[]
+  username                String?                  @unique
+  password                String?
+  orders                  Order[]
+  circlesModerated        CommunityCircle[]        @relation("CircleModerators")
+  accountStatus           AccountStatus            @default(PENDING_SETUP)
+  profile                 Profile?
+  reflections             Reflection[]
+  postReactions           PostReaction[]
 }
 
 model Profile {
@@ -437,14 +438,14 @@ model CommunityActivityLog {
 }
 
 model CommunityBookmark {
-  id             String          @id @default(uuid())
-  userId         String
-  postId         String?
-  createdAt      DateTime        @default(now())
-  replyId        String?
-  post           CommunityPost?  @relation("PostBookmarks", fields: [postId], references: [id])
-  reply          CommunityReply? @relation("ReplyBookmarks", fields: [replyId], references: [id])
-  User           User            @relation(fields: [userId], references: [id])
+  id        String          @id @default(uuid())
+  userId    String
+  postId    String?
+  createdAt DateTime        @default(now())
+  replyId   String?
+  post      CommunityPost?  @relation("PostBookmarks", fields: [postId], references: [id])
+  reply     CommunityReply? @relation("ReplyBookmarks", fields: [replyId], references: [id])
+  User      User            @relation(fields: [userId], references: [id])
 
   @@unique([userId, postId])
   @@unique([userId, replyId])
@@ -459,6 +460,7 @@ model CommunityCircle {
   description          String?
   iconEmoji            String?
   accentColor          String?
+  benefits             String[]               @default([])
   minContentTier       ContentTier?
   maxContentTier       ContentTier?
   requiresPreReview    Boolean                @default(false)
@@ -469,10 +471,13 @@ model CommunityCircle {
   updatedAt            DateTime               @updatedAt
   CommunityActivityLog CommunityActivityLog[]
   CommunityPost        CommunityPost[]
+  moderators           User[]                 @relation("CircleModerators")
+  events               CommunityEvent[]
 }
 
 model CommunityEvent {
-  id              String    @id @default(uuid())
+  id              String           @id @default(uuid())
+  circleId        String?
   title           String
   description     String?
   venue           String?
@@ -480,14 +485,15 @@ model CommunityEvent {
   startDate       DateTime
   endDate         DateTime?
   imageUrl        String?
-  isOnline        Boolean   @default(false)
+  isOnline        Boolean          @default(false)
   link            String?
-  isAgeRestricted Boolean   @default(false)
+  isAgeRestricted Boolean          @default(false)
   minAge          Int?
   maxAge          Int?
-  attendeeCount   Int       @default(0)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  attendeeCount   Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  circle          CommunityCircle? @relation(fields: [circleId], references: [id])
 }
 
 model CommunityPost {
@@ -527,28 +533,28 @@ model CommunityPost {
 }
 
 model CommunityReply {
-  id                   String              @id @default(uuid())
-  postId               String
-  parentReplyId        String?
-  depth                Int                 @default(1)
-  authorId             String
-  content              String
-  status               PostStatus          @default(PENDING_AI)
-  aiDecision           ModerationDecision?
-  crisisSeverity       CrisisSeverity      @default(NONE)
-  humanReviewed        Boolean             @default(false)
-  reactionHeart        Int                 @default(0)
-  reactionHug          Int                 @default(0)
-  createdAt            DateTime            @default(now())
-  publishedAt          DateTime?
-  deletedAt            DateTime?
-  reactionBulb         Int                 @default(0)
-  reactionFist         Int                 @default(0)
-  bookmarks            CommunityBookmark[] @relation("ReplyBookmarks")
-  author               User                @relation("UserReplies", fields: [authorId], references: [id])
-  CommunityReply       CommunityReply?     @relation("CommunityReplyToCommunityReply", fields: [parentReplyId], references: [id])
-  childReplies         CommunityReply[]    @relation("CommunityReplyToCommunityReply")
-  CommunityPost        CommunityPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  id             String              @id @default(uuid())
+  postId         String
+  parentReplyId  String?
+  depth          Int                 @default(1)
+  authorId       String
+  content        String
+  status         PostStatus          @default(PENDING_AI)
+  aiDecision     ModerationDecision?
+  crisisSeverity CrisisSeverity      @default(NONE)
+  humanReviewed  Boolean             @default(false)
+  reactionHeart  Int                 @default(0)
+  reactionHug    Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  publishedAt    DateTime?
+  deletedAt      DateTime?
+  reactionBulb   Int                 @default(0)
+  reactionFist   Int                 @default(0)
+  bookmarks      CommunityBookmark[] @relation("ReplyBookmarks")
+  author         User                @relation("UserReplies", fields: [authorId], references: [id])
+  CommunityReply CommunityReply?     @relation("CommunityReplyToCommunityReply", fields: [parentReplyId], references: [id])
+  childReplies   CommunityReply[]    @relation("CommunityReplyToCommunityReply")
+  CommunityPost  CommunityPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId, publishedAt])
 }
@@ -566,43 +572,43 @@ model ModerationLog {
 }
 
 model PeerLineMessage {
-  id              String          @id @default(uuid())
-  sessionId       String
-  senderRole      String
-  content         String
-  crisisFlag      Boolean         @default(false)
-  sentAt          DateTime        @default(now())
-  isRead          Boolean         @default(false)
-  session         PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id         String          @id @default(uuid())
+  sessionId  String
+  senderRole String
+  content    String
+  crisisFlag Boolean         @default(false)
+  sentAt     DateTime        @default(now())
+  isRead     Boolean         @default(false)
+  session    PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, sentAt])
 }
 
 model PeerLineSession {
-  id                                  String            @id @default(uuid())
-  menteeId                            String
-  mentorId                            String?
-  topicIds                            String[]
-  status                              PeerLineStatus    @default(MATCHING)
-  requestedVerified                   Boolean           @default(false)
-  matchedAt                           DateTime?
-  startedAt                           DateTime?
-  endedAt                             DateTime?
-  endReason                           String?
-  menteeRating                        Int?
-  mentorRating                        Int?
-  hadCrisisFlag                       Boolean           @default(false)
-  menteeNote                          String?
-  mentorSelfRating                    Int?
-  mentorWellbeingOk                   Boolean?
-  mentorNeedsSupport                  Boolean?
-  mentorReadyForNext                  Boolean?
-  mentorModerationFlag                Boolean?
-  mentorNote                          String?
-  createdAt                           DateTime          @default(now())
-  PeerLineMessage                     PeerLineMessage[]
-  mentee                              User              @relation("PeerLineSession_menteeIdToUser", fields: [menteeId], references: [id])
-  mentor                              User?             @relation("PeerLineSession_mentorIdToUser", fields: [mentorId], references: [id])
+  id                   String            @id @default(uuid())
+  menteeId             String
+  mentorId             String?
+  topicIds             String[]
+  status               PeerLineStatus    @default(MATCHING)
+  requestedVerified    Boolean           @default(false)
+  matchedAt            DateTime?
+  startedAt            DateTime?
+  endedAt              DateTime?
+  endReason            String?
+  menteeRating         Int?
+  mentorRating         Int?
+  hadCrisisFlag        Boolean           @default(false)
+  menteeNote           String?
+  mentorSelfRating     Int?
+  mentorWellbeingOk    Boolean?
+  mentorNeedsSupport   Boolean?
+  mentorReadyForNext   Boolean?
+  mentorModerationFlag Boolean?
+  mentorNote           String?
+  createdAt            DateTime          @default(now())
+  PeerLineMessage      PeerLineMessage[]
+  mentee               User              @relation("PeerLineSession_menteeIdToUser", fields: [menteeId], references: [id])
+  mentor               User?             @relation("PeerLineSession_mentorIdToUser", fields: [mentorId], references: [id])
 }
 
 model PostReaction {
@@ -730,7 +736,7 @@ enum PostStatus {
 
 // Blog Management Models
 model BlogAuthor {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   name        String
   role        String?
   bio         String?
@@ -738,21 +744,21 @@ model BlogAuthor {
   twitterUrl  String?
   linkedInUrl String?
   email       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   posts       BlogPost[]
 }
 
 model BlogCategory {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   name        String
-  slug        String   @unique
+  slug        String     @unique
   description String?
   iconUrl     String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   posts       BlogPost[] @relation("PostCategories")
 }
 
@@ -765,37 +771,37 @@ model BlogPost {
   thumbnailUrl  String?
   galleryImages String[] @default([])
   tags          String[] @default([])
-  
-  authorId      String?
-  author        BlogAuthor? @relation(fields: [authorId], references: [id])
-  
-  categories    BlogCategory[] @relation("PostCategories")
-  
-  seo           Json?    // Stores SeoMetadata
-  
-  isPublished   Boolean  @default(false)
-  publishedAt   DateTime?
-  isDeleted     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  views         Int      @default(0)
-  readTime      Int      @default(5)
-  
-  ctas          BlogCTA[] @relation("PostCTAs")
+
+  authorId String?
+  author   BlogAuthor? @relation(fields: [authorId], references: [id])
+
+  categories BlogCategory[] @relation("PostCategories")
+
+  seo Json? // Stores SeoMetadata
+
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  isDeleted   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  views       Int       @default(0)
+  readTime    Int       @default(5)
+
+  ctas BlogCTA[] @relation("PostCTAs")
 }
 
 model BlogCTA {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   title       String?
   description String?
   buttonText  String?
   buttonLink  String?
   imageUrl    String?
-  type        String?  // e.g., "primary", "secondary"
-  isActive    Boolean  @default(true)
-  clicks      Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  type        String? // e.g., "primary", "secondary"
+  isActive    Boolean    @default(true)
+  clicks      Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   posts       BlogPost[] @relation("PostCTAs")
 }
 
@@ -814,57 +820,57 @@ model Book {
 }
 
 model Order {
-  id                String        @id @default(uuid())
-  userId            String?       // Optional for guest users
-  guestEmail        String?
-  guestName         String?
-  guestPhone        String?
-  
-  subtotal          Float
-  gstAmount         Float         @default(0)
-  discountAmount    Float         @default(0)
-  totalAmount       Float
-  
-  paymentMethod     PaymentMethod
-  paymentStatus     PaymentStatus @default(PENDING)
-  orderStatus       OrderStatus   @default(PLACED)
-  
-  shippingAddress   String
-  city              String
-  state             String
-  pincode           String
-  
-  razorpayOrderId   String?       @unique
+  id         String  @id @default(uuid())
+  userId     String? // Optional for guest users
+  guestEmail String?
+  guestName  String?
+  guestPhone String?
+
+  subtotal       Float
+  gstAmount      Float @default(0)
+  discountAmount Float @default(0)
+  totalAmount    Float
+
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  orderStatus   OrderStatus   @default(PLACED)
+
+  shippingAddress String
+  city            String
+  state           String
+  pincode         String
+
+  razorpayOrderId   String? @unique
   razorpayPaymentId String?
   razorpaySignature String?
-  
-  items             OrderItem[]
-  
-  couponId          String?
-  coupon            DiscountCoupon? @relation(fields: [couponId], references: [id])
-  
-  gstNumber         String?       // Optional GST number from customer
-  
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  
-  user              User?         @relation(fields: [userId], references: [id])
+
+  items OrderItem[]
+
+  couponId String?
+  coupon   DiscountCoupon? @relation(fields: [couponId], references: [id])
+
+  gstNumber String? // Optional GST number from customer
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id])
 }
 
 model DiscountCoupon {
-  id              String      @id @default(uuid())
-  code            String      @unique
-  type            CouponType
-  value           Float       // Percentage or Flat amount
-  minOrderAmount  Float       @default(0)
-  maxDiscount     Float?      // Cap for percentage discounts
-  expiryDate      DateTime?
-  usageLimit      Int         @default(100)
-  usedCount       Int         @default(0)
-  isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  orders          Order[]
+  id             String     @id @default(uuid())
+  code           String     @unique
+  type           CouponType
+  value          Float // Percentage or Flat amount
+  minOrderAmount Float      @default(0)
+  maxDiscount    Float? // Cap for percentage discounts
+  expiryDate     DateTime?
+  usageLimit     Int        @default(100)
+  usedCount      Int        @default(0)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  orders         Order[]
 }
 
 enum CouponType {
@@ -873,13 +879,13 @@ enum CouponType {
 }
 
 model OrderItem {
-  id        String   @id @default(uuid())
-  orderId   String
-  bookId    String
-  quantity  Int
-  price     Float    // Price at the time of purchase
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  book      Book     @relation(fields: [bookId], references: [id])
+  id       String @id @default(uuid())
+  orderId  String
+  bookId   String
+  quantity Int
+  price    Float // Price at the time of purchase
+  order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  book     Book   @relation(fields: [bookId], references: [id])
 }
 
 enum PaymentMethod {
