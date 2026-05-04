@@ -71,6 +71,7 @@ app.use("/api/friends", friendsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/blog", blogRoutes);
 app.use("/api/shop", shopRoutes);
+app.use("/uploads", express.static("uploads"));
 
 
 /**

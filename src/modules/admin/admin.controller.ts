@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AdminService } from "./admin.service.js";
-import { RemoteStorageService } from "../../common/utils/remoteStorage.js";
+import { StorageService } from "../../common/utils/storage.js";
 
 export class AdminController {
   static async getStats(_req: Request, res: Response, next: NextFunction) {
@@ -113,8 +113,8 @@ export class AdminController {
 
       const folder = (req.query.folder as string) || '';
       
-      // Upload to remote storage (includes optimization)
-      const { filename, url } = await RemoteStorageService.uploadFile(req.file.path, folder);
+      // Upload to local storage (includes optimization)
+      const { filename, url } = await StorageService.uploadFile(req.file.path, folder);
 
       res.status(200).json({ 
         url,

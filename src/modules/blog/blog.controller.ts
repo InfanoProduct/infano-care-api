@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { BlogService } from "./blog.service.js";
-import { RemoteStorageService } from "../../common/utils/remoteStorage.js";
+import { StorageService } from "../../common/utils/storage.js";
 
 export class BlogController {
   // --- Posts ---
@@ -193,8 +193,8 @@ export class BlogController {
       
       const folder = (req.query['folder'] as string) || 'blog';
       
-      // Upload to remote storage (includes optimization)
-      const { filename, url } = await RemoteStorageService.uploadFile(req.file.path, folder);
+      // Upload to local storage (includes optimization)
+      const { filename, url } = await StorageService.uploadFile(req.file.path, folder);
 
       res.status(200).json({ 
         url,
