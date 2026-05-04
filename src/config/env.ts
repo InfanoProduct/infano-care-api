@@ -34,6 +34,9 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().default("infano_access_secret_dev"),
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().optional(),
   FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

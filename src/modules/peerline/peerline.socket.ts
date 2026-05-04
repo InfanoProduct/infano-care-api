@@ -70,11 +70,11 @@ export function setupPeerLineSocket(serverIo: Server) {
 
         logger.info({ sessionId: data.sessionId, messageId: message.id }, 'Message created, broadcasting to room');
         const { sessionId: _sId, ...msgRest } = message;
-        nsp.to(`session_${data.sessionId}`).emit('message', { 
-          type: 'message', 
+        nsp.to(`session_${data.sessionId}`).emit('message', {
+          type: 'message',
           sessionId: data.sessionId,
-          clientId: data.clientId, 
-          ...msgRest 
+          clientId: data.clientId,
+          ...msgRest
         });
 
         if (message.crisisFlag) {

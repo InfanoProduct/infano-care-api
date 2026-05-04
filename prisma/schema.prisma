@@ -460,6 +460,7 @@ model CommunityCircle {
   description          String?
   iconEmoji            String?
   accentColor          String?
+  benefits             String[]               @default([])
   minContentTier       ContentTier?
   maxContentTier       ContentTier?
   requiresPreReview    Boolean                @default(false)
@@ -475,7 +476,8 @@ model CommunityCircle {
 }
 
 model CommunityEvent {
-  id              String    @id @default(uuid())
+  id              String           @id @default(uuid())
+  circleId        String?
   title           String
   description     String?
   venue           String?
@@ -483,14 +485,15 @@ model CommunityEvent {
   startDate       DateTime
   endDate         DateTime?
   imageUrl        String?
-  isOnline        Boolean   @default(false)
+  isOnline        Boolean          @default(false)
   link            String?
-  isAgeRestricted Boolean   @default(false)
+  isAgeRestricted Boolean          @default(false)
   minAge          Int?
   maxAge          Int?
-  attendeeCount   Int       @default(0)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  attendeeCount   Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  circle          CommunityCircle? @relation(fields: [circleId], references: [id])
 }
 
 model CommunityPost {
@@ -569,6 +572,14 @@ model ModerationLog {
 }
 
 model PeerLineMessage {
+  id         String          @id @default(uuid())
+  sessionId  String
+  senderRole String
+  content    String
+  crisisFlag Boolean         @default(false)
+  sentAt     DateTime        @default(now())
+  isRead     Boolean         @default(false)
+  session    PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   id         String          @id @default(uuid())
   sessionId  String
   senderRole String
@@ -768,6 +779,7 @@ enum UserRole {
   PARENT
   GUARDIAN
   EXPERT
+  ADMIN
   ADMIN
 }
 

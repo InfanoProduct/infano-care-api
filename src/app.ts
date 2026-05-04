@@ -6,20 +6,20 @@ import { pinoHttp } from "pino-http";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { errorHandler } from "./common/middleware/errorHandler.js";
-import authRoutes      from "./modules/auth/auth.routes.js";
-import consentRoutes   from "./modules/consent/consent.routes.js";
+import authRoutes from "./modules/auth/auth.routes.js";
+import consentRoutes from "./modules/consent/consent.routes.js";
 import onboardingRoutes from "./modules/onboarding/onboarding.routes.js";
-import userRoutes      from "./modules/user/user.routes.js";
-import trackerRoutes   from "./modules/tracker/tracker.routes.js";
-import learningRoutes  from "./modules/learning/learning.routes.js";
-import questRoutes     from "./modules/quest/quest.routes.js";
-import chatRoutes      from "./modules/chat/chat.routes.js";
-import expertRoutes    from "./modules/expert/expert.routes.js";
+import userRoutes from "./modules/user/user.routes.js";
+import trackerRoutes from "./modules/tracker/tracker.routes.js";
+import learningRoutes from "./modules/learning/learning.routes.js";
+import questRoutes from "./modules/quest/quest.routes.js";
+import chatRoutes from "./modules/chat/chat.routes.js";
+import expertRoutes from "./modules/expert/expert.routes.js";
 import communityRoutes from "./modules/community/community.routes.js";
-import peerlineRoutes  from "./modules/peerline/peerline.routes.js";
-import eventRoutes     from "./modules/events/events.routes.js";
-import safetyRoutes    from "./modules/safety/safety.routes.js";
-import friendsRoutes   from "./modules/friends/friends.routes.js";
+import peerlineRoutes from "./modules/peerline/peerline.routes.js";
+import eventRoutes from "./modules/events/events.routes.js";
+import safetyRoutes from "./modules/safety/safety.routes.js";
+import friendsRoutes from "./modules/friends/friends.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -28,6 +28,7 @@ const app = express();
 // Middleware
 app.use(
   helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
@@ -36,7 +37,7 @@ app.use(
     },
   })
 );
-app.use(cors({ origin: env.ALLOWED_ORIGINS }));
+app.use(cors({ origin: "*" }));
 app.use(compression());
 app.use(express.json());
 app.use((req, res, next) => {
@@ -44,25 +45,26 @@ app.use((req, res, next) => {
   next();
 });
 app.use(pinoHttp({ logger }));
+logger.info({ allowedOrigins: env.ALLOWED_ORIGINS }, "CORS configuration");
 
 // Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use("/api/auth",        authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/auth/consent", consentRoutes);
-app.use("/api/onboarding",  onboardingRoutes);
-app.use("/api/user",        userRoutes);
-app.use("/api/tracker",     trackerRoutes);
-app.use("/api/learning",    learningRoutes);
-app.use("/api/quest",       questRoutes);
-app.use("/api/chat",        chatRoutes);
-app.use("/api/expert",      expertRoutes);
-app.use("/api/community",   communityRoutes);
-app.use("/api/peerline",    peerlineRoutes);
-app.use("/api/events",      eventRoutes);
-app.use("/api/safety",      safetyRoutes);
-app.use("/api/friends",     friendsRoutes);
+app.use("/api/onboarding", onboardingRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/tracker", trackerRoutes);
+app.use("/api/learning", learningRoutes);
+app.use("/api/quest", questRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/expert", expertRoutes);
+app.use("/api/community", communityRoutes);
+app.use("/api/peerline", peerlineRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/safety", safetyRoutes);
+app.use("/api/friends", friendsRoutes);
 
 
 /**

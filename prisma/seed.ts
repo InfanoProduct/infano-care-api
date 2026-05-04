@@ -1,24 +1,25 @@
+/// <reference types="node" />
 import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
   const testNumbers = [
     { phone: '+911234567890', isTestNumber: true, role: 'TEEN', isMentor: false },
-    { 
-      phone: '+911112223333', isTestNumber: true, role: 'TEEN', isMentor: true, 
+    {
+      phone: '+911112223333', isTestNumber: true, role: 'TEEN', isMentor: true,
       topics: ['period', 'body', 'mood'],
       bio: 'I love helping others understand their bodies and feel confident in their own skin!',
       experience: 12
     },
-    { 
-      phone: '+919998887777', isTestNumber: true, role: 'TEEN', isMentor: true, 
+    {
+      phone: '+919998887777', isTestNumber: true, role: 'TEEN', isMentor: true,
       topics: ['anxiety', 'relations'], isOnline: true,
       bio: 'Let\'s talk about school stress, friendships, and anything on your mind. I\'m here to listen.',
       experience: 45
     },
-    { 
-      phone: '+917776665555', isTestNumber: true, role: 'TEEN', isMentor: true, 
-      topics: ['period', 'school'], isOnline: false, 
+    {
+      phone: '+917776665555', isTestNumber: true, role: 'TEEN', isMentor: true,
+      topics: ['period', 'school'], isOnline: false,
       unavailableUntil: new Date(Date.now() + 45 * 60000),
       bio: 'Navigating school and physical changes can be tough. I\'ve been there, and I can help.',
       experience: 28
@@ -28,7 +29,7 @@ async function main() {
   for (const item of testNumbers) {
     const user = await prisma.user.upsert({
       where: { phone: item.phone },
-      update: { 
+      update: {
         isTestNumber: item.isTestNumber,
         accountStatus: 'ACTIVE',
         onboardingStep: 13,
@@ -351,6 +352,9 @@ async function main() {
 
   console.log(`Upserted Journey: ${journey.title}`);
   console.log(`Upserted Episode: ${episode1.title}`);
+  console.log(`Upserted Journey: ${journey2.title}`);
+  console.log(`Upserted Journey: ${journey3.title}`);
+  console.log(`Upserted Journey: ${journey4.title}`);
 }
 
 main()
