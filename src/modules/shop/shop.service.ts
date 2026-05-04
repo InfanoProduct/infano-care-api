@@ -213,4 +213,32 @@ export class ShopService {
       });
     }
   }
+
+  static async handleWebhook(body: string, signature: string) {
+    const expectedSignature = crypto
+      .createHmac("sha256", env.RAZORPAY_WEBHOOK_SECRET || "")
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== signature) {
+      throw new Error("Invalid webhook signature");
+    }
+
+    const event = JSON.parse(body);
+
+    if (event.event === "order.paid") {
+      const { id: razorpayOrderId } = event.payload.order.entity;
+      const { id: razorpayPaymentId } = event.payload.payment.entity;
+
+      await prisma.order.update({
+        where: { razorpayOrderId },
+        data: {
+          paymentStatus: PaymentStatus.COMPLETED,
+          razorpayPaymentId,
+        },
+      });
+    }
+
+    return { received: true };
+  }
 }

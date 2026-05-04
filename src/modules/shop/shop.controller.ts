@@ -13,7 +13,7 @@ export class ShopController {
 
   static async getBook(req: Request, res: Response, next: NextFunction) {
     try {
-      const book = await ShopService.getBook(req.params.id);
+      const book = await ShopService.getBook(req.params.id as string);
       if (!book) return res.status(404).json({ message: "Book not found" });
       res.status(200).json(book);
     } catch (error) {
@@ -52,6 +52,9 @@ export class ShopController {
   static async webhook(req: Request, res: Response, next: NextFunction) {
     try {
       const signature = req.headers["x-razorpay-signature"] as string;
+      if (!signature) {
+        return res.status(400).json({ message: "Missing Razorpay signature" });
+      }
       const result = await ShopService.handleWebhook(JSON.stringify(req.body), signature);
       res.status(200).json(result);
     } catch (error) {
