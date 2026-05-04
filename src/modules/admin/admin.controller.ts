@@ -12,6 +12,15 @@ export class AdminController {
     }
   }
 
+  static async getMentors(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const mentors = await AdminService.getMentors();
+      res.status(200).json(mentors);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getUsers(req: Request, res: Response, next: NextFunction) {
     try {
       const page = parseInt(req.query.page as string) || 1;
@@ -149,6 +158,15 @@ export class AdminController {
   }
 
   // Book Management
+  static async getBooks(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const books = await AdminService.getBooks();
+      res.status(200).json(books);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async createBook(req: Request, res: Response, next: NextFunction) {
     try {
       const book = await AdminService.createBook(req.body);

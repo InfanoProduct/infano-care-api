@@ -29,6 +29,22 @@ export class AdminService {
     };
   }
 
+  static async getMentors() {
+    return prisma.user.findMany({
+      where: {
+        profile: {
+          mentorStatus: { not: "none" }
+        }
+      },
+      include: {
+        profile: true
+      },
+      orderBy: {
+        username: "asc"
+      }
+    });
+  }
+
   static async getUsers(page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
     const [users, total] = await Promise.all([
@@ -164,6 +180,12 @@ export class AdminService {
   }
 
   // Book Management
+  static async getBooks() {
+    return prisma.book.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
   static async createBook(data: any) {
     return prisma.book.create({ data });
   }
@@ -182,18 +204,40 @@ export class AdminService {
   // Circle Management
   static async getCircles() {
     return prisma.communityCircle.findMany({
+      include: {
+        moderators: {
+          include: { profile: true }
+        },
+        _count: {
+          select: { members: true }
+        }
+      },
       orderBy: { sortOrder: "asc" }
     });
   }
 
   static async createCircle(data: any) {
-    return prisma.communityCircle.create({ data });
+    const { moderatorIds, ...rest } = data;
+    return prisma.communityCircle.create({
+      data: {
+        ...rest,
+        moderators: moderatorIds ? {
+          connect: moderatorIds.map((id: string) => ({ id }))
+        } : undefined
+      }
+    });
   }
 
   static async updateCircle(id: string, data: any) {
+    const { moderatorIds, ...rest } = data;
     return prisma.communityCircle.update({
       where: { id },
-      data
+      data: {
+        ...rest,
+        moderators: moderatorIds ? {
+          set: moderatorIds.map((id: string) => ({ id }))
+        } : undefined
+      }
     });
   }
 

@@ -64,6 +64,8 @@ model User {
   progress                UserProgress[]
   userQuests              UserQuest[]
   joinedCircles           CommunityCircle[]        @relation("CircleMembers")
+  circlesModerated        CommunityCircle[]        @relation("CircleModerators")
+  orders                  Order[]
 }
 
 model Profile {
@@ -219,6 +221,7 @@ model LearningJourney {
   totalXP        Int         @default(0)
   category       String?
   isActive       Boolean     @default(true)
+  isPremium      Boolean     @default(false)
   ageBand        String?
   topics         String[]    @default([])
   goals          String[]    @default([])
@@ -240,6 +243,7 @@ model Episode {
   content      Json            @default("[]")
   points       Int             @default(50)
   isActive     Boolean         @default(true)
+  isPremium    Boolean         @default(false)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   journey      LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
@@ -473,6 +477,8 @@ model CommunityCircle {
   CommunityActivityLog CommunityActivityLog[]
   CommunityPost        CommunityPost[]
   members              User[]                 @relation("CircleMembers")
+  moderators           User[]                 @relation("CircleModerators")
+  events               CommunityEvent[]
 }
 
 model CommunityEvent {
@@ -572,14 +578,6 @@ model ModerationLog {
 }
 
 model PeerLineMessage {
-  id         String          @id @default(uuid())
-  sessionId  String
-  senderRole String
-  content    String
-  crisisFlag Boolean         @default(false)
-  sentAt     DateTime        @default(now())
-  isRead     Boolean         @default(false)
-  session    PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   id         String          @id @default(uuid())
   sessionId  String
   senderRole String
@@ -780,7 +778,6 @@ enum UserRole {
   GUARDIAN
   EXPERT
   ADMIN
-  ADMIN
 }
 
 enum ContentTier {
@@ -869,4 +866,108 @@ enum MatchStatus {
   REJECTED
   UNMATCHED
   SAVED
+}
+
+
+// Book Selling Models
+model Book {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  imageUrl    String?
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id         String  @id @default(uuid())
+  userId     String? // Optional for guest users
+  guestEmail String?
+  guestName  String?
+  guestPhone String?
+
+  subtotal       Float
+  gstAmount      Float @default(0)
+  discountAmount Float @default(0)
+  totalAmount    Float
+
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  orderStatus   OrderStatus   @default(PLACED)
+
+  shippingAddress String
+  city            String
+  state           String
+  pincode         String
+
+  razorpayOrderId   String? @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+
+  items OrderItem[]
+
+  couponId String?
+  coupon   DiscountCoupon? @relation(fields: [couponId], references: [id])
+
+  gstNumber String? // Optional GST number from customer
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model DiscountCoupon {
+  id             String     @id @default(uuid())
+  code           String     @unique
+  type           CouponType
+  value          Float // Percentage or Flat amount
+  minOrderAmount Float      @default(0)
+  maxDiscount    Float? // Cap for percentage discounts
+  expiryDate     DateTime?
+  usageLimit     Int        @default(100)
+  usedCount      Int        @default(0)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  orders         Order[]
+}
+
+enum CouponType {
+  PERCENTAGE
+  FLAT
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  orderId  String
+  bookId   String
+  quantity Int
+  price    Float // Price at the time of purchase
+  order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  book     Book   @relation(fields: [bookId], references: [id])
+}
+
+enum PaymentMethod {
+  ONLINE
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum OrderStatus {
+  PLACED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }

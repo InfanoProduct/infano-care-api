@@ -13,6 +13,7 @@ router.use(requireAdmin);
 
 router.get("/stats", AdminController.getStats);
 router.get("/users", AdminController.getUsers);
+router.get("/mentors", AdminController.getMentors);
 
 // Learning Journey Management
 router.get("/learning/journeys", AdminController.getJourneys);
@@ -35,6 +36,7 @@ router.get("/orders/:id", AdminController.getOrder);
 router.patch("/orders/:id/status", AdminController.updateOrderStatus);
 
 // Book Management
+router.get("/books", AdminController.getBooks);
 router.post("/books", AdminController.createBook);
 router.patch("/books/:id", AdminController.updateBook);
 router.delete("/books/:id", AdminController.deleteBook);
