@@ -12,12 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio",
-    "delete-all-users": "dotenv -e .env.development -e .env.local -- tsx prisma/delete-all-users.ts",
-    "create-test-user": "dotenv -e .env.development -e .env.local -- tsx prisma/create-test-user.ts",
-    "reset-test-user": "dotenv -e .env.development -e .env.local -- tsx prisma/reset-test-user.ts",
-    "delete-test-user": "dotenv -e .env.development -e .env.local -- tsx prisma/delete-test-user.ts",
-    "seed:admin": "dotenv -e .env.development -e .env.local -- tsx prisma/seed-admin.ts"
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
@@ -78,7 +73,4 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.0.0"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  }
 }

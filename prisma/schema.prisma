@@ -9,32 +9,32 @@ datasource db {
 
 model User {
   id                      String                   @id @default(uuid())
-  phone                   String                   @unique
-  role                    UserRole                 @default(TEEN)
-  isTestNumber            Boolean                  @default(false)
-  otpSendOn               DateTime?
-  otpRetryCount           Int                      @default(0)
-  birthMonth              Int?
-  birthYear               Int?
-  ageAtSignup             Int?
-  contentTier             ContentTier?
-  accountStatus           AccountStatus            @default(PENDING_SETUP)
-  onboardingStep          Int                      @default(0)
-  onboardingCompletedAt   DateTime?
-  termsAcceptedAt         DateTime?
-  privacyAcceptedAt       DateTime?
-  marketingOptIn          Boolean                  @default(false)
-  coppaConsentRequired    Boolean                  @default(false)
-  coppaConsentGranted     Boolean?
-  coppaConsentAt          DateTime?
-  parentEmail             String?
-  locale                  String                   @default("en")
-  timezone                String?
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
+  ageAtSignup             Int?
+  birthMonth              Int?
+  birthYear               Int?
+  contentTier             ContentTier?
+  coppaConsentAt          DateTime?
+  coppaConsentGranted     Boolean?
+  coppaConsentRequired    Boolean                  @default(false)
+  isTestNumber            Boolean                  @default(false)
+  locale                  String                   @default("en")
+  marketingOptIn          Boolean                  @default(false)
+  onboardingCompletedAt   DateTime?
+  otpRetryCount           Int                      @default(0)
+  otpSendOn               DateTime?
+  parentEmail             String?
+  phone                   String                   @unique
+  privacyAcceptedAt       DateTime?
+  role                    UserRole                 @default(TEEN)
+  termsAcceptedAt         DateTime?
+  timezone                String?
+  onboardingStep          Int                      @default(0)
   fcmToken                String?
   username                String?                  @unique
   password                String?
+  accountStatus           AccountStatus            @default(PENDING_SETUP)
   chatSessions            ChatSession[]
   CommunityActivityLog    CommunityActivityLog[]
   CommunityBookmark       CommunityBookmark[]
@@ -52,6 +52,7 @@ model User {
   ModerationLog           ModerationLog[]
   notificationHistory     NotificationHistory[]
   NotificationPreferences NotificationPreferences?
+  orders                  Order[]
   menteeSessions          PeerLineSession[]        @relation("PeerLineSession_menteeIdToUser")
   mentorSessions          PeerLineSession[]        @relation("PeerLineSession_mentorIdToUser")
   personalization         PersonalizationProfile?
@@ -65,7 +66,6 @@ model User {
   userQuests              UserQuest[]
   joinedCircles           CommunityCircle[]        @relation("CircleMembers")
   circlesModerated        CommunityCircle[]        @relation("CircleModerators")
-  orders                  Order[]
 }
 
 model Profile {
@@ -76,8 +76,8 @@ model Profile {
   journeyName            String?
   totalPoints            Int       @default(0)
   bloomLevel             Int       @default(1)
-  certifiedTopicIds      String[]  @default([])
   mentorStatus           String    @default("none")
+  certifiedTopicIds      String[]  @default([])
   isAvailable            Boolean   @default(false)
   unavailableUntil       DateTime?
   pendingSafetyCheckin   Boolean   @default(false)
@@ -137,28 +137,28 @@ model CycleProfile {
   id                       String      @id @default(uuid())
   userId                   String      @unique
   trackerMode              TrackerMode @default(watching_waiting)
-  avgCycleLength           Float?
-  stdCycleLength           Float?
-  avgPeriodDuration        Float?
-  coefficientOfVar         Float?
   lastPeriodStart          DateTime?
   lastPeriodEnd            DateTime?
-  predictedNextStart       DateTime?
-  predictedNextEnd         DateTime?
-  predictionWindowEarly    DateTime?
-  predictionWindowLate     DateTime?
-  confidenceLevel          String      @default("none")
-  currentPhase             String      @default("waiting")
-  currentCycleDay          Int?
-  showFertilityWindow      Boolean     @default(false)
-  federatedLearningConsent Boolean     @default(false)
-  currentLogStreak         Int         @default(0)
-  longestLogStreak         Int         @default(0)
-  lastLogDate              DateTime?
+  avgCycleLength           Float?
   setupCompletedAt         DateTime?
   createdAt                DateTime    @default(now())
   updatedAt                DateTime    @updatedAt
+  avgPeriodDuration        Float?
+  coefficientOfVar         Float?
+  confidenceLevel          String      @default("none")
+  currentCycleDay          Int?
+  currentLogStreak         Int         @default(0)
+  currentPhase             String      @default("waiting")
+  federatedLearningConsent Boolean     @default(false)
+  lastLogDate              DateTime?
+  longestLogStreak         Int         @default(0)
   patternCache             Json?
+  predictedNextEnd         DateTime?
+  predictedNextStart       DateTime?
+  predictionWindowEarly    DateTime?
+  predictionWindowLate     DateTime?
+  showFertilityWindow      Boolean     @default(false)
+  stdCycleLength           Float?
   user                     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -168,21 +168,21 @@ model CycleLog {
   id             String   @id @default(uuid())
   userId         String
   date           DateTime
-  isRetroactive  Boolean  @default(false)
   flow           String?
-  crampIntensity Int?
   symptoms       String[]
+  createdAt      DateTime @default(now())
+  activityTags   String[]
+  crampIntensity Int?
+  energyLevel    Int?
+  hasVoiceNote   Boolean  @default(false)
+  isRetroactive  Boolean  @default(false)
   moodPrimary    String?
   moodSecondary  String[]
-  energyLevel    Int?
-  sleepQuality   Int?
-  sleepHours     Float?
-  nutritionTags  String[]
-  activityTags   String[]
   noteCiphertext String?
   noteIv         String?
-  hasVoiceNote   Boolean  @default(false)
-  createdAt      DateTime @default(now())
+  nutritionTags  String[]
+  sleepHours     Float?
+  sleepQuality   Int?
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id])
 
@@ -214,38 +214,38 @@ model CycleRecord {
 model LearningJourney {
   id             String      @id @default(uuid())
   title          String
-  slug           String      @unique @default(uuid())
   description    String
-  thumbnailUrl   String?
-  bannerImage    String?
-  totalXP        Int         @default(0)
-  category       String?
-  isActive       Boolean     @default(true)
-  isPremium      Boolean     @default(false)
   ageBand        String?
   topics         String[]    @default([])
   goals          String[]    @default([])
   tags           String[]    @default([])
   contentTone    String      @default("moderate")
   minContentTier ContentTier @default(TEEN_EARLY)
+  bannerImage    String?
+  category       String?
   createdAt      DateTime    @default(now())
+  isActive       Boolean     @default(true)
+  slug           String      @unique @default(uuid())
+  thumbnailUrl   String?
+  totalXP        Int         @default(0)
   updatedAt      DateTime    @updatedAt
+  isPremium      Boolean     @default(false)
   episodes       Episode[]
 }
 
 model Episode {
   id           String          @id @default(uuid())
   journeyId    String
-  title        String
-  slug         String          @unique @default(uuid())
-  description  String?
   order        Int             @default(0)
+  title        String
   content      Json            @default("[]")
   points       Int             @default(50)
-  isActive     Boolean         @default(true)
-  isPremium    Boolean         @default(false)
   createdAt    DateTime        @default(now())
+  description  String?
+  isActive     Boolean         @default(true)
+  slug         String          @unique @default(uuid())
   updatedAt    DateTime        @updatedAt
+  isPremium    Boolean         @default(false)
   journey      LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
   reflections  Reflection[]
   userProgress UserProgress[]
@@ -256,9 +256,9 @@ model UserProgress {
   userId           String
   episodeId        String
   completed        Boolean  @default(false)
-  lastViewedItemId String?
-  completedItems   Json     @default("[]")
   updatedAt        DateTime @updatedAt
+  completedItems   Json     @default("[]")
+  lastViewedItemId String?
   history          Json?
   episode          Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -381,8 +381,8 @@ model ExpertChatMessage {
   sessionId String
   senderId  String
   content   String
-  isRead    Boolean           @default(false)
   createdAt DateTime          @default(now())
+  isRead    Boolean           @default(false)
   session   ExpertChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
@@ -445,8 +445,8 @@ model CommunityBookmark {
   id        String          @id @default(uuid())
   userId    String
   postId    String?
-  replyId   String?
   createdAt DateTime        @default(now())
+  replyId   String?
   post      CommunityPost?  @relation("PostBookmarks", fields: [postId], references: [id])
   reply     CommunityReply? @relation("ReplyBookmarks", fields: [replyId], references: [id])
   User      User            @relation(fields: [userId], references: [id])
@@ -464,7 +464,6 @@ model CommunityCircle {
   description          String?
   iconEmoji            String?
   accentColor          String?
-  benefits             String[]               @default([])
   minContentTier       ContentTier?
   maxContentTier       ContentTier?
   requiresPreReview    Boolean                @default(false)
@@ -473,17 +472,17 @@ model CommunityCircle {
   isActive             Boolean                @default(true)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
+  benefits             String[]               @default([])
   isPrivate            Boolean                @default(false)
   CommunityActivityLog CommunityActivityLog[]
+  events               CommunityEvent[]
   CommunityPost        CommunityPost[]
   members              User[]                 @relation("CircleMembers")
   moderators           User[]                 @relation("CircleModerators")
-  events               CommunityEvent[]
 }
 
 model CommunityEvent {
   id              String           @id @default(uuid())
-  circleId        String?
   title           String
   description     String?
   venue           String?
@@ -499,6 +498,7 @@ model CommunityEvent {
   attendeeCount   Int              @default(0)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  circleId        String?
   circle          CommunityCircle? @relation(fields: [circleId], references: [id])
 }
 
@@ -551,11 +551,11 @@ model CommunityReply {
   humanReviewed  Boolean             @default(false)
   reactionHeart  Int                 @default(0)
   reactionHug    Int                 @default(0)
-  reactionBulb   Int                 @default(0)
-  reactionFist   Int                 @default(0)
   createdAt      DateTime            @default(now())
   publishedAt    DateTime?
   deletedAt      DateTime?
+  reactionBulb   Int                 @default(0)
+  reactionFist   Int                 @default(0)
   bookmarks      CommunityBookmark[] @relation("ReplyBookmarks")
   author         User                @relation("UserReplies", fields: [authorId], references: [id])
   CommunityReply CommunityReply?     @relation("CommunityReplyToCommunityReply", fields: [parentReplyId], references: [id])
@@ -604,14 +604,14 @@ model PeerLineSession {
   menteeRating         Int?
   mentorRating         Int?
   hadCrisisFlag        Boolean           @default(false)
-  createdAt            DateTime          @default(now())
   menteeNote           String?
-  mentorModerationFlag Boolean?
-  mentorNeedsSupport   Boolean?
-  mentorNote           String?
-  mentorReadyForNext   Boolean?
   mentorSelfRating     Int?
   mentorWellbeingOk    Boolean?
+  mentorNeedsSupport   Boolean?
+  mentorReadyForNext   Boolean?
+  mentorModerationFlag Boolean?
+  mentorNote           String?
+  createdAt            DateTime          @default(now())
   PeerLineMessage      PeerLineMessage[]
   mentee               User              @relation("PeerLineSession_menteeIdToUser", fields: [menteeId], references: [id])
   mentor               User?             @relation("PeerLineSession_mentorIdToUser", fields: [mentorId], references: [id])
@@ -657,9 +657,9 @@ model ModerationAppeal {
   contentType String
   authorId    String
   reason      String
+  status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  status      String   @default("PENDING")
   author      User     @relation(fields: [authorId], references: [id])
 }
 
@@ -675,7 +675,7 @@ model BlogAuthor {
   isActive    Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime
-  BlogPost    BlogPost[]
+  posts       BlogPost[]
 }
 
 model BlogCTA {
@@ -690,7 +690,7 @@ model BlogCTA {
   clicks      Int        @default(0)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime
-  BlogPost    BlogPost[] @relation("PostCTAs")
+  posts       BlogPost[] @relation("PostCTAs")
 }
 
 model BlogCategory {
@@ -702,7 +702,7 @@ model BlogCategory {
   isActive    Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime
-  BlogPost    BlogPost[] @relation("PostCategories")
+  posts       BlogPost[] @relation("PostCategories")
 }
 
 model BlogPost {
@@ -723,9 +723,9 @@ model BlogPost {
   updatedAt     DateTime
   views         Int            @default(0)
   readTime      Int            @default(5)
-  BlogAuthor    BlogAuthor?    @relation(fields: [authorId], references: [id])
-  BlogCTA       BlogCTA[]      @relation("PostCTAs")
-  BlogCategory  BlogCategory[] @relation("PostCategories")
+  author        BlogAuthor?    @relation(fields: [authorId], references: [id])
+  ctas          BlogCTA[]      @relation("PostCTAs")
+  categories    BlogCategory[] @relation("PostCategories")
 }
 
 model FriendProfile {
@@ -770,6 +770,74 @@ model FriendMessage {
   match     FriendMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@index([matchId, createdAt])
+}
+
+model Book {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  imageUrl    String?
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id                String          @id @default(uuid())
+  userId            String?
+  guestEmail        String?
+  guestName         String?
+  guestPhone        String?
+  subtotal          Float
+  gstAmount         Float           @default(0)
+  discountAmount    Float           @default(0)
+  totalAmount       Float
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus   @default(PENDING)
+  orderStatus       OrderStatus     @default(PLACED)
+  shippingAddress   String
+  city              String
+  state             String
+  pincode           String
+  razorpayOrderId   String?         @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  couponId          String?
+  gstNumber         String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  coupon            DiscountCoupon? @relation(fields: [couponId], references: [id])
+  user              User?           @relation(fields: [userId], references: [id])
+  items             OrderItem[]
+}
+
+model DiscountCoupon {
+  id             String     @id @default(uuid())
+  code           String     @unique
+  type           CouponType
+  value          Float
+  minOrderAmount Float      @default(0)
+  maxDiscount    Float?
+  expiryDate     DateTime?
+  usageLimit     Int        @default(100)
+  usedCount      Int        @default(0)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  orders         Order[]
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  orderId  String
+  bookId   String
+  quantity Int
+  price    Float
+  book     Book   @relation(fields: [bookId], references: [id])
+  order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 enum UserRole {
@@ -868,88 +936,9 @@ enum MatchStatus {
   SAVED
 }
 
-
-// Book Selling Models
-model Book {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  imageUrl    String?
-  stock       Int         @default(0)
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  orderItems  OrderItem[]
-}
-
-model Order {
-  id         String  @id @default(uuid())
-  userId     String? // Optional for guest users
-  guestEmail String?
-  guestName  String?
-  guestPhone String?
-
-  subtotal       Float
-  gstAmount      Float @default(0)
-  discountAmount Float @default(0)
-  totalAmount    Float
-
-  paymentMethod PaymentMethod
-  paymentStatus PaymentStatus @default(PENDING)
-  orderStatus   OrderStatus   @default(PLACED)
-
-  shippingAddress String
-  city            String
-  state           String
-  pincode         String
-
-  razorpayOrderId   String? @unique
-  razorpayPaymentId String?
-  razorpaySignature String?
-
-  items OrderItem[]
-
-  couponId String?
-  coupon   DiscountCoupon? @relation(fields: [couponId], references: [id])
-
-  gstNumber String? // Optional GST number from customer
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User? @relation(fields: [userId], references: [id])
-}
-
-model DiscountCoupon {
-  id             String     @id @default(uuid())
-  code           String     @unique
-  type           CouponType
-  value          Float // Percentage or Flat amount
-  minOrderAmount Float      @default(0)
-  maxDiscount    Float? // Cap for percentage discounts
-  expiryDate     DateTime?
-  usageLimit     Int        @default(100)
-  usedCount      Int        @default(0)
-  isActive       Boolean    @default(true)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  orders         Order[]
-}
-
 enum CouponType {
   PERCENTAGE
   FLAT
-}
-
-model OrderItem {
-  id       String @id @default(uuid())
-  orderId  String
-  bookId   String
-  quantity Int
-  price    Float // Price at the time of purchase
-  order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  book     Book   @relation(fields: [bookId], references: [id])
 }
 
 enum PaymentMethod {
