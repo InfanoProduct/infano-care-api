@@ -21,6 +21,14 @@ async function main() {
       isOnline: false,
       unavailableUntil: new Date(Date.now() + 90 * 60000), // Back in 1.5 hours
       experience: 24,
+    },
+    {
+      phone: '+916666666666',
+      displayName: 'Maya Patel',
+      bio: 'Dedicated to helping you navigate your feelings, reduce anxiety, and improve your daily mental well-being.',
+      topics: ['mood', 'anxiety'],
+      isOnline: true,
+      experience: 38,
     }
   ];
 

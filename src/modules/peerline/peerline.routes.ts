@@ -25,6 +25,7 @@ router.get('/mentor/status', authenticate, PeerLineController.getStatus);
 router.get('/mentor/stats', authenticate, PeerLineController.getMentorStats);
 router.patch('/mentor/availability', authenticate, PeerLineController.updateMentorAvailability);
 router.post('/mentor/claim', authenticate, PeerLineController.claimNextSession);
+router.post('/mentor/sessions/:sessionId/accept', authenticate, PeerLineController.acceptSession);
 router.get('/mentor/search', authenticate, PeerLineController.getMentorsByTopics);
 
 export default router;

@@ -144,12 +144,24 @@ export class PeerLineController {
     }
   }
 
+  static async acceptSession(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const sessionId = req.params.sessionId as string;
+      const session = await peerLineService.acceptSession(userId, sessionId);
+      res.status(200).json(session);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getMentorsByTopics(req: Request, res: Response, next: NextFunction) {
     try {
+      const userId = (req as any).userId;
       const rawTopics = req.query.topics as string;
       const topicIds = rawTopics && rawTopics.trim().length > 0 ? rawTopics.split(',') : [];
       console.log(`[PeerLine] Searching mentors for topics: ${topicIds}`);
-      const mentors = await peerLineService.getMentorsByTopics(topicIds);
+      const mentors = await peerLineService.getMentorsByTopics(userId, topicIds);
       console.log(`[PeerLine] Found ${mentors.length} mentors matching topics`);
       res.status(200).json({ success: true, mentors });
     } catch (error) {

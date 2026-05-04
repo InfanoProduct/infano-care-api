@@ -86,7 +86,8 @@ export class AuthService {
     logger.debug({ phone: finalPhone, userStatus: user?.accountStatus, isTest: user?.isTestNumber }, "[AUTH] User lookup result");
 
     // 3. Rule 2: Test Number -> Bypass OTP
-    if (user?.isTestNumber) {
+    const isDev = process.env.NODE_ENV === "development";
+    if (user?.isTestNumber || isDev) {
       logger.info({ phone: finalPhone }, "Test number detected - bypassing OTP send and providing auto-login");
       const loginData = await this.verifyOtp(finalPhone, "0000"); // 0000 is dummy as it's bypassed anyway
       return { autoLogin: loginData };
@@ -170,7 +171,8 @@ export class AuthService {
     });
 
     // 1. Test Number -> Allow ANY OTP
-    if (user?.isTestNumber) {
+    const isDev = process.env.NODE_ENV === "development";
+    if (user?.isTestNumber || isDev) {
       logger.info({ phone: finalPhone }, "Test number detected - allowing ANY OTP bypass");
       // Bypass external verification for test users
     } else if (process.env.SMS_PROVIDER === "mock") {

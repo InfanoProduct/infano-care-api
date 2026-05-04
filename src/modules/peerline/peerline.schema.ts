@@ -4,6 +4,7 @@ export const requestSessionSchema = z.object({
   body: z.object({
     topicIds: z.array(z.string()).min(1).max(2),
     requestVerified: z.boolean().optional(),
+    requestedMentorId: z.string().uuid().optional(),
   }),
 });
 
