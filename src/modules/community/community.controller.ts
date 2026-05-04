@@ -173,4 +173,39 @@ export class CommunityController {
       next(error);
     }
   }
+
+  static async joinCircles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const { circleIds } = req.body;
+      const result = await communityService.joinCircles(userId, circleIds);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getMyFeed(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 20;
+      const result = await communityService.getMyFeed(userId, page, perPage);
+      res.status(200).json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deletePost(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { postId } = req.params;
+      const userId = (req as any).userId;
+      const userRole = (req as any).userRole || 'TEEN';
+      const result = await communityService.deletePost(postId as string, userId, userRole);
+      res.status(200).json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -26,6 +26,13 @@ export class PeerLineService {
     };
   }
 
+  async getTopics() {
+    return prisma.peerLineTopic.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
   async getMentorStatus(userId: string) {
     const profile = await prisma.profile.findUnique({
       where: { userId }
@@ -629,6 +636,49 @@ export class PeerLineService {
     }
 
     return claimedSession;
+  }
+
+  async getMentorsByTopics(topicIds: string[]) {
+    const where: any = {
+      profile: {
+        mentorStatus: 'certified',
+      }
+    };
+
+    if (topicIds && topicIds.length > 0) {
+      where.profile.certifiedTopicIds = { hasSome: topicIds };
+    }
+
+    const mentors = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        profile: {
+          select: {
+            displayName: true,
+            isAvailable: true,
+            unavailableUntil: true,
+            certifiedTopicIds: true,
+            bio: true,
+            completedSessionsCount: true,
+          }
+        }
+      }
+    });
+
+    return mentors.map(m => {
+      const isOnline = m.profile?.isAvailable && (!m.profile.unavailableUntil || m.profile.unavailableUntil < new Date());
+      return {
+        id: m.id,
+        name: m.profile?.displayName || 'Peer Mentor',
+        isOnline,
+        unavailableUntil: m.profile?.unavailableUntil,
+        rating: 5.0,
+        topics: m.profile?.certifiedTopicIds || [],
+        bio: m.profile?.bio || 'Helping girls navigate their journey with empathy and care.',
+        experienceCount: m.profile?.completedSessionsCount || 0,
+      };
+    });
   }
 
   private async getMentorSessionCount(mentorId: string): Promise<number> {

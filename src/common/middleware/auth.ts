@@ -16,6 +16,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     const userId = decoded.sub || decoded.id;
     (req as any).user = { id: userId };
     (req as any).userId = userId;
+    (req as any).userRole = decoded.role || 'TEEN';
     next();
   } catch (error) {
     next(new AppError("Invalid or expired token", 401));

@@ -6,8 +6,11 @@ export class AuthController {
   static async sendOtp(req: Request, res: Response, next: NextFunction) {
     try {
       const { phone, appHash } = sendOtpSchema.parse(req.body);
-      await AuthService.sendOtp(phone, appHash);
-      res.status(200).json({ message: "OTP sent successfully." });
+      const result = await AuthService.sendOtp(phone, appHash);
+      res.status(200).json({ 
+        message: "OTP sent successfully.",
+        ...result 
+      });
     } catch (e) { next(e); }
   }
 

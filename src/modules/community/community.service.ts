@@ -23,6 +23,7 @@ export class CommunityService {
           ]
         } : {})
       },
+      include: { members: { select: { id: true } } },
       orderBy: { sortOrder: 'asc' },
     });
 
@@ -88,9 +89,107 @@ export class CommunityService {
         unread_count: unreadCount,
         recent_post_count: recentPostCount,
         member_count: memberAggregation.length,
-        user_has_posted: userHasPosted
+        user_has_posted: userHasPosted,
+        is_joined: userId ? circle.members.some(m => m.id === userId) : false,
+        is_private: circle.isPrivate
       };
     }));
+  }
+
+  async joinCircles(userId: string, circleIds: string[]) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        joinedCircles: {
+          connect: circleIds.map(id => ({ id }))
+        }
+      }
+    });
+    return { success: true };
+  }
+
+  async getMyFeed(userId: string, page: number = 1, perPage: number = 20) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { joinedCircles: { select: { id: true } } }
+    });
+
+    if (!user || user.joinedCircles.length === 0) {
+      return { posts: [], pagination: { page, perPage, total: 0, totalPages: 0, hasMore: false } };
+    }
+
+    const circleIds = user.joinedCircles.map(c => c.id);
+    const skip = (page - 1) * perPage;
+
+    const [posts, total] = await Promise.all([
+      prisma.communityPost.findMany({
+        where: {
+          circleId: { in: circleIds },
+          OR: [
+            { status: PostStatus.APPROVED },
+            { authorId: userId, status: { in: [PostStatus.PENDING_AI, PostStatus.PENDING_HUMAN, PostStatus.REMOVED] } }
+          ]
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              role: true,
+              profile: { select: { displayName: true, bloomLevel: true } },
+            },
+          },
+          circle: {
+            select: {
+              id: true,
+              name: true,
+              iconEmoji: true,
+              accentColor: true,
+            }
+          },
+          challenge: true,
+          bookmarks: { where: { userId } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: perPage,
+      }),
+      prisma.communityPost.count({
+        where: {
+          circleId: { in: circleIds },
+          OR: [
+            { status: PostStatus.APPROVED },
+            { authorId: userId, status: { in: [PostStatus.PENDING_AI, PostStatus.PENDING_HUMAN, PostStatus.REMOVED] } }
+          ]
+        },
+      }),
+    ]);
+
+    const postIds = posts.map(p => p.id);
+    const userReactions = await prisma.postReaction.findMany({
+      where: {
+        userId,
+        contentType: 'post',
+        contentId: { in: postIds }
+      }
+    });
+
+    const reactionMap = new Map(userReactions.map(r => [r.contentId, r.reaction]));
+
+    return {
+      posts: posts.map(p => ({
+        ...p,
+        isBookmarked: (p as any).bookmarks?.length > 0,
+        myReaction: reactionMap.get(p.id) || null,
+        bookmarks: undefined,
+      })),
+      pagination: {
+        page,
+        perPage,
+        total,
+        totalPages: Math.ceil(total / perPage),
+        hasMore: skip + posts.length < total,
+      },
+    };
   }
 
   // Posts
@@ -120,9 +219,9 @@ export class CommunityService {
             },
           },
           challenge: true,
-          bookmarks: userId ? { where: { userId } } : false,
+          bookmarks: userId ? { where: { userId } } : undefined,
         },
-        orderBy: { publishedAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
         skip,
         take: perPage,
       }),
@@ -156,21 +255,34 @@ export class CommunityService {
           },
         },
         challenge: true,
-        bookmarks: userId ? { where: { userId } } : false,
+        bookmarks: userId ? { where: { userId } } : undefined,
       },
     });
 
-    // Map to include isBookmarked boolean
+    const allFetchedPosts = [...posts, ...pinned];
+    const allPostIds = allFetchedPosts.map(p => p.id);
+    const userReactions = userId ? await prisma.postReaction.findMany({
+      where: {
+        userId,
+        contentType: 'post',
+        contentId: { in: allPostIds }
+      }
+    }) : [];
+
+    const reactionMap = new Map(userReactions.map(r => [r.contentId, r.reaction]));
+
     const mappedPosts = posts.map(p => ({
       ...p,
       isBookmarked: (p.bookmarks as any[])?.length > 0,
-      bookmarks: undefined
+      myReaction: reactionMap.get(p.id) || null,
+      bookmarks: undefined,
     }));
 
     const mappedPinned = pinned.map(p => ({
       ...p,
       isBookmarked: (p.bookmarks as any[])?.length > 0,
-      bookmarks: undefined
+      myReaction: reactionMap.get(p.id) || null,
+      bookmarks: undefined,
     }));
 
     return {
@@ -239,7 +351,7 @@ export class CommunityService {
             profile: { select: { displayName: true } },
           },
         },
-        bookmarks: userId ? { where: { userId } } : false,
+        bookmarks: userId ? { where: { userId } } : undefined,
         childReplies: {
           where: { status: PostStatus.APPROVED },
           include: {
@@ -249,7 +361,7 @@ export class CommunityService {
                 profile: { select: { displayName: true } },
               },
             },
-            bookmarks: userId ? { where: { userId } } : false,
+            bookmarks: userId ? { where: { userId } } : undefined,
             childReplies: {
               where: { status: PostStatus.APPROVED },
               include: {
@@ -259,7 +371,7 @@ export class CommunityService {
                     profile: { select: { displayName: true } },
                   },
                 },
-                bookmarks: userId ? { where: { userId } } : false,
+                bookmarks: userId ? { where: { userId } } : undefined,
               },
             },
           },
@@ -316,49 +428,50 @@ export class CommunityService {
     const { reaction } = input;
     const field = `reaction${reaction.charAt(0).toUpperCase() + reaction.slice(1)}`;
 
-    const existing = await prisma.postReaction.findUnique({
-      where: {
-        contentId_contentType_userId_reaction: {
-          contentId,
-          contentType,
-          userId,
-          reaction,
-        },
-      },
+    const existing = await prisma.postReaction.findFirst({
+      where: { contentId, contentType, userId },
     });
 
     if (existing) {
-      // Remove reaction
+      const oldField = `reaction${existing.reaction.charAt(0).toUpperCase() + existing.reaction.slice(1)}`;
+      
+      // Remove old reaction
       await prisma.postReaction.delete({ where: { id: existing.id } });
       
+      // Decrement old count
       if (contentType === 'post') {
         await prisma.communityPost.update({
           where: { id: contentId },
-          data: { [field]: { decrement: 1 } },
+          data: { [oldField]: { decrement: 1 } },
         });
       } else {
         await prisma.communityReply.update({
           where: { id: contentId },
-          data: { [field]: { decrement: 1 } },
+          data: { [oldField]: { decrement: 1 } },
         });
       }
-    } else {
-      // Add reaction
-      await prisma.postReaction.create({
-        data: { userId, contentId, contentType, reaction },
-      });
 
-      if (contentType === 'post') {
-        await prisma.communityPost.update({
-          where: { id: contentId },
-          data: { [field]: { increment: 1 } },
-        });
-      } else {
-        await prisma.communityReply.update({
-          where: { id: contentId },
-          data: { [field]: { increment: 1 } },
-        });
+      // If it was the same reaction, we're done (toggled off)
+      if (existing.reaction === reaction) {
+        return { success: true, removed: true };
       }
+    }
+
+    // Add new reaction
+    await prisma.postReaction.create({
+      data: { userId, contentId, contentType, reaction },
+    });
+
+    if (contentType === 'post') {
+      await prisma.communityPost.update({
+        where: { id: contentId },
+        data: { [field]: { increment: 1 } },
+      });
+    } else {
+      await prisma.communityReply.update({
+        where: { id: contentId },
+        data: { [field]: { increment: 1 } },
+      });
     }
 
     return { success: true };
@@ -396,6 +509,32 @@ export class CommunityService {
       where: { id: postId },
       data: { isPinned: pin },
     });
+  }
+
+  // Delete a post — author can soft-delete (AUTHOR_DELETED), admin can hard-delete
+  async deletePost(postId: string, requesterId: string, requesterRole: string) {
+    const post = await prisma.communityPost.findUnique({ where: { id: postId } });
+    if (!post) throw Object.assign(new Error('Post not found'), { statusCode: 404 });
+
+    const isAdmin = requesterRole === 'ADMIN';
+    const isAuthor = post.authorId === requesterId;
+
+    if (!isAdmin && !isAuthor) {
+      throw Object.assign(new Error('Forbidden: you cannot delete this post'), { statusCode: 403 });
+    }
+
+    if (isAdmin) {
+      // Hard delete — cascade handles reactions, bookmarks, replies (if onDelete: Cascade is set)
+      await prisma.communityPost.delete({ where: { id: postId } });
+      return { deleted: true, hard: true };
+    }
+
+    // Soft delete for author
+    await prisma.communityPost.update({
+      where: { id: postId },
+      data: { status: PostStatus.AUTHOR_DELETED, deletedAt: new Date() },
+    });
+    return { deleted: true, hard: false };
   }
 
   // Bookmarks

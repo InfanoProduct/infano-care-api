@@ -4,7 +4,25 @@ const prisma = new PrismaClient()
 async function main() {
   const testNumbers = [
     { phone: '+911234567890', isTestNumber: true, role: 'TEEN', isMentor: false },
-    { phone: '+911112223333', isTestNumber: true, role: 'TEEN', isMentor: true }
+    { 
+      phone: '+911112223333', isTestNumber: true, role: 'TEEN', isMentor: true, 
+      topics: ['period', 'body', 'mood'],
+      bio: 'I love helping others understand their bodies and feel confident in their own skin!',
+      experience: 12
+    },
+    { 
+      phone: '+919998887777', isTestNumber: true, role: 'TEEN', isMentor: true, 
+      topics: ['anxiety', 'relations'], isOnline: true,
+      bio: 'Let\'s talk about school stress, friendships, and anything on your mind. I\'m here to listen.',
+      experience: 45
+    },
+    { 
+      phone: '+917776665555', isTestNumber: true, role: 'TEEN', isMentor: true, 
+      topics: ['period', 'school'], isOnline: false, 
+      unavailableUntil: new Date(Date.now() + 45 * 60000),
+      bio: 'Navigating school and physical changes can be tough. I\'ve been there, and I can help.',
+      experience: 28
+    }
   ]
 
   for (const item of testNumbers) {
@@ -20,17 +38,25 @@ async function main() {
         profile: {
           upsert: {
             create: {
-              displayName: item.isMentor ? 'Expert Mentor' : 'Test User',
+              displayName: item.isMentor ? `Mentor ${item.phone.slice(-4)}` : 'Test User',
               pronouns: 'they/them',
               totalPoints: 100,
               bloomLevel: 2,
               mentorStatus: item.isMentor ? 'certified' : 'none',
-              certifiedTopicIds: item.isMentor ? ['periods-body', 'mind-space'] : []
+              certifiedTopicIds: item.topics || [],
+              isAvailable: item.isOnline ?? false,
+              unavailableUntil: item.unavailableUntil ?? null,
+              bio: item.bio || null,
+              completedSessionsCount: item.experience || 0,
             },
             update: {
-              displayName: item.isMentor ? 'Expert Mentor' : 'Test User',
+              displayName: item.isMentor ? `Mentor ${item.phone.slice(-4)}` : 'Test User',
               mentorStatus: item.isMentor ? 'certified' : 'none',
-              certifiedTopicIds: item.isMentor ? ['periods-body', 'mind-space'] : []
+              certifiedTopicIds: item.topics || [],
+              isAvailable: item.isOnline ?? false,
+              unavailableUntil: item.unavailableUntil ?? null,
+              bio: item.bio || null,
+              completedSessionsCount: item.experience || 0,
             }
           }
         }
@@ -45,17 +71,21 @@ async function main() {
         birthYear: 2005,
         profile: {
           create: {
-            displayName: item.isMentor ? 'Expert Mentor' : 'Test User',
+            displayName: item.isMentor ? `Mentor ${item.phone.slice(-4)}` : 'Test User',
             pronouns: 'they/them',
             totalPoints: 100,
             bloomLevel: 2,
             mentorStatus: item.isMentor ? 'certified' : 'none',
-            certifiedTopicIds: item.isMentor ? ['periods-body', 'mind-space'] : []
+            certifiedTopicIds: item.topics || [],
+            isAvailable: item.isOnline ?? false,
+            unavailableUntil: item.unavailableUntil ?? null,
+            bio: item.bio || null,
+            completedSessionsCount: item.experience || 0,
           }
         }
       },
     })
-    console.log(`Upserted user: ${user.phone}, isTestNumber: ${user.isTestNumber}, isMentor: ${item.isMentor}`)
+    console.log(`Upserted user: ${user.phone}, isMentor: ${item.isMentor}`)
   }
 
   // --- Seed Learning Journeys ---
@@ -209,6 +239,115 @@ async function main() {
       }
     }
   });
+
+  // --- Seed Community Circles ---
+  const circlesData = [
+    {
+      slug: 'periods-body',
+      name: 'Periods & Body',
+      description: 'Discuss everything about menstrual health and body changes.',
+      iconEmoji: '🩸',
+      accentColor: '#EF4444',
+      sortOrder: 1,
+    },
+    {
+      slug: 'mind-space',
+      name: 'Mind Space',
+      description: 'A safe corner for mental health and emotional well-being.',
+      iconEmoji: '🧠',
+      accentColor: '#3B82F6',
+      sortOrder: 2,
+    },
+    {
+      slug: 'sexual-wellness',
+      name: 'Sexual Wellness',
+      description: 'Private space for sexual health and wellness.',
+      iconEmoji: '🦋',
+      accentColor: '#DB2777',
+      isPrivate: true,
+      sortOrder: 3,
+    }
+  ];
+
+  const seededCircles = [];
+  for (const c of circlesData) {
+    const circle = await prisma.communityCircle.upsert({
+      where: { slug: c.slug },
+      update: {
+        name: c.name,
+        description: c.description,
+        iconEmoji: c.iconEmoji,
+        accentColor: c.accentColor,
+        isPrivate: c.isPrivate ?? false,
+        sortOrder: c.sortOrder,
+      },
+      create: {
+        slug: c.slug,
+        name: c.name,
+        description: c.description,
+        iconEmoji: c.iconEmoji,
+        accentColor: c.accentColor,
+        isPrivate: c.isPrivate ?? false,
+        sortOrder: c.sortOrder,
+      },
+    });
+    seededCircles.push(circle);
+    console.log(`Upserted circle: ${circle.name}`);
+  }
+
+  // --- Join users to circles ---
+  const allUsers = await prisma.user.findMany({
+    where: { phone: { in: testNumbers.map(n => n.phone) } }
+  });
+
+  for (const user of allUsers) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        joinedCircles: {
+          connect: seededCircles.map(c => ({ id: c.id }))
+        }
+      }
+    });
+    console.log(`Joined user ${user.phone} to all circles`);
+  }
+
+  // --- Seed Sample Posts ---
+  const samplePosts = [
+    {
+      circleSlug: 'periods-body',
+      authorPhone: '+911234567890',
+      content: 'Has anyone experienced irregular cycles after a lot of stress? Looking for some advice.',
+    },
+    {
+      circleSlug: 'mind-space',
+      authorPhone: '+911112223333',
+      content: 'Remember that it is okay to not be okay. Take a deep breath today. 🧘‍♀️',
+    },
+    {
+      circleSlug: 'periods-body',
+      authorPhone: '+911112223333',
+      content: 'Check out this guide on tracking your symptoms. It really helped me understand my patterns!',
+    }
+  ];
+
+  for (const p of samplePosts) {
+    const circle = seededCircles.find(c => c.slug === p.circleSlug);
+    const author = allUsers.find(u => u.phone === p.authorPhone);
+
+    if (circle && author) {
+      await prisma.communityPost.create({
+        data: {
+          circleId: circle.id,
+          authorId: author.id,
+          content: p.content,
+          status: 'APPROVED',
+          publishedAt: new Date(),
+        }
+      });
+      console.log(`Created sample post in ${circle.name} by ${author.phone}`);
+    }
+  }
 
   console.log(`Upserted Journey: ${journey.title}`);
   console.log(`Upserted Episode: ${episode1.title}`);

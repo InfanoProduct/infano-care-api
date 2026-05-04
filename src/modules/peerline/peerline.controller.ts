@@ -14,6 +14,15 @@ export class PeerLineController {
     }
   }
 
+  static async getTopics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const topics = await peerLineService.getTopics();
+      res.status(200).json({ success: true, topics });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId;
@@ -130,6 +139,19 @@ export class PeerLineController {
       const userId = (req as any).userId;
       const session = await peerLineService.claimNextSession(userId);
       res.status(200).json(session);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getMentorsByTopics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const rawTopics = req.query.topics as string;
+      const topicIds = rawTopics && rawTopics.trim().length > 0 ? rawTopics.split(',') : [];
+      console.log(`[PeerLine] Searching mentors for topics: ${topicIds}`);
+      const mentors = await peerLineService.getMentorsByTopics(topicIds);
+      console.log(`[PeerLine] Found ${mentors.length} mentors matching topics`);
+      res.status(200).json({ success: true, mentors });
     } catch (error) {
       next(error);
     }

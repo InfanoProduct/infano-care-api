@@ -39,6 +39,10 @@ app.use(
 app.use(cors({ origin: env.ALLOWED_ORIGINS }));
 app.use(compression());
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(`[RAW REQUEST] ${req.method} ${req.url}`);
+  next();
+});
 app.use(pinoHttp({ logger }));
 
 // Swagger Documentation

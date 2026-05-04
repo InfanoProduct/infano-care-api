@@ -56,7 +56,7 @@ function signRefreshToken(payload: object, jti: string): string {
 
 export class AuthService {
   // ── 1. Send OTP ─────────────────────────────────────────────────────────────
-  static async sendOtp(phone: string, appHash?: string): Promise<void> {
+  static async sendOtp(phone: string, appHash?: string): Promise<{ autoLogin?: any } | void> {
     logger.info({ phone, appHash }, "[AUTH] sendOtp request received");
     
     // 1. Validation (Support 10-digit or +91 format)
@@ -87,8 +87,9 @@ export class AuthService {
 
     // 3. Rule 2: Test Number -> Bypass OTP
     if (user?.isTestNumber) {
-      logger.info({ phone: finalPhone }, "Test number detected - bypassing OTP send");
-      return;
+      logger.info({ phone: finalPhone }, "Test number detected - bypassing OTP send and providing auto-login");
+      const loginData = await this.verifyOtp(finalPhone, "0000"); // 0000 is dummy as it's bypassed anyway
+      return { autoLogin: loginData };
     }
 
     // 4. Rule 3: Rate Limiting (1-minute cooldown + 5 retries in 24h)
@@ -234,6 +235,7 @@ export class AuthService {
     const jti = crypto.randomUUID();
     const tokenPayloadBase = { 
       sub: finalUser.id, 
+      role: finalUser.role,
       contentTier: finalUser.contentTier, 
       accountStatus: finalUser.accountStatus, 
       obStep: finalUser.onboardingStep 

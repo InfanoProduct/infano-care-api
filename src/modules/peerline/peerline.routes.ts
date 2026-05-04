@@ -12,6 +12,7 @@ const router = Router();
  */
 
 router.get('/availability', authenticate, PeerLineController.getAvailability);
+router.get('/topics', authenticate, PeerLineController.getTopics);
 router.post('/sessions/request', authenticate, PeerLineController.requestSession);
 router.get('/sessions', authenticate, PeerLineController.getSessions);
 router.get('/sessions/:sessionId', authenticate, PeerLineController.getSession);
@@ -24,5 +25,6 @@ router.get('/mentor/status', authenticate, PeerLineController.getStatus);
 router.get('/mentor/stats', authenticate, PeerLineController.getMentorStats);
 router.patch('/mentor/availability', authenticate, PeerLineController.updateMentorAvailability);
 router.post('/mentor/claim', authenticate, PeerLineController.claimNextSession);
+router.get('/mentor/search', authenticate, PeerLineController.getMentorsByTopics);
 
 export default router;

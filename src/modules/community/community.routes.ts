@@ -12,6 +12,8 @@ const router = Router();
  */
 
 router.get('/circles', authenticate, CommunityController.getCircles);
+router.post('/circles/join', authenticate, CommunityController.joinCircles);
+router.get('/feed', authenticate, CommunityController.getMyFeed);
 router.get('/circles/:circleId/posts', authenticate, CommunityController.getPosts);
 router.post('/circles/:circleId/posts', authenticate, CommunityController.createPost);
 
@@ -22,6 +24,7 @@ router.post('/posts/:contentId/bookmark', authenticate, CommunityController.togg
 router.patch('/posts/:postId/pin', authenticate, CommunityController.togglePin);
 router.post('/posts/:contentId/report', authenticate, CommunityController.reportPost);
 router.post('/posts/:contentId/appeal', authenticate, CommunityController.submitAppeal);
+router.delete('/posts/:postId', authenticate, CommunityController.deletePost);
 
 router.get('/bookmarks', authenticate, CommunityController.getBookmarks);
 router.get('/events', authenticate, CommunityController.getEvents);
