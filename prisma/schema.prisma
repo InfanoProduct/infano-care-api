@@ -792,7 +792,11 @@ model Order {
   guestName         String?
   guestPhone        String?
   subtotal          Float
+  taxableAmount     Float           @default(0)
+  cgstAmount        Float           @default(0)
+  sgstAmount        Float           @default(0)
   gstAmount         Float           @default(0)
+  deliveryCharge    Float           @default(0)
   discountAmount    Float           @default(0)
   totalAmount       Float
   paymentMethod     PaymentMethod

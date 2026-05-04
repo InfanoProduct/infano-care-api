@@ -92,9 +92,17 @@ export class ShopService {
         });
       }
 
-      // 3. Calculate GST and Total
-      const gstAmount = Math.round((subtotal - discountAmount) * GST_RATE);
-      const totalAmount = subtotal - discountAmount + gstAmount;
+      // 3. Calculate GST and Total (Production Grade Reverse Calculation)
+      const taxableSubtotal = subtotal - discountAmount;
+      const deliveryCharge = taxableSubtotal < 500 ? 50 : 0;
+      
+      // Reverse GST calculation: Price = Taxable + (Taxable * Rate) => Taxable = Price / (1 + Rate)
+      const taxableAmount = Math.round((taxableSubtotal / (1 + GST_RATE)) * 100) / 100;
+      const gstAmount = Math.round((taxableSubtotal - taxableAmount) * 100) / 100;
+      const cgstAmount = Math.round((gstAmount / 2) * 100) / 100;
+      const sgstAmount = Math.round((gstAmount / 2) * 100) / 100;
+      
+      const totalAmount = taxableSubtotal + deliveryCharge;
 
       // 4. Create Razorpay order if needed
       let razorpayOrderId = null;
@@ -116,8 +124,12 @@ export class ShopService {
           guestName: data.guestName,
           guestPhone: data.guestPhone,
           subtotal,
-          discountAmount,
+          taxableAmount,
+          cgstAmount,
+          sgstAmount,
           gstAmount,
+          deliveryCharge,
+          discountAmount,
           totalAmount,
           paymentMethod: data.paymentMethod,
           shippingAddress: data.shippingAddress,
@@ -168,6 +180,10 @@ export class ShopService {
         },
       });
     } else {
+      await prisma.order.update({
+        where: { razorpayOrderId },
+        data: { paymentStatus: PaymentStatus.FAILED }
+      });
       throw new Error("Payment verification failed: Invalid signature");
     }
   }
@@ -236,6 +252,13 @@ export class ShopService {
           paymentStatus: PaymentStatus.COMPLETED,
           razorpayPaymentId,
         },
+      });
+    } else if (event.event === "payment.failed") {
+      const { order_id: razorpayOrderId } = event.payload.payment.entity;
+      
+      await prisma.order.update({
+        where: { razorpayOrderId },
+        data: { paymentStatus: PaymentStatus.FAILED }
       });
     }
 
