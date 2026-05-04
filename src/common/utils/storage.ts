@@ -12,11 +12,52 @@ export class StorageService {
    * @returns The filename and public URL
    */
   static async uploadFile(localPath: string, folder: string = ''): Promise<{ filename: string; url: string }> {
-    const UPLOAD_PATH = process.env.UPLOAD_PATH || process.env.SSH_UPLOAD_PATH || 'uploads';
+    const UPLOAD_PATH = process.env.UPLOAD_PATH || 'uploads';
     const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'http://localhost:4005/uploads';
+    const REMOTE_UPLOAD_API = process.env.REMOTE_UPLOAD_API; // e.g. http://109.199.120.104:4005/api/admin/upload
 
     // 1. Optimize locally first
     await ImageProcessor.optimize(localPath);
+
+    // 2. If a remote upload API is configured, proxy the upload there
+    // This allows local dev to upload directly to the production/dev server without SSH
+    if (REMOTE_UPLOAD_API && !process.env.IS_SERVER) {
+      try {
+        const formData = new FormData();
+        const fileBuffer = await fs.readFile(localPath);
+        const fileName = path.basename(localPath);
+        
+        // Use a Blob/File-like object for the fetch request
+        const file = new Blob([fileBuffer]);
+        formData.append('file', file, fileName);
+
+        logger.info({ REMOTE_UPLOAD_API }, 'Proxying file upload to remote server');
+
+        const response = await fetch(`${REMOTE_UPLOAD_API}?folder=${folder}`, {
+          method: 'POST',
+          body: formData,
+          // Note: FormData handles Content-Type and Boundary automatically
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Remote upload failed: ${response.status} ${errorText}`);
+        }
+
+        const data: any = await response.json();
+        
+        // Cleanup local temp file
+        await fs.unlink(localPath).catch(() => {});
+        
+        return { 
+          filename: data.filename, 
+          url: data.url 
+        };
+      } catch (proxyError) {
+        logger.error({ proxyError }, 'Proxy upload failed, falling back to local storage');
+        // If proxy fails, we fall back to local storage
+      }
+    }
 
     const ext = path.extname(localPath);
     // Use existing filename if it has a UUID, otherwise add one
