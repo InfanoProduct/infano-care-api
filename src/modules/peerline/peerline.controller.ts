@@ -155,7 +155,35 @@ export class PeerLineController {
     }
   }
 
+  static async uploadMedia(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'No file uploaded' });
+      }
+      
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const mediaUrl = `${baseUrl}/uploads/peerline/${req.file.filename}`;
+      
+      res.status(200).json({ success: true, mediaUrl });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateExpertise(req: Request, res: Response, next: NextFunction) {
+
+    try {
+      const userId = (req as any).userId;
+      const { expertise } = req.body;
+      const result = await peerLineService.updateMentorExpertise(userId, expertise);
+      res.status(200).json({ success: true, result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getMentorsByTopics(req: Request, res: Response, next: NextFunction) {
+
     try {
       const userId = (req as any).userId;
       const rawTopics = req.query.topics as string;

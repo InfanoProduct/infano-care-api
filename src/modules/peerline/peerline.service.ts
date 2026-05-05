@@ -256,7 +256,7 @@ export class PeerLineService {
     });
   }
 
-  async createMessage(userId: string, sessionId: string, content: string, senderRole: 'mentee' | 'mentor' | 'system') {
+  async createMessage(userId: string, sessionId: string, content: string | null, senderRole: 'mentee' | 'mentor' | 'system', messageType: 'TEXT' | 'VOICE' | 'IMAGE' = 'TEXT', mediaUrl?: string) {
     // 1. Verify access and status
     const session = await prisma.peerLineSession.findUnique({
       where: { id: sessionId }
@@ -267,22 +267,25 @@ export class PeerLineService {
       throw new Error('Can only send messages in an active session');
     }
 
-    // 2. Scan for PII (Server side enforcement)
-    if (this.scanForPII(content) && senderRole !== 'system') {
+    // 2. Scan for PII (Server side enforcement) - Only for text
+    if (content && this.scanForPII(content) && senderRole !== 'system') {
       throw new Error('PII_BLOCKED');
     }
 
-    // 3. Scan for Crisis
-    const crisisDetected = this.scanForCrisis(content);
+    // 3. Scan for Crisis - Only for text
+    const crisisDetected = content ? this.scanForCrisis(content) : false;
 
     // 4. Create message
     const message = await prisma.peerLineMessage.create({
       data: {
         sessionId,
         senderRole,
-        content,
+        content: content || "",
+        messageType: messageType as any,
+        mediaUrl,
         crisisFlag: crisisDetected,
       }
+
     });
 
     // 5. Update session flag if crisis detected
@@ -709,22 +712,31 @@ export class PeerLineService {
       where.profile.certifiedTopicIds = { hasSome: topicIds };
     }
 
-    const mentors = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        profile: {
-          select: {
-            displayName: true,
-            isAvailable: true,
-            unavailableUntil: true,
-            certifiedTopicIds: true,
-            bio: true,
-            completedSessionsCount: true,
+    const [allTopics, mentors] = await Promise.all([
+      prisma.peerLineTopic.findMany({ where: { isActive: true } }),
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          profile: {
+            select: {
+              displayName: true,
+              isAvailable: true,
+              unavailableUntil: true,
+              certifiedTopicIds: true,
+              mentorExpertise: true,
+              bio: true,
+              completedSessionsCount: true,
+            }
           }
         }
-      }
-    });
+      })
+    ]);
+
+    const topicNameMap = allTopics.reduce((acc, t) => {
+      acc[t.id] = t.name;
+      return acc;
+    }, {} as Record<string, string>);
 
     const activeSessions = await prisma.peerLineSession.findMany({
       where: {
@@ -737,17 +749,44 @@ export class PeerLineService {
 
     return mentors.map(m => {
       const isOnline = m.profile?.isAvailable && (!m.profile.unavailableUntil || m.profile.unavailableUntil < new Date());
+      
+      // Resolve topic names
+      const topicNames = (m.profile?.certifiedTopicIds || []).map(id => topicNameMap[id]).filter(Boolean);
+      
+      // Get expertise tags for the selected topics (or all if none selected)
+      const expertise = (m.profile?.mentorExpertise as any) || {};
+      let expertiseTags: string[] = [];
+      
+      const topicsToInclude = topicIds.length > 0 ? topicIds : (m.profile?.certifiedTopicIds || []);
+      topicsToInclude.forEach(id => {
+        if (expertise[id] && Array.isArray(expertise[id])) {
+          expertiseTags = [...expertiseTags, ...expertise[id]];
+        }
+      });
+
       return {
         id: m.id,
         name: m.profile?.displayName || 'Peer Mentor',
         isOnline,
         unavailableUntil: m.profile?.unavailableUntil,
         rating: 5.0,
-        topics: m.profile?.certifiedTopicIds || [],
+        topics: topicNames,
+        expertiseTags: [...new Set(expertiseTags)], // Unique tags
         bio: m.profile?.bio || 'Helping girls navigate their journey with empathy and care.',
         experienceCount: m.profile?.completedSessionsCount || 0,
         hasPendingRequest: sessionMentorIds.has(m.id),
       };
+    });
+
+
+  }
+
+  async updateMentorExpertise(userId: string, expertise: any) {
+    return prisma.profile.update({
+      where: { userId },
+      data: {
+        mentorExpertise: expertise
+      }
     });
   }
 
@@ -757,3 +796,4 @@ export class PeerLineService {
     });
   }
 }
+

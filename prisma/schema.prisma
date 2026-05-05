@@ -83,6 +83,7 @@ model Profile {
   pendingSafetyCheckin   Boolean   @default(false)
   bio                    String?   @default("Helping girls navigate their journey with empathy and care.")
   completedSessionsCount Int       @default(0)
+  mentorExpertise        Json      @default("{}")
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -578,17 +579,26 @@ model ModerationLog {
 }
 
 model PeerLineMessage {
-  id         String          @id @default(uuid())
-  sessionId  String
-  senderRole String
-  content    String
-  crisisFlag Boolean         @default(false)
-  sentAt     DateTime        @default(now())
-  isRead     Boolean         @default(false)
-  session    PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id          String          @id @default(uuid())
+  sessionId   String
+  senderRole  String
+  content     String?
+  mediaUrl    String?
+  messageType MessageType     @default(TEXT)
+  crisisFlag  Boolean         @default(false)
+  sentAt      DateTime        @default(now())
+  isRead      Boolean         @default(false)
+  session     PeerLineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, sentAt])
 }
+
+enum MessageType {
+  TEXT
+  VOICE
+  IMAGE
+}
+
 
 model PeerLineSession {
   id                   String            @id @default(uuid())

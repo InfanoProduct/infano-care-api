@@ -12,12 +12,13 @@ export const sessionFeedbackSchema = z.object({
   body: z.object({
     role: z.enum(['mentee', 'mentor']),
     rating: z.number().min(1).max(5),
-    note: z.string().max(200).optional(),
-    mentorSelfRating: z.number().min(1).max(5).optional(),
-    wellbeingOk: z.boolean().optional(),
-    needsSupport: z.boolean().optional(),
-    readyForNext: z.boolean().optional(),
-    flagForModeration: z.boolean().optional(),
+    note: z.string().max(200).nullable().optional(),
+    mentorSelfRating: z.number().min(1).max(5).nullable().optional(),
+    wellbeingOk: z.boolean().nullable().optional(),
+    needsSupport: z.boolean().nullable().optional(),
+    readyForNext: z.boolean().nullable().optional(),
+    flagForModeration: z.boolean().nullable().optional(),
+
   }),
   params: z.object({
     sessionId: z.string().uuid(),

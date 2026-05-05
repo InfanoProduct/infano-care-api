@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { PeerLineController } from './peerline.controller.js';
 import { authenticate } from '../../common/middleware/auth.js';
+import { upload } from '../../common/middleware/upload.js';
+
 
 const router = Router();
 
@@ -26,6 +28,10 @@ router.get('/mentor/stats', authenticate, PeerLineController.getMentorStats);
 router.patch('/mentor/availability', authenticate, PeerLineController.updateMentorAvailability);
 router.post('/mentor/claim', authenticate, PeerLineController.claimNextSession);
 router.post('/mentor/sessions/:sessionId/accept', authenticate, PeerLineController.acceptSession);
+router.post('/mentor/media', authenticate, upload.single('file'), PeerLineController.uploadMedia);
 router.get('/mentor/search', authenticate, PeerLineController.getMentorsByTopics);
 
+router.patch('/mentor/expertise', authenticate, PeerLineController.updateExpertise);
+
 export default router;
+

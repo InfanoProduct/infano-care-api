@@ -62,11 +62,12 @@ export function setupPeerLineSocket(serverIo: Server) {
       socket.leave(`session_${sessionId}`);
     });
 
-    socket.on('send_message', async (data: { sessionId: string; content: string; senderRole: 'mentee' | 'mentor'; clientId?: string }) => {
+    socket.on('send_message', async (data: { sessionId: string; content: string | null; senderRole: 'mentee' | 'mentor'; messageType?: 'TEXT' | 'VOICE' | 'IMAGE'; mediaUrl?: string; clientId?: string }) => {
       try {
         const uid = (socket as any).userId;
         logger.info({ uid, data }, 'Received send_message on socket');
-        const message = await getPeerLineService().createMessage(uid, data.sessionId, data.content, data.senderRole);
+        const message = await getPeerLineService().createMessage(uid, data.sessionId, data.content, data.senderRole, data.messageType, data.mediaUrl);
+
 
         logger.info({ sessionId: data.sessionId, messageId: message.id }, 'Message created, broadcasting to room');
         const { sessionId: _sId, ...msgRest } = message;
