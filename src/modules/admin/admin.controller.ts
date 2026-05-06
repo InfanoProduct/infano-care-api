@@ -25,7 +25,53 @@ export class AdminController {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
-      const result = await AdminService.getUsers(page, limit);
+      const peerOnboarding = req.query.peerOnboarding === 'true' ? true : undefined;
+      const result = await AdminService.getUsers(page, limit, peerOnboarding);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = await AdminService.getUserById(req.params.id as string);
+      res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async approvePeer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.approvePeerApplication(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async approveCertification(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.approveCertification(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async unapproveAssessment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.unapproveAssessment(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async revokePeer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.revokePeerStatus(req.params.id as string);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -140,7 +186,7 @@ export class AdminController {
 
   static async getOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await AdminService.getOrderById(req.params.id);
+      const order = await AdminService.getOrderById(req.params.id as string);
       if (!order) return res.status(404).json({ message: "Order not found" });
       res.status(200).json(order);
     } catch (error) {
@@ -150,7 +196,7 @@ export class AdminController {
 
   static async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await AdminService.updateOrderStatus(req.params.id, req.body.status);
+      const order = await AdminService.updateOrderStatus(req.params.id as string, req.body.status);
       res.status(200).json(order);
     } catch (error) {
       next(error);
@@ -178,7 +224,7 @@ export class AdminController {
 
   static async updateBook(req: Request, res: Response, next: NextFunction) {
     try {
-      const book = await AdminService.updateBook(req.params.id, req.body);
+      const book = await AdminService.updateBook(req.params.id as string, req.body);
       res.status(200).json(book);
     } catch (error) {
       next(error);
@@ -187,7 +233,7 @@ export class AdminController {
 
   static async deleteBook(req: Request, res: Response, next: NextFunction) {
     try {
-      await AdminService.deleteBook(req.params.id);
+      await AdminService.deleteBook(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);
@@ -215,7 +261,7 @@ export class AdminController {
 
   static async updateCircle(req: Request, res: Response, next: NextFunction) {
     try {
-      const circle = await AdminService.updateCircle(req.params.id, req.body);
+      const circle = await AdminService.updateCircle(req.params.id as string, req.body);
       res.status(200).json(circle);
     } catch (error) {
       next(error);
@@ -224,7 +270,7 @@ export class AdminController {
 
   static async deleteCircle(req: Request, res: Response, next: NextFunction) {
     try {
-      await AdminService.deleteCircle(req.params.id);
+      await AdminService.deleteCircle(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);

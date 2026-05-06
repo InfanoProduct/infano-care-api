@@ -1,7 +1,7 @@
 import { prisma } from '../../db/client.js';
-import { RequestSessionInput, SessionFeedbackInput, MentorAvailabilityInput } from './peerline.schema.js';
+import { RequestSessionInput, SessionFeedbackInput, MentorAvailabilityInput, MentorOnboardInput } from './peerline.schema.js';
 import { PeerLineStatus } from '@prisma/client';
-import { broadcastAvailabilityUpdate } from './peerline.socket.js';
+// import { broadcastAvailabilityUpdate } from './peerline.socket.js'; // Dynamic import used below
 import { AppError } from '../../common/middleware/errorHandler.js';
 
 export class PeerLineService {
@@ -68,8 +68,8 @@ export class PeerLineService {
       }
     });
 
-    const mentorRatingAvg = completedSessions.length > 0 
-      ? completedSessions.reduce((acc, s) => acc + (s.menteeRating ?? 5), 0) / completedSessions.length 
+    const mentorRatingAvg = completedSessions.length > 0
+      ? completedSessions.reduce((acc, s) => acc + (s.menteeRating ?? 5), 0) / completedSessions.length
       : 5.0;
 
     const queueCount = await prisma.peerLineSession.count({
@@ -121,11 +121,11 @@ export class PeerLineService {
         const mentorProfile = await prisma.profile.findUnique({
           where: { userId: existingSession.mentorId }
         });
-        
+
         // If mentor is no longer available, reset the session to QUEUED
         const now = new Date();
         const isOffline = !mentorProfile?.isAvailable || (mentorProfile?.unavailableUntil && mentorProfile.unavailableUntil > now);
-        
+
         if (isOffline) {
           return await prisma.peerLineSession.update({
             where: { id: existingSession.id },
@@ -249,7 +249,7 @@ export class PeerLineService {
   async getMessages(userId: string, sessionId: string) {
     // 1. Verify access
     const session = await this.getSession(userId, sessionId);
-    
+
     return prisma.peerLineMessage.findMany({
       where: { sessionId },
       orderBy: { sentAt: 'asc' }
@@ -306,7 +306,7 @@ export class PeerLineService {
     });
 
     if (!message) throw new Error('Message not found');
-    
+
     // Only the sender can delete their own message
     // Note: Technically we should check userId against menteeId/mentorId based on senderRole
     // but for simplicity in PeerLine, we just ensure the user is part of the session
@@ -329,10 +329,10 @@ export class PeerLineService {
 
   scanForCrisis(content: string): boolean {
     const crisisKeywords = [
-      'kill myself', 'suicide', 'end it all', 'die', 'hurt myself', 
+      'kill myself', 'suicide', 'end it all', 'die', 'hurt myself',
       'cutting', 'hopeless', 'give up', 'no reason to live'
     ];
-    
+
     const lowerContent = content.toLowerCase();
     return crisisKeywords.some(keyword => lowerContent.includes(keyword));
   }
@@ -346,10 +346,10 @@ export class PeerLineService {
 
     if (input.role === 'mentee') {
       if (session.menteeId !== userId) throw new Error('Unauthorized');
-      
+
       return prisma.peerLineSession.update({
         where: { id: sessionId },
-        data: { 
+        data: {
           menteeRating: input.rating,
           menteeNote: input.note
         },
@@ -361,7 +361,7 @@ export class PeerLineService {
       if (input.readyForNext === false) {
         const cooldownUntil = new Date();
         cooldownUntil.setHours(cooldownUntil.getHours() + 2);
-        
+
         await prisma.profile.update({
           where: { userId },
           data: { unavailableUntil: cooldownUntil }
@@ -378,7 +378,7 @@ export class PeerLineService {
 
       return prisma.peerLineSession.update({
         where: { id: sessionId },
-        data: { 
+        data: {
           mentorRating: input.rating,
           mentorSelfRating: input.mentorSelfRating,
           mentorWellbeingOk: input.wellbeingOk,
@@ -478,9 +478,9 @@ export class PeerLineService {
   async getMentorStats(userId: string) {
     const [sessions, profile] = await Promise.all([
       prisma.peerLineSession.findMany({
-        where: { 
+        where: {
           mentorId: userId,
-          status: { notIn: [PeerLineStatus.COMPLETED, PeerLineStatus.CANCELLED] } 
+          status: { notIn: [PeerLineStatus.COMPLETED, PeerLineStatus.CANCELLED] }
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -494,8 +494,8 @@ export class PeerLineService {
         where: { mentorId: userId, status: PeerLineStatus.COMPLETED }
       }),
       prisma.peerLineSession.count({
-        where: { 
-          mentorId: userId, 
+        where: {
+          mentorId: userId,
           status: PeerLineStatus.COMPLETED,
           createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
         }
@@ -511,20 +511,20 @@ export class PeerLineService {
     ]);
 
     const queueCount = await prisma.peerLineSession.count({
-      where: { 
+      where: {
         status: { in: [PeerLineStatus.QUEUED, PeerLineStatus.MATCHING] },
         mentorId: null,
         topicIds: { hasSome: profile?.certifiedTopicIds || [] }
       }
     });
 
-    const avgScore = sessionsTotal > 0 
+    const avgScore = sessionsTotal > 0
       ? (await prisma.peerLineSession.aggregate({
-          where: { mentorId: userId, status: PeerLineStatus.COMPLETED },
-          _avg: { menteeRating: true }
-        }))._avg.menteeRating || 5.0
+        where: { mentorId: userId, status: PeerLineStatus.COMPLETED },
+        _avg: { menteeRating: true }
+      }))._avg.menteeRating || 5.0
       : 5.0;
-    
+
     // Tier threshold: Bronze (0-9), Silver (10-49), Gold (50+)
     let badgeTier = 'Bronze';
     if (sessionsTotal >= 50) badgeTier = 'Gold';
@@ -539,12 +539,12 @@ export class PeerLineService {
             senderRole: 'mentee'
           }
         });
-        
+
         // Fetch mentee name
         const sessionWithMentee = await prisma.peerLineSession.findUnique({
           where: { id: s.id },
-          include: { 
-            mentee: { select: { profile: { select: { displayName: true } } } } 
+          include: {
+            mentee: { select: { profile: { select: { displayName: true } } } }
           }
         });
 
@@ -584,9 +584,14 @@ export class PeerLineService {
       where: { userId },
       data: { isAvailable }
     });
-    
-    await broadcastAvailabilityUpdate();
-    
+
+    try {
+      const socketModule = await import('./peerline.socket.js');
+      await socketModule.broadcastAvailabilityUpdate();
+    } catch (e) {
+      console.error('[PeerLine] Socket broadcast failed during availability update:', e);
+    }
+
     return {
       is_available: profile.isAvailable,
       updated_at: new Date()
@@ -794,6 +799,282 @@ export class PeerLineService {
     return prisma.peerLineSession.count({
       where: { mentorId, status: PeerLineStatus.COMPLETED }
     });
+  }
+
+  async onboardMentor(userId: string | undefined, input: MentorOnboardInput) {
+    if (!userId) return { success: true, guest: true, ...input };
+    const { topicIds, name, email, phone } = input;
+    
+    let profile = await prisma.profile.findUnique({ where: { userId } });
+    if (!profile) {
+      profile = await prisma.profile.create({
+        data: {
+          userId,
+          displayName: name || 'Peer Mentor',
+          mentorStatus: 'certified',
+          certifiedTopicIds: topicIds,
+          isAvailable: true,
+        }
+      });
+    } else {
+      profile = await prisma.profile.update({
+        where: { userId },
+        data: {
+          displayName: name || profile.displayName,
+          mentorStatus: 'certified',
+          certifiedTopicIds: topicIds,
+          isAvailable: true,
+        }
+      });
+    }
+    
+    try {
+      const socketModule = await import('./peerline.socket.js');
+      await socketModule.broadcastAvailabilityUpdate();
+    } catch (e) {
+      console.error('[PeerLine] Socket broadcast failed during onboard:', e);
+    }
+
+    return profile;
+  }
+
+  async applyToMentor(userId: string | undefined, input: any) {
+    let targetUserId = userId;
+
+    if (!targetUserId) {
+      // It's a guest application, try to find or create user
+      let user = await prisma.user.findFirst({
+        where: { OR: [{ phone: input.phone }, { username: input.email }] }
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            username: input.email,
+            phone: input.phone,
+            password: 'temp_password_' + Date.now(), // Real app would send welcome email
+            role: 'TEEN',
+            peerOnboarding: true,
+            accountStatus: 'PENDING_SETUP'
+          }
+        });
+      } else {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { role: 'TEEN', peerOnboarding: true }
+        });
+      }
+      targetUserId = user.id;
+    } else {
+      await prisma.user.update({
+        where: { id: targetUserId },
+        data: { role: 'TEEN', peerOnboarding: true }
+      });
+    }
+
+    // Check if application already exists
+    const existingApp = await prisma.peerApplication.findUnique({ 
+      where: { userId: targetUserId } 
+    });
+    if (existingApp && existingApp.status !== 'none') {
+      const error = new AppError('You have already submitted an application. Please wait for the review process.', 400);
+      (error as any).details = {
+        status: existingApp.status,
+        certificationStatus: existingApp.certificationStatus
+      };
+      throw error;
+    }
+
+    // Ensure profile exists
+    let profile = await prisma.profile.findUnique({ where: { userId: targetUserId } });
+    if (!profile) {
+      profile = await prisma.profile.create({
+        data: {
+          userId: targetUserId,
+          displayName: input.name || 'Peer Applicant',
+          mentorStatus: 'applied'
+        }
+      });
+    } else {
+      profile = await prisma.profile.update({
+        where: { userId: targetUserId },
+        data: { mentorStatus: 'applied' }
+      });
+    }
+
+    // Save application data
+    await prisma.peerApplication.upsert({
+      where: { userId: targetUserId },
+      update: {
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
+        personalStatement: input.personalStatement,
+        scenarioResponses: input.scenarioResponses || [],
+        eligibility: input.eligibility || {},
+        status: 'pending'
+      },
+      create: {
+        userId: targetUserId,
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
+        personalStatement: input.personalStatement,
+        scenarioResponses: input.scenarioResponses || [],
+        eligibility: input.eligibility || {},
+        status: 'pending'
+      }
+    });
+
+    return profile;
+  }
+
+  async updateTrainingProgress(userId: string, episodeSlug: string, reflection?: string, checks?: any) {
+    let app = await prisma.peerApplication.findUnique({ where: { userId } });
+    if (!app) {
+      const profile = await prisma.profile.findUnique({ where: { userId }, include: { user: true } });
+      if (profile && profile.mentorStatus !== 'none') {
+        app = await prisma.peerApplication.create({
+          data: {
+            userId,
+            name: profile.displayName || 'Peer Mentor',
+            email: profile.user.username || '',
+            phone: profile.user.phone || '',
+            personalStatement: 'Auto-created during training',
+            scenarioResponses: [],
+            eligibility: {},
+            status: 'pending'
+          }
+        });
+      } else {
+        throw new Error('Peer application not found');
+      }
+    }
+
+    const completed = new Set(app.completedEpisodes || []);
+    completed.add(episodeSlug);
+
+    const currentAnswers = (app.episodeAnswers as any) || {};
+    currentAnswers[episodeSlug] = { reflection, checks, timestamp: new Date() };
+
+    return prisma.peerApplication.update({
+      where: { userId },
+      data: { 
+        completedEpisodes: Array.from(completed),
+        episodeAnswers: currentAnswers
+      }
+    });
+  }
+
+  async submitAssessment(userId: string, score: number, answers: any) {
+    let app = await prisma.peerApplication.findUnique({ where: { userId } });
+    if (!app) {
+      const profile = await prisma.profile.findUnique({ where: { userId }, include: { user: true } });
+      if (profile && profile.mentorStatus !== 'none') {
+        app = await prisma.peerApplication.create({
+          data: {
+            userId,
+            name: profile.displayName || 'Peer Mentor',
+            email: profile.user.username || '',
+            phone: profile.user.phone || '',
+            personalStatement: 'Auto-created during assessment',
+            scenarioResponses: [],
+            eligibility: {},
+            status: 'pending'
+          }
+        });
+      } else {
+        throw new Error('Peer application not found');
+      }
+    }
+
+    // Check if locked
+    if (app.lockUntil && app.lockUntil > new Date()) {
+      throw new Error(`Assessment locked until ${app.lockUntil.toLocaleDateString()}. Please wait for the cooling-off period.`);
+    }
+
+    const isPassed = score >= 80;
+    const newAttempts = (app.assessmentAttempts || 0) + 1;
+    
+    let lockUntil: Date | null = null;
+    let status = app.certificationStatus;
+
+    if (isPassed) {
+      status = 'pending_conduct';
+    } else if (newAttempts >= 2) {
+      // Failed 2 attempts, lock for 14 days
+      lockUntil = new Date();
+      lockUntil.setDate(lockUntil.getDate() + 14);
+      // Reset episodes as per guide "re-completion of relevant Episodes"
+      // For simplicity, we reset all, or we could keep them. Guide says "re-completion".
+    }
+
+    return prisma.peerApplication.update({
+      where: { userId },
+      data: {
+        trainingScore: score,
+        trainingAnswers: answers,
+        assessmentAttempts: newAttempts,
+        lastAttemptAt: new Date(),
+        lockUntil,
+        certificationStatus: status,
+        // If locked, we reset completed episodes to force re-completion
+        completedEpisodes: lockUntil ? [] : undefined 
+      }
+    });
+  }
+
+  async agreeToConduct(userId: string) {
+    const app = await prisma.peerApplication.findUnique({ where: { userId } });
+    if (!app || app.certificationStatus !== 'pending_conduct') {
+      throw new Error('Invalid application state for Code of Conduct agreement');
+    }
+
+    return prisma.peerApplication.update({
+      where: { userId },
+      data: {
+        certificationStatus: 'submitted'
+      }
+    });
+  }
+
+  async getTrainingStatus(userId: string) {
+    let app = await prisma.peerApplication.findUnique({
+      where: { userId },
+      select: {
+        status: true,
+        certificationStatus: true,
+        completedEpisodes: true,
+        trainingScore: true,
+        assessmentAttempts: true,
+        lockUntil: true,
+        episodeAnswers: true
+      }
+    });
+
+    if (!app) {
+      // Check if they should have one (e.g. they are a mentor or applied)
+      const profile = await prisma.profile.findUnique({ where: { userId } });
+      if (profile && profile.mentorStatus !== 'none') {
+        return {
+          status: 'approved',
+          certificationStatus: 'pending_training',
+          completedEpisodes: [],
+          trainingScore: null,
+          assessmentAttempts: 0,
+          lockUntil: null
+        };
+      }
+      return {
+        status: 'none',
+        certificationStatus: 'unregistered',
+        completedEpisodes: [],
+        trainingScore: null,
+        assessmentAttempts: 0,
+        lockUntil: null
+      };
+    }
+    return app;
   }
 }
 

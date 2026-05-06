@@ -45,16 +45,34 @@ export class AdminService {
     });
   }
 
-  static async getUsers(page: number = 1, limit: number = 20) {
+  static async createUser(data: { username: string; password: string; phone: string; role: string; peerOnboarding?: boolean }) {
+    const hashed = await bcrypt.hash(data.password, 10);
+    const user = await prisma.user.create({
+      data: {
+        username: data.username,
+        password: hashed,
+        phone: data.phone,
+        role: data.role,
+        peerOnboarding: data.peerOnboarding ?? false,
+      },
+    });
+    return user;
+  }
+
+  static async getUsers(page: number = 1, limit: number = 20, peerOnboarding?: boolean) {
     const skip = (page - 1) * limit;
+    
+    const whereClause = peerOnboarding !== undefined ? { peerOnboarding } : {};
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
+        where: whereClause,
         skip,
         take: limit,
-        include: { profile: true },
+        include: { profile: true, peerApplication: true },
         orderBy: { createdAt: "desc" }
       }),
-      prisma.user.count()
+      prisma.user.count({ where: whereClause })
     ]);
 
     return {
@@ -66,6 +84,153 @@ export class AdminService {
         pages: Math.ceil(total / limit)
       }
     };
+  }
+
+  static async getUserById(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true, peerApplication: true }
+    });
+    if (!user) throw new Error('User not found');
+    return user;
+  }
+
+  static async approvePeerApplication(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { peerApplication: true, profile: true }
+    });
+
+    if (!user) throw new Error('User not found');
+    if (!user.peerApplication) throw new Error('No peer application found for this user');
+
+    // Update the application status
+    await prisma.peerApplication.update({
+      where: { userId },
+      data: { status: 'approved' }
+    });
+
+    // Update profile status but keep role as TEEN
+    if (user.profile) {
+      await prisma.profile.update({
+        where: { userId },
+        data: { mentorStatus: 'certified', isAvailable: true }
+      });
+    }
+
+    return { success: true, message: 'Peer application approved successfully' };
+  }
+
+  static async approveCertification(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { peerApplication: true, profile: true }
+    });
+
+    if (!user) throw new Error('User not found');
+    if (!user.peerApplication) throw new Error('No peer application found for this user');
+    if (user.peerApplication.certificationStatus !== 'submitted') {
+      throw new Error('Assessment has not been submitted yet');
+    }
+
+    // Update certification status
+    await prisma.peerApplication.update({
+      where: { userId },
+      data: { certificationStatus: 'certified' }
+    });
+
+    // NOW upgrade role to PEER
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role: 'PEER' }
+    });
+
+    if (user.profile) {
+      await prisma.profile.update({
+        where: { userId },
+        data: { mentorStatus: 'certified', isAvailable: true }
+      });
+    }
+
+    return { success: true, message: 'Certification approved. User is now a Peer Mentor.' };
+  }
+
+  static async unapproveAssessment(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { peerApplication: true }
+    });
+
+    if (!user) throw new Error('User not found');
+    if (!user.peerApplication) throw new Error('No peer application found');
+
+    // 1. Revert certification to pending_training and RESET attempts/progress
+    await prisma.peerApplication.update({
+      where: { userId },
+      data: { 
+        certificationStatus: 'pending_training',
+        assessmentAttempts: 0,
+        lastAttemptAt: null,
+        lockUntil: null,
+        completedEpisodes: []
+      }
+    });
+
+    // 2. Downgrade role to TEEN if they were PEER
+    if (user.role === 'PEER') {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'TEEN' }
+      });
+    }
+
+    // 3. Update profile mentor status
+    if (user.profile) {
+      await prisma.profile.update({
+        where: { userId },
+        data: { mentorStatus: 'none', isAvailable: false }
+      });
+    }
+
+    return { success: true, message: 'Assessment unapproved. User reverted to training status.' };
+  }
+
+  static async revokePeerStatus(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { peerApplication: true, profile: true }
+    });
+
+    if (!user) throw new Error('User not found');
+
+    // 1. Revert application to pending & certification to pending_training
+    if (user.peerApplication) {
+      await prisma.peerApplication.update({
+        where: { userId },
+        data: { 
+          status: 'pending',
+          certificationStatus: 'uncertified' 
+        }
+      });
+    }
+
+    // 2. Downgrade role to TEEN
+    if (user.role === 'PEER' || user.role === 'ADMIN' || user.role === 'EXPERT') { // ensure we just drop PEER role
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'TEEN' }
+      });
+    }
+
+    // 3. Reset profile mentor status
+    if (user.profile) {
+      await prisma.profile.update({
+        where: { userId },
+        data: { mentorStatus: 'none', isAvailable: false }
+      });
+    }
+
+    return { success: true, message: 'Peer status completely revoked (Application pending, Certification pending, Role TEEN).' };
   }
 
   static async getJourneys() {

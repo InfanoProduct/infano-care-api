@@ -28,7 +28,10 @@ export const errorHandler = (
   }
 
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({ error: err.message });
+    return res.status(err.statusCode).json({ 
+      error: err.message,
+      details: (err as any).details 
+    });
   }
 
   if (err instanceof ZodError) {
@@ -45,6 +48,10 @@ export const errorHandler = (
     return res.status(400).json({ error: "Malformed JSON in request body" });
   }
 
+  const statusCode = err.statusCode || 500;
   const message = process.env.NODE_ENV === "production" ? "Internal Server Error" : err.message;
-  res.status(500).json({ error: message });
+  res.status(statusCode).json({ 
+    error: message,
+    details: err.details
+  });
 };

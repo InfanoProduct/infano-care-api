@@ -15,18 +15,28 @@ export class LearningService {
     });
   }
 
-  static async getJourney(journeyId: string) {
-    const journey = await prisma.learningJourney.findUnique({
-      where: { id: journeyId },
+  static async getJourney(identifier: string) {
+    const journey = await prisma.learningJourney.findFirst({
+      where: {
+        OR: [
+          { id: identifier },
+          { slug: identifier }
+        ]
+      },
       include: { episodes: { orderBy: { order: "asc" } } },
     });
     if (!journey) throw new AppError("Learning Journey not found", 404);
     return journey;
   }
 
-  static async getEpisode(episodeId: string) {
-    const episode = await prisma.episode.findUnique({
-      where: { id: episodeId },
+  static async getEpisode(identifier: string) {
+    const episode = await prisma.episode.findFirst({
+      where: {
+        OR: [
+          { id: identifier },
+          { slug: identifier }
+        ]
+      },
     });
     if (!episode) throw new AppError("Episode not found", 404);
     return episode;

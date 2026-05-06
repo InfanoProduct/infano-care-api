@@ -13,6 +13,11 @@ router.use(requireAdmin);
 
 router.get("/stats", AdminController.getStats);
 router.get("/users", AdminController.getUsers);
+router.get("/users/:id", AdminController.getUser);
+router.patch("/users/:id/approve-peer", AdminController.approvePeer);
+router.patch("/users/:id/approve-certification", AdminController.approveCertification);
+router.patch("/users/:id/unapprove-assessment", AdminController.unapproveAssessment);
+router.patch("/users/:id/revoke-peer", AdminController.revokePeer);
 router.get("/mentors", AdminController.getMentors);
 
 // Learning Journey Management

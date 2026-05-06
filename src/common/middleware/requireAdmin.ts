@@ -12,11 +12,16 @@ export async function requireAdmin(req: Request, _res: Response, next: NextFunct
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { id: true, role: true, username: true },
     });
 
-    if (!user || user.role !== "ADMIN") {
-      return next(new AppError("Forbidden: Admin access required.", 403));
+
+    if (!user) {
+      return next(new AppError("User not found.", 401));
+    }
+
+    if (user.role !== "ADMIN") {
+      return next(new AppError(`Forbidden: Admin access required. Your role is ${user.role}`, 403));
     }
 
     next();

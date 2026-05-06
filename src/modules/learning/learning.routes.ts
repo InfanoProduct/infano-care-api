@@ -4,6 +4,13 @@ import { authenticate } from "../../common/middleware/auth.js";
 
 const router = Router();
 
+// Guest-accessible routes
+router.get("/journeys", LearningController.listJourneys);
+router.get("/journeys/:id", LearningController.getJourney);
+router.get("/episodes/:id", LearningController.getEpisode);
+router.get("/episodes/:episodeId/reflections", LearningController.getCommunityReflections);
+
+// Authenticated routes
 router.use(authenticate);
 
 /**
@@ -25,7 +32,7 @@ router.use(authenticate);
  *       200:
  *         description: List of journeys
  */
-router.get("/journeys", LearningController.listJourneys);
+
 
 /**
  * @openapi
@@ -44,7 +51,7 @@ router.get("/journeys", LearningController.listJourneys);
  *       200:
  *         description: Journey details
  */
-router.get("/journeys/:id", LearningController.getJourney);
+
 
 /**
  * @openapi
@@ -63,7 +70,7 @@ router.get("/journeys/:id", LearningController.getJourney);
  *       200:
  *         description: Episode details
  */
-router.get("/episodes/:id", LearningController.getEpisode);
+
 
 /**
  * @openapi
@@ -128,7 +135,7 @@ router.post("/episodes/:episodeId/complete", LearningController.completeEpisode)
  *       200:
  *         description: List of reflections
  */
-router.get("/episodes/:episodeId/reflections", LearningController.getCommunityReflections);
+
 
 /**
  * @openapi

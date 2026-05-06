@@ -35,6 +35,7 @@ model User {
   username                String?                  @unique
   password                String?
   accountStatus           AccountStatus            @default(PENDING_SETUP)
+  peerOnboarding          Boolean                  @default(false)
   chatSessions            ChatSession[]
   CommunityActivityLog    CommunityActivityLog[]
   CommunityBookmark       CommunityBookmark[]
@@ -53,6 +54,7 @@ model User {
   notificationHistory     NotificationHistory[]
   NotificationPreferences NotificationPreferences?
   orders                  Order[]
+  peerApplication         PeerApplication?
   menteeSessions          PeerLineSession[]        @relation("PeerLineSession_menteeIdToUser")
   mentorSessions          PeerLineSession[]        @relation("PeerLineSession_mentorIdToUser")
   personalization         PersonalizationProfile?
@@ -675,7 +677,7 @@ model ModerationAppeal {
 }
 
 model BlogAuthor {
-  id          String     @id
+  id          String     @id @default(uuid())
   name        String
   role        String?
   bio         String?
@@ -685,12 +687,12 @@ model BlogAuthor {
   email       String?
   isActive    Boolean    @default(true)
   createdAt   DateTime   @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime   @updatedAt
   posts       BlogPost[]
 }
 
 model BlogCTA {
-  id          String     @id
+  id          String     @id @default(uuid())
   title       String?
   description String?
   buttonText  String?
@@ -700,24 +702,24 @@ model BlogCTA {
   isActive    Boolean    @default(true)
   clicks      Int        @default(0)
   createdAt   DateTime   @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime   @updatedAt
   posts       BlogPost[] @relation("PostCTAs")
 }
 
 model BlogCategory {
-  id          String     @id
+  id          String     @id @default(uuid())
   name        String
   slug        String     @unique
   description String?
   iconUrl     String?
   isActive    Boolean    @default(true)
   createdAt   DateTime   @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime   @updatedAt
   posts       BlogPost[] @relation("PostCategories")
 }
 
 model BlogPost {
-  id            String         @id
+  id            String         @id @default(uuid())
   title         String
   slug          String         @unique
   summary       String?
@@ -731,7 +733,7 @@ model BlogPost {
   publishedAt   DateTime?
   isDeleted     Boolean        @default(false)
   createdAt     DateTime       @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime       @updatedAt
   views         Int            @default(0)
   readTime      Int            @default(5)
   author        BlogAuthor?    @relation(fields: [authorId], references: [id])
@@ -820,6 +822,10 @@ model Order {
   gstNumber         String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  cgstAmount        Float           @default(0)
+  deliveryCharge    Float           @default(0)
+  sgstAmount        Float           @default(0)
+  taxableAmount     Float           @default(0)
   coupon            DiscountCoupon? @relation(fields: [couponId], references: [id])
   user              User?           @relation(fields: [userId], references: [id])
   items             OrderItem[]
@@ -851,12 +857,36 @@ model OrderItem {
   order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
+model PeerApplication {
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  name                String
+  email               String
+  phone               String
+  personalStatement   String
+  scenarioResponses   Json
+  eligibility         Json
+  status              String    @default("pending")
+  certificationStatus String    @default("pending_training")
+  completedEpisodes   String[]
+  trainingScore       Int?
+  trainingAnswers     Json?
+  episodeAnswers      Json?
+  assessmentAttempts  Int       @default(0)
+  lastAttemptAt       DateTime?
+  lockUntil           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 enum UserRole {
   TEEN
   PARENT
   GUARDIAN
   EXPERT
   ADMIN
+  PEER
 }
 
 enum ContentTier {
