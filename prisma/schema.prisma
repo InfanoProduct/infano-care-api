@@ -35,6 +35,7 @@ model User {
   username                String?                  @unique
   password                String?
   accountStatus           AccountStatus            @default(PENDING_SETUP)
+  peerOnboarding          Boolean                  @default(false)
   chatSessions            ChatSession[]
   CommunityActivityLog    CommunityActivityLog[]
   CommunityBookmark       CommunityBookmark[]
@@ -53,6 +54,7 @@ model User {
   notificationHistory     NotificationHistory[]
   NotificationPreferences NotificationPreferences?
   orders                  Order[]
+  peerApplication         PeerApplication?
   menteeSessions          PeerLineSession[]        @relation("PeerLineSession_menteeIdToUser")
   mentorSessions          PeerLineSession[]        @relation("PeerLineSession_mentorIdToUser")
   personalization         PersonalizationProfile?
@@ -792,11 +794,7 @@ model Order {
   guestName         String?
   guestPhone        String?
   subtotal          Float
-  taxableAmount     Float           @default(0)
-  cgstAmount        Float           @default(0)
-  sgstAmount        Float           @default(0)
   gstAmount         Float           @default(0)
-  deliveryCharge    Float           @default(0)
   discountAmount    Float           @default(0)
   totalAmount       Float
   paymentMethod     PaymentMethod
@@ -813,6 +811,10 @@ model Order {
   gstNumber         String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  cgstAmount        Float           @default(0)
+  deliveryCharge    Float           @default(0)
+  sgstAmount        Float           @default(0)
+  taxableAmount     Float           @default(0)
   coupon            DiscountCoupon? @relation(fields: [couponId], references: [id])
   user              User?           @relation(fields: [userId], references: [id])
   items             OrderItem[]
@@ -844,12 +846,36 @@ model OrderItem {
   order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
+model PeerApplication {
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  name                String
+  email               String
+  phone               String
+  personalStatement   String
+  scenarioResponses   Json
+  eligibility         Json
+  status              String    @default("pending")
+  certificationStatus String    @default("pending_training")
+  completedEpisodes   String[]
+  trainingScore       Int?
+  trainingAnswers     Json?
+  episodeAnswers      Json?
+  assessmentAttempts  Int       @default(0)
+  lastAttemptAt       DateTime?
+  lockUntil           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 enum UserRole {
   TEEN
   PARENT
   GUARDIAN
   EXPERT
   ADMIN
+  PEER
 }
 
 enum ContentTier {

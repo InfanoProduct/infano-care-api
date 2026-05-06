@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { PeerLineService } from './peerline.service.js';
-import { requestSessionSchema, sessionFeedbackSchema, mentorAvailabilitySchema } from './peerline.schema.js';
+import { requestSessionSchema, sessionFeedbackSchema, mentorAvailabilitySchema, mentorOnboardSchema, mentorApplySchema } from './peerline.schema.js';
 
 const peerLineService = new PeerLineService();
+// Force reload v3 - ensuring new service methods are picked up.
 
 export class PeerLineController {
   static async getAvailability(req: Request, res: Response, next: NextFunction) {
@@ -155,6 +156,17 @@ export class PeerLineController {
     }
   }
 
+  static async onboardMentor(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validated = mentorOnboardSchema.parse(req).body;
+      const userId = (req as any).userId;
+      const result = await peerLineService.onboardMentor(userId, validated);
+      res.status(200).json({ success: true, profile: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getMentorsByTopics(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId;
@@ -164,6 +176,59 @@ export class PeerLineController {
       const mentors = await peerLineService.getMentorsByTopics(userId, topicIds);
       console.log(`[PeerLine] Found ${mentors.length} mentors matching topics`);
       res.status(200).json({ success: true, mentors });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async applyToMentor(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validated = mentorApplySchema.parse(req).body;
+      const userId = (req as any).userId;
+      const result = await peerLineService.applyToMentor(userId, validated);
+      res.status(200).json({ success: true, profile: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateTrainingProgress(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const { episodeSlug, reflection, checks } = req.body;
+      const result = await peerLineService.updateTrainingProgress(userId, episodeSlug, reflection, checks);
+      res.status(200).json({ success: true, result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async submitAssessment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const { score, answers } = req.body;
+      const result = await peerLineService.submitAssessment(userId, score, answers);
+      res.status(200).json({ success: true, result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async agreeToConduct(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const result = await peerLineService.agreeToConduct(userId);
+      res.status(200).json({ success: true, result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getTrainingStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const result = await peerLineService.getTrainingStatus(userId);
+      res.status(200).json({ success: true, ...result });
     } catch (error) {
       next(error);
     }

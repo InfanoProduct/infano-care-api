@@ -14,7 +14,7 @@ const JWT_TEMP_SECRET = process.env.JWT_TEMP_SECRET || "infano_temp_secret_dev";
 const OTP_TTL_SECONDS = 10 * 60;   // 10 min
 const OTP_RATE_LIMIT = 3;         // max attempts per window
 const OTP_RATE_WINDOW_SEC = 15 * 60;   // 15 min window
-const ACCESS_TOKEN_TTL = "15m";
+const ACCESS_TOKEN_TTL = "24h";
 const REFRESH_TOKEN_TTL = "30d";
 const TEMP_TOKEN_TTL = "15m";
 
@@ -87,8 +87,7 @@ export class AuthService {
     logger.debug({ phone: finalPhone, userStatus: user?.accountStatus, isTest: user?.isTestNumber }, "[AUTH] User lookup result");
 
     // 3. Rule 2: Test Number -> Bypass OTP
-    const isDev = process.env.NODE_ENV === "development";
-    if (user?.isTestNumber || isDev) {
+    if (user?.isTestNumber) {
       logger.info({ phone: finalPhone }, "Test number detected - bypassing OTP send and providing auto-login");
       const loginData = await this.verifyOtp(finalPhone, "0000"); // 0000 is dummy as it's bypassed anyway
       return { autoLogin: loginData };
@@ -167,13 +166,13 @@ export class AuthService {
         onboardingCompletedAt: true,
         otpSendOn: true,
         otpRetryCount: true,
-        role: true
+        role: true,
+        peerApplication: { select: { status: true } }
       }
     });
 
     // 1. Test Number -> Allow ANY OTP
-    const isDev = process.env.NODE_ENV === "development";
-    if (user?.isTestNumber || isDev) {
+    if (user?.isTestNumber) {
       logger.info({ phone: finalPhone }, "Test number detected - allowing ANY OTP bypass");
       // Bypass external verification for test users
     } else if (process.env.SMS_PROVIDER === "mock") {
@@ -259,7 +258,8 @@ export class AuthService {
       accountStatus: finalUser.accountStatus,
       isOnboardingCompleted: finalUser.onboardingCompletedAt !== null,
       role: finalUser.role,
-      userId: finalUser.id
+      userId: finalUser.id,
+      peerApplicationStatus: finalUser.peerApplication?.status || 'none'
     };
   }
 
@@ -308,17 +308,38 @@ export class AuthService {
 
     await redis.del(`rt:${jti}`);
 
-    const user = await prisma.user.findUnique({ where: { id: sub }, select: { id: true, contentTier: true, accountStatus: true, onboardingStep: true } });
+    const user = await prisma.user.findUnique({ 
+      where: { id: sub }, 
+      select: { 
+        id: true, 
+        role: true,
+        contentTier: true, 
+        accountStatus: true, 
+        onboardingStep: true,
+        peerApplication: { select: { status: true } }
+      } 
+    });
     if (!user) throw new AppError("User not found.", 404);
 
     const newJti = crypto.randomUUID();
-    const tokenPayloadBase = { sub: user.id, contentTier: user.contentTier, accountStatus: user.accountStatus, obStep: user.onboardingStep };
+    const tokenPayloadBase = { 
+      sub: user.id, 
+      role: user.role,
+      contentTier: user.contentTier, 
+      accountStatus: user.accountStatus, 
+      obStep: user.onboardingStep 
+    };
     const newAccess = signAccessToken(tokenPayloadBase);
     const newRefresh = signRefreshToken(tokenPayloadBase, newJti);
 
     await redis.setex(`rt:${newJti}`, 30 * 24 * 60 * 60, user.id);
 
-    return { accessToken: newAccess, refreshToken: newRefresh };
+    return { 
+      accessToken: newAccess, 
+      refreshToken: newRefresh,
+      role: user.role,
+      peerApplicationStatus: user.peerApplication?.status || 'none'
+    };
   }
 
   // ── 4. Logout ────────────────────────────────────────────────────────────────
@@ -339,8 +360,8 @@ export class AuthService {
       where: { username },
     });
 
-    if (!user || user.role !== "ADMIN" || !user.password) {
-      logger.warn({ username }, "[AUTH] Admin login failed: Invalid credentials or role");
+    if (!user || (user.role !== "ADMIN" && user.role !== "EXPERT") || !user.password) {
+      logger.warn({ username, role: user?.role }, "[AUTH] Login failed: Invalid credentials or insufficient role");
       throw new AppError("Invalid username or password.", 401);
     }
 
@@ -354,20 +375,28 @@ export class AuthService {
     const tokenPayloadBase = { 
       sub: user.id, 
       role: user.role,
-      accountStatus: user.accountStatus 
+      contentTier: user.contentTier, 
+      accountStatus: user.accountStatus, 
+      obStep: user.onboardingStep 
     };
-
+    
     const accessToken = signAccessToken(tokenPayloadBase);
     const refreshToken = signRefreshToken(tokenPayloadBase, jti);
 
     await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, user.id);
 
+    const userWithApp = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { peerApplication: { select: { status: true } } }
+    });
+
     return {
       accessToken,
       refreshToken,
       userId: user.id,
-      role: user.role,
       username: user.username,
+      role: user.role,
+      peerApplicationStatus: userWithApp?.peerApplication?.status || 'none'
     };
   }
 

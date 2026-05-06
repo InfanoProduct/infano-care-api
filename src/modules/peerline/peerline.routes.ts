@@ -27,5 +27,12 @@ router.patch('/mentor/availability', authenticate, PeerLineController.updateMent
 router.post('/mentor/claim', authenticate, PeerLineController.claimNextSession);
 router.post('/mentor/sessions/:sessionId/accept', authenticate, PeerLineController.acceptSession);
 router.get('/mentor/search', authenticate, PeerLineController.getMentorsByTopics);
+router.post('/mentor/onboard', PeerLineController.onboardMentor);
+router.post('/mentor/apply', PeerLineController.applyToMentor);
+
+router.post('/training/progress', authenticate, PeerLineController.updateTrainingProgress);
+router.post('/training/assessment', authenticate, PeerLineController.submitAssessment);
+router.post('/training/conduct-agree', authenticate, PeerLineController.agreeToConduct);
+router.get('/training/status', authenticate, PeerLineController.getTrainingStatus);
 
 export default router;

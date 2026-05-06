@@ -25,7 +25,53 @@ export class AdminController {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
-      const result = await AdminService.getUsers(page, limit);
+      const peerOnboarding = req.query.peerOnboarding === 'true' ? true : undefined;
+      const result = await AdminService.getUsers(page, limit, peerOnboarding);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = await AdminService.getUserById(req.params.id as string);
+      res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async approvePeer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.approvePeerApplication(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async approveCertification(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.approveCertification(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async unapproveAssessment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.unapproveAssessment(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async revokePeer(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.revokePeerStatus(req.params.id as string);
       res.status(200).json(result);
     } catch (error) {
       next(error);
