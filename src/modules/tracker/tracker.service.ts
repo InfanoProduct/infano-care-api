@@ -10,8 +10,7 @@ export class TrackerService {
    */
   static async logDaily(userId: string, data: any) {
     const { date, noteText, ...details } = data;
-    const logDate = new Date(date);
-    logDate.setUTCHours(0, 0, 0, 0);
+    const logDate = new Date(date.split('T')[0] + 'T00:00:00.000Z');
 
     console.log(`[Tracker] Logging daily for User: ${userId}, Date: ${logDate.toISOString()}`);
     console.log(`[Tracker] Details: ${JSON.stringify(details, null, 2)}`);
@@ -148,8 +147,10 @@ export class TrackerService {
 
     // 2. Identify transitions
     const newDays: Date[] = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      newDays.push(new Date(d));
+    const tempDate = new Date(start);
+    while (tempDate <= end) {
+      newDays.push(new Date(tempDate));
+      tempDate.setDate(tempDate.getDate() + 1);
     }
 
     const newDaysStr = new Set(newDays.map(d => d.toISOString()));
@@ -163,7 +164,7 @@ export class TrackerService {
           data: { flow: "none", updatedAt: new Date() },
         })
       ),
-      // B. Update/Upsert new days (Medium flow if not already set to something meaningful)
+      // B. Update/Upsert new days
       ...newDays.map((date) =>
         prisma.cycleLog.upsert({
           where: { userId_date: { userId, date } },
@@ -173,46 +174,70 @@ export class TrackerService {
       )
     ]);
 
+    const periodDurationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
     // 3. Update/Create Record
     if (existingRecord) {
       await (prisma as any).cycleRecord.update({
         where: { id: existingRecord.id },
         data: {
-          startDate: start, // Pivot the cycle to new start date
+          startDate: start,
           periodStartDate: start,
           periodEndDate: end,
-          periodDurationDays: Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+          periodDurationDays,
         },
       });
     } else {
+      // Find if there's a later record
+      const laterRecord = await (prisma as any).cycleRecord.findFirst({
+        where: { userId, startDate: { gt: start } },
+        orderBy: { startDate: "asc" },
+      });
+
+      // If there's a later record, this one is history and should be complete
+      const isComplete = !!laterRecord;
+      let cycleLengthDays: number | null = null;
+      let actualEndDate: Date | null = null;
+
+      if (laterRecord) {
+        actualEndDate = new Date(laterRecord.startDate);
+        actualEndDate.setDate(actualEndDate.getDate() - 1);
+        cycleLengthDays = Math.round((laterRecord.startDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
       const cycleCount = await (prisma as any).cycleRecord.count({ where: { userId } });
       await (prisma as any).cycleRecord.create({
         data: {
           userId,
-          cycleNumber: cycleCount + 1,
+          cycleNumber: cycleCount + 1, // Note: ideally we'd re-sequence but for MVP this is okay
           startDate: start,
           periodStartDate: start,
           periodEndDate: end,
-          periodDurationDays: Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
-          isComplete: false,
+          endDate: actualEndDate,
+          cycleLengthDays: cycleLengthDays,
+          periodDurationDays,
+          isComplete: isComplete,
         },
       });
     }
 
-    // 4. Update Profile Baseline
-    await (prisma as any).cycleProfile.update({
-      where: { userId },
-      data: {
-        lastPeriodStart: start,
-        lastPeriodEnd: end,
-        trackerMode: "active" as any,
-      },
-    });
+    // 4. Update Profile ONLY if this is the most recent period
+    const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
+    const currentLastStart = profile?.lastPeriodStart ? new Date(profile.lastPeriodStart) : new Date(0);
 
-    // 4. Recalculate Baselines (Auto-update profile from history)
+    if (start >= currentLastStart) {
+      await (prisma as any).cycleProfile.update({
+        where: { userId },
+        data: {
+          lastPeriodStart: start,
+          lastPeriodEnd: end,
+          trackerMode: "active" as any,
+        },
+      });
+    }
+
+    // 5. Recalculate Baselines & Predictions
     await this.recalculateBaselines(userId);
-
-    // 5. Recalculate Predictions
     const prediction = await PredictionEngine.predict(userId);
     if (prediction) {
        await (prisma as any).cycleProfile.update({
@@ -410,10 +435,15 @@ export class TrackerService {
     
     if (!rawPrediction || !profile) return rawPrediction;
 
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    const now = new Date();
     const lastLog = profile.lastLogDate ? new Date(profile.lastLogDate) : null;
-    const hasLoggedToday = lastLog && lastLog.getTime() === today.getTime();
+    
+    // Check if last log matches current UTC date (normalized)
+    const hasLoggedToday = lastLog && (
+      lastLog.getUTCFullYear() === now.getUTCFullYear() &&
+      lastLog.getUTCMonth() === now.getUTCMonth() &&
+      lastLog.getUTCDate() === now.getUTCDate()
+    );
 
     return {
       ...rawPrediction,

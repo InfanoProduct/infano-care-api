@@ -1,4 +1,5 @@
 import { prisma } from "../../db/client.js";
+import { DAILY_INSIGHTS_LIBRARY } from "./daily_insights.js";
 
 export class InsightsService {
   /**
@@ -63,4 +64,22 @@ export class InsightsService {
       })),
     };
   }
+
+  /**
+   * Returns phase-specific stories and articles for the dashboard.
+   */
+  static async getDailyInsights(userId: string) {
+    const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
+    const phase = profile?.currentPhase || "waiting";
+    
+    // Default to 'waiting' if phase not found in library
+    const data = DAILY_INSIGHTS_LIBRARY[phase] || DAILY_INSIGHTS_LIBRARY["waiting"];
+    
+    return {
+      phase,
+      insights: data.stories,
+      articles: data.articles
+    };
+  }
 }
+

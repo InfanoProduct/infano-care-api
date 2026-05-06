@@ -25,6 +25,12 @@ export const dailyLogSchema = z.object({
     nutritionTags: z.array(z.string()).optional().default([]),
     activityTags: z.array(z.string()).optional().default([]),
     
+    // Vaginal Discharge (shown only when not on period)
+    vaginalDischarge: z.enum([
+      'No discharge', 'Creamy', 'Watery', 'Sticky',
+      'Egg white', 'Clumpy white', 'Spotting', 'Unusual'
+    ]).optional().nullable(),
+    
     // Private Notes
     noteText: z.string().max(150).optional(),
     hasVoiceNote: z.boolean().optional().default(false),

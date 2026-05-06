@@ -73,6 +73,15 @@ export class TrackerController {
     } catch (e) { next(e); }
   }
 
+  static async getDailyInsights(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const result = await InsightsService.getDailyInsights(userId);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+
   static async getHistory(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId;

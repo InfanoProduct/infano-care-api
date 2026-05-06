@@ -42,6 +42,10 @@ router.use(requireAuth);
 router.post("/setup",      TrackerController.setup);
 router.get("/profile",      TrackerController.getProfile);
 router.get("/history",      TrackerController.getHistory);
+router.get("/prediction",   TrackerController.getPrediction);
+router.get("/insights",     TrackerController.getInsights);
+router.get("/daily-insights", TrackerController.getDailyInsights);
+router.get("/doctor-summary", TrackerController.getDoctorSummary);
 
 
 /**
