@@ -21,53 +21,53 @@ async function main() {
     { 
       name: 'Dr. Sarah J', 
       bio: 'Expert in menstrual health and hormone balance.', 
-      topics: [topicMap['Menstrual Health'], topicMap['Body Confidence']],
+      topics: [topicMap['Menstrual Health'], topicMap['Body Confidence']].filter(Boolean) as string[],
       expertise: {
-        [topicMap['Menstrual Health']]: ['PCOS', 'Endometriosis', 'Irregular Cycles'],
-        [topicMap['Body Confidence']]: ['Self Love', 'Body Image']
+        [topicMap['Menstrual Health'] as string]: ['PCOS', 'Endometriosis', 'Irregular Cycles'],
+        [topicMap['Body Confidence'] as string]: ['Self Love', 'Body Image']
       }
     },
     { 
       name: 'Coach Maya', 
       bio: 'Specialist in mood tracking and emotional wellness.', 
-      topics: [topicMap['Mental Wellbeing']],
+      topics: [topicMap['Mental Wellbeing']].filter(Boolean) as string[],
       expertise: {
-        [topicMap['Mental Wellbeing']]: ['Anxiety', 'Depression', 'Stress Management']
+        [topicMap['Mental Wellbeing'] as string]: ['Anxiety', 'Depression', 'Stress Management']
       }
     },
     { 
       name: 'Dr. Emily Chen', 
       bio: 'Family dynamics and relationship expert.', 
-      topics: [topicMap['Relationship Advice']],
+      topics: [topicMap['Relationship Advice']].filter(Boolean) as string[],
       expertise: {
-        [topicMap['Relationship Advice']]: ['Break-up talks', 'Family Conflicts', 'Communication']
+        [topicMap['Relationship Advice'] as string]: ['Break-up talks', 'Family Conflicts', 'Communication']
       }
     },
     { 
       name: 'Priya Sharma', 
       bio: 'Academic stress and school-life balance coach.', 
-      topics: [topicMap['Mental Wellbeing'], topicMap['Friendship & Peers']],
+      topics: [topicMap['Mental Wellbeing'], topicMap['Friendship & Peers']].filter(Boolean) as string[],
       expertise: {
-        [topicMap['Mental Wellbeing']]: ['Exam Stress', 'Time Management'],
-        [topicMap['Friendship & Peers']]: ['Peer Pressure', 'Social Anxiety']
+        [topicMap['Mental Wellbeing'] as string]: ['Exam Stress', 'Time Management'],
+        [topicMap['Friendship & Peers'] as string]: ['Peer Pressure', 'Social Anxiety']
       }
     },
     { 
       name: 'Jessica Bloom', 
       bio: 'Body positivity and self-confidence mentor.', 
-      topics: [topicMap['Body Confidence'], topicMap['Menstrual Health']],
+      topics: [topicMap['Body Confidence'], topicMap['Menstrual Health']].filter(Boolean) as string[],
       expertise: {
-        [topicMap['Body Confidence']]: ['Self Esteem', 'Public Speaking'],
-        [topicMap['Menstrual Health']]: ['Period Pain', 'Hygiene']
+        [topicMap['Body Confidence'] as string]: ['Self Esteem', 'Public Speaking'],
+        [topicMap['Menstrual Health'] as string]: ['Period Pain', 'Hygiene']
       }
     },
     {
       name: 'Anita Roy',
       bio: 'Specializing in sexual health and reproductive rights education.',
-      topics: [topicMap['Sexual Education'], topicMap['Body Confidence']],
+      topics: [topicMap['Sexual Education'], topicMap['Body Confidence']].filter(Boolean) as string[],
       expertise: {
-        [topicMap['Sexual Education']]: ['Safe Practices', 'Consent'],
-        [topicMap['Body Confidence']]: ['Identity', 'Coming Out']
+        [topicMap['Sexual Education'] as string]: ['Safe Practices', 'Consent'],
+        [topicMap['Body Confidence'] as string]: ['Identity', 'Coming Out']
       }
     }
   ];

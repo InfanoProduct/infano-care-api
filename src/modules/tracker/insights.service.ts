@@ -77,8 +77,8 @@ export class InsightsService {
     
     return {
       phase,
-      insights: data.stories,
-      articles: data.articles
+      insights: data?.stories || [],
+      articles: data?.articles || []
     };
   }
 }

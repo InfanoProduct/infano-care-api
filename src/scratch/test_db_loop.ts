@@ -8,7 +8,7 @@ async function main() {
     try {
       const result = await prisma.$queryRaw`SELECT 1`;
       console.log('Success:', result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed:', error.message);
     }
     await new Promise(r => setTimeout(r, 1000));
