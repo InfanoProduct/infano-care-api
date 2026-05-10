@@ -857,6 +857,75 @@ model OrderItem {
   order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
+// ─── Tracker Content (Daily Insights + Good to Know Articles) ───────────────
+
+/// A card visible in the "My Daily Insights" carousel on the tracker home screen.
+/// Admins configure these per phase (and optionally per cycle day) via the admin API.
+model TrackerInsight {
+  id               String          @id @default(uuid())
+  /// Cycle phase this insight belongs to: menstrual | follicular | ovulation | luteal | waiting
+  phase            String
+  /// Optional: only show on a specific cycle day (null = show for entire phase)
+  cycleDay         Int?
+  /// Card preview title (shown on the circular card on the home screen)
+  previewTitle     String
+  /// Single emoji representing the insight category
+  previewEmoji     String
+  /// Hex color used for the card background tint (e.g. "#F472B6")
+  previewColorHex  String          @default("#A855F7")
+  /// Sort order within the phase
+  sortOrder        Int             @default(0)
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  stories          TrackerStory[]
+
+  @@index([phase, isActive])
+}
+
+/// An individual "slide" within a TrackerInsight — mirrors Instagram Stories style.
+model TrackerStory {
+  id        String         @id @default(uuid())
+  insightId String
+  /// Display order within the insight
+  order     Int            @default(0)
+  title     String
+  /// Rich text / body copy displayed at the bottom of the slide
+  content   String
+  /// Absolute URL to the uploaded background image (served from /uploads/tracker/stories/)
+  imageUrl  String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  insight   TrackerInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+
+  @@index([insightId, order])
+}
+
+/// An article card shown in the "Good to Know" horizontal scroll section.
+/// Configured per phase and optionally per cycle day by admins.
+model TrackerArticle {
+  id        String   @id @default(uuid())
+  /// Cycle phase: menstrual | follicular | ovulation | luteal | waiting
+  phase     String
+  /// Optional: only show on a specific cycle day (null = entire phase)
+  cycleDay  Int?
+  title     String
+  /// Estimated reading time label (e.g. "4 min read")
+  readTime  String   @default("3 min read")
+  /// Single emoji for the article card
+  emoji     String   @default("📖")
+  /// Optional external or internal URL the article links to
+  url       String?
+  /// Full article body (markdown supported)
+  body      String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phase, isActive])
+}
+
 model PeerApplication {
   id                  String    @id @default(uuid())
   userId              String    @unique

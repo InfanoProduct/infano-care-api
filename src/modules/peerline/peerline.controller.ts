@@ -234,4 +234,33 @@ export class PeerLineController {
       next(error);
     }
   }
+
+  static async updateExpertise(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const { expertise } = req.body;
+      const result = await peerLineService.updateMentorExpertise(userId, expertise);
+      res.status(200).json({ success: true, result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async uploadMedia(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        throw new Error('No file uploaded');
+      }
+      // Assuming a standard upload path, adjust if necessary
+      const fileUrl = `/uploads/peerline/${req.file.filename}`;
+      res.status(200).json({ 
+        success: true, 
+        url: fileUrl,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

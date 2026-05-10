@@ -2,8 +2,8 @@ import { Router } from "express";
 import { AdminController } from "./admin.controller.js";
 import { authenticate } from "../../common/middleware/auth.js";
 import { requireAdmin } from "../../common/middleware/requireAdmin.js";
-
 import { upload } from "../../common/middleware/upload.js";
+import { TrackerContentController } from "../tracker/tracker_content.controller.js";
 
 const router = Router();
 
@@ -51,5 +51,29 @@ router.get("/circles", AdminController.getCircles);
 router.post("/circles", AdminController.createCircle);
 router.patch("/circles/:id", AdminController.updateCircle);
 router.delete("/circles/:id", AdminController.deleteCircle);
+
+// ─── Tracker Content Management ─────────────────────────────────────────────
+// Daily Insights (cards shown in "My Daily Insights" section)
+router.get("/tracker/insights", TrackerContentController.listInsights);
+router.post("/tracker/insights", TrackerContentController.createInsight);
+router.patch("/tracker/insights/:id", TrackerContentController.updateInsight);
+router.delete("/tracker/insights/:id", TrackerContentController.deleteInsight);
+
+// Stories within an insight (Instagram-style slides with optional image upload)
+router.get("/tracker/insights/:insightId/stories", TrackerContentController.listStories);
+router.post("/tracker/insights/:insightId/stories", TrackerContentController.createStory);
+router.post(
+  "/tracker/insights/:insightId/stories/:id/image",
+  upload.single("file"),
+  TrackerContentController.uploadStoryImage,
+);
+router.patch("/tracker/insights/:insightId/stories/:id", TrackerContentController.updateStory);
+router.delete("/tracker/insights/:insightId/stories/:id", TrackerContentController.deleteStory);
+
+// Good to Know Articles
+router.get("/tracker/articles", TrackerContentController.listArticles);
+router.post("/tracker/articles", TrackerContentController.createArticle);
+router.patch("/tracker/articles/:id", TrackerContentController.updateArticle);
+router.delete("/tracker/articles/:id", TrackerContentController.deleteArticle);
 
 export default router;
