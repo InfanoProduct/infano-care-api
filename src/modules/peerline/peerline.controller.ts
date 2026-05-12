@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { PeerLineService } from './peerline.service.js';
 import { requestSessionSchema, sessionFeedbackSchema, mentorAvailabilitySchema, mentorOnboardSchema, mentorApplySchema } from './peerline.schema.js';
+import { StorageService } from '../../common/utils/storage.js';
 
 const peerLineService = new PeerLineService();
 // Force reload v3 - ensuring new service methods are picked up.
@@ -235,30 +236,24 @@ export class PeerLineController {
     }
   }
 
-  static async updateExpertise(req: Request, res: Response, next: NextFunction) {
+  static async uploadMedia(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).userId;
-      const { expertise } = req.body;
-      const result = await peerLineService.updateMentorExpertise(userId, expertise);
-      res.status(200).json({ success: true, result });
+      if (!req.file) {
+        throw new Error('No file provided');
+      }
+      const { url } = await StorageService.uploadFile(req.file.path, 'peerline');
+      res.status(200).json({ success: true, url });
     } catch (error) {
       next(error);
     }
   }
 
-  static async uploadMedia(req: Request, res: Response, next: NextFunction) {
+  static async updateExpertise(req: Request, res: Response, next: NextFunction) {
     try {
-      if (!req.file) {
-        throw new Error('No file uploaded');
-      }
-      // Assuming a standard upload path, adjust if necessary
-      const fileUrl = `/uploads/peerline/${req.file.filename}`;
-      res.status(200).json({ 
-        success: true, 
-        url: fileUrl,
-        filename: req.file.filename,
-        mimetype: req.file.mimetype
-      });
+      const userId = (req as any).userId;
+      const { expertise } = req.body;
+      const result = await peerLineService.updateMentorExpertise(userId, expertise);
+      res.status(200).json({ success: true, profile: result });
     } catch (error) {
       next(error);
     }

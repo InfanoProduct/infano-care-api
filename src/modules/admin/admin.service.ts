@@ -1,5 +1,7 @@
 import { prisma } from "../../db/client.js";
 import { ShopService } from "../shop/shop.service.js";
+import bcrypt from "bcryptjs";
+import { UserRole } from "@prisma/client";
 
 export class AdminService {
   static async getStats() {
@@ -52,7 +54,7 @@ export class AdminService {
         username: data.username,
         password: hashed,
         phone: data.phone,
-        role: data.role,
+        role: data.role as UserRole,
         peerOnboarding: data.peerOnboarding ?? false,
       },
     });
@@ -158,7 +160,7 @@ export class AdminService {
   static async unapproveAssessment(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { peerApplication: true }
+      include: { peerApplication: true, profile: true }
     });
 
     if (!user) throw new Error('User not found');
@@ -235,6 +237,9 @@ export class AdminService {
 
   static async getJourneys() {
     const journeys = await prisma.learningJourney.findMany({
+      where: {
+        category: { not: "Peer Support" }
+      },
       include: {
         _count: {
           select: { episodes: true }
@@ -256,9 +261,14 @@ export class AdminService {
   static async getJourneyById(id: string) {
     return prisma.learningJourney.findFirst({
       where: {
-        OR: [
-          { id },
-          { slug: id }
+        AND: [
+          {
+            OR: [
+              { id },
+              { slug: id }
+            ]
+          },
+          { category: { not: "Peer Support" } }
         ]
       },
       include: { episodes: { orderBy: { order: "asc" } } }
