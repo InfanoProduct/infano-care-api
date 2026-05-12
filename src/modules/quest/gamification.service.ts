@@ -43,7 +43,8 @@ export class GamificationService {
       const thresholds = [0, 500, 1500, 3500, 7000, 12000, 20000, 32000, 50000, 75000];
       let newLevel = level.currentLevel;
       for (let i = thresholds.length - 1; i >= 0; i--) {
-        if (level.pointsTotal >= thresholds[i]) {
+        const threshold = thresholds[i];
+        if (threshold !== undefined && level.pointsTotal >= threshold) {
           newLevel = i + 1;
           break;
         }

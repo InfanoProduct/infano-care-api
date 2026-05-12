@@ -1190,3 +1190,27 @@ model UserMindfulActivity {
 
   @@unique([userId, mindfulActivityId])
 }
+
+model Enquiry {
+  id            String   @id @default(uuid())
+  schoolName    String
+  schoolType    String?
+  cityState     String?
+  totalGirls    Int?
+  contactName   String?
+  email         String
+  phone         String?
+  preferredTime String?
+  goals         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model NewsletterSubscription {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  role      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
