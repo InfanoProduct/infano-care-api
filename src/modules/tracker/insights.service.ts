@@ -1,5 +1,4 @@
 import { prisma } from "../../db/client.js";
-import { DAILY_INSIGHTS_LIBRARY } from "./daily_insights.js";
 
 export class InsightsService {
   /**
@@ -66,20 +65,87 @@ export class InsightsService {
   }
 
   /**
-   * Returns phase-specific stories and articles for the dashboard.
+   * Returns phase-specific stories (Daily Insights) and articles (Good to Know)
+   * for the dashboard. Data is fetched entirely from the database.
+   *
+   * Priority:
+   *  1. Day-specific entries (cycleDay == user's current cycle day)
+   *  2. Phase-wide entries (cycleDay IS NULL)
+   *
+   * Falls back to the "waiting" phase if the user has no profile yet.
    */
   static async getDailyInsights(userId: string) {
     const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
-    const phase = profile?.currentPhase || "waiting";
-    
-    // Default to 'waiting' if phase not found in library
-    const data = DAILY_INSIGHTS_LIBRARY[phase] || DAILY_INSIGHTS_LIBRARY["waiting"];
-    
+    const phase: string = profile?.currentPhase || "waiting";
+    const cycleDay: number | null = profile?.currentCycleDay ?? null;
+
+    // ── Fetch Insights ───────────────────────────────────────────────────────
+    const insights = await (prisma as any).trackerInsight.findMany({
+      where: {
+        phase,
+        isActive: true,
+        OR: [
+          { cycleDay: null },           // phase-wide
+          { cycleDay: cycleDay ?? -1 }, // day-specific
+        ],
+      },
+      orderBy: { sortOrder: "asc" },
+      include: {
+        stories: {
+          orderBy: { order: "asc" },
+          select: {
+            id: true,
+            title: true,
+            content: true,
+            imageUrl: true,
+            order: true,
+          },
+        },
+      },
+    });
+
+    // ── Fetch Articles ───────────────────────────────────────────────────────
+    const articles = await (prisma as any).trackerArticle.findMany({
+      where: {
+        phase,
+        isActive: true,
+        OR: [
+          { cycleDay: null },
+          { cycleDay: cycleDay ?? -1 },
+        ],
+      },
+      orderBy: { sortOrder: "asc" },
+      select: {
+        id: true,
+        title: true,
+        readTime: true,
+        emoji: true,
+        url: true,
+      },
+    });
+
     return {
       phase,
-      insights: data?.stories || [],
-      articles: data?.articles || []
+      cycleDay,
+      insights: insights.map((i: any) => ({
+        id: i.id,
+        previewTitle: i.previewTitle,
+        previewEmoji: i.previewEmoji,
+        previewColorHex: i.previewColorHex,
+        stories: i.stories.map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          content: s.content,
+          imageUrl: s.imageUrl || "",
+        })),
+      })),
+      articles: articles.map((a: any) => ({
+        id: a.id,
+        title: a.title,
+        time: a.readTime,
+        emoji: a.emoji,
+        url: a.url || "",
+      })),
     };
   }
 }
-

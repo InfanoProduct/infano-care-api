@@ -3,6 +3,7 @@ import { friendProfileSchema, friendSwipeSchema, friendDiscoverQuerySchema } fro
 import { FriendsService } from "./friends.service.js";
 import { logger } from "../../config/logger.js";
 import { ZodError } from "zod";
+import { QuestService } from "../quest/quest.service.js";
 
 const friendsService = new FriendsService();
 
@@ -75,6 +76,11 @@ export const swipeFriend = async (req: Request, res: Response) => {
     const userId = (req as any).user!.id;
     const { targetId, action } = friendSwipeSchema.parse(req.body);
     const result = await friendsService.recordSwipe(userId, targetId, action);
+    
+    // Hook for gamification/quests
+    QuestService.evaluateCompletion(userId, { type: 'match_action' })
+      .catch(err => logger.error({ err }, 'Quest evaluation failed for match_action'));
+      
     res.json(result);
   } catch (error) {
     if (error instanceof ZodError) {

@@ -2,6 +2,8 @@ import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { encryptNote, decryptNote } from "../../common/utils/encryption.js";
 import { PredictionEngine } from "./prediction.engine.js";
+import { GamificationService } from "../quest/gamification.service.js";
+import { QuestService } from "../quest/quest.service.js";
 
 export class TrackerService {
   /**
@@ -10,7 +12,9 @@ export class TrackerService {
    */
   static async logDaily(userId: string, data: any) {
     const { date, noteText, ...details } = data;
-    const logDate = new Date(date.split('T')[0] + 'T00:00:00.000Z');
+    const d = new Date(date);
+    if (d.getUTCHours() >= 12) d.setUTCDate(d.getUTCDate() + 1);
+    const logDate = new Date(d.toISOString().split('T')[0] + 'T00:00:00.000Z');
 
     console.log(`[Tracker] Logging daily for User: ${userId}, Date: ${logDate.toISOString()}`);
     console.log(`[Tracker] Details: ${JSON.stringify(details, null, 2)}`);
@@ -64,12 +68,6 @@ export class TrackerService {
         longestLogStreak: Math.max(newStreak, (profile as any).longestLogStreak),
         lastLogDate: logDate,
       };
-
-      // Award 30 points for daily logging
-      await prisma.profile.update({
-        where: { userId },
-        data: { totalPoints: { increment: 30 } },
-      });
     }
 
     // 4. Trigger Cycle Recalculation if Period Flow changed
@@ -79,6 +77,28 @@ export class TrackerService {
       const result = await this.handlePeriodStart(userId, logDate, wasWatching);
       cycleUpdated = true;
       if (result.firstPeriod) milestone = "first_period";
+    }
+
+    let totalPoints = 0;
+    // Evaluate Quests first to see if this task is linked to a quest
+    const questPoints = await QuestService.evaluateCompletion(userId, { type: "log_saved" });
+
+    if (questPoints > 0) {
+      totalPoints = questPoints;
+    } else {
+      // Award default 75 points only if no quest was completed for this task
+      await GamificationService.awardPoints(
+        userId,
+        75,
+        "log",
+        log.id,
+        `Daily log for ${logDate.toISOString().split('T')[0]}`
+      );
+      totalPoints = 75;
+    }
+
+    if (milestone === "first_period") {
+      totalPoints += 200;
     }
 
     // 5. Update Profile with new Prediction (And always update streak/lastLogDate)
@@ -104,157 +124,168 @@ export class TrackerService {
       cycle_updated: cycleUpdated,
       prediction: prediction,
       milestone: milestone,
-      points_earned: milestone === "first_period" ? 230 : 30, // 30 (log) + 200 (milestone)
+      points_earned: totalPoints,
     };
   }
 
   /**
    * Batch Period Range Update — "Edit Mode" Engine
-   * Marks a range of days as a period, updates CycleLogs, and modifies/creates CycleRecord.
+   *
+   * Rules:
+   *  1. Rejects if startDate is in the future.
+   *  2. Rejects if any existing period starts within 15 days of the new startDate
+   *     (i.e., would violate the 15-day minimum gap).
+   *  3. If the new startDate is >15 days away from ALL existing periods, it is
+   *     treated as a BRAND-NEW cycle — a new CycleRecord is created and the
+   *     old records are left intact (just the sequence numbers are updated).
+   *  4. If the new startDate is within ±14 days of an existing period start,
+   *     that CycleRecord is updated (existing behaviour).
+   *  5. After any write the chain is re-sequenced and the prediction engine
+   *     is re-run so the dashboard reflects the latest data immediately.
    */
   static async updatePeriodRange(userId: string, startDate: string, endDate: string) {
-    const start = new Date(startDate);
-    start.setUTCHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setUTCHours(0, 0, 0, 0);
+    const MIN_GAP_DAYS = 15;
 
-    if (start > end) throw new AppError("Start date must be before end date", 400);
+    const sD = new Date(startDate);
+    const eD = new Date(endDate);
 
-    console.log(`[Tracker] Updating period range for User: ${userId}, Range: ${start.toISOString()} to ${end.toISOString()}`);
+    if (sD.getUTCHours() >= 12) sD.setUTCDate(sD.getUTCDate() + 1);
+    if (eD.getUTCHours() >= 12) eD.setUTCDate(eD.getUTCDate() + 1);
 
-    // 1. Manage CycleRecord (Find closest record in +/- 14 day window)
-    const windowStart = new Date(start);
-    windowStart.setDate(windowStart.getDate() - 14);
-    const windowEnd = new Date(start);
-    windowEnd.setDate(windowEnd.getDate() + 14);
+    const start = new Date(sD); start.setUTCHours(0, 0, 0, 0);
+    const end   = new Date(eD); end.setUTCHours(0, 0, 0, 0);
 
-    const existingRecord = await (prisma as any).cycleRecord.findFirst({
-      where: {
-        userId,
-        startDate: { gte: windowStart, lte: windowEnd },
-      },
-      orderBy: { startDate: "asc" },
+    if (start > end) throw new AppError('Start date must be before end date', 400);
+
+    const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+    if (start >= today) throw new AppError('Period start date cannot be today or in the future', 400);
+
+    const allExistingRecords = await (prisma as any).cycleRecord.findMany({
+      where:   { userId },
+      orderBy: { startDate: 'asc' },
     });
 
-    let oldDays: Date[] = [];
-    if (existingRecord && existingRecord.periodStartDate && existingRecord.periodEndDate) {
-      const os = new Date(existingRecord.periodStartDate);
-      const oe = new Date(existingRecord.periodEndDate);
-      for (let d = new Date(os); d <= oe; d.setDate(d.getDate() + 1)) {
-        oldDays.push(new Date(d));
+    // Identify the record (if any) we are updating — within ±14-day window of new start
+    const updateWindowStart = new Date(start); updateWindowStart.setDate(updateWindowStart.getDate() - 14);
+    const updateWindowEnd   = new Date(start); updateWindowEnd.setDate(updateWindowEnd.getDate()   + 14);
+
+    const nearestRecord = allExistingRecords.find((r: any) => {
+      const rs = new Date(r.startDate);
+      return rs >= updateWindowStart && rs <= updateWindowEnd;
+    });
+
+    // Enforce 15-day minimum gap against all OTHER records
+    for (const r of allExistingRecords) {
+      if (nearestRecord && r.id === nearestRecord.id) continue;
+      const rStart = new Date(r.startDate);
+      const gap = Math.abs(start.getTime() - rStart.getTime()) / (1000 * 60 * 60 * 24);
+      if (gap < MIN_GAP_DAYS) {
+        throw new AppError(
+          `Periods must be at least ${MIN_GAP_DAYS} days apart. This conflicts with a period starting on ${rStart.toISOString().split('T')[0]}.`,
+          400,
+        );
       }
     }
 
-    // 2. Identify transitions
-    const newDays: Date[] = [];
-    const tempDate = new Date(start);
-    while (tempDate <= end) {
-      newDays.push(new Date(tempDate));
-      tempDate.setDate(tempDate.getDate() + 1);
-    }
+    console.log(`[Tracker] 🔄 Period Range Update: User ${userId}, ${start.toISOString()} -> ${end.toISOString()}, isNew=${!nearestRecord}`);
 
-    const newDaysStr = new Set(newDays.map(d => d.toISOString()));
-    const orphanedDays = oldDays.filter(d => !newDaysStr.has(d.toISOString()));
+    await prisma.$transaction(async (tx) => {
+      const periodDurationDays =
+        Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    await prisma.$transaction([
-      // A. Reclaim orphaned days
-      ...orphanedDays.map((date) =>
-        prisma.cycleLog.updateMany({
-          where: { userId, date, flow: { not: "none" } },
-          data: { flow: "none", updatedAt: new Date() },
-        })
-      ),
-      // B. Update/Upsert new days
-      ...newDays.map((date) =>
-        prisma.cycleLog.upsert({
-          where: { userId_date: { userId, date } },
-          update: { flow: "medium", updatedAt: new Date() },
-          create: { userId, date, flow: "medium" },
-        })
-      )
-    ]);
-
-    const periodDurationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-    // 3. Update/Create Record
-    if (existingRecord) {
-      await (prisma as any).cycleRecord.update({
-        where: { id: existingRecord.id },
-        data: {
-          startDate: start,
-          periodStartDate: start,
-          periodEndDate: end,
-          periodDurationDays,
-        },
-      });
-    } else {
-      // Find if there's a later record
-      const laterRecord = await (prisma as any).cycleRecord.findFirst({
-        where: { userId, startDate: { gt: start } },
-        orderBy: { startDate: "asc" },
-      });
-
-      // If there's a later record, this one is history and should be complete
-      const isComplete = !!laterRecord;
-      let cycleLengthDays: number | null = null;
-      let actualEndDate: Date | null = null;
-
-      if (laterRecord) {
-        actualEndDate = new Date(laterRecord.startDate);
-        actualEndDate.setDate(actualEndDate.getDate() - 1);
-        cycleLengthDays = Math.round((laterRecord.startDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      // Clean up orphaned flow logs when shrinking an existing range
+      if (nearestRecord) {
+        const oldS = nearestRecord.periodStartDate ? new Date(nearestRecord.periodStartDate) : null;
+        const oldE = nearestRecord.periodEndDate   ? new Date(nearestRecord.periodEndDate)   : null;
+        if (oldS && oldE) {
+          for (let d = new Date(oldS); d <= oldE; d.setDate(d.getDate() + 1)) {
+            const dc = new Date(d);
+            if (dc < start || dc > end) {
+              await tx.cycleLog.updateMany({
+                where: { userId, date: dc, flow: { not: 'none' } },
+                data:  { flow: 'none', updatedAt: new Date() },
+              });
+            }
+          }
+        }
       }
 
-      const cycleCount = await (prisma as any).cycleRecord.count({ where: { userId } });
-      await (prisma as any).cycleRecord.create({
-        data: {
-          userId,
-          cycleNumber: cycleCount + 1, // Note: ideally we'd re-sequence but for MVP this is okay
-          startDate: start,
-          periodStartDate: start,
-          periodEndDate: end,
-          endDate: actualEndDate,
-          cycleLengthDays: cycleLengthDays,
-          periodDurationDays,
-          isComplete: isComplete,
-        },
+      // Upsert CycleLogs for every day in the new range
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        await tx.cycleLog.upsert({
+          where:  { userId_date: { userId, date: new Date(d) } },
+          update: { flow: 'medium', updatedAt: new Date() },
+          create: { userId, date: new Date(d), flow: 'medium' },
+        });
+      }
+
+      // Update existing OR create brand-new CycleRecord
+      if (nearestRecord) {
+        await (tx as any).cycleRecord.update({
+          where: { id: nearestRecord.id },
+          data:  { startDate: start, periodStartDate: start, periodEndDate: end, periodDurationDays },
+        });
+      } else {
+        await (tx as any).cycleRecord.create({
+          data: { userId, cycleNumber: 0, startDate: start, periodStartDate: start, periodEndDate: end, periodDurationDays, isComplete: false },
+        });
+      }
+
+      // Re-sequence the entire chain in chronological order
+      const allRecords = await (tx as any).cycleRecord.findMany({
+        where: { userId }, orderBy: { startDate: 'asc' },
       });
-    }
 
-    // 4. Update Profile ONLY if this is the most recent period
-    const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
-    const currentLastStart = profile?.lastPeriodStart ? new Date(profile.lastPeriodStart) : new Date(0);
+      for (let i = 0; i < allRecords.length; i++) {
+        const current = allRecords[i];
+        const next    = allRecords[i + 1];
+        const isComplete = !!next;
+        let cycleLen: number | null = null;
+        let actualEnd: Date | null  = null;
+        if (next) {
+          cycleLen  = Math.round((next.startDate.getTime() - current.startDate.getTime()) / (1000 * 60 * 60 * 24));
+          actualEnd = new Date(next.startDate);
+          actualEnd.setDate(actualEnd.getDate() - 1);
+        }
+        await (tx as any).cycleRecord.update({
+          where: { id: current.id },
+          data:  { cycleNumber: i + 1, isComplete, cycleLengthDays: cycleLen, endDate: actualEnd },
+        });
+      }
+    });
 
-    if (start >= currentLastStart) {
+    await this.recalculateBaselines(userId);
+
+    // Always update profile with the latest period
+    const latestRecord = await (prisma as any).cycleRecord.findFirst({
+      where: { userId }, orderBy: { startDate: 'desc' },
+    });
+    if (latestRecord) {
       await (prisma as any).cycleProfile.update({
         where: { userId },
-        data: {
-          lastPeriodStart: start,
-          lastPeriodEnd: end,
-          trackerMode: "active" as any,
-        },
+        data:  { lastPeriodStart: latestRecord.startDate, lastPeriodEnd: latestRecord.periodEndDate, trackerMode: 'active' as any },
       });
     }
 
-    // 5. Recalculate Baselines & Predictions
-    await this.recalculateBaselines(userId);
+    // Re-run prediction engine
     const prediction = await PredictionEngine.predict(userId);
     if (prediction) {
-       await (prisma as any).cycleProfile.update({
+      await (prisma as any).cycleProfile.update({
         where: { userId },
-        data: {
-          predictedNextStart: prediction.predictedStart,
+        data:  {
+          predictedNextStart:    prediction.predictedStart,
           predictionWindowEarly: prediction.windowEarly,
-          predictionWindowLate: prediction.windowLate,
-          confidenceLevel: prediction.confidenceLevel,
-          currentPhase: prediction.currentPhase,
-          currentCycleDay: prediction.cycleDay,
+          predictionWindowLate:  prediction.windowLate,
+          confidenceLevel:       prediction.confidenceLevel,
+          currentPhase:          prediction.currentPhase,
+          currentCycleDay:       prediction.cycleDay,
         },
       });
     }
 
-    return { success: true, prediction };
+    return { success: true, isNewCycle: !nearestRecord, prediction };
   }
+
 
   /**
    * Internal logic to manage cycle transitions
@@ -311,10 +342,13 @@ export class TrackerService {
       if (wasWatching) {
         firstPeriod = true;
         // Award 200 points for first period milestone
-        await prisma.profile.update({
-          where: { userId },
-          data: { totalPoints: { increment: 200 } },
-        });
+        await GamificationService.awardPoints(
+          userId,
+          200,
+          "milestone",
+          undefined,
+          "Milestone: First period logged"
+        );
       }
     }
 
@@ -382,7 +416,32 @@ export class TrackerService {
   }
 
   static async setup(userId: string, data: any) {
-    const lastStart = data.lastPeriodStart ? new Date(data.lastPeriodStart) : new Date();
+    let lastStart: Date | null = null;
+    if (data.lastPeriodStart) {
+      const d = new Date(data.lastPeriodStart);
+      // Create a date that represents the same calendar day but at UTC midnight
+      // If the incoming date is 18:30 UTC (00:00 IST), d.getUTCDate() might be 19.
+      // But we want it to be 20. 
+      // The most reliable way is to use the local date components if sent from a local picker,
+      // or simply assume the caller meant the "day" it represents.
+      // However, to fix the existing issue where 18:30 UTC is sent:
+      // We check if it's after 12:00 PM UTC - if so, it's likely a shift from the next day's IST midnight.
+      // A better way: just use the string part if it's an ISO date.
+      const isoStr = typeof data.lastPeriodStart === 'string' ? data.lastPeriodStart : d.toISOString();
+      if (isoStr.includes('T')) {
+        // If it's 2026-04-19T18:30:00.000Z, we want to know if it's April 20th in some timezone.
+        // But since we don't know the timezone here easily without extra lookup,
+        // we'll rely on the frontend sending the correct UTC midnight from now on.
+        // For current fix, we'll parse it and if it's close to the end of the day, we snap to next.
+        lastStart = new Date(d);
+        if (lastStart.getUTCHours() >= 12) {
+            lastStart.setUTCDate(lastStart.getUTCDate() + 1);
+        }
+        lastStart.setUTCHours(0, 0, 0, 0);
+      } else {
+        lastStart = new Date(d.setUTCHours(0, 0, 0, 0));
+      }
+    }
     
     const profile = await (prisma as any).cycleProfile.upsert({
       where: { userId },
@@ -421,10 +480,13 @@ export class TrackerService {
       });
     }
     // Award Onboarding Points (existing logic)
-    await prisma.profile.update({
-      where: { userId },
-      data: { totalPoints: { increment: 50 } },
-    });
+    await GamificationService.awardPoints(
+      userId,
+      50,
+      "onboarding",
+      undefined,
+      "Setup completion"
+    );
 
     return profile;
   }

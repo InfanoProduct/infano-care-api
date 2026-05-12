@@ -64,10 +64,14 @@ model User {
   subscription            Subscription?
   avatar                  UserAvatar?
   userBadges              UserBadge[]
+  userDailyQuests         UserDailyQuest[]
+  pointsLedger            PointsLedger[]
+  userStreak              UserStreak?
+  userLevel               UserLevel?
   progress                UserProgress[]
-  userQuests              UserQuest[]
   joinedCircles           CommunityCircle[]        @relation("CircleMembers")
   circlesModerated        CommunityCircle[]        @relation("CircleModerators")
+  mindfulCompletions      UserMindfulActivity[]
 }
 
 model Profile {
@@ -286,39 +290,117 @@ model Reflection {
   @@index([episodeId])
 }
 
-model Quest {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  type        String
-  points      Int
-  userQuests  UserQuest[]
+model QuestTemplate {
+  id                  String           @id @default(uuid())
+  type                String           // 'daily'|'weekly'|'milestone'|'seasonal'
+  category            String           // 'tracker'|'learning'|'community'|'wellbeing'|'wildcard'
+  title               String
+  description         String
+  pointsBase          Int
+  pointsMax           Int?             // for variable-reward quests
+  difficulty          String           @default("standard") // 'quick'|'standard'|'challenge'
+  minLevel            Int              @default(1)
+  maxLevel            Int?             // null = available to all levels
+  estimatedMinutes    Int
+  completionCondition Json             // { type: 'event', event: 'episode_completed', count: 1 }
+  phaseWeights        Json             @default("{\"menstrual\":1,\"follicular\":1,\"ovulation\":1,\"luteal\":1}")
+  badgeRewardId       String?
+  isActive            Boolean          @default(true)
+  seasonalEventId     String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  userDailyQuests     UserDailyQuest[]
+  badgeReward         Badge?           @relation("BadgeReward", fields: [badgeRewardId], references: [id])
+  seasonalEvent       SeasonalEvent?   @relation(fields: [seasonalEventId], references: [id])
 }
 
-model UserQuest {
+model UserDailyQuest {
+  id              String        @id @default(uuid())
+  userId          String
+  questTemplateId String
+  questDate       DateTime
+  status          String        @default("available") // 'available'|'accepted'|'completed'|'expired'
+  acceptedAt      DateTime?
+  completedAt     DateTime?
+  progressJson    Json          @default("{}") // tracks sub-task progress
+  pointsAwarded   Int?
+  questTemplate   QuestTemplate @relation(fields: [questTemplateId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+
+  @@unique([userId, questTemplateId, questDate])
+  @@index([userId, questDate])
+}
+
+model PointsLedger {
   id          String   @id @default(uuid())
   userId      String
-  questId     String
-  completedAt DateTime @default(now())
-  quest       Quest    @relation(fields: [questId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
+  points      Int      // positive (earn) or negative (correction)
+  sourceType  String   // 'daily_quest'|'weekly_quest'|'milestone'|'episode'|'log'|'streak_bonus'|'seasonal'
+  sourceId    String?  // quest_id, episode_id, etc.
+  description String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model Badge {
-  id          String      @id @default(uuid())
-  name        String
-  description String
-  iconUrl     String?
-  userBadges  UserBadge[]
+  id              String           @id @default(uuid())
+  slug            String?          @unique
+  name            String
+  description     String?
+  collection      String?          // 'body_knowledge'|'mind_soul'|'community'|'learning'|'streak'|'special'
+  rarity          String           @default("common") // 'common'|'rare'|'epic'|'legendary'
+  illustrationUrl String?
+  isAnimated      Boolean          @default(false)
+  conditionFnId   String?          // references server-side condition function
+  isSeasonal      Boolean          @default(false)
+  availableFrom   DateTime?
+  availableUntil  DateTime?        // null = permanent
+  userBadges      UserBadge[]
+  rewardForQuests QuestTemplate[] @relation("BadgeReward")
 }
 
 model UserBadge {
-  id        String   @id @default(uuid())
-  userId    String
-  badgeId   String
-  awardedAt DateTime @default(now())
-  badge     Badge    @relation(fields: [badgeId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  id            String   @id @default(uuid())
+  userId        String
+  badgeId       String
+  awardedAt     DateTime @default(now())
+  sourceQuestId String?
+  isFeatured    Boolean  @default(false) // max 6 featured badges per user
+  badge         Badge    @relation(fields: [badgeId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, badgeId])
+}
+
+model UserStreak {
+  userId                 String   @id
+  logStreakCurrent       Int      @default(0)
+  logStreakLongest       Int      @default(0)
+  logStreakStart         DateTime?
+  questStreakCurrent     Int      @default(0)
+  lastQuestCompletedDate DateTime?
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserLevel {
+  userId        String    @id
+  currentLevel  Int       @default(1)
+  pointsTotal   Int       @default(0) // denormalized from ledger SUM
+  lastLevelUpAt DateTime?
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SeasonalEvent {
+  id             String          @id @default(uuid())
+  name           String
+  description    String?
+  availableFrom  DateTime
+  availableUntil DateTime
+  quests         QuestTemplate[]
 }
 
 model Subscription {
@@ -868,6 +950,75 @@ model OrderItem {
   order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
+// ─── Tracker Content (Daily Insights + Good to Know Articles) ───────────────
+
+/// A card visible in the "My Daily Insights" carousel on the tracker home screen.
+/// Admins configure these per phase (and optionally per cycle day) via the admin API.
+model TrackerInsight {
+  id               String          @id @default(uuid())
+  /// Cycle phase this insight belongs to: menstrual | follicular | ovulation | luteal | waiting
+  phase            String
+  /// Optional: only show on a specific cycle day (null = show for entire phase)
+  cycleDay         Int?
+  /// Card preview title (shown on the circular card on the home screen)
+  previewTitle     String
+  /// Single emoji representing the insight category
+  previewEmoji     String
+  /// Hex color used for the card background tint (e.g. "#F472B6")
+  previewColorHex  String          @default("#A855F7")
+  /// Sort order within the phase
+  sortOrder        Int             @default(0)
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  stories          TrackerStory[]
+
+  @@index([phase, isActive])
+}
+
+/// An individual "slide" within a TrackerInsight — mirrors Instagram Stories style.
+model TrackerStory {
+  id        String         @id @default(uuid())
+  insightId String
+  /// Display order within the insight
+  order     Int            @default(0)
+  title     String
+  /// Rich text / body copy displayed at the bottom of the slide
+  content   String
+  /// Absolute URL to the uploaded background image (served from /uploads/tracker/stories/)
+  imageUrl  String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  insight   TrackerInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+
+  @@index([insightId, order])
+}
+
+/// An article card shown in the "Good to Know" horizontal scroll section.
+/// Configured per phase and optionally per cycle day by admins.
+model TrackerArticle {
+  id        String   @id @default(uuid())
+  /// Cycle phase: menstrual | follicular | ovulation | luteal | waiting
+  phase     String
+  /// Optional: only show on a specific cycle day (null = entire phase)
+  cycleDay  Int?
+  title     String
+  /// Estimated reading time label (e.g. "4 min read")
+  readTime  String   @default("3 min read")
+  /// Single emoji for the article card
+  emoji     String   @default("📖")
+  /// Optional external or internal URL the article links to
+  url       String?
+  /// Full article body (markdown supported)
+  body      String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phase, isActive])
+}
+
 model PeerApplication {
   id                  String    @id @default(uuid())
   userId              String    @unique
@@ -1012,26 +1163,30 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
 }
+model MindfulActivity {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  videoUrl     String
+  thumbnailUrl String?
+  expertName   String?
+  duration     Int      @default(5)
+  category     String   @default("Meditation") // Breathing, Meditation, Yoga
+  isActive     Boolean  @default(true)
+  points       Int      @default(30)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-model Enquiry {
-  id              String   @id @default(uuid())
-  schoolName      String
-  schoolType      String?
-  cityState       String?
-  totalGirls      Int?
-  contactName     String?
-  email           String
-  phone           String?
-  preferredTime   String?
-  goals           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  userCompletions UserMindfulActivity[]
 }
 
-model NewsletterSubscription {
-  id        String   @id @default(uuid())
-  name      String?
-  email     String   @unique
-  role      String?
-  createdAt DateTime @default(now())
+model UserMindfulActivity {
+  id                String          @id @default(uuid())
+  userId            String
+  mindfulActivityId String
+  completedAt       DateTime        @default(now())
+  user              User            @relation(fields: [userId], references: [id])
+  activity          MindfulActivity @relation(fields: [mindfulActivityId], references: [id])
+
+  @@unique([userId, mindfulActivityId])
 }

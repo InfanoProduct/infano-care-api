@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { CommunityService } from './community.service.js';
 import { createPostSchema, createReplySchema, reactSchema, reportSchema } from './community.schema.js';
 import { logger } from '../../config/logger.js';
+import { QuestService } from '../quest/quest.service.js';
 
 const communityService = new CommunityService();
 
@@ -38,6 +39,13 @@ export class CommunityController {
       const { circleId } = params;
 
       const post = await communityService.createPost(userId, circleId, body);
+      
+      // Hook for gamification/quests
+      if (post.status === 'APPROVED') {
+        QuestService.evaluateCompletion(userId, { type: 'post_created' })
+          .catch(err => logger.error({ err }, 'Quest evaluation failed for post_created'));
+      }
+
       res.status(201).json({ success: true, post });
     } catch (error) {
       next(error);
@@ -62,6 +70,13 @@ export class CommunityController {
       const { postId } = params;
 
       const reply = await communityService.createReply(userId, postId, body);
+      
+      // Hook for gamification/quests
+      if (reply.status === 'APPROVED') {
+        QuestService.evaluateCompletion(userId, { type: 'reply_created' })
+          .catch(err => logger.error({ err }, 'Quest evaluation failed for reply_created'));
+      }
+
       res.status(201).json({ success: true, reply });
     } catch (error) {
       next(error);
