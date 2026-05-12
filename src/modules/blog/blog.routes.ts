@@ -16,6 +16,7 @@ const blogUploadFolder = (req: any, res: any, next: any) => {
 router.get("/posts/slug/:slug", BlogController.getPostBySlug);
 router.get("/posts", BlogController.getAllPosts);
 router.get("/posts/:id", BlogController.getPost);
+router.patch("/posts/:id/view", BlogController.incrementViews);
 router.get("/authors", BlogController.getAuthors);
 router.get("/categories", BlogController.getCategories);
 router.get("/ctas", BlogController.getCTAs);
@@ -31,6 +32,8 @@ router.delete("/posts/:id", BlogController.deletePost);
 
 // Stats Management
 router.get("/stats", BlogController.getStats);
+router.get("/stats/global", BlogController.getGlobalStats);
+router.patch("/stats/global", BlogController.updateGlobalStats);
 
 // Author Management
 router.post("/authors", BlogController.createAuthor);

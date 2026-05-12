@@ -6,6 +6,7 @@ import { redis } from "../../db/redis.js";
 import { smsProvider } from "./sms.service.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { logger } from "../../config/logger.js";
+import { normalizePhone } from "../../common/utils/phone.js";
 
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "infano_access_secret_dev";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "infano_refresh_secret_dev";
@@ -60,21 +61,13 @@ export class AuthService {
   static async sendOtp(phone: string, appHash?: string): Promise<{ autoLogin?: any } | void> {
     logger.info({ phone, appHash }, "[AUTH] sendOtp request received");
     
-    // 1. Validation (Support 10-digit or +91 format)
-    let processedPhone = phone;
-    const is10Digit = /^\d{10}$/.test(phone);
-    if (is10Digit) {
-      processedPhone = `+91${phone}`;
-    }
-
+    // 1. Validation and Normalization
+    const finalPhone = normalizePhone(phone);
     const pattern = /^\+91\d{10}$/;
-    if (!pattern.test(processedPhone)) {
-      logger.warn({ phone }, "[AUTH] Invalid phone number pattern");
+    if (!pattern.test(finalPhone)) {
+      logger.warn({ phone, finalPhone }, "[AUTH] Invalid phone number pattern");
       throw new AppError("Invalid phone number, please try again", 400);
     }
-    
-    // Normalize phone for lookup and further processing
-    const finalPhone = processedPhone;
 
     // 2. Rule 1: User Existence check (Optional for enrollment)
     const user = await prisma.user.findUnique({
@@ -143,16 +136,7 @@ export class AuthService {
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
   static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string; userId: string; tempToken: string; peerApplicationStatus: string }> {
-    let processedPhone = phone;
-    if (/^\d{10}$/.test(phone)) {
-      processedPhone = `+91${phone}`;
-    }
-    const pattern = /^\+91\d{10}$/;
-    if (!pattern.test(processedPhone)) {
-      throw new AppError("Invalid phone number, please try again", 400);
-    }
-
-    const finalPhone = processedPhone;
+    const finalPhone = normalizePhone(phone);
     
     // Select all potential fields to satisfy type requirements across logical paths
     const user = await prisma.user.findUnique({

@@ -16,7 +16,7 @@ async function main() {
     },
     create: {
       title: 'Peer Mentor Certification',
-      slug: 'peer-mentor-certification',
+      slug: 'peerline-mentor-certification',
       description: 'The mandatory onboarding path for all prospective PeerLine Mentors. Master the skills of empathic listening, boundaries, and safeguarding.',
       isPremium: false,
       category: 'MENTORSHIP',

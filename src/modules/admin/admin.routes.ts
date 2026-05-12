@@ -52,4 +52,8 @@ router.post("/circles", AdminController.createCircle);
 router.patch("/circles/:id", AdminController.updateCircle);
 router.delete("/circles/:id", AdminController.deleteCircle);
 
+// Enquiry Management
+router.get("/enquiries", AdminController.getEnquiries);
+router.get("/enquiries/:id", AdminController.getEnquiry);
+
 export default router;

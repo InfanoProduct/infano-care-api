@@ -276,4 +276,23 @@ export class AdminController {
       next(error);
     }
   }
+
+  static async getEnquiries(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const enquiries = await AdminService.getEnquiries();
+      res.status(200).json(enquiries);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getEnquiry(req: Request, res: Response, next: NextFunction) {
+    try {
+      const enquiry = await AdminService.getEnquiryById(req.params.id as string);
+      if (!enquiry) return res.status(404).json({ message: "Enquiry not found" });
+      res.status(200).json(enquiry);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -308,7 +308,7 @@ model Badge {
   id          String      @id @default(uuid())
   name        String
   description String
-  iconUrl     String
+  iconUrl     String?
   userBadges  UserBadge[]
 }
 
@@ -684,6 +684,8 @@ model BlogAuthor {
   avatarUrl   String?
   twitterUrl  String?
   linkedInUrl String?
+  instagramUrl String?
+  facebookUrl String?
   email       String?
   isActive    Boolean    @default(true)
   createdAt   DateTime   @default(now())
@@ -739,6 +741,15 @@ model BlogPost {
   author        BlogAuthor?    @relation(fields: [authorId], references: [id])
   ctas          BlogCTA[]      @relation("PostCTAs")
   categories    BlogCategory[] @relation("PostCategories")
+}
+
+model BlogStats {
+  id                 String   @id @default(uuid())
+  instagramFollowers String   @default("4.2k+")
+  facebookFollowers  String   @default("2.1k+")
+  linkedInFollowers  String   @default("1.5k+")
+  youtubeSubscribers String   @default("1.2k+")
+  updatedAt          DateTime @updatedAt
 }
 
 model FriendProfile {
@@ -1000,4 +1011,27 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+model Enquiry {
+  id              String   @id @default(uuid())
+  schoolName      String
+  schoolType      String?
+  cityState       String?
+  totalGirls      Int?
+  contactName     String?
+  email           String
+  phone           String?
+  preferredTime   String?
+  goals           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model NewsletterSubscription {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  role      String?
+  createdAt DateTime @default(now())
 }

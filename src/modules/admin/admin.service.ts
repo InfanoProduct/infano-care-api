@@ -2,6 +2,7 @@ import { prisma } from "../../db/client.js";
 import { ShopService } from "../shop/shop.service.js";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
+import { normalizePhone } from "../../common/utils/phone.js";
 
 export class AdminService {
   static async getStats() {
@@ -9,12 +10,14 @@ export class AdminService {
       totalMembers,
       activeConsultations,
       totalJourneys,
-      totalEpisodes
+      totalEpisodes,
+      totalEnquiries
     ] = await Promise.all([
       prisma.user.count({ where: { role: "TEEN" } }),
       prisma.expertChatSession.count({ where: { status: "active" } }),
       prisma.learningJourney.count(),
-      prisma.episode.count()
+      prisma.episode.count(),
+      prisma.enquiry.count()
     ]);
 
     // Calculate growth (mocked for now as we'd need historical data)
@@ -26,6 +29,7 @@ export class AdminService {
       activeConsultations,
       totalJourneys,
       totalEpisodes,
+      totalEnquiries,
       revenue,
       growth
     };
@@ -53,7 +57,7 @@ export class AdminService {
       data: {
         username: data.username,
         password: hashed,
-        phone: data.phone,
+        phone: normalizePhone(data.phone),
         role: data.role as UserRole,
         peerOnboarding: data.peerOnboarding ?? false,
       },
@@ -112,11 +116,11 @@ export class AdminService {
       data: { status: 'approved' }
     });
 
-    // Update profile status but keep role as TEEN
+    // Update profile status to training mode, but keep role as TEEN
     if (user.profile) {
       await prisma.profile.update({
         where: { userId },
-        data: { mentorStatus: 'certified', isAvailable: true }
+        data: { mentorStatus: 'training', isAvailable: false }
       });
     }
 
@@ -141,7 +145,8 @@ export class AdminService {
       data: { certificationStatus: 'certified' }
     });
 
-    // NOW upgrade role to PEER
+    // ALWAYS ensure role is upgraded to PEER on certification approval
+    // This handles both new certifications and re-approvals for previously unapproved users
     await prisma.user.update({
       where: { id: userId },
       data: { role: 'PEER' }
@@ -166,11 +171,11 @@ export class AdminService {
     if (!user) throw new Error('User not found');
     if (!user.peerApplication) throw new Error('No peer application found');
 
-    // 1. Revert certification to pending_training and RESET attempts/progress
+    // 1. Revert certification to unapproved and RESET attempts/progress
     await prisma.peerApplication.update({
       where: { userId },
       data: { 
-        certificationStatus: 'pending_training',
+        certificationStatus: 'unapproved',
         assessmentAttempts: 0,
         lastAttemptAt: null,
         lockUntil: null,
@@ -418,5 +423,18 @@ export class AdminService {
 
   static async deleteCircle(id: string) {
     return prisma.communityCircle.delete({ where: { id } });
+  }
+
+  // Enquiry Management
+  static async getEnquiries() {
+    return prisma.enquiry.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  static async getEnquiryById(id: string) {
+    return prisma.enquiry.findUnique({
+      where: { id }
+    });
   }
 }

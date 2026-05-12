@@ -115,6 +115,13 @@ export class BlogService {
     });
   }
 
+  static async incrementViews(id: string) {
+    return prisma.blogPost.update({
+      where: { id },
+      data: { views: { increment: 1 } },
+    });
+  }
+
   // --- Authors ---
   static async getAllAuthors() {
     return prisma.blogAuthor.findMany({
@@ -216,5 +223,23 @@ export class BlogService {
       totalCategories,
       totalAuthors,
     };
+  }
+
+  static async getGlobalStats() {
+    let stats = await prisma.blogStats.findFirst();
+    if (!stats) {
+      stats = await prisma.blogStats.create({
+        data: {},
+      });
+    }
+    return stats;
+  }
+
+  static async updateGlobalStats(data: any) {
+    const stats = await this.getGlobalStats();
+    return prisma.blogStats.update({
+      where: { id: stats.id },
+      data,
+    });
   }
 }

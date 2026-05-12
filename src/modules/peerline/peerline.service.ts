@@ -3,6 +3,7 @@ import { RequestSessionInput, SessionFeedbackInput, MentorAvailabilityInput, Men
 import { PeerLineStatus } from '@prisma/client';
 // import { broadcastAvailabilityUpdate } from './peerline.socket.js'; // Dynamic import used below
 import { AppError } from '../../common/middleware/errorHandler.js';
+import { normalizePhone } from '../../common/utils/phone.js';
 
 export class PeerLineService {
   async getAvailability() {
@@ -843,15 +844,16 @@ export class PeerLineService {
 
     if (!targetUserId) {
       // It's a guest application, try to find or create user
+      const normalizedPhone = normalizePhone(input.phone);
       let user = await prisma.user.findFirst({
-        where: { OR: [{ phone: input.phone }, { username: input.email }] }
+        where: { OR: [{ phone: normalizedPhone }, { username: input.email }] }
       });
 
       if (!user) {
         user = await prisma.user.create({
           data: {
             username: input.email,
-            phone: input.phone,
+            phone: normalizePhone(input.phone),
             password: 'temp_password_' + Date.now(), // Real app would send welcome email
             role: 'TEEN',
             peerOnboarding: true,
@@ -908,7 +910,7 @@ export class PeerLineService {
       update: {
         name: input.name,
         email: input.email,
-        phone: input.phone,
+        phone: normalizePhone(input.phone),
         personalStatement: input.personalStatement,
         scenarioResponses: input.scenarioResponses || [],
         eligibility: input.eligibility || {},
@@ -918,7 +920,7 @@ export class PeerLineService {
         userId: targetUserId,
         name: input.name,
         email: input.email,
-        phone: input.phone,
+        phone: normalizePhone(input.phone),
         personalStatement: input.personalStatement,
         scenarioResponses: input.scenarioResponses || [],
         eligibility: input.eligibility || {},
@@ -1000,7 +1002,9 @@ export class PeerLineService {
     let status = app.certificationStatus;
 
     if (isPassed) {
-      status = 'pending_conduct';
+      // If they were previously unapproved, they already signed the conduct, so go straight to submitted
+      // Otherwise, new applicants must still sign the Code of Conduct
+      status = app.certificationStatus === 'unapproved' ? 'submitted' : 'pending_conduct';
     } else if (newAttempts >= 2) {
       // Failed 2 attempts, lock for 14 days
       lockUntil = new Date();
@@ -1048,7 +1052,8 @@ export class PeerLineService {
         trainingScore: true,
         assessmentAttempts: true,
         lockUntil: true,
-        episodeAnswers: true
+        episodeAnswers: true,
+        name: true
       }
     });
 

@@ -63,6 +63,15 @@ export class BlogController {
     }
   }
 
+  static async incrementViews(req: Request, res: Response, next: NextFunction) {
+    try {
+      await BlogService.incrementViews(req.params.id as string);
+      res.status(200).json({ message: "Views incremented" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // --- Authors ---
   static async getAuthors(req: Request, res: Response, next: NextFunction) {
     try {
@@ -178,6 +187,24 @@ export class BlogController {
   static async getStats(req: Request, res: Response, next: NextFunction) {
     try {
       const stats = await BlogService.getStats();
+      res.status(200).json(stats);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getGlobalStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const stats = await BlogService.getGlobalStats();
+      res.status(200).json(stats);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateGlobalStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const stats = await BlogService.updateGlobalStats(req.body);
       res.status(200).json(stats);
     } catch (error) {
       next(error);

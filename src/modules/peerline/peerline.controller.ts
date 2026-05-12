@@ -235,7 +235,7 @@ export class PeerLineController {
       next(error);
     }
   }
-  
+
   static async uploadMedia(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.file) {
