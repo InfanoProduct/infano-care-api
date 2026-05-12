@@ -63,7 +63,7 @@ export class ConsentService {
       subject: `[Infano.Care] ${displayName} wants to join — quick approval needed`,
       html:    `
         <div style="font-family: 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #f0e6ff;">
-          <div style="background: linear-gradient(135deg, #7c3aed, #ec4899); padding: 32px; text-align: center;">
+          <div style="background: linear-gradient(135deg, #4a1e7f, #ec4899); padding: 32px; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 24px;">Infano.Care 🌸</h1>
             <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0;">Your safe space to bloom</p>
           </div>
@@ -74,7 +74,7 @@ export class ConsentService {
               a safe, COPPA-compliant platform designed for young girls to learn about their bodies, 
               track their health, and build confidence in a supportive community.
             </p>
-            <h3 style="color: #7c3aed;">What Infano.Care does:</h3>
+            <h3 style="color: #4a1e7f;">What Infano.Care does:</h3>
             <ul style="color: #4b5563; line-height: 1.8;">
               <li>📚 Age-appropriate health education (body, puberty, wellbeing)</li>
               <li>📅 Period tracker with gentle predictions</li>
@@ -86,12 +86,12 @@ export class ConsentService {
               This link is valid for <strong>7 days</strong>.
             </p>
             <div style="text-align: center; margin: 32px 0;">
-              <a href="${approvalUrl}" style="background: linear-gradient(135deg, #7c3aed, #ec4899); color: white; padding: 14px 32px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
+              <a href="${approvalUrl}" style="background: linear-gradient(135deg, #4a1e7f, #ec4899); color: white; padding: 14px 32px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
                 ✅ Approve ${displayName}'s Account
               </a>
             </div>
             <p style="color: #9ca3af; font-size: 13px;">
-              <a href="${privacyUrl}" style="color: #7c3aed;">Read our full Privacy Policy</a> · 
+              <a href="${privacyUrl}" style="color: #4a1e7f;">Read our full Privacy Policy</a> · 
               This email was sent because someone entered this email as a parent/guardian. 
               If you did not request this, please ignore.
             </p>

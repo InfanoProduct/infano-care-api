@@ -237,6 +237,9 @@ export class AdminService {
 
   static async getJourneys() {
     const journeys = await prisma.learningJourney.findMany({
+      where: {
+        category: { not: "Peer Support" }
+      },
       include: {
         _count: {
           select: { episodes: true }
@@ -258,9 +261,14 @@ export class AdminService {
   static async getJourneyById(id: string) {
     return prisma.learningJourney.findFirst({
       where: {
-        OR: [
-          { id },
-          { slug: id }
+        AND: [
+          {
+            OR: [
+              { id },
+              { slug: id }
+            ]
+          },
+          { category: { not: "Peer Support" } }
         ]
       },
       include: { episodes: { orderBy: { order: "asc" } } }
