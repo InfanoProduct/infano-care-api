@@ -13,51 +13,10 @@ router.use(authenticate);
  *   description: Gamified task and challenge system
  */
 
-/**
- * @openapi
- * /api/quest:
- *   get:
- *     summary: List all active and available quests
- *     tags: [Quests]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of quests
- */
-router.get("/", QuestController.listQuests);
-
-/**
- * @openapi
- * /api/quest/{questId}/complete:
- *   post:
- *     summary: Mark a quest as completed by the user
- *     tags: [Quests]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: questId
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Quest completion recorded
- */
-router.post("/:questId/complete", QuestController.completeQuest);
-
-/**
- * @openapi
- * /api/quest/me:
- *   get:
- *     summary: Get my currently active and completed quests
- *     tags: [Quests]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User's quest status
- */
-router.get("/me", QuestController.getMyQuests);
+router.get("/daily", QuestController.getDailyQuests);
+router.post("/:id/accept", QuestController.acceptQuest);
+router.get("/progress", QuestController.getProgress);
+router.get("/badges", QuestController.getBadges);
+router.post("/:id/complete-manual", QuestController.completeQuestManual);
 
 export default router;

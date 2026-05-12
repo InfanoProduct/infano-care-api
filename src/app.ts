@@ -23,6 +23,7 @@ import friendsRoutes from "./modules/friends/friends.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import blogRoutes from "./modules/blog/blog.routes.js";
 import shopRoutes from "./modules/shop/shop.routes.js";
+import mindfulRoutes from "./modules/mindful/mindful.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -71,6 +72,7 @@ app.use("/api/friends", friendsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/blog", blogRoutes);
 app.use("/api/shop", shopRoutes);
+app.use("/api/mindful", mindfulRoutes);
 app.use("/uploads", express.static("uploads"));
 
 

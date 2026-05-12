@@ -2,6 +2,8 @@ import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import fs from "fs";
 import path from "path";
+import { GamificationService } from "../quest/gamification.service.js";
+import { QuestService } from "../quest/quest.service.js";
 
 export class LearningService {
   static async listJourneys(ageBand?: string) {
@@ -89,12 +91,7 @@ export class LearningService {
     // 4. Reflection: +10 (private) or +15 (community)
     // 5. Binge Bonus: +15 if completed within 10s of arriving
 
-    let totalAwardedPoints = 75; // Quest Link Base
-    totalAwardedPoints += (data.knowledgeCheckAccuracy * 5);
-    if (data.knowledgeCheckAccuracy === 3) totalAwardedPoints += 10;
-
-    totalAwardedPoints += (data.reflectionMode === 'community' ? 15 : 10);
-    if (data.isBingeBonus) totalAwardedPoints += 15;
+    const totalAwardedPoints = episode.points || 75; // Standardized with database value or Quest Link Base
 
     const progress = await prisma.userProgress.update({
       where: { userId_episodeId: { userId, episodeId } },
@@ -114,20 +111,25 @@ export class LearningService {
       });
     }
 
-    // Add points to profile
-    await prisma.profile.upsert({
-      where: { userId },
-      create: {
-        userId,
-        displayName: "User",
-        totalPoints: totalAwardedPoints
-      },
-      update: {
-        totalPoints: { increment: totalAwardedPoints }
-      },
-    });
+    // Evaluate Quests first to see if this task is linked to a quest
+    const questPoints = await QuestService.evaluateCompletion(userId, { type: "episode_completed" });
 
-    return { progress, pointsEarned: totalAwardedPoints };
+    let finalPoints = 0;
+    if (questPoints > 0) {
+      finalPoints = questPoints;
+    } else {
+      // Add points to profile only if no quest was completed for this task
+      await GamificationService.awardPoints(
+        userId,
+        totalAwardedPoints,
+        "episode",
+        episodeId,
+        `Completed episode: ${episode.title}`
+      );
+      finalPoints = totalAwardedPoints;
+    }
+
+    return { progress, pointsEarned: finalPoints };
   }
 
   static async getCommunityReflections(episodeId: string) {

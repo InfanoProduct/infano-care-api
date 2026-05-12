@@ -2,6 +2,8 @@ import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { encryptNote, decryptNote } from "../../common/utils/encryption.js";
 import { PredictionEngine } from "./prediction.engine.js";
+import { GamificationService } from "../quest/gamification.service.js";
+import { QuestService } from "../quest/quest.service.js";
 
 export class TrackerService {
   /**
@@ -66,12 +68,6 @@ export class TrackerService {
         longestLogStreak: Math.max(newStreak, (profile as any).longestLogStreak),
         lastLogDate: logDate,
       };
-
-      // Award 30 points for daily logging
-      await prisma.profile.update({
-        where: { userId },
-        data: { totalPoints: { increment: 30 } },
-      });
     }
 
     // 4. Trigger Cycle Recalculation if Period Flow changed
@@ -81,6 +77,28 @@ export class TrackerService {
       const result = await this.handlePeriodStart(userId, logDate, wasWatching);
       cycleUpdated = true;
       if (result.firstPeriod) milestone = "first_period";
+    }
+
+    let totalPoints = 0;
+    // Evaluate Quests first to see if this task is linked to a quest
+    const questPoints = await QuestService.evaluateCompletion(userId, { type: "log_saved" });
+
+    if (questPoints > 0) {
+      totalPoints = questPoints;
+    } else {
+      // Award default 75 points only if no quest was completed for this task
+      await GamificationService.awardPoints(
+        userId,
+        75,
+        "log",
+        log.id,
+        `Daily log for ${logDate.toISOString().split('T')[0]}`
+      );
+      totalPoints = 75;
+    }
+
+    if (milestone === "first_period") {
+      totalPoints += 200;
     }
 
     // 5. Update Profile with new Prediction (And always update streak/lastLogDate)
@@ -106,7 +124,7 @@ export class TrackerService {
       cycle_updated: cycleUpdated,
       prediction: prediction,
       milestone: milestone,
-      points_earned: milestone === "first_period" ? 230 : 30, // 30 (log) + 200 (milestone)
+      points_earned: totalPoints,
     };
   }
 
@@ -324,10 +342,13 @@ export class TrackerService {
       if (wasWatching) {
         firstPeriod = true;
         // Award 200 points for first period milestone
-        await prisma.profile.update({
-          where: { userId },
-          data: { totalPoints: { increment: 200 } },
-        });
+        await GamificationService.awardPoints(
+          userId,
+          200,
+          "milestone",
+          undefined,
+          "Milestone: First period logged"
+        );
       }
     }
 
@@ -459,10 +480,13 @@ export class TrackerService {
       });
     }
     // Award Onboarding Points (existing logic)
-    await prisma.profile.update({
-      where: { userId },
-      data: { totalPoints: { increment: 50 } },
-    });
+    await GamificationService.awardPoints(
+      userId,
+      50,
+      "onboarding",
+      undefined,
+      "Setup completion"
+    );
 
     return profile;
   }
