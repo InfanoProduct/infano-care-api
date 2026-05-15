@@ -94,7 +94,7 @@ export class ShopService {
 
       // 3. Calculate GST and Total (Production Grade Reverse Calculation)
       const taxableSubtotal = subtotal - discountAmount;
-      const deliveryCharge = taxableSubtotal < 500 ? 50 : 0;
+      const deliveryCharge = 0; // Free delivery for all orders
       
       // Reverse GST calculation: Price = Taxable + (Taxable * Rate) => Taxable = Price / (1 + Rate)
       const taxableAmount = Math.round((taxableSubtotal / (1 + GST_RATE)) * 100) / 100;
