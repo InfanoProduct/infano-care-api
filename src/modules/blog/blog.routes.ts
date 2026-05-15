@@ -20,6 +20,8 @@ router.patch("/posts/:id/view", BlogController.incrementViews);
 router.get("/authors", BlogController.getAuthors);
 router.get("/categories", BlogController.getCategories);
 router.get("/ctas", BlogController.getCTAs);
+router.get("/posts/:id/comments", BlogController.getComments);
+router.post("/posts/:id/comments", BlogController.createComment);
 
 // Admin routes (require authentication and admin role)
 router.use(authenticate);

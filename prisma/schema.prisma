@@ -823,6 +823,7 @@ model BlogPost {
   author        BlogAuthor?    @relation(fields: [authorId], references: [id])
   ctas          BlogCTA[]      @relation("PostCTAs")
   categories    BlogCategory[] @relation("PostCategories")
+  comments      BlogComment[]
 }
 
 model BlogStats {
@@ -832,6 +833,19 @@ model BlogStats {
   linkedInFollowers  String   @default("1.5k+")
   youtubeSubscribers String   @default("1.2k+")
   updatedAt          DateTime @updatedAt
+}
+
+model BlogComment {
+  id        String   @id @default(uuid())
+  postId    String
+  name      String
+  email     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
 }
 
 model FriendProfile {
@@ -1037,6 +1051,8 @@ model PeerApplication {
   assessmentAttempts  Int       @default(0)
   lastAttemptAt       DateTime?
   lockUntil           DateTime?
+  certificateId       String?   @unique
+  certifiedAt         DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)

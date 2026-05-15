@@ -3,6 +3,7 @@ import { ShopService } from "../shop/shop.service.js";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
+import crypto from "crypto";
 
 export class AdminService {
   static async getStats() {
@@ -139,10 +140,16 @@ export class AdminService {
       throw new Error('Assessment has not been submitted yet');
     }
 
-    // Update certification status
+    // Update certification status and generate ID
+    const certificateId = `INF-PEER-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
     await prisma.peerApplication.update({
       where: { userId },
-      data: { certificationStatus: 'certified' }
+      data: { 
+        certificationStatus: 'certified',
+        certificateId,
+        certifiedAt: new Date()
+      }
     });
 
     // ALWAYS ensure role is upgraded to PEER on certification approval
@@ -159,7 +166,11 @@ export class AdminService {
       });
     }
 
-    return { success: true, message: 'Certification approved. User is now a Peer Mentor.' };
+    return { 
+      success: true, 
+      message: 'Certification approved. User is now a Peer Mentor.',
+      certificateId 
+    };
   }
 
   static async unapproveAssessment(userId: string) {

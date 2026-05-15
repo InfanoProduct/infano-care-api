@@ -1053,7 +1053,9 @@ export class PeerLineService {
         assessmentAttempts: true,
         lockUntil: true,
         episodeAnswers: true,
-        name: true
+        name: true,
+        certificateId: true,
+        certifiedAt: true
       }
     });
 
