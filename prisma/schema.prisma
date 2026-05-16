@@ -1209,15 +1209,18 @@ model UserMindfulActivity {
 
 model Enquiry {
   id            String   @id @default(uuid())
-  schoolName    String
+  type          String   @default("school")
+  schoolName    String?
   schoolType    String?
   cityState     String?
   totalGirls    Int?
   contactName   String?
-  email         String
+  email         String?
   phone         String?
   preferredTime String?
   goals         String?
+  details       String?
+  ngoDetail     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

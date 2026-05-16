@@ -3,15 +3,18 @@ import { prisma } from "../../db/client.js";
 import { z } from "zod";
 
 const enquirySchema = z.object({
-  schoolName: z.string().min(1, "School name is required"),
+  type: z.string().default("school"),
+  schoolName: z.string().optional(),
   schoolType: z.string().optional(),
   cityState: z.string().optional(),
   totalGirls: z.number().optional(),
   contactName: z.string().optional(),
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: z.string().optional(),
   preferredTime: z.string().optional(),
   goals: z.string().optional(),
+  details: z.string().optional(),
+  ngoDetail: z.string().optional(),
 });
 
 const newsletterSchema = z.object({

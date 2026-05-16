@@ -24,6 +24,7 @@ import adminRoutes from "./modules/admin/admin.routes.js";
 import blogRoutes from "./modules/blog/blog.routes.js";
 import shopRoutes from "./modules/shop/shop.routes.js";
 import mindfulRoutes from "./modules/mindful/mindful.routes.js";
+import enquiryRoutes from "./modules/enquiry/enquiry.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -73,6 +74,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/blog", blogRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/mindful", mindfulRoutes);
+app.use("/api/enquiry", enquiryRoutes);
 app.use("/uploads", express.static("uploads"));
 
 
