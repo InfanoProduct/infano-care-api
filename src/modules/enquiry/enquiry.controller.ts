@@ -29,7 +29,10 @@ export class EnquiryController {
       const validatedData = enquirySchema.parse(req.body);
 
       const enquiry = await prisma.enquiry.create({
-        data: validatedData,
+        data: {
+          ...validatedData,
+          schoolName: validatedData.schoolName || "",
+        },
       });
 
       res.status(201).json({
