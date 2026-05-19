@@ -15,6 +15,8 @@ const enquirySchema = z.object({
   goals: z.string().optional(),
   details: z.string().optional(),
   ngoDetail: z.string().optional(),
+  peerMentorName: z.string().optional(),
+  preferredDate: z.string().optional(),
 });
 
 const newsletterSchema = z.object({
