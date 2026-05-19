@@ -3,6 +3,8 @@ name: Production Deployment
 on:
   push:
     branches: [ "production" ]
+  pull_request:
+    branches: [ "production" ]
 
 jobs:
   build:
@@ -33,25 +35,28 @@ jobs:
     - name: Copy docker-compose file
       uses: appleboy/scp-action@master
       with:
-        host: ${{ secrets.SSH_SERVER_IP }}
+        host: ${{ secrets.PROD_SSH_HOST }}
         username: root
-        password: ${{ secrets.SSH_SERVER_PWD }}
+        password: ${{ secrets.PROD_SSH_PASSWORD }}
         port: 22
         source: "docker-compose.prod.yml"
-        target: "/data/docker/infano-prod/"
+        target: "/data/infano-prod/"
 
-    - name: deploy api to server
+    - name: deploy api to production server
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.SSH_SERVER_IP }}
+        host: ${{ secrets.PROD_SSH_HOST }}
         username: root
-        password: ${{ secrets.SSH_SERVER_PWD }}
+        password: ${{ secrets.PROD_SSH_PASSWORD }}
         port: 22
         script: |
           docker login registry.pocapi.in -u "${{ secrets.REGISTRY_UNAME }}" -p "${{ secrets.REGISTRY_PWD }}"
           docker pull registry.pocapi.in/infano.api:prod-latest
-          cd /data/docker/infano-prod
+          mkdir -p /data/infano-prod
+          cd /data/infano-prod
           
-          # No longer creating .env file from secrets (VPS-Managed)
+          # Deploy with production compose
+          docker-compose -f docker-compose.prod.yml up -d
           
-          docker compose -f docker-compose.prod.yml up -d
+          # Run database migrations automatically in the production container
+          docker-compose -f docker-compose.prod.yml exec -T prod-api npx prisma migrate deploy
