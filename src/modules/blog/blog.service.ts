@@ -144,13 +144,15 @@ export class BlogService {
   }
 
   static async createAuthor(data: any) {
-    return prisma.blogAuthor.create({ data });
+    const { instagramFollowers, facebookFollowers, linkedInFollowers, ...rest } = data;
+    return prisma.blogAuthor.create({ data: rest });
   }
 
   static async updateAuthor(id: string, data: any) {
+    const { instagramFollowers, facebookFollowers, linkedInFollowers, ...rest } = data;
     return prisma.blogAuthor.update({
       where: { id },
-      data,
+      data: rest,
     });
   }
 

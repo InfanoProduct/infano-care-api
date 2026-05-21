@@ -1,4 +1,5 @@
 import express from "express";
+import path from "path";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
@@ -75,7 +76,7 @@ app.use("/api/blog", blogRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/mindful", mindfulRoutes);
 app.use("/api/enquiry", enquiryRoutes);
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
 
 /**
