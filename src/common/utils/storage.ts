@@ -102,4 +102,85 @@ export class StorageService {
       throw error;
     }
   }
+
+  /**
+   * Safely lists all files within a subfolder under the uploads directory.
+   */
+  static async listAssets(folder: string = 'assets'): Promise<Array<{ filename: string; url: string; size: number; createdAt: Date }>> {
+    const UPLOAD_PATH = process.env.UPLOAD_PATH || 'uploads';
+    const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'http://localhost:4005/uploads';
+
+    let baseDir: string;
+    if (path.isAbsolute(UPLOAD_PATH)) {
+      baseDir = UPLOAD_PATH;
+      if (process.platform === 'win32' && UPLOAD_PATH.startsWith('/')) {
+        baseDir = path.join(process.cwd(), 'uploads');
+      }
+    } else {
+      baseDir = path.join(process.cwd(), UPLOAD_PATH);
+    }
+
+    const targetDir = path.join(baseDir, folder);
+    
+    try {
+      // Ensure target directory exists
+      await fs.mkdir(targetDir, { recursive: true });
+      
+      const files = await fs.readdir(targetDir);
+      const list = [];
+      
+      for (const filename of files) {
+        if (filename.startsWith('.')) continue;
+        
+        const filePath = path.join(targetDir, filename);
+        const stats = await fs.stat(filePath);
+        
+        if (stats.isFile()) {
+          const baseUrl = IMAGE_BASE_URL.endsWith('/') ? IMAGE_BASE_URL.slice(0, -1) : IMAGE_BASE_URL;
+          const url = `${baseUrl}/${folder ? folder + '/' : ''}${filename}`.replace(/([^:]\/)\/+/g, "$1");
+          
+          list.push({
+            filename,
+            url,
+            size: stats.size,
+            createdAt: stats.mtime
+          });
+        }
+      }
+      
+      return list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    } catch (error) {
+      logger.error({ error, folder }, 'Failed to list files in local storage');
+      throw error;
+    }
+  }
+
+  /**
+   * Safely deletes an asset from a subfolder under the uploads directory.
+   */
+  static async deleteAsset(filename: string, folder: string = 'assets'): Promise<void> {
+    const UPLOAD_PATH = process.env.UPLOAD_PATH || 'uploads';
+
+    let baseDir: string;
+    if (path.isAbsolute(UPLOAD_PATH)) {
+      baseDir = UPLOAD_PATH;
+      if (process.platform === 'win32' && UPLOAD_PATH.startsWith('/')) {
+        baseDir = path.join(process.cwd(), 'uploads');
+      }
+    } else {
+      baseDir = path.join(process.cwd(), UPLOAD_PATH);
+    }
+
+    const filePath = path.join(baseDir, folder, filename);
+    
+    try {
+      await fs.unlink(filePath);
+      logger.info({ filePath }, 'File deleted from local storage');
+    } catch (error: any) {
+      if (error.code !== 'ENOENT') {
+        logger.error({ error, filePath }, 'Failed to delete file from local storage');
+        throw error;
+      }
+    }
+  }
 }

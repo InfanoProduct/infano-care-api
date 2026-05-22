@@ -35,6 +35,10 @@ router.delete("/learning/episodes/:id", AdminController.deleteEpisode);
 // File Upload
 router.post("/upload", upload.single("file"), AdminController.upload);
 
+// Universal Assets Management
+router.get("/assets", AdminController.listAssets);
+router.delete("/assets/:filename", AdminController.deleteAsset);
+
 // Order Management
 router.get("/orders", AdminController.getOrders);
 router.get("/orders/:id", AdminController.getOrder);
