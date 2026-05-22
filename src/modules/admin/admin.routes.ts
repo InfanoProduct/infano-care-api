@@ -4,6 +4,7 @@ import { authenticate } from "../../common/middleware/auth.js";
 import { requireAdmin } from "../../common/middleware/requireAdmin.js";
 import { upload } from "../../common/middleware/upload.js";
 import { TrackerContentController } from "../tracker/tracker_content.controller.js";
+import { ProgramsController } from "../programs/programs.controller.js";
 
 const router = Router();
 
@@ -84,5 +85,19 @@ router.get("/tracker/articles", TrackerContentController.listArticles);
 router.post("/tracker/articles", TrackerContentController.createArticle);
 router.patch("/tracker/articles/:id", TrackerContentController.updateArticle);
 router.delete("/tracker/articles/:id", TrackerContentController.deleteArticle);
+
+// Learning Programs Management
+router.get("/programs", ProgramsController.adminList);
+router.post("/programs", ProgramsController.adminCreate);
+router.patch("/programs/:id", ProgramsController.adminUpdate);
+router.delete("/programs/:id", ProgramsController.adminDelete);
+
+// Learning Programs Enrollments
+router.get("/programs/enrollments", ProgramsController.adminListEnrollments);
+router.patch("/programs/enrollments/:id", ProgramsController.adminUpdateEnrollmentStatus);
+
+// Learning Programs Demo Sessions Bookings
+router.get("/programs/demos", ProgramsController.adminListDemos);
+router.patch("/programs/demos/:id", ProgramsController.adminUpdateDemoStatus);
 
 export default router;

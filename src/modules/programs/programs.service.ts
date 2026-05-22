@@ -1,0 +1,546 @@
+import { prisma } from "../../db/client.js";
+import { AppError } from "../../common/middleware/errorHandler.js";
+
+export class ProgramsService {
+  static getMockSessionsForProgram(title: string) {
+    const uppercaseTitle = title.toUpperCase();
+    
+    const sessionsMap: Record<string, { title: string; description: string }[]> = {
+      'SPARK': [
+        {
+          title: "Session 1: The Blueprint of You",
+          description: "Understanding human growth as a natural, unique, and positive timeline for every individual."
+        },
+        {
+          title: "Session 2: Body Unfiltered",
+          description: "Demystifying the physical shifts, developmental stages, and growth spurts of early adolescence."
+        },
+        {
+          title: "Session 3: Period. Full Stop.",
+          description: "A complete, shame-free first period survival guide, from biological facts to practical management and comfort."
+        },
+        {
+          title: "Session 4: Myth Busters: Family Edition",
+          description: "Breaking down ancient taboos and cultural legends, and starting positive, open conversations at home."
+        },
+        {
+          title: "Session 5: My Body, My Boundary",
+          description: "Establishing strong, comfortable personal zones and mastering the art of the confident boundary."
+        },
+        {
+          title: "Session 6: The Filter Lie",
+          description: "Decoding social media perfection, airbrushing, and cultivating love for your authentic, unfiltered self."
+        },
+        {
+          title: "Session 7: Feel It to Deal It",
+          description: "Understanding emotional tides, mapping mood patterns, and practicing healthy coping mechanisms."
+        },
+        {
+          title: "Session 8: Becoming My Own Champion",
+          description: "Celebrating personal milestones, practicing self-compassion, and designing a path of ongoing confidence."
+        }
+      ],
+      'RISE': [
+        {
+          title: "Session 1: Who Am I When No One is Watching?",
+          description: "Deeply exploring self-identity, personal values, and defining your own core character."
+        },
+        {
+          title: "Session 2: Consent is Not Just a Buzzword",
+          description: "Setting robust rules for your own physical, emotional, and social boundaries."
+        },
+        {
+          title: "Session 3: Grooming Has a Script",
+          description: "Learning to spot early manipulation patterns, unsafe environments, and protect boundaries."
+        },
+        {
+          title: "Session 4: Your Digital Footprint is Permanent",
+          description: "Smart management of online reputation, private data, sharing habits, and screen ethics."
+        },
+        {
+          title: "Session 5: Red Flags & Green Flags",
+          description: "Identifying healthy, collaborative dynamics vs. toxic, manipulative patterns in peer relationships."
+        },
+        {
+          title: "Session 6: The Hormone Weather Report",
+          description: "Decoding chemical shifts and emotional weather reports to manage mood variability."
+        },
+        {
+          title: "Session 7: Digital Wellness & Screen Balance",
+          description: "Strategies to beat screen fatigue, doomscrolling, and establishing high-yield offline hobbies."
+        },
+        {
+          title: "Session 8: Negotiating Peer Pressure",
+          description: "Mastering custom scripts and assertive verbal templates to stay safe and true to yourself."
+        },
+        {
+          title: "Session 9: The Power of Trusted Circles",
+          description: "How to audit, assemble, and safely leverage your support system of parents and mentors."
+        },
+        {
+          title: "Session 10: Stepping Into Your Voice",
+          description: "Synthesizing the Rise curriculum with a personal boundary action plan and graduation."
+        }
+      ],
+      'BLOOM': [
+        {
+          title: "Session 1: Mental Health is Not 'Drama'",
+          description: "De-stigmatizing intense stress, mood fluctuations, and identifying the spectrum of anxiety and wellness."
+        },
+        {
+          title: "Session 2: Depression Doesn't Look Like the Movies",
+          description: "Spotting signs of prolonged sadness in yourself and friends, and understanding when to seek active help."
+        },
+        {
+          title: "Session 3: Friendship Expiry Dates",
+          description: "Gracefully navigating changing social dynamics, outgrowing school circles, and ending relationships safely."
+        },
+        {
+          title: "Session 4: The Comparison Trap",
+          description: "Breaking free from the toxic patterns of comparing grades, bodies, lifestyles, and aesthetics online."
+        },
+        {
+          title: "Session 5: PCOS & Pain: Unfiltered",
+          description: "Understanding reproductive health disorders, hormonal balance, and talking confidently to doctors."
+        },
+        {
+          title: "Session 6: Safe Havens & Professional Support",
+          description: "Demystifying therapy, student counseling, medical resources, and removing the fear of asking."
+        },
+        {
+          title: "Session 7: Emotional First Aid",
+          description: "Practical mindfulness, vagus nerve stimulation, and quick breathing techniques to halt panic states."
+        },
+        {
+          title: "Session 8: Self-Compassion in Action",
+          description: "Silencing the harsh inner critic and implementing daily habits of authentic self-acceptance."
+        },
+        {
+          title: "Session 9: Parent-Teen Bridge Building",
+          description: "Formulating mutual respect pathways, managing daily friction, and communicating emotional needs."
+        },
+        {
+          title: "Session 10: Blooming Into Resilience",
+          description: "Constructing a strong bounce-back architecture for academic and personal life, with graduation."
+        }
+      ],
+      'IGNITE': [
+        {
+          title: "Session 1: Feminism: Decoded & Debunked",
+          description: "Examining equity, historic struggles, modern stereotypes, and cultivating sisterhood and allyship."
+        },
+        {
+          title: "Session 2: Financial Literacy: Part 1",
+          description: "Understanding money flow, power of compound interest, basic personal savings, and budgeting."
+        },
+        {
+          title: "Session 3: Financial Literacy: Part 2",
+          description: "Decoding digital banking, cards, online safety, investment assets, and financial independence goals."
+        },
+        {
+          title: "Session 4: Negotiating Your Worth",
+          description: "Learning confident advocacy in academic, family, and social environments with structured talk paths."
+        },
+        {
+          title: "Session 5: Unmasking Media Influence",
+          description: "Analyzing hidden agendas, advertising psychology, body norms, and media bias."
+        },
+        {
+          title: "Session 6: Leadership Under Pressure",
+          description: "Making crucial, ethical choices, maintaining team performance, and staying resilient under crisis."
+        },
+        {
+          title: "Session 7: Designing Your Future Vision",
+          description: "Formulating long-term visions, career tracking, and identifying your natural passions and strengths."
+        },
+        {
+          title: "Session 8: Communication Mastery",
+          description: "Assertive body language, tone modulation, public confidence, and active listening scripts."
+        },
+        {
+          title: "Session 9: Time Management & Focus Hacks",
+          description: "Beating procrastination through custom workflows, calendars, and digital prioritization."
+        },
+        {
+          title: "Session 10: Public Speaking & Pitching",
+          description: "Structuring short speeches, presenting school projects, and pitching ideas with absolute poise."
+        },
+        {
+          title: "Session 11: Mentor Relationship Building",
+          description: "Identifying, approaching, and building collaborative relationships with professional mentors."
+        },
+        {
+          title: "Session 12: Sparking Your Ignite Pitch",
+          description: "Showcasing your personal leadership project, graduation celebration, and looking forward."
+        }
+      ],
+      'UNSTOPPABLE': [
+        {
+          title: "Session 1: Life on My Own Terms",
+          description: "Developing your personal manifesto, establishing independent core values, and charting growth."
+        },
+        {
+          title: "Session 2: Adulting 101: The Basics",
+          description: "Essential home skills, nutrition planning, laundry, space organization, and independent routine setup."
+        },
+        {
+          title: "Session 3: Adulting 101: Taxes & Rent",
+          description: "Practical guide to rental agreements, tenant laws, tax brackets, utilities, and emergency funds."
+        },
+        {
+          title: "Session 4: Healthy Intimacy & Love",
+          description: "Safe boundaries, relationship safety, healthy dating patterns, and signs of mutual growth."
+        },
+        {
+          title: "Session 5: Recognizing Toxic Dynamics",
+          description: "Spotting manipulation, narcissism, gaslighting, emotional abuse, and enforcing swift exits."
+        },
+        {
+          title: "Session 6: Career Blueprinting & CVs",
+          description: "Crafting modern resumes, optimization of digital footprints (LinkedIn), and job interview simulation."
+        },
+        {
+          title: "Session 7: Networking & Professional Circles",
+          description: "Effective follow-ups, informational interviews, and leveraging standard professional networks."
+        },
+        {
+          title: "Session 8: Bounce-Back Resilience",
+          description: "Handling academic failure, job rejection, personal setbacks, and coping with dynamic shifts."
+        },
+        {
+          title: "Session 9: Safe Travel & Solo Survival",
+          description: "Navigating new cities, public transit safety, personal protection plans, and emergency response."
+        },
+        {
+          title: "Session 10: Becoming Your Own Anchor",
+          description: "Managing solitary transitions, building deep self-comfort, and prioritizing long-term mental wellness."
+        },
+        {
+          title: "Session 11: Healthy Lifelong Habits",
+          description: "Maintaining sleep integrity, periodic medical tests, balanced routines, and structural work-life harmony."
+        },
+        {
+          title: "Session 12: Unstoppable Graduation",
+          description: "Final reflection presentation, sharing positive cohort affirmations, and official program graduation."
+        }
+      ]
+    };
+    
+    return sessionsMap[uppercaseTitle] || [];
+  }
+
+  /**
+   * List all active programs, optionally showing user eligibility
+   */
+  static async listActive(userId?: string) {
+    const programs = await prisma.program.findMany({
+      where: { isActive: true },
+      orderBy: { minClass: "asc" },
+    });
+
+    if (!userId) {
+      return programs.map(p => ({
+        ...p,
+        isEligible: true,
+        sessionsList: this.getMockSessionsForProgram(p.title)
+      }));
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { birthYear: true, ageAtSignup: true }
+    });
+
+    if (!user) {
+      return programs.map(p => ({
+        ...p,
+        isEligible: true,
+        sessionsList: this.getMockSessionsForProgram(p.title)
+      }));
+    }
+
+    // Determine user's estimated class
+    let age = user.ageAtSignup || null;
+    if (user.birthYear) {
+      age = new Date().getFullYear() - user.birthYear;
+    }
+
+    const estimatedClass = age ? age - 5 : null;
+
+    return programs.map(program => {
+      let isEligible = true;
+      if (estimatedClass !== null) {
+        isEligible = estimatedClass >= program.minClass && estimatedClass <= program.maxClass;
+      }
+      return {
+        ...program,
+        isEligible,
+        userAge: age,
+        userEstimatedClass: estimatedClass,
+        sessionsList: this.getMockSessionsForProgram(program.title)
+      };
+    });
+  }
+
+  /**
+   * Get single program details
+   */
+  static async getById(idOrTitle: string) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrTitle);
+    
+    let program;
+    if (isUuid) {
+      program = await prisma.program.findUnique({
+        where: { id: idOrTitle },
+      });
+    } else {
+      program = await prisma.program.findFirst({
+        where: {
+          title: {
+            equals: idOrTitle,
+            mode: "insensitive"
+          }
+        }
+      });
+    }
+
+    if (!program) {
+      throw new AppError("Program not found", 404);
+    }
+
+    return {
+      ...program,
+      sessionsList: this.getMockSessionsForProgram(program.title)
+    };
+  }
+
+  /**
+   * Enroll a user in a program
+   */
+  static async enrollUser(userId: string, programId: string, type: "PRIVATE" | "GROUP") {
+    // 1. Fetch program
+    const program = await prisma.program.findUnique({
+      where: { id: programId },
+    });
+    if (!program) {
+      throw new AppError("Program not found", 404);
+    }
+    if (!program.isActive) {
+      throw new AppError("This program is currently not active", 400);
+    }
+
+    // 2. Fetch user to check class/age eligibility
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { birthYear: true, ageAtSignup: true }
+    });
+
+    if (user) {
+      let age = user.ageAtSignup || null;
+      if (user.birthYear) {
+        age = new Date().getFullYear() - user.birthYear;
+      }
+      const estimatedClass = age ? age - 5 : null;
+
+      if (estimatedClass !== null) {
+        const isEligible = estimatedClass >= program.minClass && estimatedClass <= program.maxClass;
+        if (!isEligible) {
+          throw new AppError(
+            `You are not eligible for this program. It is designed for ${program.classRange} (Ages ${program.minClass + 5}-${program.maxClass + 5}), but your class is estimated as Class ${estimatedClass}.`,
+            400
+          );
+        }
+      }
+    }
+
+    // 3. Determine price
+    const pricePaid = type === "PRIVATE" ? program.pricePrivate : program.priceGroup;
+
+    // 4. Create enrollment (upsert or simple create with catch for duplicates)
+    try {
+      const enrollment = await prisma.programEnrollment.create({
+        data: {
+          userId,
+          programId,
+          type,
+          pricePaid,
+          status: "ACTIVE"
+        },
+        include: {
+          program: true
+        }
+      });
+      return { success: true, message: "Enrolled successfully", enrollment };
+    } catch (e: any) {
+      if (e.code === "P2002") {
+        throw new AppError("You are already enrolled in this program", 400);
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Fetch all enrollments for a user
+   */
+  static async getUserEnrollments(userId: string) {
+    return prisma.programEnrollment.findMany({
+      where: { userId },
+      include: {
+        program: true
+      },
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  /* =========================================
+   * Admin-Only Methods
+   * ========================================= */
+
+  static async adminList() {
+    return prisma.program.findMany({
+      orderBy: { minClass: "asc" }
+    });
+  }
+
+  static async adminCreate(data: any) {
+    // Validate required fields
+    if (!data.title || !data.classRange || !data.sessions || !data.duration) {
+      throw new AppError("Missing required fields for creating a program", 400);
+    }
+    
+    return prisma.program.create({
+      data: {
+        title: data.title,
+        tagline: data.tagline || "",
+        description: data.description || "",
+        classRange: data.classRange,
+        minClass: parseInt(data.minClass) || 5,
+        maxClass: parseInt(data.maxClass) || 6,
+        sessions: parseInt(data.sessions) || 8,
+        duration: data.duration,
+        topics: Array.isArray(data.topics) ? data.topics : [],
+        pricePrivate: parseFloat(data.pricePrivate) || 0,
+        priceGroup: parseFloat(data.priceGroup) || 0,
+        isActive: data.isActive !== undefined ? data.isActive : true
+      }
+    });
+  }
+
+  static async adminUpdate(id: string, data: any) {
+    const existing = await prisma.program.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError("Program not found", 404);
+    }
+
+    return prisma.program.update({
+      where: { id },
+      data: {
+        title: data.title,
+        tagline: data.tagline,
+        description: data.description,
+        classRange: data.classRange,
+        minClass: data.minClass !== undefined ? parseInt(data.minClass) : undefined,
+        maxClass: data.maxClass !== undefined ? parseInt(data.maxClass) : undefined,
+        sessions: data.sessions !== undefined ? parseInt(data.sessions) : undefined,
+        duration: data.duration,
+        topics: Array.isArray(data.topics) ? data.topics : undefined,
+        pricePrivate: data.pricePrivate !== undefined ? parseFloat(data.pricePrivate) : undefined,
+        priceGroup: data.priceGroup !== undefined ? parseFloat(data.priceGroup) : undefined,
+        isActive: data.isActive !== undefined ? data.isActive : undefined
+      }
+    });
+  }
+
+  static async adminDelete(id: string) {
+    const existing = await prisma.program.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError("Program not found", 404);
+    }
+    return prisma.program.delete({
+      where: { id }
+    });
+  }
+
+  static async adminListEnrollments() {
+    return prisma.programEnrollment.findMany({
+      include: {
+        program: {
+          select: {
+            title: true,
+            classRange: true
+          }
+        },
+        user: {
+          select: {
+            username: true,
+            phone: true,
+            parentEmail: true,
+            profile: {
+              select: {
+                displayName: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  static async adminUpdateEnrollmentStatus(id: string, status: string) {
+    const existing = await prisma.programEnrollment.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError("Enrollment record not found", 404);
+    }
+    return prisma.programEnrollment.update({
+      where: { id },
+      data: { status }
+    });
+  }
+
+  /* =========================================
+   * Demo Sessions Methods
+   * ========================================= */
+
+  static async bookDemoSession(data: any) {
+    if (!data.parentName || !data.phone || !data.classRange) {
+      throw new AppError("Missing required fields for booking a demo session", 400);
+    }
+
+    return prisma.demoSession.create({
+      data: {
+        parentName: data.parentName,
+        phone: data.phone,
+        email: data.email || null,
+        classRange: data.classRange,
+        confidence: data.confidence || "",
+        interests: Array.isArray(data.interests) ? data.interests : [],
+        hasMentor: data.hasMentor || "",
+        challenges: Array.isArray(data.challenges) ? data.challenges : [],
+        learningPref: data.learningPref || "",
+        parentInvolvement: data.parentInvolvement || "",
+        suggestedPrograms: Array.isArray(data.suggestedPrograms) ? data.suggestedPrograms : [],
+        slotDate: data.slotDate || null,
+        slotTime: data.slotTime || null,
+        status: "PENDING"
+      }
+    });
+  }
+
+  static async adminListDemos() {
+    return prisma.demoSession.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  static async adminUpdateDemoStatus(id: string, status: string) {
+    const existing = await prisma.demoSession.findUnique({ where: { id } });
+    if (!existing) {
+      throw new AppError("Demo session booking not found", 404);
+    }
+    return prisma.demoSession.update({
+      where: { id },
+      data: { status }
+    });
+  }
+}

@@ -72,6 +72,7 @@ model User {
   joinedCircles           CommunityCircle[]        @relation("CircleMembers")
   circlesModerated        CommunityCircle[]        @relation("CircleModerators")
   mindfulCompletions      UserMindfulActivity[]
+  programEnrollments      ProgramEnrollment[]
 }
 
 model Profile {
@@ -1234,4 +1235,59 @@ model NewsletterSubscription {
   role      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Program {
+  id              String              @id @default(uuid())
+  title           String              @unique
+  tagline         String
+  description     String?             @default("")
+  classRange      String
+  minClass        Int
+  maxClass        Int
+  sessions        Int
+  duration        String
+  topics          String[]
+  pricePrivate    Float
+  priceGroup      Float
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  enrollments     ProgramEnrollment[]
+}
+
+model ProgramEnrollment {
+  id          String   @id @default(uuid())
+  userId      String
+  programId   String
+  type        String
+  status      String   @default("ACTIVE")
+  pricePaid   Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, programId])
+}
+
+model DemoSession {
+  id                String   @id @default(uuid())
+  parentName        String
+  phone             String
+  email             String?
+  classRange        String   // e.g. "Class 5-6"
+  confidence        String   // social confidence answer
+  interests         String[] // primary areas of interest
+  hasMentor         String   // safe adult outside family answer
+  challenges        String[] // past year challenges
+  learningPref      String   // learning style preference
+  parentInvolvement String   // parental involvement preference
+  suggestedPrograms String[] // program names, e.g. ["SPARK"]
+  slotDate          String?  // Booked slot date (e.g. "2026-05-24")
+  slotTime          String?  // Booked slot time (e.g. "10:00 AM")
+  status            String   @default("PENDING") // PENDING, CONTACTED, SCHEDULED, COMPLETED, CANCELLED
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
