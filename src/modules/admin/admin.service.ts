@@ -372,20 +372,97 @@ export class AdminService {
 
   // Book Management
   static async getBooks() {
-    return prisma.book.findMany({
+    const books = await prisma.book.findMany({
       orderBy: { createdAt: "desc" }
     });
+    const coupon = await prisma.discountCoupon.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    return books.map(book => ({ ...book, coupon }));
   }
 
   static async createBook(data: any) {
-    return prisma.book.create({ data });
+    const { promo, id, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
+
+    const book = await prisma.book.create({
+      data: bookData
+    });
+
+    if (promo) {
+      await prisma.discountCoupon.upsert({
+        where: { code: promo.code },
+        create: {
+          code: promo.code,
+          type: promo.type,
+          value: promo.value,
+          minOrderAmount: promo.minOrderAmount ?? 0,
+          maxDiscount: promo.maxDiscount,
+          expiryDate: promo.expiryDate ? new Date(promo.expiryDate) : null,
+          usageLimit: promo.usageLimit ?? 100,
+          isActive: promo.isActive ?? true,
+        },
+        update: {
+          type: promo.type,
+          value: promo.value,
+          minOrderAmount: promo.minOrderAmount ?? 0,
+          maxDiscount: promo.maxDiscount,
+          expiryDate: promo.expiryDate ? new Date(promo.expiryDate) : null,
+          usageLimit: promo.usageLimit ?? 100,
+          isActive: promo.isActive ?? true,
+        }
+      });
+    }
+
+    const latestCoupon = await prisma.discountCoupon.findFirst({
+      orderBy: { createdAt: "desc" }
+    });
+
+    return { ...book, coupon: latestCoupon };
   }
 
   static async updateBook(id: string, data: any) {
-    return prisma.book.update({
+    const { promo, id: _, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
+
+    const book = await prisma.book.update({
       where: { id },
-      data
+      data: bookData
     });
+
+    if (promo === null) {
+      // Deactivate all coupons
+      await prisma.discountCoupon.updateMany({
+        data: { isActive: false }
+      });
+    } else if (promo) {
+      await prisma.discountCoupon.upsert({
+        where: { code: promo.code },
+        create: {
+          code: promo.code,
+          type: promo.type,
+          value: promo.value,
+          minOrderAmount: promo.minOrderAmount ?? 0,
+          maxDiscount: promo.maxDiscount,
+          expiryDate: promo.expiryDate ? new Date(promo.expiryDate) : null,
+          usageLimit: promo.usageLimit ?? 100,
+          isActive: promo.isActive ?? true,
+        },
+        update: {
+          type: promo.type,
+          value: promo.value,
+          minOrderAmount: promo.minOrderAmount ?? 0,
+          maxDiscount: promo.maxDiscount,
+          expiryDate: promo.expiryDate ? new Date(promo.expiryDate) : null,
+          usageLimit: promo.usageLimit ?? 100,
+          isActive: promo.isActive ?? true,
+        }
+      });
+    }
+
+    const latestCoupon = await prisma.discountCoupon.findFirst({
+      orderBy: { createdAt: "desc" }
+    });
+
+    return { ...book, coupon: latestCoupon };
   }
 
   static async deleteBook(id: string) {

@@ -61,4 +61,40 @@ export class ShopController {
       next(error);
     }
   }
+
+  static async adminListCoupons(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const coupons = await ShopService.adminListCoupons();
+      res.status(200).json(coupons);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async adminCreateCoupon(req: Request, res: Response, next: NextFunction) {
+    try {
+      const coupon = await ShopService.adminCreateCoupon(req.body);
+      res.status(201).json(coupon);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async adminUpdateCoupon(req: Request, res: Response, next: NextFunction) {
+    try {
+      const coupon = await ShopService.adminUpdateCoupon(req.params.id as string, req.body);
+      res.status(200).json(coupon);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async adminDeleteCoupon(req: Request, res: Response, next: NextFunction) {
+    try {
+      await ShopService.adminDeleteCoupon(req.params.id as string);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
 }

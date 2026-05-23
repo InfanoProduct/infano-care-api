@@ -26,6 +26,7 @@ import blogRoutes from "./modules/blog/blog.routes.js";
 import shopRoutes from "./modules/shop/shop.routes.js";
 import mindfulRoutes from "./modules/mindful/mindful.routes.js";
 import enquiryRoutes from "./modules/enquiry/enquiry.routes.js";
+import programsRoutes from "./modules/programs/programs.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -76,6 +77,7 @@ app.use("/api/blog", blogRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/mindful", mindfulRoutes);
 app.use("/api/enquiry", enquiryRoutes);
+app.use("/api/programs", programsRoutes);
 app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
 

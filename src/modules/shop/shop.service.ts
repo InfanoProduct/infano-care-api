@@ -13,15 +13,24 @@ const GST_RATE = 0.05; // 5% for books
 
 export class ShopService {
   static async getBooks() {
-    return prisma.book.findMany({
+    const books = await prisma.book.findMany({
       where: { isActive: true },
     });
+    const coupon = await prisma.discountCoupon.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    return books.map(book => ({ ...book, coupon }));
   }
 
   static async getBook(id: string) {
-    return prisma.book.findUnique({
+    const book = await prisma.book.findUnique({
       where: { id },
     });
+    if (!book) return null;
+    const coupon = await prisma.discountCoupon.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    return { ...book, coupon };
   }
 
   static async validateCoupon(code: string, amount: number) {
@@ -263,5 +272,48 @@ export class ShopService {
     }
 
     return { received: true };
+  }
+
+  static async adminListCoupons() {
+    return prisma.discountCoupon.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  static async adminCreateCoupon(data: any) {
+    return prisma.discountCoupon.create({
+      data: {
+        code: data.code,
+        type: data.type,
+        value: Number(data.value),
+        minOrderAmount: Number(data.minOrderAmount ?? 0),
+        maxDiscount: data.maxDiscount ? Number(data.maxDiscount) : null,
+        expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+        usageLimit: Number(data.usageLimit ?? 100),
+        isActive: data.isActive ?? true,
+      }
+    });
+  }
+
+  static async adminUpdateCoupon(id: string, data: any) {
+    return prisma.discountCoupon.update({
+      where: { id },
+      data: {
+        code: data.code,
+        type: data.type,
+        value: data.value !== undefined ? Number(data.value) : undefined,
+        minOrderAmount: data.minOrderAmount !== undefined ? Number(data.minOrderAmount) : undefined,
+        maxDiscount: data.maxDiscount !== undefined ? (data.maxDiscount ? Number(data.maxDiscount) : null) : undefined,
+        expiryDate: data.expiryDate !== undefined ? (data.expiryDate ? new Date(data.expiryDate) : null) : undefined,
+        usageLimit: data.usageLimit !== undefined ? Number(data.usageLimit) : undefined,
+        isActive: data.isActive !== undefined ? data.isActive : undefined,
+      }
+    });
+  }
+
+  static async adminDeleteCoupon(id: string) {
+    return prisma.discountCoupon.delete({
+      where: { id }
+    });
   }
 }

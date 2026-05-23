@@ -295,4 +295,30 @@ export class AdminController {
       next(error);
     }
   }
+
+  static async listAssets(req: Request, res: Response, next: NextFunction) {
+    try {
+      const folderQuery = req.query.folder;
+      const folder = typeof folderQuery === 'string' ? folderQuery : 'assets';
+      const assets = await StorageService.listAssets(folder);
+      res.status(200).json(assets);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteAsset(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { filename } = req.params;
+      if (!filename || typeof filename !== 'string') {
+        return res.status(400).json({ message: "Filename parameter is required and must be a string" });
+      }
+      const folderQuery = req.query.folder;
+      const folder = typeof folderQuery === 'string' ? folderQuery : 'assets';
+      await StorageService.deleteAsset(filename, folder);
+      res.status(200).json({ success: true, message: "Asset deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
