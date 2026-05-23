@@ -23,8 +23,8 @@ export class ShopController {
 
   static async validateCoupon(req: Request, res: Response, next: NextFunction) {
     try {
-      const { code, amount } = req.body;
-      const result = await ShopService.validateCoupon(code, amount);
+      const { code, items } = req.body;
+      const result = await ShopService.validateCoupon(code, items);
       res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -57,6 +57,47 @@ export class ShopController {
       }
       const result = await ShopService.handleWebhook(JSON.stringify(req.body), signature);
       res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Admin Coupon Controllers ───────────────────────────────────────
+
+  static async adminListCoupons(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const coupons = await ShopService.adminListCoupons();
+      res.status(200).json(coupons);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async adminCreateCoupon(req: Request, res: Response, next: NextFunction) {
+    try {
+      const coupon = await ShopService.adminCreateCoupon(req.body);
+      res.status(201).json(coupon);
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        return res.status(409).json({ message: 'A coupon with this code already exists.' });
+      }
+      next(error);
+    }
+  }
+
+  static async adminUpdateCoupon(req: Request, res: Response, next: NextFunction) {
+    try {
+      const coupon = await ShopService.adminUpdateCoupon(req.params.id, req.body);
+      res.status(200).json(coupon);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async adminDeleteCoupon(req: Request, res: Response, next: NextFunction) {
+    try {
+      await ShopService.adminDeleteCoupon(req.params.id);
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

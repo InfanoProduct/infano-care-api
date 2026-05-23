@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../db/client.js";
 import { z } from "zod";
+import { emailService } from "../../common/services/email.service.js";
 
 const enquirySchema = z.object({
   type: z.string().default("school"),
@@ -32,6 +33,11 @@ export class EnquiryController {
         data: validatedData,
       });
 
+      if (enquiry.email) {
+        // Send email in the background so it doesn't block the response
+        emailService.sendEnquiryConfirmation(enquiry.email, enquiry.contactName || undefined).catch(console.error);
+      }
+
       res.status(201).json({
         message: "Enquiry submitted successfully",
         enquiry,
@@ -53,6 +59,9 @@ export class EnquiryController {
         update: validatedData,
         create: validatedData,
       });
+
+      // Send welcome email in background
+      emailService.sendNewsletterWelcome(subscription.email, subscription.name || undefined).catch(console.error);
 
       res.status(201).json({
         message: "Subscribed successfully",

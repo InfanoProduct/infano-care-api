@@ -15,31 +15,51 @@ export class ShopService {
   static async getBooks() {
     return prisma.book.findMany({
       where: { isActive: true },
+      include: { coupon: true },
     });
   }
 
   static async getBook(id: string) {
     return prisma.book.findUnique({
       where: { id },
+      include: { coupon: true },
     });
   }
 
-  static async validateCoupon(code: string, amount: number) {
+  static async validateCoupon(code: string, items: { bookId: string; quantity: number; price: number }[]) {
     const coupon = await prisma.discountCoupon.findUnique({
       where: { code, isActive: true },
+      include: { book: true },
     });
 
     if (!coupon) throw new Error("Invalid or inactive coupon");
     if (coupon.expiryDate && coupon.expiryDate < new Date()) throw new Error("Coupon has expired");
     if (coupon.usedCount >= coupon.usageLimit) throw new Error("Coupon usage limit reached");
-    if (amount < coupon.minOrderAmount) throw new Error(`Minimum order amount for this coupon is ₹${coupon.minOrderAmount}`);
+
+    // Filter items to see if this coupon is applicable
+    let applicableItems = items;
+    if (coupon.book) {
+      applicableItems = items.filter(item => item.bookId === coupon.book!.id);
+      if (applicableItems.length === 0) {
+        throw new Error("This promo code is not applicable to the items in your cart");
+      }
+    }
+
+    const applicableSubtotal = applicableItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const totalSubtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+    if (totalSubtotal < coupon.minOrderAmount) {
+      throw new Error(`Minimum order amount for this coupon is ₹${coupon.minOrderAmount}`);
+    }
 
     let discount = 0;
     if (coupon.type === CouponType.PERCENTAGE) {
-      discount = (amount * coupon.value) / 100;
+      discount = (applicableSubtotal * coupon.value) / 100;
       if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
     } else {
       discount = coupon.value;
+      // Flat discount shouldn't exceed applicable items price
+      discount = Math.min(discount, applicableSubtotal);
     }
 
     return { coupon, discountAmount: Math.round(discount) };
@@ -81,7 +101,7 @@ export class ShopService {
       let discountAmount = 0;
       let couponId = null;
       if (data.couponCode) {
-        const { coupon, discountAmount: calculatedDiscount } = await this.validateCoupon(data.couponCode, subtotal);
+        const { coupon, discountAmount: calculatedDiscount } = await this.validateCoupon(data.couponCode, orderItems);
         discountAmount = calculatedDiscount;
         couponId = coupon.id;
         
@@ -263,5 +283,64 @@ export class ShopService {
     }
 
     return { received: true };
+  }
+
+  // ─── Admin Coupon Methods ────────────────────────────────────────────
+
+  static async adminListCoupons() {
+    return prisma.discountCoupon.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { orders: true } } },
+    });
+  }
+
+  static async adminCreateCoupon(data: {
+    code: string;
+    type: CouponType;
+    value: number;
+    minOrderAmount?: number;
+    maxDiscount?: number;
+    expiryDate?: string | null;
+    usageLimit?: number;
+    isActive?: boolean;
+  }) {
+    return prisma.discountCoupon.create({
+      data: {
+        code: data.code.toUpperCase().trim(),
+        type: data.type,
+        value: data.value,
+        minOrderAmount: data.minOrderAmount ?? 0,
+        maxDiscount: data.maxDiscount ?? null,
+        expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+        usageLimit: data.usageLimit ?? 100,
+        isActive: data.isActive ?? true,
+      },
+    });
+  }
+
+  static async adminUpdateCoupon(id: string, data: Partial<{
+    code: string;
+    type: CouponType;
+    value: number;
+    minOrderAmount: number;
+    maxDiscount: number | null;
+    expiryDate: string | null;
+    usageLimit: number;
+    isActive: boolean;
+  }>) {
+    return prisma.discountCoupon.update({
+      where: { id },
+      data: {
+        ...data,
+        code: data.code ? data.code.toUpperCase().trim() : undefined,
+        expiryDate: data.expiryDate !== undefined
+          ? (data.expiryDate ? new Date(data.expiryDate) : null)
+          : undefined,
+      },
+    });
+  }
+
+  static async adminDeleteCoupon(id: string) {
+    return prisma.discountCoupon.delete({ where: { id } });
   }
 }

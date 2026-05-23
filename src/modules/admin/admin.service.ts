@@ -373,22 +373,112 @@ export class AdminService {
   // Book Management
   static async getBooks() {
     return prisma.book.findMany({
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      include: { coupon: true },
     });
   }
 
   static async createBook(data: any) {
-    return prisma.book.create({ data });
+    const { promo, id: _id, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
+    if (promo && promo.code) {
+      // Create the coupon first, then link it to the book
+      const coupon = await prisma.discountCoupon.create({
+        data: {
+          code: (promo.code as string).toUpperCase().trim(),
+          type: promo.type ?? 'PERCENTAGE',
+          value: Number(promo.value ?? 0),
+          minOrderAmount: Number(promo.minOrderAmount ?? 0),
+          maxDiscount: promo.maxDiscount ? Number(promo.maxDiscount) : null,
+          expiryDate: promo.expiryDate ? new Date(promo.expiryDate) : null,
+          usageLimit: Number(promo.usageLimit ?? 100),
+          isActive: promo.isActive ?? true,
+        },
+      });
+      return prisma.book.create({
+        data: { ...bookData, couponId: coupon.id },
+        include: { coupon: true },
+      });
+    }
+    return prisma.book.create({
+      data: bookData,
+      include: { coupon: true },
+    });
   }
 
   static async updateBook(id: string, data: any) {
+    const { promo, id: _id, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
+
+    // Fetch existing book with coupon
+    const book = await prisma.book.findUnique({
+      where: { id },
+      include: { coupon: true },
+    });
+    if (!book) throw new Error('Book not found');
+
+    if (promo !== undefined) {
+      if (promo && promo.code) {
+        // Upsert the coupon
+        if (book.coupon) {
+          // Update existing linked coupon
+          await prisma.discountCoupon.update({
+            where: { id: book.coupon.id },
+            data: {
+              code: (promo.code as string).toUpperCase().trim(),
+              type: promo.type ?? book.coupon.type,
+              value: Number(promo.value ?? book.coupon.value),
+              minOrderAmount: Number(promo.minOrderAmount ?? book.coupon.minOrderAmount),
+              maxDiscount: promo.maxDiscount !== undefined ? (promo.maxDiscount ? Number(promo.maxDiscount) : null) : book.coupon.maxDiscount,
+              expiryDate: promo.expiryDate !== undefined ? (promo.expiryDate ? new Date(promo.expiryDate) : null) : book.coupon.expiryDate,
+              usageLimit: Number(promo.usageLimit ?? book.coupon.usageLimit),
+              isActive: promo.isActive ?? book.coupon.isActive,
+            },
+          });
+        } else {
+          // Create a new coupon and link it
+          const coupon = await prisma.discountCoupon.create({
+            data: {
+              code: (promo.code as string).toUpperCase().trim(),
+              type: promo.type ?? 'PERCENTAGE',
+              value: Number(promo.value ?? 0),
+              minOrderAmount: Number(promo.minOrderAmount ?? 0),
+              maxDiscount: promo.maxDiscount ? Number(promo.maxDiscount) : null,
+              expiryDate: promo.expiryDate ? new Date(promo.expiryDate) : null,
+              usageLimit: Number(promo.usageLimit ?? 100),
+              isActive: promo.isActive ?? true,
+            },
+          });
+          bookData.couponId = coupon.id;
+        }
+      } else if (promo === null || (promo && !promo.code)) {
+        // Remove and delete the linked coupon
+        if (book.coupon) {
+          await prisma.book.update({
+            where: { id },
+            data: { couponId: null },
+          });
+          await prisma.discountCoupon.delete({ where: { id: book.coupon.id } });
+        }
+      }
+    }
+
     return prisma.book.update({
       where: { id },
-      data
+      data: bookData,
+      include: { coupon: true },
     });
   }
 
   static async deleteBook(id: string) {
+    const book = await prisma.book.findUnique({
+      where: { id },
+      include: { coupon: true },
+    });
+    if (!book) throw new Error('Book not found');
+    // Unlink coupon first so delete constraint is satisfied, then delete the coupon
+    if (book.coupon) {
+      await prisma.book.update({ where: { id }, data: { couponId: null } });
+      await prisma.discountCoupon.delete({ where: { id: book.coupon.id } });
+    }
     return prisma.book.delete({ where: { id } });
   }
 

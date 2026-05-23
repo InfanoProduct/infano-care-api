@@ -125,4 +125,10 @@ router.post("/orders/verify", ShopController.verifyPayment);
  */
 router.post("/webhook", ShopController.webhook);
 
+// ─── Admin Coupon Routes ────────────────────────────────────────────────────
+router.get("/admin/coupons", ShopController.adminListCoupons);
+router.post("/admin/coupons", ShopController.adminCreateCoupon);
+router.patch("/admin/coupons/:id", ShopController.adminUpdateCoupon);
+router.delete("/admin/coupons/:id", ShopController.adminDeleteCoupon);
+
 export default router;
