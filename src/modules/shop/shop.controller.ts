@@ -97,4 +97,14 @@ export class ShopController {
       next(error);
     }
   }
+
+  static async getUserOrders(req: any, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user.id;
+      const orders = await ShopService.getUserOrders(userId);
+      res.status(200).json(orders);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

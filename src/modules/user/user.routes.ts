@@ -72,5 +72,6 @@ router.patch("/onboarding-step", UserController.updateOnboardingStep);
  *         description: Token registered successfully
  */
 router.post("/register-fcm-token", UserController.registerFcmToken);
+router.patch("/role", UserController.updateRole);
 
 export default router;

@@ -129,6 +129,8 @@ router.post("/webhook", ShopController.webhook);
 import { authenticate } from "../../common/middleware/auth.js";
 import { requireAdmin } from "../../common/middleware/requireAdmin.js";
 
+router.get("/orders/me", authenticate, ShopController.getUserOrders);
+
 router.get("/admin/coupons", authenticate, requireAdmin, ShopController.adminListCoupons);
 router.post("/admin/coupons", authenticate, requireAdmin, ShopController.adminCreateCoupon);
 router.patch("/admin/coupons/:id", authenticate, requireAdmin, ShopController.adminUpdateCoupon);

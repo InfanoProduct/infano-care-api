@@ -345,8 +345,11 @@ export class ProgramsService {
       if (estimatedClass !== null) {
         const isEligible = estimatedClass >= program.minClass && estimatedClass <= program.maxClass;
         if (!isEligible) {
+          const targetStr = program.minClass === program.maxClass 
+            ? `${program.classRange} (Age ${program.minClass + 5})`
+            : `${program.classRange} (Ages ${program.minClass + 5}-${program.maxClass + 5})`;
           throw new AppError(
-            `You are not eligible for this program. It is designed for ${program.classRange} (Ages ${program.minClass + 5}-${program.maxClass + 5}), but your class is estimated as Class ${estimatedClass}.`,
+            `You are not eligible for this program. It is designed for ${targetStr}, but your class is estimated as Class ${estimatedClass}.`,
             400
           );
         }
@@ -383,13 +386,21 @@ export class ProgramsService {
    * Fetch all enrollments for a user
    */
   static async getUserEnrollments(userId: string) {
-    return prisma.programEnrollment.findMany({
+    const enrollments = await prisma.programEnrollment.findMany({
       where: { userId },
       include: {
         program: true
       },
       orderBy: { createdAt: "desc" }
     });
+
+    return enrollments.map(enr => ({
+      ...enr,
+      program: {
+        ...enr.program,
+        sessionsList: this.getMockSessionsForProgram(enr.program.title)
+      }
+    }));
   }
 
   /* =========================================

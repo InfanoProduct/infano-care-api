@@ -3,6 +3,7 @@ import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import crypto from "crypto";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
+import { normalizePhone } from "../../common/utils/phone.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -167,6 +168,91 @@ export class ShopService {
     });
   }
 
+  static async completeOrder(razorpayOrderId: string, razorpayPaymentId?: string, razorpaySignature?: string) {
+    const order = await prisma.order.findUnique({
+      where: { razorpayOrderId },
+      include: { items: { include: { book: true } } }
+    });
+    if (!order) return null;
+
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
+      return order; // already completed
+    }
+
+    // 1. Find or create user from guestPhone if userId is missing
+    let userId = order.userId;
+    if (!userId && order.guestPhone) {
+      const normalized = normalizePhone(order.guestPhone);
+      let user = await prisma.user.findUnique({ where: { phone: normalized } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            phone: normalized,
+            accountStatus: "PENDING_SETUP",
+            onboardingStep: 1,
+            role: "PARENT",
+            profile: {
+              create: {
+                displayName: order.guestName || "Parent",
+                totalPoints: 0,
+              }
+            }
+          }
+        });
+      }
+      userId = user.id;
+    }
+
+    // Update order status to COMPLETED
+    const updatedOrder = await prisma.order.update({
+      where: { razorpayOrderId },
+      data: {
+        paymentStatus: PaymentStatus.COMPLETED,
+        razorpayPaymentId,
+        razorpaySignature,
+        userId: userId || undefined,
+      },
+    });
+
+    // 2. Automatically create program enrollment if ordered item is a program
+    if (userId) {
+      for (const item of order.items) {
+        const isProg = item.book.id.endsWith("-private") || item.book.id.endsWith("-group");
+        if (isProg) {
+          const programTitle = item.book.id.split("-")[0].toUpperCase();
+          const program = await prisma.program.findFirst({
+            where: { title: { equals: programTitle, mode: "insensitive" } }
+          });
+          if (program) {
+            const type = item.book.id.endsWith("-private") ? "PRIVATE" : "GROUP";
+            // Check if already enrolled
+            const existingEnrollment = await prisma.programEnrollment.findUnique({
+              where: {
+                userId_programId: {
+                  userId,
+                  programId: program.id
+                }
+              }
+            });
+            if (!existingEnrollment) {
+              await prisma.programEnrollment.create({
+                data: {
+                  userId,
+                  programId: program.id,
+                  type,
+                  pricePaid: item.price,
+                  status: "ACTIVE"
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return updatedOrder;
+  }
+
   static async verifyPayment(data: {
     razorpayOrderId: string;
     razorpayPaymentId: string;
@@ -180,14 +266,7 @@ export class ShopService {
       .digest("hex");
 
     if (expectedSignature === razorpaySignature) {
-      return prisma.order.update({
-        where: { razorpayOrderId },
-        data: {
-          paymentStatus: PaymentStatus.COMPLETED,
-          razorpayPaymentId,
-          razorpaySignature,
-        },
-      });
+      return await this.completeOrder(razorpayOrderId, razorpayPaymentId, razorpaySignature);
     } else {
       await prisma.order.update({
         where: { razorpayOrderId },
@@ -255,13 +334,7 @@ export class ShopService {
       const { id: razorpayOrderId } = event.payload.order.entity;
       const { id: razorpayPaymentId } = event.payload.payment.entity;
 
-      await prisma.order.update({
-        where: { razorpayOrderId },
-        data: {
-          paymentStatus: PaymentStatus.COMPLETED,
-          razorpayPaymentId,
-        },
-      });
+      await this.completeOrder(razorpayOrderId, razorpayPaymentId);
     } else if (event.event === "payment.failed") {
       const { order_id: razorpayOrderId } = event.payload.payment.entity;
       
@@ -272,6 +345,20 @@ export class ShopService {
     }
 
     return { received: true };
+  }
+
+  static async getUserOrders(userId: string) {
+    return prisma.order.findMany({
+      where: { userId },
+      include: {
+        items: {
+          include: {
+            book: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
   }
 
   static async adminListCoupons() {

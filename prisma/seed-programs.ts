@@ -10,9 +10,9 @@ async function main() {
       title: "SPARK",
       tagline: "She wakes up to herself.",
       description: "A beautifully structured early puberty and self-awareness program for young girls entering Class 5 and 6. SPARK guides girls through body positivity, boundaries, emotional resilience, and breaking down family-centric biological myths in a private, gentle setting.",
-      classRange: "Class 5-6",
+      classRange: "Class 5",
       minClass: 5,
-      maxClass: 6,
+      maxClass: 5,
       sessions: 8,
       duration: "2 Months",
       topics: [
@@ -31,9 +31,9 @@ async function main() {
       title: "RISE",
       tagline: "She learns who she is - and who gets access.",
       description: "An interactive, empowering program for girls in Class 6 and 7. RISE focuses on building secure relationships, understanding physical and digital consent, identifying grooming behaviors, navigating permanent digital footprints, and learning healthy self-expression.",
-      classRange: "Class 6-7",
+      classRange: "Class 6",
       minClass: 6,
-      maxClass: 7,
+      maxClass: 6,
       sessions: 10,
       duration: "2.5 Months",
       topics: [
@@ -52,9 +52,9 @@ async function main() {
       title: "BLOOM",
       tagline: "She faces the hard stuff before it faces her.",
       description: "An emotional wellbeing and mental wellness program tailored for Class 7 and 8. BLOOM equips girls to identify anxiety and depression, decode the myths of perfectionism, address academic peer pressure, and answer the complex questions no one else does.",
-      classRange: "Class 7-8",
+      classRange: "Class 7",
       minClass: 7,
-      maxClass: 8,
+      maxClass: 7,
       sessions: 10,
       duration: "2.5 Months",
       topics: [
@@ -73,9 +73,9 @@ async function main() {
       title: "IGNITE",
       tagline: "She learns how the world works - and how to work it.",
       description: "A comprehensive independence and real-world preparation program for Class 8 and 9. IGNITE teaches girls about reproductive health, financial literacy, career choices that align with their strengths, navigating love pressure, and building their own definition of success.",
-      classRange: "Class 8-9",
+      classRange: "Class 8",
       minClass: 8,
-      maxClass: 9,
+      maxClass: 8,
       sessions: 12,
       duration: "3 Months",
       topics: [
@@ -94,9 +94,9 @@ async function main() {
       title: "UNSTOPPABLE",
       tagline: "She walks into adult life prepared, not blindsided.",
       description: "Our flagship senior program for girls in Class 9 and 10 transitioning into high school and young adulthood. UNSTOPPABLE covers real talk about adult life, relationships, feminist perspectives on money, ongoing mental health maintenance, and career planning for a meaningful life.",
-      classRange: "Class 9-10",
+      classRange: "Class 9",
       minClass: 9,
-      maxClass: 10,
+      maxClass: 9,
       sessions: 12,
       duration: "3 Months",
       topics: [
@@ -120,6 +120,55 @@ async function main() {
       create: program,
     });
     console.log(`[SEED] Upserted program: ${program.title}`);
+
+    // Seed corresponding Book items for checkout
+    const slug = program.title.toLowerCase();
+
+    // Private Mentoring Book
+    await prisma.book.upsert({
+      where: { id: `${slug}-private` },
+      update: {
+        title: `${program.title} (1:1 Private Mentoring)`,
+        description: `${program.title} - ${program.tagline} (1:1 Private Mentoring for ${program.classRange})`,
+        price: program.pricePrivate,
+        stock: 9999,
+        isActive: true,
+        imageUrl: '/girl-standing-with-book.png'
+      },
+      create: {
+        id: `${slug}-private`,
+        title: `${program.title} (1:1 Private Mentoring)`,
+        description: `${program.title} - ${program.tagline} (1:1 Private Mentoring for ${program.classRange})`,
+        price: program.pricePrivate,
+        stock: 9999,
+        isActive: true,
+        imageUrl: '/girl-standing-with-book.png'
+      }
+    });
+    console.log(`[SEED] Upserted Book Private product: ${slug}-private`);
+
+    // Group Cohort Book
+    await prisma.book.upsert({
+      where: { id: `${slug}-group` },
+      update: {
+        title: `${program.title} (Group Cohort)`,
+        description: `${program.title} - ${program.tagline} (Group Cohort for ${program.classRange})`,
+        price: program.priceGroup,
+        stock: 9999,
+        isActive: true,
+        imageUrl: '/girl-standing-with-book.png'
+      },
+      create: {
+        id: `${slug}-group`,
+        title: `${program.title} (Group Cohort)`,
+        description: `${program.title} - ${program.tagline} (Group Cohort for ${program.classRange})`,
+        price: program.priceGroup,
+        stock: 9999,
+        isActive: true,
+        imageUrl: '/girl-standing-with-book.png'
+      }
+    });
+    console.log(`[SEED] Upserted Book Group product: ${slug}-group`);
   }
 
   console.log('--- Seeding Programs Completed! ---');

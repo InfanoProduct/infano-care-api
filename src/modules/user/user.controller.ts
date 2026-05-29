@@ -53,4 +53,46 @@ export class UserController {
       next(error);
     }
   }
+
+  static async updateRole(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId || (req as any).user?.id;
+      const { role } = req.body;
+      if (!role || (role !== "TEEN" && role !== "PARENT" && role !== "PEER" && role !== "EXPERT")) {
+        throw new AppError("Invalid role specified", 400);
+      }
+
+      // Enforce that a user/phone number can only have one role
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, accountStatus: true }
+      });
+
+      if (!existingUser) {
+        throw new AppError("User not found", 404);
+      }
+
+      if (existingUser.accountStatus !== "PENDING_SETUP") {
+        throw new AppError("Role cannot be changed after initial setup. A user/phone number can only have one role.", 400);
+      }
+
+      // Enforce status and step progression when a role is selected
+      const updateData: any = { role };
+      if (role === "PARENT") {
+        updateData.accountStatus = "ACTIVE";
+        updateData.onboardingStep = 5;
+        updateData.onboardingCompletedAt = new Date();
+      } else if (role === "TEEN") {
+        updateData.onboardingStep = 2; // Step 1 (Role Selection) is complete
+      }
+
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+      res.status(200).json({ success: true, role: user.role });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -20,8 +20,8 @@ export async function requireAdmin(req: Request, _res: Response, next: NextFunct
       return next(new AppError("User not found.", 401));
     }
 
-    if (user.role !== "ADMIN") {
-      return next(new AppError(`Forbidden: Admin access required. Your role is ${user.role}`, 403));
+    if (user.role !== "ADMIN" && user.role !== "EXPERT") {
+      return next(new AppError(`Forbidden: Admin/Expert access required. Your role is ${user.role}`, 403));
     }
 
     next();
