@@ -1,0 +1,31 @@
+import { Router } from "express";
+import { ParentController } from "./parent.controller.js";
+import { requireAuth } from "../../common/middleware/requireAuth.js";
+
+const router = Router();
+
+// Public routes (no auth required)
+router.get("/resources", ParentController.getResources);
+
+router.use(requireAuth);
+
+router.post("/invite", ParentController.invite);
+router.get("/", ParentController.getLinks);
+router.get("/dashboard-summary", ParentController.getDashboardSummary);
+router.post("/cancel/:id", ParentController.cancelInvite);
+router.post("/accept/:id", ParentController.acceptInvite);
+
+// Expert Session endpoints
+router.get("/experts", ParentController.getExperts);
+router.post("/experts/book", ParentController.bookExpertSession);
+router.post("/experts/verify-payment", ParentController.verifyExpertSessionPayment);
+router.get("/expert-sessions", ParentController.getExpertSessions);
+router.patch("/expert-sessions/:id/cancel", ParentController.cancelExpertSession);
+router.patch("/expert-sessions/:id/reschedule", ParentController.rescheduleExpertSession);
+
+// Resource Bookmarks (auth required)
+router.get("/bookmarks", ParentController.getBookmarks);
+router.post("/resources/:id/bookmark", ParentController.bookmarkResource);
+router.delete("/resources/:id/bookmark", ParentController.unbookmarkResource);
+
+export default router;

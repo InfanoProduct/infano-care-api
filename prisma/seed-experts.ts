@@ -9,21 +9,27 @@ const EXPERTS_TO_SEED = [
     displayName: 'Dr. Ananya Iyer',
     phone: '+919811122233',
     bio: 'Adolescent Gynecologist & Puberty Expert with 12+ years of clinical experience guiding young women.',
-    expertise: { department: 'Gynecology', clinicalFocus: 'Puberty shifts, PCOS, menstrual cycles', credentials: 'MD, DNB (Obstetrics & Gynecology)' }
+    expertise: { department: 'Gynecology', clinicalFocus: 'Puberty shifts, PCOS, menstrual cycles', credentials: 'MD, DNB (Obstetrics & Gynecology)' },
+    specialisation: 'Gynecologist & Puberty Expert',
+    sessionPrice: 800
   },
   {
     username: 'meera.sharma@infano.com',
     displayName: 'Meera Sharma',
     phone: '+919811122244',
     bio: 'Licensed Adolescent Psychologist dedicated to helping teens navigate high school stress, body image, and emotions.',
-    expertise: { department: 'Psychology', clinicalFocus: 'Anxiety, school stress, self-identity, self-esteem', credentials: 'M.Sc. in Clinical Psychology, M.Phil' }
+    expertise: { department: 'Psychology', clinicalFocus: 'Anxiety, school stress, self-identity, self-esteem', credentials: 'M.Sc. in Clinical Psychology, M.Phil' },
+    specialisation: 'Teen Psychologist',
+    sessionPrice: 600
   },
   {
     username: 'shalini.sen@infano.com',
     displayName: 'Shalini Sen',
     phone: '+919811122255',
     bio: 'Menstrual Health Educator and Advocate focused on shame-free education, puberty guides, and body comfort.',
-    expertise: { department: 'Educator', clinicalFocus: 'Puberty hygiene, safe boundaries, confidence coaching', credentials: 'MA in Social Work, Certified Sexuality Educator' }
+    expertise: { department: 'Educator', clinicalFocus: 'Puberty hygiene, safe boundaries, confidence coaching', credentials: 'MA in Social Work, Certified Sexuality Educator' },
+    specialisation: 'Menstrual Hygiene Educator',
+    sessionPrice: 500
   }
 ];
 
@@ -55,14 +61,18 @@ async function main() {
               bio: exp.bio,
               mentorStatus: 'certified',
               isAvailable: true,
-              mentorExpertise: exp.expertise
+              mentorExpertise: exp.expertise,
+              specialisation: exp.specialisation,
+              sessionPrice: exp.sessionPrice
             },
             update: {
               displayName: exp.displayName,
               bio: exp.bio,
               mentorStatus: 'certified',
               isAvailable: true,
-              mentorExpertise: exp.expertise
+              mentorExpertise: exp.expertise,
+              specialisation: exp.specialisation,
+              sessionPrice: exp.sessionPrice
             }
           }
         }
@@ -79,7 +89,9 @@ async function main() {
             bio: exp.bio,
             mentorStatus: 'certified',
             isAvailable: true,
-            mentorExpertise: exp.expertise
+            mentorExpertise: exp.expertise,
+            specialisation: exp.specialisation,
+            sessionPrice: exp.sessionPrice
           }
         }
       }

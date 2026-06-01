@@ -332,10 +332,13 @@ export class ProgramsService {
     // 2. Fetch user to check class/age eligibility
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { birthYear: true, ageAtSignup: true }
+      select: { birthYear: true, ageAtSignup: true, role: true }
     });
 
-    if (user) {
+    // Parents & guardians purchase programs for their daughters — skip eligibility check for them
+    const isParentRole = user?.role === "PARENT" || user?.role === "GUARDIAN";
+
+    if (user && !isParentRole) {
       let age = user.ageAtSignup || null;
       if (user.birthYear) {
         age = new Date().getFullYear() - user.birthYear;
@@ -386,10 +389,41 @@ export class ProgramsService {
    * Fetch all enrollments for a user
    */
   static async getUserEnrollments(userId: string) {
+    // Check if the user is a teen with a linked parent
+    const links = await prisma.parentLink.findMany({
+      where: {
+        OR: [
+          { teenId: userId },
+          { parentId: userId }
+        ],
+        status: "LINKED"
+      },
+      select: { parentId: true, teenId: true }
+    });
+
+    const relatedIds = [userId];
+    links.forEach(link => {
+      if (link.parentId) relatedIds.push(link.parentId);
+      if (link.teenId) relatedIds.push(link.teenId);
+    });
+
+    const uniqueIds = [...new Set(relatedIds)];
+
     const enrollments = await prisma.programEnrollment.findMany({
-      where: { userId },
+      where: { userId: { in: uniqueIds } },
       include: {
-        program: true
+        program: true,
+        user: {
+          select: {
+            scheduledSessions: {
+              where: {
+                status: {
+                  in: ["SCHEDULED", "COMPLETED"]
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: { createdAt: "desc" }
     });
