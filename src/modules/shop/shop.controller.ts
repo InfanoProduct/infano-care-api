@@ -35,8 +35,13 @@ export class ShopController {
     try {
       const order = await ShopService.createOrder(req.body);
       res.status(201).json(order);
-    } catch (error) {
-      next(error);
+    } catch (error: any) {
+      console.error("[createOrder] Error:", error?.message, error?.statusCode, error?.error);
+      console.error("[createOrder] Full error:", JSON.stringify(error, null, 2));
+      res.status(error?.statusCode || 500).json({
+        message: error?.message || "Order creation failed",
+        details: error?.error?.description || error?.description || undefined,
+      });
     }
   }
 

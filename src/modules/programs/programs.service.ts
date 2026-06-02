@@ -415,6 +415,12 @@ export class ProgramsService {
         program: true,
         user: {
           select: {
+            id: true,
+            role: true,
+            username: true,
+            profile: {
+              select: { displayName: true }
+            },
             scheduledSessions: {
               where: {
                 status: {

@@ -125,7 +125,9 @@ export class ParentService {
   static async cancelInvite(userId: string, linkId: string) {
     const link = await prisma.parentLink.findUnique({ where: { id: linkId } });
     if (!link) throw new Error("Link not found");
-    if (link.senderId !== userId) throw new Error("Unauthorized");
+    if (link.senderId !== userId && link.parentId !== userId && link.teenId !== userId) {
+      throw new Error("Unauthorized");
+    }
 
     return prisma.parentLink.delete({
       where: { id: linkId }

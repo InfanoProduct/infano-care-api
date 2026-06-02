@@ -148,23 +148,46 @@ export class ShopService {
           pincode: data.pincode,
           razorpayOrderId,
           couponId,
+          orderStatus: data.paymentMethod === PaymentMethod.COD ? OrderStatus.PLACED : OrderStatus.PLACED,
           gstNumber: data.gstNumber,
           items: {
             create: orderItems,
           },
         },
-        include: { items: { include: { book: true } } }
+        include: {
+          items: true,
+        }
       });
 
-      // 6. Reduce stock immediately (will rollback if transaction fails)
-      for (const item of orderItems) {
-        await tx.book.update({
-          where: { id: item.bookId },
-          data: { stock: { decrement: item.quantity } }
+      // 6. Update User Profile if userId is present (as requested)
+      if (data.userId) {
+        await tx.user.update({
+          where: { id: data.userId },
+          data: {
+            email: data.guestEmail,
+            profile: {
+              upsert: {
+                create: { displayName: data.guestName || "User" },
+                update: { displayName: data.guestName },
+              }
+            }
+          }
         });
       }
 
+      // 7. Manage Inventory
+      if (data.paymentMethod === PaymentMethod.COD) {
+        for (const item of orderItems) {
+          await tx.book.update({
+            where: { id: item.bookId },
+            data: { stock: { decrement: item.quantity } }
+          });
+        }
+      }
+
       return order;
+    }, {
+      timeout: 20000
     });
   }
 
@@ -217,14 +240,14 @@ export class ShopService {
     // 2. Automatically create program enrollment if ordered item is a program
     if (userId) {
       for (const item of order.items) {
-        const isProg = item.book.id.endsWith("-private") || item.book.id.endsWith("-group");
-        if (isProg) {
-          const programTitle = item.book.id.split("-")[0].toUpperCase();
+        const isProg = item.book?.id?.endsWith("-private") || item.book?.id?.endsWith("-group");
+        if (isProg && item.book) {
+          const programTitle = (item.book as any).id.split("-")[0].toUpperCase();
           const program = await prisma.program.findFirst({
             where: { title: { equals: programTitle, mode: "insensitive" } }
           });
           if (program) {
-            const type = item.book.id.endsWith("-private") ? "PRIVATE" : "GROUP";
+            const type = (item.book as any).id.endsWith("-private") ? "PRIVATE" : "GROUP";
             // Check if already enrolled
             const existingEnrollment = await prisma.programEnrollment.findUnique({
               where: {
@@ -241,7 +264,9 @@ export class ShopService {
                   programId: program.id,
                   type,
                   pricePaid: item.price,
-                  status: "ACTIVE"
+                  status: "ACTIVE",
+                  guestName: order.guestName,
+                  guestEmail: order.guestEmail,
                 }
               });
             }

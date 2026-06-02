@@ -48,6 +48,25 @@ export class AuthController {
     } catch (e) { next(e); }
   }
 
+  static async checkUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { phone } = req.body;
+      if (!phone) {
+        return res.status(400).json({ exists: false, message: "Phone required" });
+      }
+      const { normalizePhone } = await import("../../common/utils/phone.js");
+      const { prisma } = await import("../../db/client.js");
+      
+      const finalPhone = normalizePhone(phone);
+      const user = await prisma.user.findUnique({
+        where: { phone: finalPhone },
+        select: { id: true, role: true }
+      });
+      
+      res.status(200).json({ exists: !!user, role: user?.role });
+    } catch (e) { next(e); }
+  }
+
   static async logout(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshToken } = refreshSchema.parse(req.body);
