@@ -420,13 +420,6 @@ export class ProgramsService {
             username: true,
             profile: {
               select: { displayName: true }
-            },
-            scheduledSessions: {
-              where: {
-                status: {
-                  in: ["SCHEDULED", "COMPLETED"]
-                }
-              }
             }
           }
         }
@@ -434,13 +427,27 @@ export class ProgramsService {
       orderBy: { createdAt: "desc" }
     });
 
-    return enrollments.map(enr => ({
-      ...enr,
-      program: {
-        ...enr.program,
-        sessionsList: this.getMockSessionsForProgram(enr.program.title)
+    const allSessions = await prisma.expertSessionSchedule.findMany({
+      where: {
+        userId: { in: uniqueIds },
+        status: { in: ["SCHEDULED", "COMPLETED"] }
       }
-    }));
+    });
+
+    return enrollments.map(enr => {
+      const programSessions = allSessions.filter(s => s.programId === enr.programId);
+      return {
+        ...enr,
+        program: {
+          ...enr.program,
+          sessionsList: this.getMockSessionsForProgram(enr.program.title)
+        },
+        user: {
+          ...enr.user,
+          scheduledSessions: programSessions
+        }
+      };
+    });
   }
 
   /* =========================================

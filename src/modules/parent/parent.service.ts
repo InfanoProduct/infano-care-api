@@ -200,14 +200,14 @@ export class ParentService {
       };
     }
 
-    // 3. Mood Trend (7-day colour indicator)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // 3. Mood Trend (30-day colour indicator to support 7/30 days toggle)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const recentLogs = await prisma.cycleLog.findMany({
       where: {
         userId: teenId,
-        date: { gte: sevenDaysAgo }
+        date: { gte: thirtyDaysAgo }
       },
       orderBy: { date: "asc" },
       select: { date: true, moodPrimary: true }

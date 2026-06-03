@@ -73,5 +73,6 @@ router.patch("/onboarding-step", UserController.updateOnboardingStep);
  */
 router.post("/register-fcm-token", UserController.registerFcmToken);
 router.patch("/role", UserController.updateRole);
+router.put("/profile", UserController.updateProfile);
 
 export default router;
