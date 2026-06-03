@@ -177,7 +177,7 @@ export class ParentController {
       const userId = (req as any).userId;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-      const postId = req.params.id;
+      const postId = req.params.id as string;
       const bookmark = await ParentService.bookmarkResource(userId, postId);
       res.status(201).json(bookmark);
     } catch (error: any) {
@@ -190,7 +190,7 @@ export class ParentController {
       const userId = (req as any).userId;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-      const postId = req.params.id;
+      const postId = req.params.id as string;
       await ParentService.unbookmarkResource(userId, postId);
       res.json({ success: true });
     } catch (error: any) {

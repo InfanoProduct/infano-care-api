@@ -82,6 +82,12 @@ model User {
   expertScheduledSessions ExpertSessionSchedule[] @relation("ExpertScheduledSessions")
 
   articleBookmarks ArticleBookmark[]
+
+  schoolId                  String?
+  school                    School?                 @relation("SchoolCoordinator", fields: [schoolId], references: [id])
+  managedSchools            School[]                @relation("SchoolOpsManager")
+  facilitatedSchoolSessions SchoolSession[]         @relation("FacilitatorSchoolSessions")
+  tempPasswordExpiresAt     DateTime?
 }
 
 model Profile {
@@ -1109,6 +1115,8 @@ enum UserRole {
   EXPERT
   ADMIN
   PEER
+  OPS_MANAGER
+  SCHOOL_COORDINATOR
 }
 
 enum ContentTier {
@@ -1353,4 +1361,278 @@ model ParentLink {
   sender User  @relation("SentLinks", fields: [senderId], references: [id])
 
   @@unique([senderId, receiverPhone])
+}
+
+// ==========================================
+// ─── School Partner Dashboard Models ──────
+// ==========================================
+
+model School {
+  id                    String                @id @default(uuid())
+  schoolId              String                @unique // Generated unique ID, e.g., INF-SCH-2025-001
+  name                  String
+  board                 String                // CBSE / ICSE / State / IB
+  city                  String
+  address               String
+  principalName         String?
+  principalDesignation  String?
+  principalEmail        String?
+  principalPhone        String?
+  
+  // Coordinator Details
+  coordinatorName       String
+  coordinatorEmail      String
+  coordinatorPhone      String
+  
+  // MOU & Partnership Details
+  mouSignedDate         DateTime
+  mouValidityStart      DateTime
+  mouValidityEnd        DateTime
+  tier                  SchoolTier            @default(SEEDING)
+  totalMouValue         Float?                // Ops only (Hidden from school coordinator)
+  paymentMode           String?               // CASH / ONLINE
+  
+  // Operational assignments
+  assignedOpsManagerId  String?
+  assignedOpsManager    User?                 @relation("SchoolOpsManager", fields: [assignedOpsManagerId], references: [id])
+  
+  status                SchoolStatus          @default(PENDING_ONBOARDING)
+  
+  // Access Control Relations (School Coordinators)
+  coordinators          User[]                @relation("SchoolCoordinator")
+  
+  // Program Config & Deliverables
+  programConfig         SchoolProgramConfig?
+  sessions              SchoolSession[]
+  teachers              SchoolTeacher[]
+  reports               SchoolReport[]
+  kitDispatches         SchoolKitDispatch[]
+  mediaAssets           SchoolMediaAsset[]
+  badge                 SchoolBadge?
+  noticeBoardItems      SchoolNoticeBoardItem[]
+  students              SchoolStudent[]
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+enum SchoolTier {
+  SEEDING
+  GROW
+  THRIVE
+  CUSTOM
+}
+
+enum SchoolStatus {
+  PENDING_ONBOARDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model SchoolProgramConfig {
+  id                         String    @id @default(uuid())
+  schoolId                   String    @unique
+  school                     School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  gradesEnrolled             String[]  // Multi-select grades: ["Grade 5", "Grade 6", ...]
+  sessionsPerGrade           Int       @default(3) // 1-5 sessions per grade
+  totalStudentsContracted    Int       @default(0)
+  
+  // Teacher Training
+  teacherTrainingSessions    Int       @default(1)
+  teacherTrainingDuration    String    @default("HALF_DAY") // HALF_DAY / FULL_DAY
+  teacherTrainingModules     String[]  // Puberty Literacy, Mental Health, POCSO, etc.
+  
+  // Parent Welcome Kits
+  parentWelcomeKit           Boolean   @default(false)
+  parentWelcomeKitQuantity   Int       @default(0)
+  
+  // Deliverable Settings
+  reportingFrequency         String    @default("QUARTERLY") // QUARTERLY / SEMI_ANNUAL / ANNUAL
+  certifiedSchoolBadge       Boolean   @default(true)
+  mediaCoverageSupport       Boolean   @default(false)
+  mediaCoverageTier          String?
+  socialMediaContentPack     Boolean   @default(true)
+  annualWellnessDay          Boolean   @default(false)
+  annualWellnessDayDate      DateTime?
+  
+  customDeliverables         Json?     // Bespoke deliverables JSON
+  
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+}
+
+model SchoolSession {
+  id                 String              @id @default(uuid())
+  schoolId           String
+  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  grade              String              // e.g., "Grade 5"
+  curriculumModule   String              // e.g., "My Body My Story"
+  proposedDate       DateTime
+  proposedTime       String?             // e.g., "10:30 AM"
+  venue              String?             // e.g., "Auditorium"
+  
+  facilitatorId      String?
+  facilitator        User?               @relation("FacilitatorSchoolSessions", fields: [facilitatorId], references: [id])
+  
+  status             SessionStatus       @default(SCHEDULED)
+  
+  // Post-Execution fields (entered by Ops / Facilitator)
+  actualDate         DateTime?
+  studentHeadcount   Int?
+  attendanceRate     Float?              // percentage
+  facilitatorNotes   String?             // Internal Ops commentary
+  publicNotes        String?             // Visible to school coordinator
+  photos             String[]            @default([]) // Facilitator photos
+  
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+enum SessionStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  RESCHEDULED
+  CANCELLED
+}
+
+model SchoolTeacher {
+  id                String    @id @default(uuid())
+  schoolId          String
+  school            School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  name              String
+  designation       String?
+  email             String
+  phone             String?
+  
+  completedModules  String[]  @default([]) // Puberty Literacy, Mental Health, POCSO, etc.
+  handbookDelivered Boolean   @default(false)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model SchoolReport {
+  id             String         @id @default(uuid())
+  schoolId       String
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  title          String         // e.g., "Q1 Programme Report"
+  type           ReportType     @default(QUARTERLY)
+  pdfUrl         String
+  opsCommentary  String?
+  status         ReportStatus   @default(DRAFT)
+  publishedAt    DateTime?
+  
+  downloadCount  Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+enum ReportType {
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL_IMPACT
+}
+
+enum ReportStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model SchoolKitDispatch {
+  id             String         @id @default(uuid())
+  schoolId       String
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  dispatchDate   DateTime
+  carrier        String?
+  trackingNumber String?
+  quantity       Int
+  status         DispatchStatus @default(DISPATCHED)
+  
+  receiptDate    DateTime?
+  notes          String?
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+enum DispatchStatus {
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  ACKNOWLEDGED
+}
+
+model SchoolMediaAsset {
+  id           String    @id @default(uuid())
+  schoolId     String
+  school       School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  title        String
+  type         AssetType @default(PHOTO_GALLERY)
+  fileUrl      String
+  thumbnailUrl String?
+  month        String?   // e.g., "September"
+  caption      String?
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+enum AssetType {
+  PR_ARTICLE
+  SOCIAL_PACK
+  PHOTO_GALLERY
+  IMPACT_VIDEO
+}
+
+model SchoolBadge {
+  id                   String    @id @default(uuid())
+  schoolId             String    @unique
+  school               School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  yearOfCertification  Int
+  isFoundingSchool     Boolean   @default(false)
+  badgeUrl             String
+  criteriaCompletion   Float     @default(0.0) // 0-100% calculation progress
+  issuedAt             DateTime  @default(now())
+  renewsAt             DateTime
+  
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model SchoolNoticeBoardItem {
+  id            String    @id @default(uuid())
+  schoolId      String
+  school        School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  title         String
+  content       String
+  attachmentUrl String?
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model SchoolStudent {
+  id               String         @id @default(uuid())
+  schoolId         String
+  school           School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  anonymizedId     String         @unique // e.g. INF-STUD-2025-001
+  grade            String         // Grade 5, Grade 6, etc.
+  section          String?        // A, B, C, etc.
+  activationStatus String         @default("PENDING") // PENDING, ACTIVATED, ACTIVE
+  activatedAt      DateTime?
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }

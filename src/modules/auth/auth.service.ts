@@ -345,9 +345,18 @@ export class AuthService {
       where: { username },
     });
 
-    if (!user || (user.role !== "ADMIN" && user.role !== "EXPERT") || !user.password) {
+    const allowedRoles = ["ADMIN", "EXPERT", "OPS_MANAGER", "SCHOOL_COORDINATOR"];
+    if (!user || !allowedRoles.includes(user.role) || !user.password) {
       logger.warn({ username, role: user?.role }, "[AUTH] Login failed: Invalid credentials or insufficient role");
       throw new AppError("Invalid username or password.", 401);
+    }
+
+    // Enforce 24-hour expiry on coordinator temporary passwords
+    if (user.role === "SCHOOL_COORDINATOR" && user.accountStatus === "PENDING_SETUP") {
+      if (user.tempPasswordExpiresAt && new Date() > user.tempPasswordExpiresAt) {
+        logger.warn({ username }, "[AUTH] Login failed: Temporary password expired");
+        throw new AppError("Your temporary password has expired (24h limit). Please request a reset.", 403);
+      }
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -381,6 +390,7 @@ export class AuthService {
       userId: user.id,
       username: user.username,
       role: user.role,
+      requiresPasswordReset: user.role === "SCHOOL_COORDINATOR" && user.accountStatus === "PENDING_SETUP",
       peerApplicationStatus: userWithApp?.peerApplication?.status || 'none'
     };
   }
@@ -391,5 +401,76 @@ export class AuthService {
       data: { onboardingStep: step },
     });
     return { success: true, onboardingStep: step };
+  }
+
+  // ── 6. Reset Coordinator Password ──────────────────────────────────────────
+  static async resetCoordinatorPassword(userId: string, data: any) {
+    const { newPassword } = data;
+    if (!newPassword || newPassword.length < 6) {
+      throw new AppError("Password must be at least 6 characters.", 400);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.role !== "SCHOOL_COORDINATOR") {
+      throw new AppError("Invalid user or unauthorized operation.", 403);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        accountStatus: "ACTIVE",
+        tempPasswordExpiresAt: null,
+      },
+    });
+
+    return { success: true, message: "Password updated successfully. Account is now active." };
+  }
+
+  // ── 7. Request New Credentials (if expired) ──────────────────────────────────
+  static async requestNewCredentials(data: any) {
+    const { username, phone } = data;
+    if (!username || !phone) {
+      throw new AppError("Username (email) and Phone number are required.", 400);
+    }
+
+    // Standardize phone
+    const normalized = phone.startsWith("+") ? phone : `+91${phone}`;
+
+    const user = await prisma.user.findFirst({
+      where: {
+        username,
+        phone: normalized,
+        role: "SCHOOL_COORDINATOR",
+        accountStatus: "PENDING_SETUP",
+      },
+    });
+
+    if (!user) {
+      throw new AppError("No pending coordinator account matching these details was found.", 404);
+    }
+
+    const rawTempPassword = crypto.randomBytes(4).toString("hex");
+    const hashedPassword = await bcrypt.hash(rawTempPassword, 10);
+    const tempPasswordExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        tempPasswordExpiresAt,
+      },
+    });
+
+    return {
+      success: true,
+      tempPassword: rawTempPassword,
+      message: "A new temporary password has been generated successfully.",
+    };
   }
 }

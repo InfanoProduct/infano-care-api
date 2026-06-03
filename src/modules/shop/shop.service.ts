@@ -217,9 +217,11 @@ export class ShopService {
     // 2. Automatically create program enrollment if ordered item is a program
     if (userId) {
       for (const item of order.items) {
-        const isProg = item.book.id.endsWith("-private") || item.book.id.endsWith("-group");
+        const book = item.book as any;
+        if (!book) continue;
+        const isProg = book.id.endsWith("-private") || book.id.endsWith("-group");
         if (isProg) {
-          const programTitle = item.book.id.split("-")[0].toUpperCase();
+          const programTitle = book.id.split("-")[0].toUpperCase();
           const program = await prisma.program.findFirst({
             where: { title: { equals: programTitle, mode: "insensitive" } }
           });

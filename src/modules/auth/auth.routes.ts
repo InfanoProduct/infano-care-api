@@ -52,4 +52,7 @@ router.post("/refresh",     AuthController.refresh);
 
 router.post("/logout",                 AuthController.logout);
 
+router.post("/coordinator/reset-password", authenticate, AuthController.resetCoordinatorPassword);
+router.post("/coordinator/request-credentials", AuthController.requestNewCredentials);
+
 export default router;
