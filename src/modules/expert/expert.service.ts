@@ -4,7 +4,7 @@ import { ProgramsService } from "../programs/programs.service.js";
 
 export class ExpertService {
   static async getEnrollments() {
-    return await prisma.programEnrollment.findMany({
+    const enrollments = await prisma.programEnrollment.findMany({
       where: {
         status: "ACTIVE"
       },
@@ -18,6 +18,18 @@ export class ExpertService {
       },
       orderBy: { createdAt: "desc" }
     });
+    
+    // Map guestName back into the user display name if it exists
+    return enrollments.map(e => ({
+      ...e,
+      user: {
+        ...e.user,
+        profile: {
+          ...e.user?.profile,
+          displayName: e.guestName || e.user?.profile?.displayName || e.user?.username
+        }
+      }
+    }));
   }
 
   static async getEnrollmentDetails(enrollmentId: string) {
@@ -50,6 +62,13 @@ export class ExpertService {
     return {
       enrollment: {
         ...enrollment,
+        user: {
+          ...enrollment.user,
+          profile: {
+            ...enrollment.user?.profile,
+            displayName: enrollment.guestName || enrollment.user?.profile?.displayName || enrollment.user?.username
+          }
+        },
         program: {
           ...enrollment.program,
           sessionsList: ProgramsService.getMockSessionsForProgram(enrollment.program.title)

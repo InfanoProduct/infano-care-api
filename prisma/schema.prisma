@@ -26,6 +26,7 @@ model User {
   otpSendOn               DateTime?
   parentEmail             String?
   phone                   String                   @unique
+  email                   String?                  @unique
   privacyAcceptedAt       DateTime?
   role                    UserRole                 @default(TEEN)
   termsAcceptedAt         DateTime?
@@ -1316,6 +1317,8 @@ model ProgramEnrollment {
   type      String
   status    String   @default("ACTIVE")
   pricePaid Float
+  guestName String?
+  guestEmail String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

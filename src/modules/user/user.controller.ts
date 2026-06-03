@@ -95,4 +95,40 @@ export class UserController {
       next(error);
     }
   }
+
+  static async updateProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId || (req as any).user?.id;
+      const { displayName, email } = req.body;
+
+      // Update User email
+      await prisma.user.update({
+        where: { id: userId },
+        data: { email }
+      });
+
+      // Update/Upsert Profile displayName
+      const updatedProfile = await prisma.profile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          displayName: displayName || ""
+        },
+        update: {
+          displayName: displayName || ""
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        profile: updatedProfile,
+        email
+      });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        return res.status(400).json({ error: "Email address is already in use by another account." });
+      }
+      next(error);
+    }
+  }
 }

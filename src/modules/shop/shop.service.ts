@@ -94,7 +94,7 @@ export class ShopService {
         const { coupon, discountAmount: calculatedDiscount } = await this.validateCoupon(data.couponCode, subtotal);
         discountAmount = calculatedDiscount;
         couponId = coupon.id;
-        
+
         // Increment coupon usage
         await tx.discountCoupon.update({
           where: { id: coupon.id },
@@ -105,13 +105,13 @@ export class ShopService {
       // 3. Calculate GST and Total (Production Grade Reverse Calculation)
       const taxableSubtotal = subtotal - discountAmount;
       const deliveryCharge = 0; // Free delivery for all orders
-      
+
       // Reverse GST calculation: Price = Taxable + (Taxable * Rate) => Taxable = Price / (1 + Rate)
       const taxableAmount = Math.round((taxableSubtotal / (1 + GST_RATE)) * 100) / 100;
       const gstAmount = Math.round((taxableSubtotal - taxableAmount) * 100) / 100;
       const cgstAmount = Math.round((gstAmount / 2) * 100) / 100;
       const sgstAmount = Math.round((gstAmount / 2) * 100) / 100;
-      
+
       const totalAmount = taxableSubtotal + deliveryCharge;
 
       // 4. Create Razorpay order if needed
@@ -148,23 +148,46 @@ export class ShopService {
           pincode: data.pincode,
           razorpayOrderId,
           couponId,
+          orderStatus: data.paymentMethod === PaymentMethod.COD ? OrderStatus.PLACED : OrderStatus.PLACED,
           gstNumber: data.gstNumber,
           items: {
             create: orderItems,
           },
         },
-        include: { items: { include: { book: true } } }
+        include: {
+          items: true,
+        }
       });
 
-      // 6. Reduce stock immediately (will rollback if transaction fails)
-      for (const item of orderItems) {
-        await tx.book.update({
-          where: { id: item.bookId },
-          data: { stock: { decrement: item.quantity } }
+      // 6. Update User Profile if userId is present (as requested)
+      if (data.userId) {
+        await tx.user.update({
+          where: { id: data.userId },
+          data: {
+            email: data.guestEmail,
+            profile: {
+              upsert: {
+                create: { displayName: data.guestName || "User" },
+                update: { displayName: data.guestName },
+              }
+            }
+          }
         });
       }
 
+      // 7. Manage Inventory
+      if (data.paymentMethod === PaymentMethod.COD) {
+        for (const item of orderItems) {
+          await tx.book.update({
+            where: { id: item.bookId },
+            data: { stock: { decrement: item.quantity } }
+          });
+        }
+      }
+
       return order;
+    }, {
+      timeout: 20000
     });
   }
 
@@ -226,7 +249,7 @@ export class ShopService {
             where: { title: { equals: programTitle, mode: "insensitive" } }
           });
           if (program) {
-            const type = item.book.id.endsWith("-private") ? "PRIVATE" : "GROUP";
+            const type = (item.book as any).id.endsWith("-private") ? "PRIVATE" : "GROUP";
             // Check if already enrolled
             const existingEnrollment = await prisma.programEnrollment.findUnique({
               where: {
@@ -243,7 +266,9 @@ export class ShopService {
                   programId: program.id,
                   type,
                   pricePaid: item.price,
-                  status: "ACTIVE"
+                  status: "ACTIVE",
+                  guestName: order.guestName,
+                  guestEmail: order.guestEmail,
                 }
               });
             }
@@ -339,7 +364,7 @@ export class ShopService {
       await this.completeOrder(razorpayOrderId, razorpayPaymentId);
     } else if (event.event === "payment.failed") {
       const { order_id: razorpayOrderId } = event.payload.payment.entity;
-      
+
       await prisma.order.update({
         where: { razorpayOrderId },
         data: { paymentStatus: PaymentStatus.FAILED }
