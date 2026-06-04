@@ -572,6 +572,118 @@ export class ProgramsService {
     });
   }
 
+  static async adminCreateEnrollment(data: any) {
+    const { studentName, phone, email, role, programId, type, pricePaid } = data;
+
+    if (!studentName || !phone || !programId || !type) {
+      throw new AppError("Missing required fields: studentName, phone, programId, type", 400);
+    }
+
+    // 1. Fetch program
+    const program = await prisma.program.findUnique({
+      where: { id: programId },
+    });
+    if (!program) {
+      throw new AppError("Program not found", 404);
+    }
+
+    // Normalize phone
+    const { normalizePhone } = await import("../../common/utils/phone.js");
+    const normalizedPhone = normalizePhone(phone);
+
+    // 2. Find or create user
+    let user = await prisma.user.findUnique({
+      where: { phone: normalizedPhone }
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          phone: normalizedPhone,
+          email: email || null,
+          role: role as any,
+          accountStatus: "PENDING_SETUP",
+          onboardingStep: 1,
+          profile: {
+            create: {
+              displayName: studentName,
+              totalPoints: 0,
+            }
+          }
+        }
+      });
+    } else {
+      // If user exists, optionally update email if not set
+      if (email && !user.email) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { email }
+        });
+      }
+      // Check if profile exists
+      const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+      if (!profile) {
+        await prisma.profile.create({
+          data: {
+            userId: user.id,
+            displayName: studentName,
+            totalPoints: 0
+          }
+        });
+      } else if (!profile.displayName) {
+        await prisma.profile.update({
+          where: { userId: user.id },
+          data: { displayName: studentName }
+        });
+      }
+    }
+
+    // Determine price
+    const finalPrice = pricePaid !== undefined && pricePaid !== "" ? Number(pricePaid) : (type === "PRIVATE" ? program.pricePrivate : program.priceGroup);
+
+    // 3. Create program enrollment
+    try {
+      const enrollment = await prisma.programEnrollment.create({
+        data: {
+          userId: user.id,
+          programId,
+          type,
+          pricePaid: finalPrice,
+          status: "ACTIVE",
+          guestName: studentName,
+          guestEmail: email || null,
+        },
+        include: {
+          program: {
+            select: {
+              title: true,
+              classRange: true
+            }
+          },
+          user: {
+            select: {
+              username: true,
+              phone: true,
+              parentEmail: true,
+              profile: {
+                select: {
+                  displayName: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      return { success: true, message: "Enrolled successfully", enrollment };
+    } catch (e: any) {
+      if (e.code === "P2002") {
+        throw new AppError("Student is already enrolled in this program", 400);
+      }
+      throw e;
+    }
+  }
+
   /* =========================================
    * Demo Sessions Methods
    * ========================================= */
@@ -581,10 +693,13 @@ export class ProgramsService {
       throw new AppError("Missing required fields for booking a demo session (parentName, phone, classRange, slotDate, slotTime)", 400);
     }
 
+    const { normalizePhone } = await import("../../common/utils/phone.js");
+    const normalizedPhone = normalizePhone(data.phone);
+
     return prisma.demoSession.create({
       data: {
         parentName: data.parentName,
-        phone: data.phone,
+        phone: normalizedPhone,
         email: data.email || null,
         classRange: data.classRange,
         confidence: data.confidence || "",
@@ -600,6 +715,20 @@ export class ProgramsService {
       }
     });
   }
+
+  static async getUserDemosByPhone(phone: string) {
+    if (!phone) {
+      throw new AppError("Phone number is required", 400);
+    }
+    const { normalizePhone } = await import("../../common/utils/phone.js");
+    const normalizedPhone = normalizePhone(phone);
+
+    return prisma.demoSession.findMany({
+      where: { phone: normalizedPhone },
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
 
   static async adminListDemos() {
     return prisma.demoSession.findMany({
@@ -617,4 +746,46 @@ export class ProgramsService {
       data: { status }
     });
   }
+
+  static async checkUserByPhone(phone: string) {
+    if (!phone) {
+      throw new AppError("Phone number is required", 400);
+    }
+    const { normalizePhone } = await import("../../common/utils/phone.js");
+    const normalizedPhone = normalizePhone(phone);
+
+    const user = await prisma.user.findUnique({
+      where: { phone: normalizedPhone },
+      include: {
+        profile: true,
+        programEnrollments: {
+          select: {
+            programId: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return {
+        exists: false,
+        user: null,
+        enrolledProgramIds: []
+      };
+    }
+
+    const typedUser = user as any;
+    return {
+      exists: true,
+      user: {
+        id: typedUser.id,
+        phone: typedUser.phone,
+        email: typedUser.email || typedUser.parentEmail || "",
+        role: typedUser.role,
+        name: typedUser.profile?.displayName || ""
+      },
+      enrolledProgramIds: (typedUser.programEnrollments || []).map((e: any) => e.programId)
+    };
+  }
 }
+

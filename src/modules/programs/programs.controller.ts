@@ -53,6 +53,20 @@ export class ProgramsController {
     }
   }
 
+  static async userDemos(req: any, res: Response, next: NextFunction) {
+    try {
+      const userPhone = req.user.phone;
+      if (!userPhone) {
+        return res.status(200).json({ success: true, data: [] });
+      }
+      const demos = await ProgramsService.getUserDemosByPhone(userPhone);
+      res.status(200).json({ success: true, data: demos });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+
   // --- Admin-Facing Controller Methods ---
 
   static async adminList(_req: Request, res: Response, next: NextFunction) {
@@ -113,6 +127,15 @@ export class ProgramsController {
     }
   }
 
+  static async adminCreateEnrollment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ProgramsService.adminCreateEnrollment(req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async bookDemo(req: Request, res: Response, next: NextFunction) {
     try {
       const demo = await ProgramsService.bookDemoSession(req.body);
@@ -143,4 +166,18 @@ export class ProgramsController {
       next(error);
     }
   }
+
+  static async checkUserByPhone(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { phone } = req.query;
+      if (!phone) {
+        return res.status(400).json({ message: "Phone number query parameter is required" });
+      }
+      const result = await ProgramsService.checkUserByPhone(phone as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
+

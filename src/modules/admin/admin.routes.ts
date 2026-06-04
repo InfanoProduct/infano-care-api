@@ -93,7 +93,10 @@ router.patch("/programs/:id", ProgramsController.adminUpdate);
 router.delete("/programs/:id", ProgramsController.adminDelete);
 
 // Learning Programs Enrollments
+router.get("/programs/check-user", ProgramsController.checkUserByPhone);
 router.get("/programs/enrollments", ProgramsController.adminListEnrollments);
+router.post("/programs/enrollments", ProgramsController.adminCreateEnrollment);
+
 router.patch("/programs/enrollments/:id", ProgramsController.adminUpdateEnrollmentStatus);
 
 // Learning Programs Demo Sessions Bookings
