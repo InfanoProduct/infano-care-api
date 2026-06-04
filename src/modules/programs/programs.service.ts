@@ -577,8 +577,8 @@ export class ProgramsService {
    * ========================================= */
 
   static async bookDemoSession(data: any) {
-    if (!data.parentName || !data.phone || !data.classRange) {
-      throw new AppError("Missing required fields for booking a demo session", 400);
+    if (!data.parentName || !data.phone || !data.classRange || !data.slotDate || !data.slotTime) {
+      throw new AppError("Missing required fields for booking a demo session (parentName, phone, classRange, slotDate, slotTime)", 400);
     }
 
     return prisma.demoSession.create({
