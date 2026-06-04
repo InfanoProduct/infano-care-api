@@ -169,7 +169,16 @@ export class ParentService {
 
     // 2. Active Journey (latest UserProgress)
     const activeProgress = await prisma.userProgress.findFirst({
-      where: { userId: teenId },
+      where: { 
+        userId: teenId,
+        episode: {
+          journey: {
+            slug: {
+              not: "peerline-mentor-certification"
+            }
+          }
+        }
+      },
       orderBy: { updatedAt: "desc" },
       include: {
         episode: {

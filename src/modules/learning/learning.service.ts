@@ -93,9 +93,10 @@ export class LearningService {
 
     const totalAwardedPoints = episode.points || 75; // Standardized with database value or Quest Link Base
 
-    const progress = await prisma.userProgress.update({
+    const progress = await prisma.userProgress.upsert({
       where: { userId_episodeId: { userId, episodeId } },
-      data: { completed: true },
+      update: { completed: true },
+      create: { userId, episodeId, completed: true }
     });
 
     // Save Reflection
