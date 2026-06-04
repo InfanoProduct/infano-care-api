@@ -1301,6 +1301,7 @@ model Program {
   sessions       Int
   duration       String
   topics         String[]
+  curriculum     Json?                   @default("[]")
   pricePrivate   Float
   priceGroup     Float
   isActive       Boolean                 @default(true)

@@ -242,7 +242,9 @@ export class ProgramsService {
       return programs.map(p => ({
         ...p,
         isEligible: true,
-        sessionsList: this.getMockSessionsForProgram(p.title)
+        sessionsList: p.curriculum && Array.isArray(p.curriculum) && p.curriculum.length > 0
+          ? (p.curriculum as any[])
+          : this.getMockSessionsForProgram(p.title)
       }));
     }
 
@@ -255,7 +257,9 @@ export class ProgramsService {
       return programs.map(p => ({
         ...p,
         isEligible: true,
-        sessionsList: this.getMockSessionsForProgram(p.title)
+        sessionsList: p.curriculum && Array.isArray(p.curriculum) && p.curriculum.length > 0
+          ? (p.curriculum as any[])
+          : this.getMockSessionsForProgram(p.title)
       }));
     }
 
@@ -277,7 +281,9 @@ export class ProgramsService {
         isEligible,
         userAge: age,
         userEstimatedClass: estimatedClass,
-        sessionsList: this.getMockSessionsForProgram(program.title)
+        sessionsList: program.curriculum && Array.isArray(program.curriculum) && program.curriculum.length > 0
+          ? (program.curriculum as any[])
+          : this.getMockSessionsForProgram(program.title)
       };
     });
   }
@@ -310,7 +316,9 @@ export class ProgramsService {
 
     return {
       ...program,
-      sessionsList: this.getMockSessionsForProgram(program.title)
+      sessionsList: program.curriculum && Array.isArray(program.curriculum) && program.curriculum.length > 0
+        ? (program.curriculum as any[])
+        : this.getMockSessionsForProgram(program.title)
     };
   }
 
@@ -455,9 +463,15 @@ export class ProgramsService {
    * ========================================= */
 
   static async adminList() {
-    return prisma.program.findMany({
+    const programs = await prisma.program.findMany({
       orderBy: { minClass: "asc" }
     });
+    return programs.map(p => ({
+      ...p,
+      sessionsList: p.curriculum && Array.isArray(p.curriculum) && p.curriculum.length > 0
+        ? (p.curriculum as any[])
+        : this.getMockSessionsForProgram(p.title)
+    }));
   }
 
   static async adminCreate(data: any) {
@@ -479,7 +493,8 @@ export class ProgramsService {
         topics: Array.isArray(data.topics) ? data.topics : [],
         pricePrivate: parseFloat(data.pricePrivate) || 0,
         priceGroup: parseFloat(data.priceGroup) || 0,
-        isActive: data.isActive !== undefined ? data.isActive : true
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        curriculum: data.curriculum !== undefined ? data.curriculum : []
       }
     });
   }
@@ -504,7 +519,8 @@ export class ProgramsService {
         topics: Array.isArray(data.topics) ? data.topics : undefined,
         pricePrivate: data.pricePrivate !== undefined ? parseFloat(data.pricePrivate) : undefined,
         priceGroup: data.priceGroup !== undefined ? parseFloat(data.priceGroup) : undefined,
-        isActive: data.isActive !== undefined ? data.isActive : undefined
+        isActive: data.isActive !== undefined ? data.isActive : undefined,
+        curriculum: data.curriculum !== undefined ? data.curriculum : undefined
       }
     });
   }
