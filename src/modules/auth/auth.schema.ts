@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-// Phone must be E.164 format e.g. +919876543210
+// Phone must be E.164 format with supported country codes
 const phoneSchema = z
   .string()
-  .regex(/^\+91\d{10}$/, "Phone must be in +91XXXXXXXXXX format");
+  .regex(/^\+(91\d{10}|1\d{10}|44\d{10,11}|65\d{8}|971\d{9}|61\d{9})$/, "Phone must be in a valid format with country code");
 
 export const sendOtpSchema = z.object({
   phone:    phoneSchema,

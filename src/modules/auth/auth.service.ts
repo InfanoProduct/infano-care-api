@@ -63,7 +63,7 @@ export class AuthService {
     
     // 1. Validation and Normalization
     const finalPhone = normalizePhone(phone);
-    const pattern = /^\+91\d{10}$/;
+    const pattern = /^\+(91\d{10}|1\d{10}|44\d{10,11}|65\d{8}|971\d{9}|61\d{9})$/;
     if (!pattern.test(finalPhone)) {
       logger.warn({ phone, finalPhone }, "[AUTH] Invalid phone number pattern");
       throw new AppError("Invalid phone number, please try again", 400);
