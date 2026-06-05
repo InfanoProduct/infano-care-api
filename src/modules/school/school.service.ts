@@ -1,5 +1,6 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import { normalizePhone } from "../../common/utils/phone.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -88,8 +89,8 @@ export class SchoolService {
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { phone: coordinatorPhone },
-          { username: coordinatorEmail }
+          { phone: normalizePhone(coordinatorPhone) },
+          { username: coordinatorEmail.trim().toLowerCase() }
         ]
       }
     });
@@ -135,8 +136,8 @@ export class SchoolService {
       // 4. Create local User account mapping coordinator to SchoolCoordinator role
       const coordinatorUser = await tx.user.create({
         data: {
-          phone: coordinatorPhone,
-          username: coordinatorEmail,
+          phone: normalizePhone(coordinatorPhone),
+          username: coordinatorEmail.trim().toLowerCase(),
           password: hashedPassword,
           role: "SCHOOL_COORDINATOR",
           schoolId: school.id,
