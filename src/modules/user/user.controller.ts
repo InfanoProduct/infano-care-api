@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { UserService } from "./user.service.js";
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import { StorageService } from "../../common/utils/storage.js";
 
 export class UserController {
   static async getMe(req: Request, res: Response, next: NextFunction) {
@@ -128,6 +129,40 @@ export class UserController {
       if (error.code === 'P2002') {
         return res.status(400).json({ error: "Email address is already in use by another account." });
       }
+      next(error);
+    }
+  }
+
+  static async uploadAvatar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId || (req as any).user?.id;
+      if (!req.file) {
+        throw new AppError("No file uploaded", 400);
+      }
+
+      // Upload to local storage under 'avatars' folder
+      const { url } = await StorageService.uploadFile(req.file.path, "avatars");
+
+      // Update/Upsert Profile with the new avatarUrl
+      const updatedProfile = await prisma.profile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          displayName: "",
+          avatarUrl: url
+        },
+        update: {
+          avatarUrl: url
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Profile photo uploaded successfully",
+        avatarUrl: url,
+        profile: updatedProfile
+      });
+    } catch (error) {
       next(error);
     }
   }

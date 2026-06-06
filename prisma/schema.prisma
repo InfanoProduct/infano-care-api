@@ -97,6 +97,7 @@ model Profile {
   displayName            String
   pronouns               String?
   journeyName            String?
+  avatarUrl              String?
   totalPoints            Int       @default(0)
   bloomLevel             Int       @default(1)
   mentorStatus           String    @default("none")
