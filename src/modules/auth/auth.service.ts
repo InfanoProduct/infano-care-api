@@ -345,8 +345,8 @@ export class AuthService {
 
     logger.info({ username, passwordLength: password.length }, "[AUTH] adminLogin attempt");
 
-    const user = await prisma.user.findUnique({
-      where: { username },
+    const user = await prisma.user.findFirst({
+      where: { username: { equals: username, mode: 'insensitive' } },
     });
 
     const allowedRoles = ["ADMIN", "EXPERT", "OPS_MANAGER", "SCHOOL_COORDINATOR"];
