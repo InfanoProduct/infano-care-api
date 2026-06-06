@@ -339,10 +339,14 @@ export class AuthService {
 
   // ── 5. Admin Login ──────────────────────────────────────────────────────────
   static async adminLogin(username: string, password: string) {
-    logger.info({ username }, "[AUTH] adminLogin attempt");
+    // Trim whitespace to handle copy-paste issues with credentials
+    username = username.trim().toLowerCase();
+    password = password.trim();
 
-    const user = await prisma.user.findUnique({
-      where: { username },
+    logger.info({ username, passwordLength: password.length }, "[AUTH] adminLogin attempt");
+
+    const user = await prisma.user.findFirst({
+      where: { username: { equals: username, mode: 'insensitive' } },
     });
 
     const allowedRoles = ["ADMIN", "EXPERT", "OPS_MANAGER", "SCHOOL_COORDINATOR"];
@@ -439,12 +443,13 @@ export class AuthService {
       throw new AppError("Username (email) and Phone number are required.", 400);
     }
 
-    // Standardize phone
-    const normalized = phone.startsWith("+") ? phone : `+91${phone}`;
+    // Standardize inputs
+    const normalizedUsername = username.trim().toLowerCase();
+    const normalized = normalizePhone(phone);
 
     const user = await prisma.user.findFirst({
       where: {
-        username,
+        username: normalizedUsername,
         phone: normalized,
         role: "SCHOOL_COORDINATOR",
         accountStatus: "PENDING_SETUP",
