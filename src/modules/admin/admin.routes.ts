@@ -101,6 +101,7 @@ router.patch("/programs/enrollments/:id", ProgramsController.adminUpdateEnrollme
 
 // Learning Programs Demo Sessions Bookings
 router.get("/programs/demos", ProgramsController.adminListDemos);
+router.get("/programs/demos/:id", ProgramsController.adminGetDemo);
 router.patch("/programs/demos/:id", ProgramsController.adminUpdateDemoStatus);
 
 export default router;

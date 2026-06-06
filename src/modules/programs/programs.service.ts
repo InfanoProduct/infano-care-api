@@ -747,6 +747,16 @@ export class ProgramsService {
     });
   }
 
+  static async adminGetDemo(id: string) {
+    const demo = await prisma.demoSession.findUnique({
+      where: { id }
+    });
+    if (!demo) {
+      throw new AppError("Demo session booking not found", 404);
+    }
+    return demo;
+  }
+
   static async checkUserByPhone(phone: string) {
     if (!phone) {
       throw new AppError("Phone number is required", 400);

@@ -500,4 +500,154 @@ export class ParentService {
 
     return Array.from(uniquePosts.values());
   }
+
+  static async getNotifications(userId: string) {
+    try {
+      // 1. Check for latest WeeklyChallenge
+      const latestChallenge = await prisma.weeklyChallenge.findFirst({
+        orderBy: { startDate: "desc" }
+      });
+
+      // 2. Check for latest published BlogPost
+      const latestPost = await prisma.blogPost.findFirst({
+        where: { isPublished: true },
+        orderBy: { createdAt: "desc" }
+      });
+
+      // 3. Check for linked teen inactivity
+      const parentLinks = await prisma.parentLink.findMany({
+        where: { parentId: userId, status: "LINKED" },
+        include: { teen: { include: { profile: true } } }
+      });
+      for (const link of parentLinks) {
+        if (link.teen) {
+          const inactiveDuration = Date.now() - link.teen.updatedAt.getTime();
+          if (inactiveDuration >= 7 * 24 * 60 * 60 * 1000) {
+            const teenName = link.teen.profile?.displayName || "your daughter";
+            const existing = await prisma.notificationHistory.findFirst({
+              where: { userId, type: "inactivityAlert", body: { contains: teenName } }
+            });
+            if (!existing) {
+              await prisma.notificationHistory.create({
+                data: {
+                  userId,
+                  type: "inactivityAlert",
+                  title: "daughter inactivity alert",
+                  body: `${teenName} has not logged in for 7 days. consider starting a conversation.`,
+                  sentAt: new Date(Date.now() - 24 * 60 * 60 * 1000) // 1 day ago
+                }
+              });
+            }
+          }
+        }
+      }
+
+      // 4. Check for upcoming expert sessions
+      const sessions = await prisma.expertSessionSchedule.findMany({
+        where: {
+          userId,
+          status: "SCHEDULED",
+          scheduledAt: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 24 * 60 * 60 * 1000) // within next 24 hours
+          }
+        },
+        include: { program: true }
+      });
+      for (const session of sessions) {
+        const durationMs = session.scheduledAt.getTime() - Date.now();
+        const hoursLeft = Math.ceil(durationMs / (60 * 60 * 1000));
+        const programTitle = session.program?.title ? session.program.title.toLowerCase() : "expert session";
+        const alertBody = `reminder: expert session for program '${programTitle}' starts in ${hoursLeft} hours.`;
+        
+        const existing = await prisma.notificationHistory.findFirst({
+          where: { userId, type: "upcomingSessions", body: { contains: programTitle } }
+        });
+        if (!existing) {
+          await prisma.notificationHistory.create({
+            data: {
+              userId,
+              type: "upcomingSessions",
+              title: "upcoming expert session",
+              body: alertBody,
+              sentAt: new Date()
+            }
+          });
+        }
+      }
+
+      // 5. Generate weekly challenge prompt notification
+      if (latestChallenge) {
+        const themeLower = latestChallenge.theme.toLowerCase();
+        const existing = await prisma.notificationHistory.findFirst({
+          where: { userId, type: "weeklyPrompt", body: { contains: themeLower } }
+        });
+        if (!existing) {
+          await prisma.notificationHistory.create({
+            data: {
+              userId,
+              type: "weeklyPrompt",
+              title: "new weekly prompt",
+              body: `fresh conversation starter: '${themeLower}' is now active.`,
+              sentAt: latestChallenge.createdAt
+            }
+          });
+        }
+      }
+
+      // 6. Generate blog post notification
+      if (latestPost) {
+        const titleLower = latestPost.title.toLowerCase();
+        const existing = await prisma.notificationHistory.findFirst({
+          where: { userId, type: "newResource", body: { contains: titleLower } }
+        });
+        if (!existing) {
+          await prisma.notificationHistory.create({
+            data: {
+              userId,
+              type: "newResource",
+              title: "new library resource",
+              body: `expert article: '${titleLower}' has been added to the library.`,
+              sentAt: latestPost.createdAt
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate real database notifications:', err);
+    }
+
+    // Return all active (un-dismissed) notifications
+    return await prisma.notificationHistory.findMany({
+      where: {
+        userId,
+        openedAt: null
+      },
+      orderBy: { sentAt: "desc" }
+    });
+  }
+
+  static async dismissNotification(userId: string, id: string) {
+    return prisma.notificationHistory.updateMany({
+      where: {
+        id,
+        userId
+      },
+      data: {
+        openedAt: new Date()
+      }
+    });
+  }
+
+  static async clearAllNotifications(userId: string) {
+    return prisma.notificationHistory.updateMany({
+      where: {
+        userId,
+        openedAt: null
+      },
+      data: {
+        openedAt: new Date()
+      }
+    });
+  }
 }

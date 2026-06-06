@@ -167,6 +167,15 @@ export class ProgramsController {
     }
   }
 
+  static async adminGetDemo(req: Request, res: Response, next: NextFunction) {
+    try {
+      const demo = await ProgramsService.adminGetDemo(req.params.id as string);
+      res.status(200).json(demo);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async checkUserByPhone(req: Request, res: Response, next: NextFunction) {
     try {
       const { phone } = req.query;

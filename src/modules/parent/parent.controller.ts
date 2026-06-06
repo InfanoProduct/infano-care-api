@@ -221,4 +221,41 @@ export class ParentController {
       res.status(400).json({ error: error.message || "Failed to fetch parent bookmarks" });
     }
   }
+
+  static async getNotifications(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      const notifications = await ParentService.getNotifications(userId);
+      res.json(notifications);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to fetch notifications" });
+    }
+  }
+
+  static async dismissNotification(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { id } = req.params;
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      await ParentService.dismissNotification(userId, id as string);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to dismiss notification" });
+    }
+  }
+
+  static async clearAllNotifications(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      await ParentService.clearAllNotifications(userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to clear all notifications" });
+    }
+  }
 }

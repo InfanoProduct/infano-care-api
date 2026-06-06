@@ -11,6 +11,9 @@ router.use(requireAuth);
 
 router.post("/invite", ParentController.invite);
 router.get("/", ParentController.getLinks);
+router.get("/notifications", ParentController.getNotifications);
+router.delete("/notifications/:id", ParentController.dismissNotification);
+router.delete("/notifications", ParentController.clearAllNotifications);
 router.get("/dashboard-summary", ParentController.getDashboardSummary);
 router.post("/cancel/:id", ParentController.cancelInvite);
 router.post("/accept/:id", ParentController.acceptInvite);
