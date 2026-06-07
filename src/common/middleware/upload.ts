@@ -21,9 +21,17 @@ const storage = multer.diskStorage({
     cb(null, targetDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${uuidv4()}`;
     const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+    const originalName = path.basename(file.originalname, ext);
+    // Sanitize the original name: replace spaces and special characters with dashes
+    const sanitized = originalName
+      .replace(/[^a-zA-Z0-9-_]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    
+    const base = sanitized || 'file';
+    const uniqueSuffix = uuidv4();
+    cb(null, `${base}-${uniqueSuffix}${ext}`);
   },
 });
 
