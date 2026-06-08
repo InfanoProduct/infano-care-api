@@ -15,7 +15,13 @@ const GST_RATE = 0.05; // 5% for books
 export class ShopService {
   static async getBooks() {
     const books = await prisma.book.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        NOT: [
+          { id: { endsWith: "-private" } },
+          { id: { endsWith: "-group" } }
+        ]
+      },
     });
     const coupon = await prisma.discountCoupon.findFirst({
       orderBy: { createdAt: "desc" },

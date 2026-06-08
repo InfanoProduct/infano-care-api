@@ -373,6 +373,12 @@ export class AdminService {
   // Book Management
   static async getBooks() {
     const books = await prisma.book.findMany({
+      where: {
+        NOT: [
+          { id: { endsWith: "-private" } },
+          { id: { endsWith: "-group" } }
+        ]
+      },
       orderBy: { createdAt: "desc" }
     });
     const coupon = await prisma.discountCoupon.findFirst({
