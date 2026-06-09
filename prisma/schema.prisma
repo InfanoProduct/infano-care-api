@@ -1296,6 +1296,7 @@ model Program {
   title          String                  @unique
   tagline        String
   description    String?                 @default("")
+  thumbnailUrl   String?
   classRange     String
   minClass       Int
   maxClass       Int
@@ -1346,6 +1347,8 @@ model DemoSession {
   slotDate          String? // Booked slot date (e.g. "2026-05-24")
   slotTime          String? // Booked slot time (e.g. "10:00 AM")
   status            String   @default("PENDING") // PENDING, CONTACTED, SCHEDULED, COMPLETED, CANCELLED
+  isReadyToEnroll   Boolean  @default(false)
+  comment           String?  @default("")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }

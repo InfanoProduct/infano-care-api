@@ -156,11 +156,8 @@ export class ProgramsController {
 
   static async adminUpdateDemoStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status } = req.body;
-      if (!status) {
-        return res.status(400).json({ message: "Status is required" });
-      }
-      const demo = await ProgramsService.adminUpdateDemoStatus(req.params.id as string, status);
+      const { status, isReadyToEnroll, comment } = req.body;
+      const demo = await ProgramsService.adminUpdateDemoStatus(req.params.id as string, { status, isReadyToEnroll, comment });
       res.status(200).json(demo);
     } catch (error) {
       next(error);
