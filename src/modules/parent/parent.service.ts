@@ -129,24 +129,59 @@ export class ParentService {
       throw new Error("Unauthorized");
     }
 
-    return prisma.parentLink.delete({
+    const deletedLink = await prisma.parentLink.delete({
       where: { id: linkId }
     });
+
+    if (link.senderId !== userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { profile: true }
+      });
+      const declinerName = user?.profile?.displayName || user?.username || link.receiverPhone;
+      await prisma.notificationHistory.create({
+        data: {
+          userId: link.senderId,
+          type: "linkDeclined",
+          title: "Link Request Declined",
+          body: `${declinerName} has declined your account linking request.`,
+          sentAt: new Date()
+        }
+      });
+    }
+
+    return deletedLink;
   }
 
   static async acceptInvite(userId: string, linkId: string) {
     const link = await prisma.parentLink.findUnique({ where: { id: linkId } });
     if (!link) throw new Error("Link not found");
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true }
+    });
     if (!user || user.phone !== link.receiverPhone) {
       throw new Error("Unauthorized");
     }
 
-    return prisma.parentLink.update({
+    const updatedLink = await prisma.parentLink.update({
       where: { id: linkId },
       data: { status: "LINKED" }
     });
+
+    const accepterName = user.profile?.displayName || user.username || user.phone;
+    await prisma.notificationHistory.create({
+      data: {
+        userId: link.senderId,
+        type: "linkAcceptance",
+        title: "Link Request Accepted",
+        body: `${accepterName} has accepted your account linking request.`,
+        sentAt: new Date()
+      }
+    });
+
+    return updatedLink;
   }
 
   static async getDashboardSummary(userId: string) {

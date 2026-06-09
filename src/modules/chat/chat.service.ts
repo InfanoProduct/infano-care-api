@@ -20,9 +20,28 @@ Your goal is to follow the **Look, Listen, Link** framework:
 CORE PERSONA:
 - You are NOT a therapist or a doctor. You are a supportive "big sister" figure.
 - **NEVER use a name (like Riya) unless explicitly provided in [USER CONTEXT].**
-- **STYLE: BE VERY CONCISE. NEVER EXCEED 2 SENTENCES.**
+- **STYLE: BE CONCISE BUT COMPLETE.** For status queries, give a structured summary covering all four pillars (journey, programs, session, mood) in 4–6 sentences. For all other messages, NEVER EXCEED 2 SENTENCES.
 - Respond in the language the user uses (English, Hindi, or Hinglish).
-- Avoid platforms or clinical platitudes like "it will get better".
+- Avoid clinical platitudes like "it will get better".
+
+PARENT/DAUGHTER STATUS QUERIES — CRITICAL RULES:
+- When a PARENT or GUARDIAN asks about their daughter's status, progress, or "how is she doing":
+  1. Check 'Linked Daughters/Teens Details' in [USER CONTEXT]. If empty, warmly say no daughters are linked yet.
+  2. If multiple daughters exist and the parent hasn't specified, list them and ask which one.
+  3. Once the daughter is known (or if only one exists), ALWAYS deliver ALL FOUR of these in one response — do NOT ask follow-up questions first:
+     📚 **Learning Journey**: Her active journey name and completion % (from 'activeJourney' in her teen details).
+     🎯 **Program Progress**: All her enrolled programs, e.g. "SPARK: 2/8 sessions (25%)" (from 'enrolledPrograms' in her teen details). If none, mention "no programs enrolled yet."
+     📅 **Next Session**: Her next scheduled expert session date/time (from 'nextSession' in her teen details). If none, say "no upcoming session scheduled."
+     💙 **Mood Insights**: Her recent mood trend from 'recentMoods' in a warm, supportive way. If no moods logged, say "no recent mood data available."
+
+USER'S OWN STATUS QUERIES:
+- When ANY user asks about their own status, progress, journey, or programs:
+  1. Check 'Active Learning Journey', 'Enrolled Programs Details', and 'Next Expert Session' in [USER CONTEXT].
+  2. ALWAYS deliver ALL FOUR in one response:
+     📚 **Learning Journey**: Active journey name and completion % (from 'Active Learning Journey'). If none, say "not started yet."
+     🎯 **Program Progress**: All enrolled programs with completed/total sessions and % (from 'Enrolled Programs Details'). If none, say "no programs enrolled yet."
+     📅 **Next Session**: Next scheduled expert session date/time (from 'Next Expert Session'). If none, say "no upcoming session."
+     💙 **Mood**: Current mood from 'Current Mood Tracker' if available.
 
 THREE-TRACK ESCALATION:
 - **Track 1 (Support)**: Everyday stress, venting, academic pressure. Validate and offer micro-tools (breathing, journaling).
@@ -36,8 +55,24 @@ Provide [link:/path] buttons ONLY during the 'Link' phase when relevant keywords
 - [link:/account] : "settings", "profile", "account".
 - [link:/onboarding/goals] : "goals", "focus", "objectives".
 - [link:/onboarding/interests] : "interests", "topics", "learn about".
+- [link:/dashboard/enrolled-programs] : "program", "session", "enrollment", "progress".
+- [link:/dashboard/learning-journeys] : "journey", "learning", "episode".
 
 Example: "I'm so sorry you're feeling crampy! 🍫 Check your dashboard here: [link:/home]"
+
+ACCOUNT LINKING & PRIVACY RULES:
+- If asked about account linking:
+  1. Parents can link an account by entering their daughter's phone number in the linking form on the dashboard to send an invite.
+  2. The teen will receive a link request notification on their dashboard (via the bell icon).
+  3. Once the teen accepts the notification, the accounts are actively linked.
+- If asked about parent visibility (what is visible to the Parent):
+  - Program Progress: Which modules she has completed.
+  - Session Attendance: If she attended her scheduled expert sessions.
+  - Library Access: General topics she is exploring in the resource library.
+- If asked about teen privacy (what is STRICTLY PRIVATE for the Teen):
+  - Session Notes: Private 1:1 discussions with experts remain 100% confidential.
+  - Journal Entries: Any private reflections or mood tracking she does in the app.
+  - Peerline Chat: Conversations in moderated community circles are not visible to parents.
 
 ETHICAL RED LINES:
 1. NEVER provide medical advice or name specific medications/dosages.
@@ -90,12 +125,254 @@ ETHICAL RED LINES:
         this.getRecentHistory(session.id)
       ]);
 
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { birthYear: true } });
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { birthYear: true, phone: true, role: true }
+      });
       const age = user?.birthYear ? (new Date().getFullYear() - user.birthYear) : null;
+
+      // Get all linked user IDs (parents if user is teen, teens if user is parent/guardian)
+      const userLinks = await prisma.parentLink.findMany({
+        where: {
+          OR: [
+            { parentId: userId },
+            { teenId: userId }
+          ],
+          status: "LINKED"
+        }
+      });
+      const linkedUserIds = userLinks
+        .map(link => link.parentId === userId ? link.teenId : link.parentId)
+        .filter(Boolean) as string[];
+      
+      const userFamilyIds = [userId, ...linkedUserIds];
+
+      // Fetch current user's own program progress (including linked family members to share enrollments)
+      const userEnrollments = await prisma.programEnrollment.findMany({
+        where: { userId: { in: userFamilyIds }, status: "ACTIVE" },
+        include: { program: true }
+      });
+      const userProgramsMap = new Map();
+      for (const enrollment of userEnrollments) {
+        userProgramsMap.set(enrollment.programId, enrollment.program);
+      }
+      const userProgramsProgress = [];
+      for (const [programId, program] of userProgramsMap.entries()) {
+        const totalSessions = program.sessions || 8;
+        const completedSessions = await prisma.expertSessionSchedule.count({
+          where: {
+            userId: { in: userFamilyIds },
+            programId: programId,
+            status: "COMPLETED"
+          }
+        });
+        const percentComplete = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+        const nextProgSession = await prisma.expertSessionSchedule.findFirst({
+          where: {
+            userId: { in: userFamilyIds },
+            programId: programId,
+            scheduledAt: { gte: new Date() },
+            status: "SCHEDULED"
+          },
+          orderBy: { scheduledAt: "asc" }
+        });
+        userProgramsProgress.push({
+          programTitle: program.title,
+          completedSessions,
+          totalSessions,
+          percentComplete,
+          nextSessionAt: nextProgSession ? nextProgSession.scheduledAt : null
+        });
+      }
+
+      // Fetch current user's active journey progress (latest UserProgress)
+      const userActiveProgress = await prisma.userProgress.findFirst({
+        where: {
+          userId: userId,
+          episode: {
+            journey: {
+              slug: { not: "peerline-mentor-certification" }
+            }
+          }
+        },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          episode: {
+            include: {
+              journey: true
+            }
+          }
+        }
+      });
+
+      let userActiveJourney = null;
+      if (userActiveProgress && userActiveProgress.episode && userActiveProgress.episode.journey) {
+        const journeyId = userActiveProgress.episode.journeyId;
+        const totalEpisodes = await prisma.episode.count({ where: { journeyId } });
+        const completedEpisodes = await prisma.userProgress.count({
+          where: {
+            userId: userId,
+            episode: { journeyId },
+            completed: true
+          }
+        });
+        const percentComplete = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
+        userActiveJourney = {
+          name: userActiveProgress.episode.journey.title,
+          percentComplete
+        };
+      }
+
+      // Fetch current user's next expert session
+      const userNextSession = await prisma.expertSessionSchedule.findFirst({
+        where: {
+          userId: userId,
+          scheduledAt: { gte: new Date() },
+          status: "SCHEDULED"
+        },
+        orderBy: { scheduledAt: "asc" }
+      });
+
+      let teenStatuses: any[] = [];
+      if (user && (user.role === 'PARENT' || user.role === 'GUARDIAN')) {
+        const linkedTeens = await prisma.parentLink.findMany({
+          where: {
+            parentId: userId,
+            status: "LINKED"
+          },
+          include: {
+            teen: {
+              include: {
+                profile: true
+              }
+            }
+          }
+        });
+
+        for (const link of linkedTeens) {
+          if (!link.teen) continue;
+          const teenId = link.teen.id;
+
+          // Fetch active journey progress (latest UserProgress)
+          const activeProgress = await prisma.userProgress.findFirst({
+            where: {
+              userId: teenId,
+              episode: {
+                journey: {
+                  slug: { not: "peerline-mentor-certification" }
+                }
+              }
+            },
+            orderBy: { updatedAt: "desc" },
+            include: {
+              episode: {
+                include: {
+                  journey: true
+                }
+              }
+            }
+          });
+
+          let activeJourney = null;
+          if (activeProgress && activeProgress.episode && activeProgress.episode.journey) {
+            const journeyId = activeProgress.episode.journeyId;
+            const totalEpisodes = await prisma.episode.count({ where: { journeyId } });
+            const completedEpisodes = await prisma.userProgress.count({
+              where: {
+                userId: teenId,
+                episode: { journeyId },
+                completed: true
+              }
+            });
+            const percentComplete = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
+            activeJourney = {
+              name: activeProgress.episode.journey.title,
+              percentComplete
+            };
+          }
+
+          // Fetch next expert session
+          const nextSession = await prisma.expertSessionSchedule.findFirst({
+            where: {
+              userId: teenId,
+              scheduledAt: { gte: new Date() },
+              status: "SCHEDULED"
+            },
+            orderBy: { scheduledAt: "asc" }
+          });
+
+          // Fetch 30-day mood logs
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          const recentLogs = await prisma.cycleLog.findMany({
+            where: {
+              userId: teenId,
+              date: { gte: thirtyDaysAgo }
+            },
+            orderBy: { date: "desc" },
+            select: { date: true, moodPrimary: true }
+          });
+
+          const moods = recentLogs.map(l => l.moodPrimary).filter(Boolean);
+
+          // Fetch teen's program progress (sharing with parent userId)
+          const teenEnrollments = await prisma.programEnrollment.findMany({
+            where: { userId: { in: [teenId, userId] }, status: "ACTIVE" },
+            include: { program: true }
+          });
+          const teenProgramsMap = new Map();
+          for (const enrollment of teenEnrollments) {
+            teenProgramsMap.set(enrollment.programId, enrollment.program);
+          }
+          const teenProgramsProgress = [];
+          for (const [programId, program] of teenProgramsMap.entries()) {
+            const totalSessions = program.sessions || 8;
+            const completedSessions = await prisma.expertSessionSchedule.count({
+              where: {
+                userId: { in: [teenId, userId] },
+                programId: programId,
+                status: "COMPLETED"
+              }
+            });
+            const percentComplete = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+            const nextProgSession = await prisma.expertSessionSchedule.findFirst({
+              where: {
+                userId: { in: [teenId, userId] },
+                programId: programId,
+                scheduledAt: { gte: new Date() },
+                status: "SCHEDULED"
+              },
+              orderBy: { scheduledAt: "asc" }
+            });
+            teenProgramsProgress.push({
+              programTitle: program.title,
+              completedSessions,
+              totalSessions,
+              percentComplete,
+              nextSessionAt: nextProgSession ? nextProgSession.scheduledAt : null
+            });
+          }
+
+          teenStatuses.push({
+            name: link.teen.profile?.displayName || link.teen.username || "Daughter",
+            phone: link.teen.phone,
+            activeJourney,
+            nextSession: nextSession ? nextSession.scheduledAt : null,
+            recentMoods: moods.slice(0, 5),
+            enrolledPrograms: teenProgramsProgress
+          });
+        }
+      }
 
       const context = {
         name: profile?.displayName?.trim(),
         age,
+        phone: user?.phone,
+        role: user?.role,
+        activeJourney: userActiveJourney,
+        nextSession: userNextSession ? userNextSession.scheduledAt : null,
+        enrolledPrograms: userProgramsProgress,
+        linkedTeens: teenStatuses,
         cyclePhase: cycle?.currentPhase,
         cycleDay: cycle?.currentCycleDay,
         goals: personalization?.goals,
@@ -124,9 +401,9 @@ ETHICAL RED LINES:
       // Update session last modified and metrics
       await prisma.chatSession.update({
         where: { id: session.id },
-        data: { 
+        data: {
           lastMsgAt: new Date(),
-          maxDistressLevel: currentLevel 
+          maxDistressLevel: currentLevel
         }
       });
 
@@ -169,6 +446,20 @@ ETHICAL RED LINES:
       let contextStr = '[USER CONTEXT:';
       if (context.name) contextStr += ` User's Name: ${context.name}.`;
       if (context.age) contextStr += ` User's Age: ${context.age}.`;
+      if (context.phone) contextStr += ` User's Phone: ${context.phone}.`;
+      if (context.role) contextStr += ` User's Role: ${context.role}.`;
+      if (context.activeJourney) {
+        contextStr += ` Active Learning Journey: ${context.activeJourney.name} (${context.activeJourney.percentComplete}% complete).`;
+      }
+      if (context.nextSession) {
+        contextStr += ` Next Expert Session: ${context.nextSession}.`;
+      }
+      if (context.enrolledPrograms && context.enrolledPrograms.length > 0) {
+        contextStr += ` Enrolled Programs Details: ${JSON.stringify(context.enrolledPrograms)}.`;
+      }
+      if (context.linkedTeens && context.linkedTeens.length > 0) {
+        contextStr += ` Linked Daughters/Teens Details: ${JSON.stringify(context.linkedTeens)}.`;
+      }
       if (context.cyclePhase) contextStr += ` Current Cycle Phase: ${context.cyclePhase} (Day ${context.cycleDay || '?'}).`;
       if (context.goals && context.goals.length > 0) contextStr += ` Focus/Goals: ${context.goals.join(', ')}.`;
       if (context.mood) contextStr += ` Current Mood Tracker: ${context.mood}.`;

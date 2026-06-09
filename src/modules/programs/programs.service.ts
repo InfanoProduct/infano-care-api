@@ -4,7 +4,7 @@ import { AppError } from "../../common/middleware/errorHandler.js";
 export class ProgramsService {
   static getMockSessionsForProgram(title: string) {
     const uppercaseTitle = title.toUpperCase();
-    
+
     const sessionsMap: Record<string, { title: string; description: string }[]> = {
       'SPARK': [
         {
@@ -225,7 +225,7 @@ export class ProgramsService {
         }
       ]
     };
-    
+
     return sessionsMap[uppercaseTitle] || [];
   }
 
@@ -293,7 +293,7 @@ export class ProgramsService {
    */
   static async getById(idOrTitle: string) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrTitle);
-    
+
     let program;
     if (isUuid) {
       program = await prisma.program.findUnique({
@@ -356,7 +356,7 @@ export class ProgramsService {
       if (estimatedClass !== null) {
         const isEligible = estimatedClass >= program.minClass && estimatedClass <= program.maxClass;
         if (!isEligible) {
-          const targetStr = program.minClass === program.maxClass 
+          const targetStr = program.minClass === program.maxClass
             ? `${program.classRange} (Age ${program.minClass + 5})`
             : `${program.classRange} (Ages ${program.minClass + 5}-${program.maxClass + 5})`;
           throw new AppError(
@@ -479,7 +479,7 @@ export class ProgramsService {
     if (!data.title || !data.classRange || !data.sessions || !data.duration) {
       throw new AppError("Missing required fields for creating a program", 400);
     }
-    
+
     return prisma.program.create({
       data: {
         title: data.title,
@@ -546,12 +546,14 @@ export class ProgramsService {
         },
         user: {
           select: {
+            role: true,
             username: true,
             phone: true,
             parentEmail: true,
             profile: {
               select: {
-                displayName: true
+                displayName: true,
+                avatarUrl: true
               }
             }
           }
@@ -662,12 +664,14 @@ export class ProgramsService {
           },
           user: {
             select: {
+              role: true,
               username: true,
               phone: true,
               parentEmail: true,
               profile: {
                 select: {
-                  displayName: true
+                  displayName: true,
+                  avatarUrl: true
                 }
               }
             }
@@ -736,14 +740,18 @@ export class ProgramsService {
     });
   }
 
-  static async adminUpdateDemoStatus(id: string, status: string) {
+  static async adminUpdateDemoStatus(id: string, payload: { status?: string; isReadyToEnroll?: boolean; comment?: string }) {
     const existing = await prisma.demoSession.findUnique({ where: { id } });
     if (!existing) {
       throw new AppError("Demo session booking not found", 404);
     }
+    const data: any = {};
+    if (payload.status !== undefined) data.status = payload.status;
+    if (payload.isReadyToEnroll !== undefined) data.isReadyToEnroll = payload.isReadyToEnroll;
+    if (payload.comment !== undefined) data.comment = payload.comment;
     return prisma.demoSession.update({
       where: { id },
-      data: { status }
+      data
     });
   }
 

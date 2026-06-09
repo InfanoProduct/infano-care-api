@@ -18,7 +18,7 @@ export class ExpertService {
       },
       orderBy: { createdAt: "desc" }
     });
-    
+
     // Map guestName back into the user display name if it exists
     return enrollments.map(e => ({
       ...e,
@@ -153,7 +153,7 @@ export class ExpertService {
             select: {
               id: true,
               messages: {
-                where: { 
+                where: {
                   isRead: false,
                   NOT: { senderId: userId }
                 },
