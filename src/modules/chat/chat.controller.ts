@@ -11,12 +11,22 @@ export class ChatController {
    */
   static async sendMessage(req: Request, res: Response, next: NextFunction) {
     try {
-      const { content, sessionId, moodCode } = chatRequestSchema.parse(req).body;
+      const { content, sessionId, moodCode, history, platform } = chatRequestSchema.parse(req).body;
       const userId = (req as any).userId;
 
       logger.info({ userId, sessionId }, 'User sending message to Gigi');
 
-      const result = await chatService.processMessage(userId, content, sessionId, moodCode);
+      let detectedPlatform: 'web' | 'mobile' | undefined = platform;
+      if (!detectedPlatform) {
+        const xPlatform = req.headers['x-platform'] || req.headers['x-platform'];
+        if (xPlatform === 'web') {
+          detectedPlatform = 'web';
+        } else if (xPlatform === 'mobile') {
+          detectedPlatform = 'mobile';
+        }
+      }
+
+      const result = await chatService.processMessage(userId, content, sessionId, moodCode, history, detectedPlatform);
       
       res.status(200).json({
         success: true,

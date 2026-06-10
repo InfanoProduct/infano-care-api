@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ChatController } from './chat.controller.js';
-import { authenticate } from '../../common/middleware/auth.js';
+import { authenticate, optionalAuthenticate } from '../../common/middleware/auth.js';
 
 const router = Router();
 
@@ -36,7 +36,7 @@ const router = Router();
  *       200:
  *         description: Message processed successfully.
  */
-router.post('/send', authenticate, ChatController.sendMessage);
+router.post('/send', optionalAuthenticate, ChatController.sendMessage);
 
 /**
  * @openapi
