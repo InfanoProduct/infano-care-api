@@ -44,6 +44,7 @@ router.delete("/assets/:filename", AdminController.deleteAsset);
 router.get("/orders", AdminController.getOrders);
 router.get("/orders/:id", AdminController.getOrder);
 router.patch("/orders/:id/status", AdminController.updateOrderStatus);
+router.post("/orders/:id/manual-payment", AdminController.verifyManualPayment);
 
 // Book Management
 router.get("/books", AdminController.getBooks);

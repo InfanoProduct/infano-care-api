@@ -203,6 +203,15 @@ export class AdminController {
     }
   }
 
+  static async verifyManualPayment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.verifyManualPayment(req.params.id as string, req.body.transactionId as string);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Book Management
   static async getBooks(_req: Request, res: Response, next: NextFunction) {
     try {

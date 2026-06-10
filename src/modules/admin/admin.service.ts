@@ -4,6 +4,13 @@ import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
 import crypto from "crypto";
+import Razorpay from "razorpay";
+import { env } from "../../config/env.js";
+
+const razorpay = new Razorpay({
+  key_id: env.RAZORPAY_KEY_ID || "",
+  key_secret: env.RAZORPAY_KEY_SECRET || "",
+});
 
 export class AdminService {
   static async getStats() {
@@ -368,6 +375,101 @@ export class AdminService {
 
   static async updateOrderStatus(id: string, status: any) {
     return ShopService.updateStatus(id, status);
+  }
+
+  static async verifyManualPayment(orderId: string, transactionId: string) {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { book: true } } }
+    });
+
+    if (!order) throw new Error("Order not found");
+    if (order.paymentStatus === 'COMPLETED') throw new Error("Order is already paid");
+
+    try {
+      const payment = await razorpay.payments.fetch(transactionId);
+      
+      if (payment.status !== 'captured') {
+        throw new Error(`Payment is not captured. Current status: ${payment.status}`);
+      }
+
+      const expectedAmount = Math.round(order.totalAmount * 100);
+      if (Number(payment.amount) < expectedAmount) {
+        throw new Error(`Payment amount mismatch. Expected at least ₹${order.totalAmount}, but got ₹${(Number(payment.amount) / 100).toFixed(2)}`);
+      }
+
+      let userId = order.userId;
+      if (!userId && order.guestPhone) {
+        const normalized = normalizePhone(order.guestPhone);
+        let user = await prisma.user.findUnique({ where: { phone: normalized } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              phone: normalized,
+              accountStatus: "PENDING_SETUP",
+              onboardingStep: 1,
+              role: "PARENT",
+              profile: {
+                create: {
+                  displayName: order.guestName || "Parent",
+                  totalPoints: 0,
+                }
+              }
+            }
+          });
+        }
+        userId = user.id;
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: 'COMPLETED',
+          paymentMethod: 'ONLINE',
+          razorpayPaymentId: transactionId,
+          userId: userId || undefined,
+        },
+      });
+
+      if (userId) {
+        for (const item of order.items) {
+          const book = item.book as any;
+          if (!book) continue;
+          const isProg = book.id.endsWith("-private") || book.id.endsWith("-group");
+          if (isProg) {
+            const programTitle = book.id.split("-")[0].toUpperCase();
+            const program = await prisma.program.findFirst({
+              where: { title: { equals: programTitle, mode: "insensitive" } }
+            });
+            if (program) {
+              const type = (item.book as any).id.endsWith("-private") ? "PRIVATE" : "GROUP";
+              const existingEnrollment = await prisma.programEnrollment.findUnique({
+                where: {
+                  userId_programId: { userId, programId: program.id }
+                }
+              });
+              if (!existingEnrollment) {
+                await prisma.programEnrollment.create({
+                  data: {
+                    userId,
+                    programId: program.id,
+                    type,
+                    pricePaid: item.price,
+                    status: "ACTIVE",
+                    guestName: order.guestName,
+                    guestEmail: order.guestEmail,
+                  }
+                });
+              }
+            }
+          }
+        }
+      }
+
+      return updatedOrder;
+    } catch (error: any) {
+      throw new Error(`Razorpay Verification Failed: ${error.message || 'Invalid Transaction ID'}`);
+    }
   }
 
   // Book Management
