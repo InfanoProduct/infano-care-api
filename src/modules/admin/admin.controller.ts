@@ -212,6 +212,15 @@ export class AdminController {
     }
   }
 
+  static async convertToCod(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.convertToCod(req.params.id as string);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Book Management
   static async getBooks(_req: Request, res: Response, next: NextFunction) {
     try {

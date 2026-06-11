@@ -377,6 +377,21 @@ export class AdminService {
     return ShopService.updateStatus(id, status);
   }
 
+  static async convertToCod(orderId: string) {
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new Error("Order not found");
+    if (order.paymentStatus === 'COMPLETED') throw new Error("Order is already paid");
+    
+    return prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentMethod: 'COD',
+        paymentStatus: 'PENDING',
+        orderStatus: 'PLACED'
+      }
+    });
+  }
+
   static async verifyManualPayment(orderId: string, transactionId: string) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -388,6 +403,20 @@ export class AdminService {
 
     try {
       const payment = await razorpay.payments.fetch(transactionId);
+
+      // Security Check 1: Ensure payment ID is not already used by another order
+      const existingOrderWithPayment = await prisma.order.findFirst({
+        where: { razorpayPaymentId: transactionId }
+      });
+
+      if (existingOrderWithPayment && existingOrderWithPayment.id !== orderId) {
+        throw new Error("Security Error: This payment ID is already associated with another order.");
+      }
+
+      // Security Check 2: Ensure payment belongs to the correct Razorpay order (if applicable)
+      if (order.razorpayOrderId && payment.order_id && payment.order_id !== order.razorpayOrderId) {
+        throw new Error("Security Error: This payment ID belongs to a different Razorpay order.");
+      }
       
       if (payment.status !== 'captured') {
         throw new Error(`Payment is not captured. Current status: ${payment.status}`);

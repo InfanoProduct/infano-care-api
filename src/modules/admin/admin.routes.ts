@@ -45,6 +45,7 @@ router.get("/orders", AdminController.getOrders);
 router.get("/orders/:id", AdminController.getOrder);
 router.patch("/orders/:id/status", AdminController.updateOrderStatus);
 router.post("/orders/:id/manual-payment", AdminController.verifyManualPayment);
+router.post("/orders/:id/convert-to-cod", AdminController.convertToCod);
 
 // Book Management
 router.get("/books", AdminController.getBooks);

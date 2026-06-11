@@ -331,14 +331,14 @@ export class ShopService {
     // If cancelled, restore stock
     if (nextStatus === OrderStatus.CANCELLED) {
       const items = await prisma.orderItem.findMany({ where: { orderId: id } });
-      await prisma.$transaction(async (tx) => {
+      return await prisma.$transaction(async (tx) => {
         for (const item of items) {
           await tx.book.update({
             where: { id: item.bookId },
             data: { stock: { increment: item.quantity } }
           });
         }
-        await tx.order.update({
+        return await tx.order.update({
           where: { id },
           data: { orderStatus: nextStatus }
         });
