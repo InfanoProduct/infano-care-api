@@ -10,33 +10,7 @@ async function main() {
       teen: { select: { id: true, phone: true, role: true } }
     }
   });
-  links.forEach(l => {
-    console.log(`Link: parentId=${l.parentId} (${l.parent?.phone}), teenId=${l.teenId} (${l.teen?.phone})`);
-  });
 
-  console.log("\n--- Program Enrollments ---");
-  const enrollments = await prisma.programEnrollment.findMany({
-    include: {
-      user: { select: { id: true, phone: true, role: true } },
-      program: { select: { id: true, title: true } }
-    }
-  });
-  enrollments.forEach(e => {
-    console.log(`Enrollment: userId=${e.userId} (${e.user?.phone}, role=${e.user?.role}), program=${e.program?.title}, status=${e.status}`);
-  });
-
-  console.log("\n--- Scheduled Expert Sessions ---");
-  const sessions = await prisma.expertSessionSchedule.findMany({
-    include: {
-      user: { select: { phone: true } },
-      program: { select: { title: true } }
-    }
-  });
-  sessions.forEach(s => {
-    console.log(`Session: userId=${s.userId} (${s.user?.phone}), program=${s.program?.title || 'None'}, sessionNumber=${s.sessionNumber}, status=${s.status}`);
-  });
-
-  // Pick a parent to test chat
   const testParent = links[0]?.parent || await prisma.user.findFirst({ where: { role: "PARENT" } });
   if (!testParent) {
     console.log("No parent found in DB to test!");
@@ -45,21 +19,34 @@ async function main() {
 
   console.log(`\nTesting Gigi Chat for Parent: ${testParent.phone} (ID: ${testParent.id})`);
   const chatService = new ChatService();
+  const sessionId = `test-session-${Date.now()}`;
 
-  // Test Query 1: Ask about daughter status
-  console.log("\n--- Query 1: 'How is my daughter doing?' ---");
-  const res1 = await chatService.processMessage(testParent.id, "How is my daughter doing?");
+  // Turn 1: Initial parent request
+  console.log("\n--- Turn 1: 'How is my daughter doing?' ---");
+  const res1 = await chatService.processMessage(testParent.id, "How is my daughter doing?", sessionId);
   console.log("Gigi Response:\n", res1.message.content);
 
-  // Test Query 2: Ask about daughter's program progress
-  console.log("\n--- Query 2: 'what is my daughter's program progress?' ---");
-  const res2 = await chatService.processMessage(testParent.id, "what is my daughter's program progress?");
+  // Turn 2: Simulate parent selecting a phone number
+  const teenPhone = links[0]?.teen?.phone || "+919742802062";
+  console.log(`\n--- Turn 2: Select phone number: '${teenPhone}' ---`);
+  const res2 = await chatService.processMessage(testParent.id, teenPhone, sessionId);
   console.log("Gigi Response:\n", res2.message.content);
 
-  // Test Query 3: Ask about parent's own program progress
-  console.log("\n--- Query 3: 'what is my program progress?' ---");
-  const res3 = await chatService.processMessage(testParent.id, "what is my program progress?");
+  // Turn 3: Simulate parent selecting a specific pillar
+  const pillarQuery = `Learning Journey for ${teenPhone}`;
+  console.log(`\n--- Turn 3: Select progress option: '${pillarQuery}' ---`);
+  const res3 = await chatService.processMessage(testParent.id, pillarQuery, sessionId);
   console.log("Gigi Response:\n", res3.message.content);
+
+  // Turn 4: User asks about own progress
+  console.log("\n--- Turn 4: 'what is my progress?' ---");
+  const res4 = await chatService.processMessage(testParent.id, "what is my progress?", sessionId);
+  console.log("Gigi Response:\n", res4.message.content);
+
+  // Turn 5: User selects specific pillar for own progress
+  console.log("\n--- Turn 5: Select progress option: 'Learning Journey' ---");
+  const res5 = await chatService.processMessage(testParent.id, "Learning Journey", sessionId);
+  console.log("Gigi Response:\n", res5.message.content);
 }
 
 main()

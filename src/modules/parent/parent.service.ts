@@ -278,7 +278,8 @@ export class ParentService {
           { userId: teenId },
           { userId } // Parent purchases
         ],
-        status: "ACTIVE"
+        status: "ACTIVE",
+        program: { isActive: true }
       },
       include: {
         program: { select: { title: true } }

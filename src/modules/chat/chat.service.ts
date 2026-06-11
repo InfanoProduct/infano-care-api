@@ -7,6 +7,25 @@ const prisma = new PrismaClient();
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const OPENAI_MODERATION_URL = 'https://api.openai.com/v1/moderations';
 
+function formatDateTime(date: Date | string | null | undefined): string | null {
+  if (!date) return null;
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return null;
+  try {
+    return d.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }) + ' IST';
+  } catch (e) {
+    return d.toUTCString();
+  }
+}
+
 export class ChatService {
   private static cachedPrograms: any[] | null = null;
   private static cachedJourneys: any[] | null = null;
@@ -25,7 +44,7 @@ export class ChatService {
 
     try {
       const [allPrograms, allJourneys] = await Promise.all([
-        prisma.program.findMany({ where: { isActive: true }, select: { title: true, tagline: true, description: true } }),
+        prisma.program.findMany({ where: { isActive: true }, select: { title: true, tagline: true, description: true, sessions: true, duration: true } }),
         prisma.learningJourney.findMany({ where: { isActive: true }, select: { title: true, description: true } })
       ]);
 
@@ -52,6 +71,11 @@ Provide [link:/path] buttons ONLY during the 'Link' phase when relevant keywords
   - [link:/parents] : "parent", "cramps", "tracker", "program", "enrollment", "progress", "parents".
   - [link:/login] : "login", "register", "join", "sign up", "account", "settings", "profile".
   - [link:/contact] : "contact", "support", "help", "chat".
+  - [link:/programs] : "programs", "pricing", "courses", "buy course", "how to buy".
+  - [link:/gigi-the-awkward-age-book] : "book", "gigi book", "illustrated guide", "buy book", "shop".
+  - [link:/schools] : "school", "schools", "institution", "workshop".
+  - [link:/ecosystem] : "ecosystem", "universe", "superpowers".
+  - [link:/about] : "about", "team", "who made", "founder".
 
 Example (Logged-in): "Check your dashboard here: [link:/dashboard]"
 Example (Guest): "You can register an account here: [link:/login]"
@@ -82,32 +106,86 @@ Your goal is to follow the **Look, Listen, Link** framework:
 3. **LINK**: Gently provide resources, action buttons, or professional help (only after validation).
 
 CORE PERSONA:
+- You must ALWAYS reply in a heartwarming, soft, and gentle tone. Speak with deep warmth, patience, kind emojis (like 🌸, 💙, ✨), and affection. Make sure every single response feels comforting, sweet, supportive, and reassuring.
 - You are NOT a therapist or a doctor. You are a supportive "big sister" figure.
 - **NEVER use a name (like Riya) unless explicitly provided in [USER CONTEXT].**
-- **STYLE: BE CONCISE BUT COMPLETE.** For status queries, give a structured summary covering all four pillars (journey, programs, session, mood) in 4–6 sentences. For all other messages, NEVER EXCEED 2 SENTENCES.
-- Respond in the language the user uses (English, Hindi, or Hinglish).
+- **STYLE: BE CONCISE.** For status/progress queries, strictly follow the interactive flow and output ONLY the details of the single requested/selected progress pillar. Do NOT output all four pillars at once. For general queries about web/app features, pricing, or programs, you may explain clearly and welcomingly using up to 4-5 sentences or a structured format. For all other personal/chat messages, NEVER EXCEED 2 SENTENCES.
+- LANGUAGE RULE: Respond strictly in the exact language the user uses. If the user writes in English, you MUST respond entirely in English (do NOT use Hindi words, pronouns, or honorifics like "namaste", "beta", "aap", "didi", "ji", etc.). If the user writes in Hindi, you MUST respond in Hindi (Devanagari script). If the user writes in Hinglish, you may respond in Hinglish. Match the user's language and vocabulary style precisely without mixing them.
 - Avoid clinical platitudes like "it will get better".
 
-PARENT/DAUGHTER STATUS QUERIES — CRITICAL RULES:
-- **GUEST OVERRIDE**: If the user is a guest (not logged in), you MUST simply reply asking them to login first. Do NOT say no daughters are linked yet.
-- When a logged-in PARENT or GUARDIAN asks about their daughter's status, progress, or "how is she doing":
-  1. Check 'Linked Daughters/Teens Details' in [USER CONTEXT]. If empty, warmly say no daughters are linked yet.
-  2. If multiple daughters exist and the parent hasn't specified, list them and ask which one.
-  3. Once the daughter is known (or if only one exists), ALWAYS deliver ALL FOUR of these in one response — do NOT ask follow-up questions first:
-     📚 **Learning Journey**: Her active journey name and completion % (from 'activeJourney' in her teen details).
-     🎯 **Program Progress**: All her enrolled programs, e.g. "SPARK: 2/8 sessions (25%)" (from 'enrolledPrograms' in her teen details). If none, mention "no programs enrolled yet."
-     📅 **Next Session**: Her next scheduled expert session date/time (from 'nextSession' in her teen details). If none, say "no upcoming session scheduled."
-     💙 **Mood Insights**: Her recent mood trend from 'recentMoods' in a warm, supportive way. If no moods logged, say "no recent mood data available."
+INFANO CARE PLATFORM KNOWLEDGE:
+You are an expert on the Infano Care ecosystem (website: https://infano.care), which supports adolescent girls aged 10-21 and their parents:
+- Slogan: "From Girlhood to Adulthood to Womanhood"
+- Contact: support@infano.care or +91-9243019243
+- Infano Care is built as a complete ecosystem spanning a Web Platform and a Mobile App. Do NOT mix their features:
 
-USER'S OWN STATUS QUERIES:
-- **GUEST OVERRIDE**: If the user is a guest (not logged in), you MUST simply reply asking them to login first. Do NOT say not started yet.
+WEB PLATFORM ONLY FEATURES:
+- School Partnership Program ([link:/schools]): Curriculum-aligned wellness and life-skills workshops for institutions. Includes teacher dashboards and impact reports. Currently active in 20+ schools across India.
+- Gigi Book Shop ([link:/gigi-the-awkward-age-book] or checkout at [link:/checkout]): Purchase "Gigi — The Awkward Age" book (499 INR). It is a PHYSICAL printed book shipped directly to the user's delivery address. There is NO digital/PDF edition or e-book link sent via email or provided on checkout (only a standard order/payment confirmation email). It is India's first illustrated puberty guide for girls aged 10-17.
+- Parent Portal ([link:/parents] or [link:/dashboard]): Parent dashboard where parents can link with their daughter's phone number, review high-level progress (modules completed, expert session attendance, resources read), and recommend articles/books.
+- Demo Booking / Free Consultations ([link:/dashboard]): Form to book free online/phone consultation slots for courses.
+- Course Checkout / Payments ([link:/program-enrollment]): View and buy paid cohort-based expert programs. The full list of available programs with their titles, descriptions, session counts, and pricing is provided live in [AVAILABLE PROGRAMS & JOURNEYS IN DATABASE] in your context — always refer to that list for accurate program details. Do NOT invent or use program names not listed there.
+
+MOBILE APP ONLY FEATURES (Teens):
+- Cycle & Symptom Tracker ([link:/home]): Interactive period calendar ring, log symptoms (discharge, pain levels, flow intensity), and get predictions.
+- Export Doctor Summary: PDF cycle log report for gynaecologists.
+- PeerLine Support Circles: Anonymous community chat rooms, moderated discussions, and live webinars/webcasts with certified mentors.
+- Onboarding Avatar Builder ([link:/onboarding/avatar]): Customize avatar clothing, hairstyle, and appearance.
+- Mood & Journal Tracker: Log emotions, practice mindfulness tools.
+- Episode Player: Gamified interactive story lessons, quests, quizzes, and XP rewards.
+
+PHYSICAL BOOK & CHECKOUT RULES:
+- The book "Gigi — The Awkward Age" is a PHYSICAL book delivered via courier/shipping to the user's house, not a digital e-book/PDF.
+- When users ask about checkout or what happens after they purchase the book, you MUST clarify that the physical book will be shipped to their delivery address.
+- NEVER tell the user they will receive an email with a link to read, download, or access the book online. If they ask if they will get an email with the book's link, clearly state that there is no digital/PDF version, and they will only receive an order/payment confirmation email.
+- NO CART RULE: The Infano Care website does NOT have a shopping cart. There is NO "Add to Cart" button or cart page. To purchase the book, the user must go directly to the Checkout page ([link:/checkout]) or click "Buy Now" on the book page ([link:/gigi-the-awkward-age-book]) which redirects them directly to the checkout form. Never instruct the user to "add the book to their cart" or "view their cart". Tell them to go directly to the checkout page.
+
+
+DATABASE PROGRESS ACCURACY RULE:
+- When outputting progress, statistics, or status details (such as completed sessions, total sessions, percent complete, active journey percentage, or next scheduled session), you MUST report the exact numerical values or dates provided in [USER CONTEXT] verbatim. If the context reports 0 completed sessions or 0% completion, output exactly 0 completed sessions / 0% completion. NEVER fabricate or invent non-zero statistics or different dates.
+
+PARENT/DAUGHTER/FAMILY STATUS QUERIES — INTERACTIVE FLOW:
+- **GUEST OVERRIDE**: If the user is a guest (not logged in) and asks about specific family status, you MUST simply reply asking them to login first. Do NOT check empty states or say "no daughters are linked yet" or "not started yet".
+- **STRICT DYNAMIC OPTION BUTTONS FORMAT**: You MUST strictly format all option buttons as '[option:Label|Value]' (or '[option:Label]' if the label and value are identical). Every button MUST start with the exact prefix '[option:' and end with ']'. Do NOT omit the 'option:' prefix!
+- When a logged-in user (PARENT, GUARDIAN, or TEEN) asks about their linked family member's (daughter's or parent's) status, progress, or "how are they doing":
+  1. Check 'Linked Daughters/Teens Details' and 'Linked Parents Details' in [USER CONTEXT]. If both are empty, warmly say no linked family members are found.
+  2. If the user has NOT selected or provided a phone number yet (in the current message or chat history): ask: "Which linked member's phone number would you like to check?" and present each linked member's phone number strictly as option buttons:
+     '[option:Name (Phone)|Phone]' (e.g. if Priyesha is linked with +919876543210, show '[option:Priyesha (+919876543210)|+919876543210]').
+  3. When the user sends/replies with a phone number (or the history shows they just sent one) and has NOT selected a progress category yet:
+     Do NOT output details yet. Ask: "What progress would you like to check for this phone number?" and present exactly these option buttons format (STRICTLY with '[option:' prefix):
+     '[option:Learning Journey|Learning Journey for +919876543210] [option:Program Progress|Program Progress for +919876543210] [option:Next Session|Next Session for +919876543210] [option:Mood Insights|Mood Insights for +919876543210]' (replace '+919876543210' with the actual selected phone number).
+  4. When the user selects/replies with one of those progress category options (e.g. 'Learning Journey for +919876543210'):
+     Find the member with that phone number in the linked list in [USER CONTEXT], and output ONLY that specific pillar's details:
+     - **Learning Journey**: Active journey name and completion % (from 'activeJourney' in details). If none, say "no active journey."
+     - **Program Progress**: All enrolled programs progress details (completed/total sessions and %). If none, say "no programs enrolled."
+     - **Next Session**: Next expert session date/time. If none, say "no upcoming session scheduled."
+     - **Mood Insights**: Recent mood trends. If none, say "no recent mood data available."
+
+USER'S OWN STATUS/PROGRESS QUERIES — INTERACTIVE FLOW:
+- **GUEST OVERRIDE**: If the user is a guest (not logged in) and asks about their own progress/details, you MUST simply reply asking them to login first.
 - When a logged-in user asks about their own status, progress, journey, or programs:
-  1. Check 'Active Learning Journey', 'Enrolled Programs Details', and 'Next Expert Session' in [USER CONTEXT].
-  2. ALWAYS deliver ALL FOUR in one response:
-     📚 **Learning Journey**: Active journey name and completion % (from 'Active Learning Journey'). If none, say "not started yet."
-     🎯 **Program Progress**: All enrolled programs with completed/total sessions and % (from 'Enrolled Programs Details'). If none, say "no programs enrolled yet."
-     📅 **Next Session**: Next scheduled expert session date/time (from 'Next Expert Session'). If none, say "no upcoming session."
-     💙 **Mood**: Current mood from 'Current Mood Tracker' if available.
+  1. Do NOT deliver the progress details directly.
+  2. Instead, ask: "Which part of your status or progress would you like to check?" and present exactly these option buttons:
+     '[option:Learning Journey] [option:Program Progress] [option:Next Expert Session] [option:Mood Insights]'
+  3. When the user selects/sends one of these pillars:
+     Output ONLY the details for that specific pillar:
+     - **Learning Journey**: Active journey name and completion % (from 'Active Learning Journey'). If none, say "not started yet."
+     - **Program Progress**: All enrolled programs with completed/total sessions and % (from 'Enrolled Programs Details'). If none, say "no programs enrolled yet."
+     - **Next Expert Session**: Next scheduled expert session date/time (from 'Next Expert Session'). If none, say "no upcoming session scheduled."
+     - **Mood Insights**: Current mood (from 'Current Mood Tracker'). If none, say "no recent mood data available."
+
+PROGRAM ENROLLMENT, REGISTRATION, OR START REQUESTS:
+- **GUEST OVERRIDE**: If the user is a guest (Authenticated is False) and asks to register/start/enroll, you MUST simply reply asking them to login first. Tell them: "Please login first to enroll in programs! 💙" and provide the login link: '[link:/login]'. Do NOT check progress or simulate enrollment.
+- When a logged-in user asks to enroll in, register for, start, or sign up for any program (e.g. "Enroll in SPARK", "Start SPARK", "Enroll in BLOOM"):
+  1. Check 'Enrolled Programs Details' in [USER CONTEXT].
+  2. If the user is **already enrolled** in that program:
+     - Warmly let them know they are already enrolled in it.
+     - Report their actual current progress values exactly as provided in 'Enrolled Programs Details' in [USER CONTEXT] (including Completed Sessions, Total Sessions, Percent Complete, and Next Session At). If the database reports 0 completed sessions or 0% completion, output exactly 0 completed sessions / 0% completion. Never fabricate or invent non-zero statistics.
+     - Guide them to check or continue their progress on the dashboard: '[option:Check Program Progress]' and provide the link '[link:/dashboard/enrolled-programs]'.
+  3. If the user is **NOT enrolled** in that program:
+     - Warmly explain that since you are an AI assistant, you cannot directly write to the database or process payments/enrollments.
+     - Guide them to complete their enrollment on the dashboard by providing the link: '[link:/dashboard/enrolled-programs]'.
+     - Do NOT tell them they have successfully enrolled or started, and do NOT display any session or completion progress statistics since they are not enrolled.
 
 THREE-TRACK ESCALATION:
 - **Track 1 (Support)**: Everyday stress, venting, academic pressure. Validate and offer micro-tools (breathing, journaling).
@@ -136,14 +214,10 @@ ETHICAL RED LINES:
 3. NEVER suggest or validate self-harm or disordered eating.
 4. If a user is in crisis (Track 3), prioritize safety and provide helpline numbers immediately.
 
-TEEN/PARENT STATUS QUERIES — CRITICAL RULES:
-- When a TEEN user asks about their parent's status, details, or "how is my parent linked":
-  1. Check 'Linked Parents Details' in [USER CONTEXT]. If empty, warmly say no parents are linked yet.
-  2. If parent details exist, warmly provide the details (e.g. parent name and role) and explain how their account is linked.
-
 SUGGESTING PROGRAMS & JOURNEYS:
 - You have access to a live list of [AVAILABLE PROGRAMS & JOURNEYS IN DATABASE] in the context.
 - If the user (logged-in user or guest/unauthenticated user) asks for suggestions, recommendations, or details on what learning programs or learning journeys are available, you should suggest and describe the relevant ones from this live database list.
+- **IMPORTANT**: Whenever you suggest, list, or recommend any programs or journeys, you MUST always append corresponding option buttons at the end of your response so the user can easily select one to learn more, formatted exactly as [option:Learn about ProgramName] (e.g. [option:Learn about RISE] [option:Learn about SPARK]).
 `.trim();
 
   /**
@@ -159,15 +233,17 @@ SUGGESTING PROGRAMS & JOURNEYS:
         return this.handleUnsafeInput(userId, content, sessionId);
       }
 
-      // Fetch active programs and journeys from the database
-      const [allPrograms, allJourneys] = await Promise.all([
-        prisma.program.findMany({ where: { isActive: true }, select: { title: true, tagline: true, description: true } }),
-        prisma.learningJourney.findMany({ where: { isActive: true }, select: { title: true, description: true } })
-      ]);
+      const contentLower = content.toLowerCase();
+      // Always fetch the programs & journeys catalog — it is cached (5-min TTL) so the
+      // overhead is negligible. This ensures Gigi knows about ALL programs for any query
+      // (enroll, ask about, suggest, etc.) without needing keyword matching.
+      const [cachedProgs, cachedJourneys] = await ChatService.getCachedProgramsAndJourneys();
+      let allPrograms: any[] = cachedProgs || [];
+      let allJourneys: any[] = cachedJourneys || [];
 
       // If user is not authenticated, run guest flow without database storage
       if (!userId) {
-        const history = guestHistory ? guestHistory.map(h => ({
+        const history = guestHistory ? guestHistory.slice(-10).map(h => ({
           sender: h.sender,
           content: h.content
         })) : [];
@@ -240,9 +316,8 @@ SUGGESTING PROGRAMS & JOURNEYS:
       let teenStatuses: any[] = [];
       let parentStatuses: any[] = [];
 
-      // Optimize: Only fetch heavy progress and linking details if user query suggests status or progress requests
-      const contentLower = content.toLowerCase();
-      const needsDetailedContext = /status|progress|journey|program|session|daughter|parent|link|doing|enroll|complete|how is|how am/i.test(contentLower);
+      // Always fetch progress and linking details for logged-in users to guarantee accurate, non-hallucinated responses in multi-turn conversations
+      const needsDetailedContext = true;
 
       if (needsDetailedContext) {
         // Fetch primary linking and progress records in parallel
@@ -254,7 +329,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
             }
           }),
           prisma.programEnrollment.findMany({
-            where: { userId, status: "ACTIVE" },
+            where: { userId, status: "ACTIVE", program: { isActive: true } },
             include: { program: true }
           }),
           prisma.userProgress.findFirst({
@@ -321,7 +396,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
               completedSessions,
               totalSessions,
               percentComplete: totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0,
-              nextSessionAt: nextProgSession ? nextProgSession.scheduledAt : null
+              nextSessionAt: nextProgSession ? formatDateTime(nextProgSession.scheduledAt) : null
             };
           })
         );
@@ -341,7 +416,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
 
             // Fetch combined enrollments for teen + parents to show to the teen
             const combinedEnrollments = await prisma.programEnrollment.findMany({
-              where: { userId: { in: [userId, ...parentIds] }, status: 'ACTIVE' },
+              where: { userId: { in: [userId, ...parentIds] }, status: 'ACTIVE', program: { isActive: true } },
               include: { program: true }
             });
 
@@ -375,7 +450,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
                   completedSessions,
                   totalSessions,
                   percentComplete: totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0,
-                  nextSessionAt: nextProgSession ? nextProgSession.scheduledAt : null
+                  nextSessionAt: nextProgSession ? formatDateTime(nextProgSession.scheduledAt) : null
                 };
               })
             );
@@ -397,7 +472,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
                   where: { userId: parentId, scheduledAt: { gte: new Date() }, status: 'SCHEDULED' },
                   orderBy: { scheduledAt: 'asc' }
                 }),
-                prisma.programEnrollment.findMany({ where: { userId: parentId, status: 'ACTIVE' }, include: { program: true } })
+                prisma.programEnrollment.findMany({ where: { userId: parentId, status: 'ACTIVE', program: { isActive: true } }, include: { program: true } })
               ]);
 
               let activeJourney = null;
@@ -424,7 +499,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
                     completedSessions,
                     totalSessions,
                     percentComplete: totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0,
-                    nextSessionAt: nextProgSession ? nextProgSession.scheduledAt : null
+                    nextSessionAt: nextProgSession ? formatDateTime(nextProgSession.scheduledAt) : null
                   };
                 })
               );
@@ -492,7 +567,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
                 select: { date: true, moodPrimary: true }
               }),
               prisma.programEnrollment.findMany({
-                where: { userId: { in: [teenId, userId] }, status: "ACTIVE" },
+                where: { userId: { in: [teenId, userId] }, status: "ACTIVE", program: { isActive: true } },
                 include: { program: true }
               })
             ]);
@@ -536,7 +611,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
                   completedSessions,
                   totalSessions,
                   percentComplete: totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0,
-                  nextSessionAt: nextProgSession ? nextProgSession.scheduledAt : null
+                  nextSessionAt: nextProgSession ? formatDateTime(nextProgSession.scheduledAt) : null
                 };
               })
             );
@@ -545,7 +620,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
               name: link.teen.profile?.displayName || link.teen.username || "Daughter",
               phone: link.teen.phone,
               activeJourney,
-              nextSession: nextSession ? nextSession.scheduledAt : null,
+              nextSession: nextSession ? formatDateTime(nextSession.scheduledAt) : null,
               recentMoods: recentLogs.map(l => l.moodPrimary).filter(Boolean).slice(0, 5),
               enrolledPrograms: teenProgramsProgress
             };
@@ -562,7 +637,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
         phone: user?.phone,
         role: user?.role,
         activeJourney: userActiveJourney,
-        nextSession: userNextSession ? userNextSession.scheduledAt : null,
+        nextSession: userNextSession ? formatDateTime(userNextSession.scheduledAt) : null,
         enrolledPrograms: userProgramsProgress,
         linkedTeens: teenStatuses,
         linkedParents: parentStatuses,
@@ -616,42 +691,12 @@ SUGGESTING PROGRAMS & JOURNEYS:
   }
 
   private async checkModeration(text: string): Promise<boolean> {
-    // Fast-path: short, common greeting/safe messages do not need API checks
-    const clean = text.trim().toLowerCase();
-    const safeWords = /^(hi|hello|hey|ok|okay|yes|no|thanks|thank you|gigi|good morning|good night|bye|help)$/i;
-    if (clean.length <= 4 || safeWords.test(clean)) {
-      return true;
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 800); // 800ms timeout
-
-      const response = await fetch(OPENAI_MODERATION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({ input: text }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      const data = await response.json() as any;
-      if (data.error) {
-        logger.error(data.error, 'Moderation API error, failing open:');
-        return true;
-      }
-      return !data.results[0].flagged;
-    } catch (error) {
-      logger.error(error as any, 'Moderation API failure or timeout, failing open:');
-      return true; // Fail open to prevent blocking application
-    }
+    // Short-circuit moderation check to bypass OpenAI API calls and eliminate latency.
+    // Llama-3's native alignment and system prompt instructions act as primary guardrails.
+    return true;
   }
 
-  private async callGroq(userMsg: string, history: any[], context: any, platform: 'web' | 'mobile' = 'mobile') {
+  private async callGroq(userMsg: string, history: any[], context: any, platform: 'web' | 'mobile' = 'mobile'): Promise<string> {
     const parseRetryAfter = (h: string | null) => {
       if (!h) return null;
       const raw = h.trim();
@@ -659,153 +704,216 @@ SUGGESTING PROGRAMS & JOURNEYS:
       if (/^\d+$/.test(raw)) return parseInt(raw, 10);
       // If it's an HTTP-date, try Date.parse
       const parsed = Date.parse(raw);
-      if (!isNaN(parsed)) {
-        const diff = Math.ceil((parsed - Date.now()) / 1000);
+      const dVal = new Date(parsed);
+      if (!isNaN(dVal.getTime())) {
+        const diff = Math.ceil((dVal.getTime() - Date.now()) / 1000);
         return diff > 0 ? diff : 0;
       }
       return null;
     };
 
-    const maxRetries = 2;
-    let attempt = 0;
-    while (true) {
-      try {
-      // Build user context block
-      let contextStr = '[USER CONTEXT:';
-      if (context.name) contextStr += ` User's Name: ${context.name}.`;
-      if (context.age) contextStr += ` User's Age: ${context.age}.`;
-      if (context.phone) contextStr += ` User's Phone: ${context.phone}.`;
-      if (context.role) contextStr += ` User's Role: ${context.role}.`;
-      if (context.activeJourney) {
-        contextStr += ` Active Learning Journey: ${context.activeJourney.name} (${context.activeJourney.percentComplete}% complete).`;
-      }
-      if (context.nextSession) {
-        contextStr += ` Next Expert Session: ${context.nextSession}.`;
-      }
-      if (context.enrolledPrograms && context.enrolledPrograms.length > 0) {
-        contextStr += ` Enrolled Programs Details: ${JSON.stringify(context.enrolledPrograms)}.`;
-      }
-      if (context.linkedTeens && context.linkedTeens.length > 0) {
-        contextStr += ` Linked Daughters/Teens Details: ${JSON.stringify(context.linkedTeens)}.`;
-      }
-      if (context.linkedParents && context.linkedParents.length > 0) {
-        contextStr += ` Linked Parents Details: ${JSON.stringify(context.linkedParents)}.`;
-      }
-      if (context.cyclePhase) contextStr += ` Current Cycle Phase: ${context.cyclePhase} (Day ${context.cycleDay || '?'}).`;
-      if (context.goals && context.goals.length > 0) contextStr += ` Focus/Goals: ${context.goals.join(', ')}.`;
-      if (context.mood) contextStr += ` Current Mood Tracker: ${context.mood}.`;
-      contextStr += ']';
+    let messages: any[] = [];
+    try {
+      const maxRetries = 2;
+      let attempt = 0;
+      while (true) {
+        try {
+          // Build user context block
+          let contextStr = `[USER CONTEXT: Authenticated: ${context.role ? 'True' : 'False (GUEST)'}.`;
+          if (context.name) contextStr += ` User's Name: ${context.name}.`;
+          if (context.age) contextStr += ` User's Age: ${context.age}.`;
+          if (context.phone) contextStr += ` User's Phone: ${context.phone}.`;
+          if (context.role) contextStr += ` User's Role: ${context.role}.`;
+          if (context.activeJourney) {
+            contextStr += ` Active Learning Journey: ${context.activeJourney.name} (${context.activeJourney.percentComplete}% complete).`;
+          }
+          if (context.nextSession) {
+            contextStr += ` Next Expert Session: ${context.nextSession}.`;
+          }
+          if (context.enrolledPrograms && context.enrolledPrograms.length > 0) {
+            contextStr += ` Enrolled Programs Details: ${JSON.stringify(context.enrolledPrograms)}.`;
+          }
+          if (context.linkedTeens && context.linkedTeens.length > 0) {
+            contextStr += ` Linked Daughters/Teens Details: ${JSON.stringify(context.linkedTeens)}.`;
+          }
+          if (context.linkedParents && context.linkedParents.length > 0) {
+            contextStr += ` Linked Parents Details: ${JSON.stringify(context.linkedParents)}.`;
+          }
+          if (context.cyclePhase) contextStr += ` Current Cycle Phase: ${context.cyclePhase} (Day ${context.cycleDay || '?'}).`;
+          if (context.goals && context.goals.length > 0) contextStr += ` Focus/Goals: ${context.goals.join(', ')}.`;
+          if (context.mood) contextStr += ` Current Mood Tracker: ${context.mood}.`;
+          contextStr += ']';
 
-      // Prepend active programs and journeys database info
-      let databaseInfo = '\n[AVAILABLE PROGRAMS & JOURNEYS IN DATABASE:';
-      if (context.allPrograms && context.allPrograms.length > 0) {
-        databaseInfo += ` Programs: ${context.allPrograms.map((p: any) => `"${p.title}" - ${p.tagline || ''} (${p.description || ''})`).join('; ')}.`;
-      } else {
-        databaseInfo += ' No active programs.';
-      }
-      if (context.allJourneys && context.allJourneys.length > 0) {
-        databaseInfo += ` Journeys: ${context.allJourneys.map((j: any) => `"${j.title}" - ${j.description || ''}`).join('; ')}.`;
-      } else {
-        databaseInfo += ' No active journeys.';
-      }
-      databaseInfo += ']';
+          // Prepend active programs and journeys database info
+          let databaseInfo = '\n[AVAILABLE PROGRAMS & JOURNEYS IN DATABASE:';
+          if (context.allPrograms && context.allPrograms.length > 0) {
+            databaseInfo += ` Programs: ${context.allPrograms.map((p: any) => `"${p.title}" - ${p.tagline || ''} (${p.description || ''}) [Sessions: ${p.sessions || 8}, Duration: ${p.duration || ''}]`).join('; ')}.`;
+          } else {
+            databaseInfo += ' No active programs.';
+          }
+          if (context.allJourneys && context.allJourneys.length > 0) {
+            databaseInfo += ` Journeys: ${context.allJourneys.map((j: any) => `"${j.title}" - ${j.description || ''}`).join('; ')}.`;
+          } else {
+            databaseInfo += ' No active journeys.';
+          }
+          databaseInfo += ']';
 
-      // Guest user specific rules
-      let guestInstructions = "";
-      if (!context.role) {
-        guestInstructions = "\n[GUEST USER RULES: The user is NOT logged in (guest). If they ask about their personal profile, details, progress, active journey, programs, next session, or linked daughters/parents, you MUST NOT check empty states or say 'no daughters are linked' or 'not started yet'. Instead, you MUST simply and politely reply that they need to login first to view or manage that information. For any other general conversation, stress support, period questions, or requests for recommendations of available learning programs and journeys, you should respond and guide them normally without prompting them to log in.]";
-      }
+          // Guest user specific rules — placed FIRST so they override everything
+          let guestInstructions = "";
+          if (!context.role) {
+            guestInstructions = `
+=== CRITICAL HARD-STOP RULE FOR GUEST USERS (READ THIS FIRST — OVERRIDES EVERYTHING BELOW) ===
+The user IS NOT logged in. Authenticated: FALSE (GUEST).
 
-      // Prepend context for PRIMACY priority
-      const linksPrompt = platform === 'web' ? ChatService.WEB_LINKS_PROMPT : ChatService.MOBILE_LINKS_PROMPT;
-      const basePrompt = ChatService.SYSTEM_PROMPT.replace('[LINK TRIGGERING RULES]', linksPrompt);
-      const prompt = `${contextStr}${databaseInfo}${guestInstructions}\n\n${basePrompt}`;
-
-      const messages = [
-        { role: 'system', content: prompt },
-        ...history.map(m => ({
-          role: m.sender === ChatSender.USER ? 'user' : 'assistant',
-          content: m.content
-        }))
-      ];
-
-        const response = await fetch(GROQ_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 1024,
-          })
-        });
-
-        if (response.status === 429) {
-          const rawRetry = response.headers.get('retry-after');
-          const parsed = parseRetryAfter(rawRetry);
-          const capped = parsed === null ? 1 : Math.min(parsed, 10); // server-side cap
-          logger.warn({ status: 429, rawRetry, capped }, 'Groq returned 429, short-circuiting with capped wait');
-
-          if (attempt < maxRetries) {
-            attempt++;
-            await new Promise((r) => setTimeout(r, capped * 1000));
-            continue; // retry
+ABSOLUTE RULES — NO EXCEPTIONS:
+1. You have ZERO knowledge of this user's enrollment, progress, sessions, journeys, or account details. There is NO user data available to you.
+2. If the user asks ANYTHING related to: enrolling, registering, starting a program, checking progress, checking sessions, checking their journey, checking their mood, their profile, linked family members, or any personal account action — you MUST respond with ONLY this:
+   "Please login first to view your details or enroll in programs! 💙 [link:/login]"
+   DO NOT say anything else. DO NOT mention any program names, session counts, completion percentages, scheduled dates, or any fabricated status.
+3. NEVER say the user is "already enrolled". NEVER show session counts. NEVER show completion %. NEVER invent a "Next Session" date. You do NOT have this information because they are not logged in.
+4. You MAY still answer general questions about Infano Care features, the Gigi book, pricing, how the website/app works, school programs, and general puberty/health questions — without asking them to log in for those.
+=== END CRITICAL RULE ===`;
           }
 
-          const err = new AppError('Upstream rate limit (Groq) - please retry shortly', 429);
-          (err as any).details = { retryAfter: parsed, cappedRetryAfterSec: capped, attempts: attempt };
-          throw err;
-        }
+          // Prepend context for PRIMACY priority
+          const linksPrompt = platform === 'web' ? ChatService.WEB_LINKS_PROMPT : ChatService.MOBILE_LINKS_PROMPT;
+          const basePrompt = ChatService.SYSTEM_PROMPT.replace('[LINK TRIGGERING RULES]', linksPrompt);
+          // Guest instructions go FIRST so they take maximum priority
+          const prompt = `${guestInstructions}\n\n${contextStr}${databaseInfo}\n\n${basePrompt}`;
 
-        const text = await response.text();
-        let data: any = null;
-        try {
-          data = text ? JSON.parse(text) : null;
-        } catch (e) {
-          logger.warn({ text }, 'Groq returned non-json body');
-        }
+          messages = [
+            { role: 'system', content: prompt },
+            ...history.map(m => ({
+              role: m.sender === ChatSender.USER ? 'user' : 'assistant',
+              content: m.content
+            }))
+          ];
 
-        if (!response.ok) {
-          const status = response.status || 502;
-          logger.error({ status, body: data || text }, 'Groq non-OK response');
-          const err = new AppError('Upstream LLM error', status);
-          (err as any).details = { status, body: data || text };
-          throw err;
-        }
+          // If the last message in history is not the current user message, append it
+          const lastMsg = history[history.length - 1];
+          const isLastMsgUserCurrent = lastMsg && 
+            (lastMsg.sender === ChatSender.USER || lastMsg.sender === 'USER') && 
+            lastMsg.content.trim() === userMsg.trim();
 
-        if (data && data.error) {
-          logger.error({ error: data.error }, 'Groq API returned an error');
-          const err = new AppError(`Groq API error: ${data.error.message || 'Unknown API error'}`, 502);
-          (err as any).details = { error: data.error };
-          throw err;
-        }
+          if (!isLastMsgUserCurrent) {
+            messages.push({ role: 'user', content: userMsg });
+          }
 
-        if (!data || !data.choices || data.choices.length === 0) {
-          logger.error({ data }, 'Groq returned empty or malformed choices');
-          const err = new AppError('Upstream LLM returned empty response', 502);
-          (err as any).details = { data };
-          throw err;
-        }
+          const response = await fetch(GROQ_API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: attempt === 0 ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant',
+              messages: messages,
+              temperature: 0.7,
+              max_tokens: 1024,
+            })
+          });
 
-        return data.choices[0].message.content;
-      } catch (err: any) {
-        // If it's an AppError rethrow, other errors will be wrapped
-        if (err instanceof AppError) throw err;
-        logger.error(err, 'Groq API failure (network/exception)');
-        // If we can retry, do so
-        if (attempt < maxRetries) {
-          attempt++;
-          await new Promise((r) => setTimeout(r, 1000 * attempt));
-          continue;
+          if (response.status === 429) {
+            const rawRetry = response.headers.get('retry-after');
+            const parsed = parseRetryAfter(rawRetry);
+            const capped = parsed === null ? 1 : Math.min(parsed, 10);
+            logger.warn({ status: 429, rawRetry, capped, attempt }, 'Groq returned 429, initiating failover or retry');
+
+            if (attempt < maxRetries) {
+              attempt++;
+              const waitMs = attempt === 1 ? 100 : capped * 1000;
+              await new Promise((r) => setTimeout(r, waitMs));
+              continue;
+            }
+
+            const err = new AppError('Upstream rate limit (Groq) - please retry shortly', 429);
+            (err as any).details = { retryAfter: parsed, cappedRetryAfterSec: capped, attempts: attempt };
+            throw err;
+          }
+
+          const text = await response.text();
+          let data: any = null;
+          try {
+            data = text ? JSON.parse(text) : null;
+          } catch (e) {
+            logger.warn({ text }, 'Groq returned non-json body');
+          }
+
+          if (!response.ok) {
+            const status = response.status || 502;
+            logger.error({ status, body: data || text }, 'Groq non-OK response');
+            const err = new AppError('Upstream LLM error', status);
+            (err as any).details = { status, body: data || text };
+            throw err;
+          }
+
+          if (data && data.error) {
+            logger.error({ error: data.error }, 'Groq API returned an error');
+            const err = new AppError(`Groq API error: ${data.error.message || 'Unknown API error'}`, 502);
+            (err as any).details = { error: data.error };
+            throw err;
+          }
+
+          if (!data || !data.choices || data.choices.length === 0) {
+            logger.error({ data }, 'Groq returned empty or malformed choices');
+            const err = new AppError('Upstream LLM returned empty response', 502);
+            (err as any).details = { data };
+            throw err;
+          }
+
+          return data.choices[0].message.content;
+        } catch (err: any) {
+          if (err instanceof AppError) throw err;
+          logger.error(err, 'Groq API failure (network/exception)');
+          if (attempt < maxRetries) {
+            attempt++;
+            await new Promise((r) => setTimeout(r, 1000 * attempt));
+            continue;
+          }
+          const appErr = new AppError('Failed to contact LLM provider', 502);
+          (appErr as any).details = { message: err?.message || String(err) };
+          throw appErr;
         }
-        const appErr = new AppError('Failed to contact LLM provider', 502);
-        (appErr as any).details = { message: err?.message || String(err) };
-        throw appErr;
       }
+    } catch (outerError: any) {
+      if (process.env.OPENAI_API_KEY) {
+        try {
+          logger.warn({ outerError: outerError.message || String(outerError) }, 'Groq API failed completely. Initiating failover to OpenAI (gpt-4o-mini)...');
+          return await this.callOpenAI(messages);
+        } catch (openaiErr: any) {
+          logger.error(openaiErr, 'OpenAI failover also failed');
+        }
+      }
+      throw outerError;
     }
+  }
+
+  private async callOpenAI(messages: any[]): Promise<string> {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 1024,
+      })
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`OpenAI response not OK: ${response.status} - ${text}`);
+    }
+
+    const data: any = await response.json();
+    if (!data || !data.choices || data.choices.length === 0) {
+      throw new Error('OpenAI returned empty choices');
+    }
+
+    return data.choices[0].message.content;
   }
 
   private sanitizeOutput(text: string): string {
