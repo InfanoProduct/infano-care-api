@@ -418,7 +418,11 @@ export class ProgramsService {
     const uniqueIds = [...new Set(relatedIds)];
 
     const enrollments = await prisma.programEnrollment.findMany({
-      where: { userId: { in: uniqueIds } },
+      where: {
+        userId: { in: uniqueIds },
+        status: "ACTIVE",
+        program: { isActive: true }
+      },
       include: {
         program: true,
         user: {

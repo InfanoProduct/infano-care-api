@@ -6,7 +6,8 @@ export class ExpertService {
   static async getEnrollments() {
     const enrollments = await prisma.programEnrollment.findMany({
       where: {
-        status: "ACTIVE"
+        status: "ACTIVE",
+        program: { isActive: true }
       },
       include: {
         program: {
