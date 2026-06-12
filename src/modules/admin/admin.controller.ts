@@ -177,7 +177,8 @@ export class AdminController {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
-      const result = await AdminService.getOrders(page, limit);
+      const search = req.query.search as string | undefined;
+      const result = await AdminService.getOrders(page, limit, search);
       res.status(200).json(result);
     } catch (error) {
       next(error);

@@ -324,10 +324,24 @@ export class AdminService {
   }
 
   // Order Management
-  static async getOrders(page: number = 1, limit: number = 20) {
+  static async getOrders(page: number = 1, limit: number = 20, search?: string) {
     const skip = (page - 1) * limit;
+    
+    let whereClause: any = {};
+    if (search) {
+      whereClause = {
+        OR: [
+          { id: { contains: search, mode: 'insensitive' } },
+          { guestName: { contains: search, mode: 'insensitive' } },
+          { guestEmail: { contains: search, mode: 'insensitive' } },
+          { user: { username: { contains: search, mode: 'insensitive' } } }
+        ]
+      };
+    }
+
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
+        where: whereClause,
         skip,
         take: limit,
         include: {
@@ -340,7 +354,7 @@ export class AdminService {
         },
         orderBy: { createdAt: "desc" }
       }),
-      prisma.order.count()
+      prisma.order.count({ where: whereClause })
     ]);
 
     return {
