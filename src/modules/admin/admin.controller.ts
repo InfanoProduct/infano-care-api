@@ -176,8 +176,16 @@ export class AdminController {
   static async getOrders(req: Request, res: Response, next: NextFunction) {
     try {
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const result = await AdminService.getOrders(page, limit);
+      const limit = parseInt(req.query.limit as string) || 25;
+      const filters = {
+        search: req.query.search as string,
+        dateFrom: req.query.dateFrom as string,
+        dateTo: req.query.dateTo as string,
+        status: req.query.status as string,
+        paymentMethod: req.query.paymentMethod as string,
+        paymentStatus: req.query.paymentStatus as string,
+      };
+      const result = await AdminService.getOrders(page, limit, filters);
       res.status(200).json(result);
     } catch (error) {
       next(error);
