@@ -499,7 +499,9 @@ export class ProgramsService {
         pricePrivate: parseFloat(data.pricePrivate) || 0,
         priceGroup: parseFloat(data.priceGroup) || 0,
         isActive: data.isActive !== undefined ? data.isActive : true,
-        curriculum: data.curriculum !== undefined ? data.curriculum : []
+        curriculum: data.curriculum !== undefined ? data.curriculum : [],
+        features: Array.isArray(data.features) ? data.features : [],
+        enrolledCount: data.enrolledCount !== undefined ? parseInt(data.enrolledCount) : 1200
       }
     });
   }
@@ -526,7 +528,9 @@ export class ProgramsService {
         pricePrivate: data.pricePrivate !== undefined ? parseFloat(data.pricePrivate) : undefined,
         priceGroup: data.priceGroup !== undefined ? parseFloat(data.priceGroup) : undefined,
         isActive: data.isActive !== undefined ? data.isActive : undefined,
-        curriculum: data.curriculum !== undefined ? data.curriculum : undefined
+        curriculum: data.curriculum !== undefined ? data.curriculum : undefined,
+        features: Array.isArray(data.features) ? data.features : undefined,
+        enrolledCount: data.enrolledCount !== undefined ? parseInt(data.enrolledCount) : undefined
       }
     });
   }

@@ -244,7 +244,8 @@ export class ParentService {
       
       activeJourney = {
         name: activeProgress.episode.journey.title,
-        percentComplete
+        percentComplete,
+        thumbnailUrl: activeProgress.episode.journey.thumbnailUrl || activeProgress.episode.journey.bannerImage
       };
     }
 
