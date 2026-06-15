@@ -192,7 +192,11 @@ export class ParentService {
         status: "LINKED"
       },
       include: {
-        teen: true
+        teen: {
+          include: {
+            profile: true
+          }
+        }
       }
     });
 
@@ -287,7 +291,7 @@ export class ParentService {
 
     return {
       isLinked: true,
-      daughterName: link.teen?.username || "Daughter",
+      daughterName: link.teen?.profile?.displayName || link.teen?.username || "Daughter",
       activeJourney,
       moodTrend: recentLogs,
       nextExpertSession: nextSession ? nextSession.scheduledAt : null,
