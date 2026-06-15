@@ -3,6 +3,7 @@ import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import crypto from "crypto";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
+import { normalizePhone } from "../../common/utils/phone.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -14,7 +15,13 @@ const GST_RATE = 0.05; // 5% for books
 export class ShopService {
   static async getBooks() {
     const books = await prisma.book.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        NOT: [
+          { id: { endsWith: "-private" } },
+          { id: { endsWith: "-group" } }
+        ]
+      },
     });
     const coupon = await prisma.discountCoupon.findFirst({
       orderBy: { createdAt: "desc" },
@@ -93,7 +100,7 @@ export class ShopService {
         const { coupon, discountAmount: calculatedDiscount } = await this.validateCoupon(data.couponCode, subtotal);
         discountAmount = calculatedDiscount;
         couponId = coupon.id;
-        
+
         // Increment coupon usage
         await tx.discountCoupon.update({
           where: { id: coupon.id },
@@ -104,13 +111,13 @@ export class ShopService {
       // 3. Calculate GST and Total (Production Grade Reverse Calculation)
       const taxableSubtotal = subtotal - discountAmount;
       const deliveryCharge = 0; // Free delivery for all orders
-      
+
       // Reverse GST calculation: Price = Taxable + (Taxable * Rate) => Taxable = Price / (1 + Rate)
       const taxableAmount = Math.round((taxableSubtotal / (1 + GST_RATE)) * 100) / 100;
       const gstAmount = Math.round((taxableSubtotal - taxableAmount) * 100) / 100;
       const cgstAmount = Math.round((gstAmount / 2) * 100) / 100;
       const sgstAmount = Math.round((gstAmount / 2) * 100) / 100;
-      
+
       const totalAmount = taxableSubtotal + deliveryCharge;
 
       // 4. Create Razorpay order if needed
@@ -147,24 +154,136 @@ export class ShopService {
           pincode: data.pincode,
           razorpayOrderId,
           couponId,
+          orderStatus: data.paymentMethod === PaymentMethod.COD ? OrderStatus.PLACED : OrderStatus.PLACED,
           gstNumber: data.gstNumber,
           items: {
             create: orderItems,
           },
         },
-        include: { items: { include: { book: true } } }
+        include: {
+          items: true,
+        }
       });
 
-      // 6. Reduce stock immediately (will rollback if transaction fails)
-      for (const item of orderItems) {
-        await tx.book.update({
-          where: { id: item.bookId },
-          data: { stock: { decrement: item.quantity } }
+      // 6. Update User Profile if userId is present (as requested)
+      if (data.userId) {
+        await tx.user.update({
+          where: { id: data.userId },
+          data: {
+            email: data.guestEmail,
+            profile: {
+              upsert: {
+                create: { displayName: data.guestName || "User" },
+                update: { displayName: data.guestName },
+              }
+            }
+          }
         });
       }
 
+      // 7. Manage Inventory
+      if (data.paymentMethod === PaymentMethod.COD) {
+        for (const item of orderItems) {
+          await tx.book.update({
+            where: { id: item.bookId },
+            data: { stock: { decrement: item.quantity } }
+          });
+        }
+      }
+
       return order;
+    }, {
+      timeout: 20000
     });
+  }
+
+  static async completeOrder(razorpayOrderId: string, razorpayPaymentId?: string, razorpaySignature?: string) {
+    const order = await prisma.order.findUnique({
+      where: { razorpayOrderId },
+      include: { items: { include: { book: true } } }
+    });
+    if (!order) return null;
+
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
+      return order; // already completed
+    }
+
+    // 1. Find or create user from guestPhone if userId is missing
+    let userId = order.userId;
+    if (!userId && order.guestPhone) {
+      const normalized = normalizePhone(order.guestPhone);
+      let user = await prisma.user.findUnique({ where: { phone: normalized } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            phone: normalized,
+            accountStatus: "PENDING_SETUP",
+            onboardingStep: 1,
+            role: "PARENT",
+            profile: {
+              create: {
+                displayName: order.guestName || "Parent",
+                totalPoints: 0,
+              }
+            }
+          }
+        });
+      }
+      userId = user.id;
+    }
+
+    // Update order status to COMPLETED
+    const updatedOrder = await prisma.order.update({
+      where: { razorpayOrderId },
+      data: {
+        paymentStatus: PaymentStatus.COMPLETED,
+        razorpayPaymentId,
+        razorpaySignature,
+        userId: userId || undefined,
+      },
+    });
+
+    // 2. Automatically create program enrollment if ordered item is a program
+    if (userId) {
+      for (const item of order.items) {
+        const book = item.book as any;
+        if (!book) continue;
+        const isProg = book.id.endsWith("-private") || book.id.endsWith("-group");
+        if (isProg) {
+          const programTitle = book.id.split("-")[0].toUpperCase();
+          const program = await prisma.program.findFirst({
+            where: { title: { equals: programTitle, mode: "insensitive" } }
+          });
+          if (program) {
+            const type = (item.book as any).id.endsWith("-private") ? "PRIVATE" : "GROUP";
+            // Check if already enrolled
+            const existingEnrollment = await prisma.programEnrollment.findUnique({
+              where: {
+                userId_programId: {
+                  userId,
+                  programId: program.id
+                }
+              }
+            });
+            if (!existingEnrollment) {
+              await prisma.programEnrollment.create({
+                data: {
+                  userId,
+                  programId: program.id,
+                  type,
+                  pricePaid: item.price,
+                  status: "ACTIVE",
+                  guestName: order.guestName,
+                  guestEmail: order.guestEmail,
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return updatedOrder;
   }
 
   static async verifyPayment(data: {
@@ -180,14 +299,7 @@ export class ShopService {
       .digest("hex");
 
     if (expectedSignature === razorpaySignature) {
-      return prisma.order.update({
-        where: { razorpayOrderId },
-        data: {
-          paymentStatus: PaymentStatus.COMPLETED,
-          razorpayPaymentId,
-          razorpaySignature,
-        },
-      });
+      return await this.completeOrder(razorpayOrderId, razorpayPaymentId, razorpaySignature);
     } else {
       await prisma.order.update({
         where: { razorpayOrderId },
@@ -219,14 +331,14 @@ export class ShopService {
     // If cancelled, restore stock
     if (nextStatus === OrderStatus.CANCELLED) {
       const items = await prisma.orderItem.findMany({ where: { orderId: id } });
-      await prisma.$transaction(async (tx) => {
+      return await prisma.$transaction(async (tx) => {
         for (const item of items) {
           await tx.book.update({
             where: { id: item.bookId },
             data: { stock: { increment: item.quantity } }
           });
         }
-        await tx.order.update({
+        return await tx.order.update({
           where: { id },
           data: { orderStatus: nextStatus }
         });
@@ -255,16 +367,10 @@ export class ShopService {
       const { id: razorpayOrderId } = event.payload.order.entity;
       const { id: razorpayPaymentId } = event.payload.payment.entity;
 
-      await prisma.order.update({
-        where: { razorpayOrderId },
-        data: {
-          paymentStatus: PaymentStatus.COMPLETED,
-          razorpayPaymentId,
-        },
-      });
+      await this.completeOrder(razorpayOrderId, razorpayPaymentId);
     } else if (event.event === "payment.failed") {
       const { order_id: razorpayOrderId } = event.payload.payment.entity;
-      
+
       await prisma.order.update({
         where: { razorpayOrderId },
         data: { paymentStatus: PaymentStatus.FAILED }
@@ -272,6 +378,20 @@ export class ShopService {
     }
 
     return { received: true };
+  }
+
+  static async getUserOrders(userId: string) {
+    return prisma.order.findMany({
+      where: { userId },
+      include: {
+        items: {
+          include: {
+            book: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
   }
 
   static async adminListCoupons() {
@@ -315,5 +435,9 @@ export class ShopService {
     return prisma.discountCoupon.delete({
       where: { id }
     });
+  }
+
+  static async adminGetRazorpayTransactions(options: { skip?: number; count?: number; from?: number; to?: number }) {
+    return razorpay.payments.all(options);
   }
 }

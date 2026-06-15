@@ -1,73 +1,58 @@
-import { Request, Response } from 'express';
-import { ExpertService } from './expert.service.js';
-import { logger } from '../../config/logger.js';
-
-const expertService = new ExpertService();
+import { Request, Response } from "express";
+import { ExpertService } from "./expert.service.js";
 
 export class ExpertController {
-  async listExperts(req: Request, res: Response) {
+  static async getEnrollments(req: Request, res: Response) {
     try {
-      const userId = (req as any).userId;
-      const experts = await expertService.listExperts(userId);
-      res.json(experts);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to list experts' });
+      const enrollments = await ExpertService.getEnrollments();
+      res.json(enrollments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   }
 
-  async getOrCreateSession(req: Request, res: Response) {
+  static async getEnrollmentDetails(req: Request, res: Response) {
     try {
-      const userId = (req as any).userId;
-      const { expertId } = req.body;
-
-      if (!expertId) {
-        return res.status(400).json({ error: 'expertId is required' });
-      }
-
-      const session = await expertService.getOrCreateSession(userId, expertId);
-      res.json(session);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to establish expert session' });
+      const details = await ExpertService.getEnrollmentDetails(req.params.id as string);
+      res.json(details);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   }
 
-  /**
-   * Get sessions where current user is the expert
-   */
-  async getMySessions(req: any, res: any) {
+  static async getSessions(req: Request, res: Response) {
     try {
-      const expertId = req.userId;
-      const sessions = await expertService.getExpertSessions(expertId);
+      const expertId = (req as any).userId;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+
+      const sessions = await ExpertService.getSessions(expertId);
       res.json(sessions);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch expert sessions' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   }
 
-  async getMessages(req: Request, res: Response) {
+  static async scheduleSession(req: Request, res: Response) {
     try {
-      const { sessionId } = req.params;
-      if (!sessionId) {
-        return res.status(400).json({ error: 'sessionId is required' });
-      }
-      const messages = await expertService.getMessages(sessionId as string);
-      res.json(messages);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch expert messages' });
+      const expertId = (req as any).userId;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+
+      const session = await ExpertService.scheduleSession(expertId, req.body);
+      res.status(201).json(session);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   }
 
-  async markAsRead(req: Request, res: Response) {
+  static async completeSession(req: Request, res: Response) {
     try {
-      const { sessionId } = req.params;
-      const userId = (req as any).userId;
-      if (!sessionId) {
-        return res.status(400).json({ error: 'sessionId is required' });
-      }
-      await expertService.markAsRead(sessionId as string, userId);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to mark messages as read' });
+      const expertId = (req as any).userId;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+
+      const session = await ExpertService.completeSession(expertId, req.params.id as string);
+      res.json(session);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   }
 }

@@ -44,6 +44,8 @@ router.delete("/assets/:filename", AdminController.deleteAsset);
 router.get("/orders", AdminController.getOrders);
 router.get("/orders/:id", AdminController.getOrder);
 router.patch("/orders/:id/status", AdminController.updateOrderStatus);
+router.post("/orders/:id/manual-payment", AdminController.verifyManualPayment);
+router.post("/orders/:id/convert-to-cod", AdminController.convertToCod);
 
 // Book Management
 router.get("/books", AdminController.getBooks);
@@ -93,11 +95,15 @@ router.patch("/programs/:id", ProgramsController.adminUpdate);
 router.delete("/programs/:id", ProgramsController.adminDelete);
 
 // Learning Programs Enrollments
+router.get("/programs/check-user", ProgramsController.checkUserByPhone);
 router.get("/programs/enrollments", ProgramsController.adminListEnrollments);
+router.post("/programs/enrollments", ProgramsController.adminCreateEnrollment);
+
 router.patch("/programs/enrollments/:id", ProgramsController.adminUpdateEnrollmentStatus);
 
 // Learning Programs Demo Sessions Bookings
 router.get("/programs/demos", ProgramsController.adminListDemos);
+router.get("/programs/demos/:id", ProgramsController.adminGetDemo);
 router.patch("/programs/demos/:id", ProgramsController.adminUpdateDemoStatus);
 
 export default router;

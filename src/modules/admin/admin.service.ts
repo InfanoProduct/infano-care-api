@@ -4,6 +4,13 @@ import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
 import crypto from "crypto";
+import Razorpay from "razorpay";
+import { env } from "../../config/env.js";
+
+const razorpay = new Razorpay({
+  key_id: env.RAZORPAY_KEY_ID || "",
+  key_secret: env.RAZORPAY_KEY_SECRET || "",
+});
 
 export class AdminService {
   static async getStats() {
@@ -22,7 +29,7 @@ export class AdminService {
     ]);
 
     // Calculate growth (mocked for now as we'd need historical data)
-    const growth = "+5.2%"; 
+    const growth = "+5.2%";
     const revenue = "$0.00"; // Placeholder if no payment integration yet
 
     return {
@@ -68,7 +75,7 @@ export class AdminService {
 
   static async getUsers(page: number = 1, limit: number = 20, peerOnboarding?: boolean) {
     const skip = (page - 1) * limit;
-    
+
     const whereClause = peerOnboarding !== undefined ? { peerOnboarding } : {};
 
     const [users, total] = await Promise.all([
@@ -145,7 +152,7 @@ export class AdminService {
 
     await prisma.peerApplication.update({
       where: { userId },
-      data: { 
+      data: {
         certificationStatus: 'certified',
         certificateId,
         certifiedAt: new Date()
@@ -166,10 +173,10 @@ export class AdminService {
       });
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'Certification approved. User is now a Peer Mentor.',
-      certificateId 
+      certificateId
     };
   }
 
@@ -185,7 +192,7 @@ export class AdminService {
     // 1. Revert certification to unapproved and RESET attempts/progress
     await prisma.peerApplication.update({
       where: { userId },
-      data: { 
+      data: {
         certificationStatus: 'unapproved',
         assessmentAttempts: 0,
         lastAttemptAt: null,
@@ -225,9 +232,9 @@ export class AdminService {
     if (user.peerApplication) {
       await prisma.peerApplication.update({
         where: { userId },
-        data: { 
+        data: {
           status: 'pending',
-          certificationStatus: 'uncertified' 
+          certificationStatus: 'uncertified'
         }
       });
     }
@@ -324,24 +331,88 @@ export class AdminService {
   }
 
   // Order Management
-  static async getOrders(page: number = 1, limit: number = 20, search?: string) {
+  static async getOrders(
+    page: number = 1,
+    limit: number = 25,
+    filters?: {
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      status?: string;
+      paymentMethod?: string;
+      paymentStatus?: string;
+    }
+  ) {
     const skip = (page - 1) * limit;
-    
-    let whereClause: any = {};
-    if (search) {
-      whereClause = {
-        OR: [
-          { id: { contains: search, mode: 'insensitive' } },
-          { guestName: { contains: search, mode: 'insensitive' } },
-          { guestEmail: { contains: search, mode: 'insensitive' } },
-          { user: { username: { contains: search, mode: 'insensitive' } } }
-        ]
-      };
+
+    const where: any = {};
+
+    if (filters?.search) {
+      where.OR = [
+        { id: { contains: filters.search, mode: 'insensitive' } },
+        { guestName: { contains: filters.search, mode: 'insensitive' } },
+        { guestEmail: { contains: filters.search, mode: 'insensitive' } },
+        { user: { username: { contains: filters.search, mode: 'insensitive' } } }
+      ];
     }
 
-    const [orders, total] = await Promise.all([
+    if (filters?.dateFrom || filters?.dateTo) {
+      where.createdAt = {};
+      if (filters.dateFrom) {
+        where.createdAt.gte = new Date(filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        const toDate = new Date(filters.dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        where.createdAt.lte = toDate;
+      }
+    }
+
+    if (filters?.paymentMethod && filters.paymentMethod !== 'ALL') {
+      where.paymentMethod = filters.paymentMethod;
+    }
+
+    if (filters?.paymentStatus && filters.paymentStatus !== 'ALL') {
+      where.paymentStatus = filters.paymentStatus;
+    }
+
+    if (filters?.status && filters.status !== 'ALL') {
+      if (filters.status === 'FAILED') {
+        // Find explicitly FAILED or (ONLINE, no paymentId, not CANCELLED)
+        const failedCondition = {
+          OR: [
+            { orderStatus: 'FAILED' },
+            {
+              paymentMethod: 'ONLINE',
+              razorpayPaymentId: null,
+              orderStatus: { not: 'CANCELLED' }
+            }
+          ]
+        };
+        if (where.OR) {
+          where.AND = [
+            { OR: where.OR },
+            failedCondition
+          ];
+          delete where.OR;
+        } else {
+          where.OR = failedCondition.OR;
+        }
+      } else {
+        where.orderStatus = filters.status;
+        if (filters.status === 'PLACED') {
+          // exclude FAILED logic
+          where.NOT = {
+            paymentMethod: 'ONLINE',
+            razorpayPaymentId: null
+          };
+        }
+      }
+    }
+
+    const [orders, total, allMatchingOrders] = await Promise.all([
       prisma.order.findMany({
-        where: whereClause,
+        where,
         skip,
         take: limit,
         include: {
@@ -354,8 +425,60 @@ export class AdminService {
         },
         orderBy: { createdAt: "desc" }
       }),
-      prisma.order.count({ where: whereClause })
+      prisma.order.count({ where }),
+      prisma.order.findMany({
+        where,
+        select: {
+          totalAmount: true,
+          orderStatus: true,
+          paymentMethod: true,
+          razorpayPaymentId: true
+        }
+      })
     ]);
+
+    let totalRevenue = 0;
+    let onlineRevenue = 0;
+    let codRevenue = 0;
+
+    let onlineCount = 0;
+    let codCount = 0;
+
+    let placedCount = 0;
+    let processingCount = 0;
+    let shippedCount = 0;
+    let deliveredCount = 0;
+    let failedCount = 0;
+    let cancelledCount = 0;
+
+    for (const o of allMatchingOrders) {
+      const amount = Number(o.totalAmount) || 0;
+      totalRevenue += amount;
+
+      if (o.paymentMethod === 'ONLINE' && !!o.razorpayPaymentId) {
+        onlineCount++;
+        onlineRevenue += amount;
+      } else if (o.paymentMethod === 'COD') {
+        codCount++;
+        codRevenue += amount;
+      }
+
+      const isFailed = (o.paymentMethod === 'ONLINE' && !o.razorpayPaymentId && o.orderStatus !== 'CANCELLED') || o.orderStatus === 'FAILED';
+
+      if (isFailed) {
+        failedCount++;
+      } else if (o.orderStatus === 'PLACED') {
+        placedCount++;
+      } else if (o.orderStatus === 'PROCESSING') {
+        processingCount++;
+      } else if (o.orderStatus === 'SHIPPED') {
+        shippedCount++;
+      } else if (o.orderStatus === 'DELIVERED') {
+        deliveredCount++;
+      } else if (o.orderStatus === 'CANCELLED') {
+        cancelledCount++;
+      }
+    }
 
     return {
       orders,
@@ -364,6 +487,20 @@ export class AdminService {
         page,
         limit,
         pages: Math.ceil(total / limit)
+      },
+      stats: {
+        totalOrders: allMatchingOrders.length,
+        totalRevenue,
+        onlineRevenue,
+        codRevenue,
+        onlineCount,
+        codCount,
+        placedCount,
+        processingCount,
+        shippedCount,
+        deliveredCount,
+        failedCount,
+        cancelledCount
       }
     };
   }
@@ -384,9 +521,139 @@ export class AdminService {
     return ShopService.updateStatus(id, status);
   }
 
+  static async convertToCod(orderId: string) {
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new Error("Order not found");
+    if (order.paymentStatus === 'COMPLETED') throw new Error("Order is already paid");
+
+    return prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentMethod: 'COD',
+        paymentStatus: 'PENDING',
+        orderStatus: 'PLACED'
+      }
+    });
+  }
+
+  static async verifyManualPayment(orderId: string, transactionId: string) {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { book: true } } }
+    });
+
+    if (!order) throw new Error("Order not found");
+    if (order.paymentStatus === 'COMPLETED') throw new Error("Order is already paid");
+
+    try {
+      const payment = await razorpay.payments.fetch(transactionId);
+
+      // Security Check 1: Ensure payment ID is not already used by another order
+      const existingOrderWithPayment = await prisma.order.findFirst({
+        where: { razorpayPaymentId: transactionId }
+      });
+
+      if (existingOrderWithPayment && existingOrderWithPayment.id !== orderId) {
+        throw new Error("Security Error: This payment ID is already associated with another order.");
+      }
+
+      // Security Check 2: Ensure payment belongs to the correct Razorpay order (if applicable)
+      if (order.razorpayOrderId && payment.order_id && payment.order_id !== order.razorpayOrderId) {
+        throw new Error("Security Error: This payment ID belongs to a different Razorpay order.");
+      }
+
+      if (payment.status !== 'captured') {
+        throw new Error(`Payment is not captured. Current status: ${payment.status}`);
+      }
+
+      const expectedAmount = Math.round(order.totalAmount * 100);
+      if (Number(payment.amount) < expectedAmount) {
+        throw new Error(`Payment amount mismatch. Expected at least ₹${order.totalAmount}, but got ₹${(Number(payment.amount) / 100).toFixed(2)}`);
+      }
+
+      let userId = order.userId;
+      if (!userId && order.guestPhone) {
+        const normalized = normalizePhone(order.guestPhone);
+        let user = await prisma.user.findUnique({ where: { phone: normalized } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              phone: normalized,
+              accountStatus: "PENDING_SETUP",
+              onboardingStep: 1,
+              role: "PARENT",
+              profile: {
+                create: {
+                  displayName: order.guestName || "Parent",
+                  totalPoints: 0,
+                }
+              }
+            }
+          });
+        }
+        userId = user.id;
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: 'COMPLETED',
+          paymentMethod: 'ONLINE',
+          razorpayPaymentId: transactionId,
+          userId: userId || undefined,
+        },
+      });
+
+      if (userId) {
+        for (const item of order.items) {
+          const book = item.book as any;
+          if (!book) continue;
+          const isProg = book.id.endsWith("-private") || book.id.endsWith("-group");
+          if (isProg) {
+            const programTitle = book.id.split("-")[0].toUpperCase();
+            const program = await prisma.program.findFirst({
+              where: { title: { equals: programTitle, mode: "insensitive" } }
+            });
+            if (program) {
+              const type = (item.book as any).id.endsWith("-private") ? "PRIVATE" : "GROUP";
+              const existingEnrollment = await prisma.programEnrollment.findUnique({
+                where: {
+                  userId_programId: { userId, programId: program.id }
+                }
+              });
+              if (!existingEnrollment) {
+                await prisma.programEnrollment.create({
+                  data: {
+                    userId,
+                    programId: program.id,
+                    type,
+                    pricePaid: item.price,
+                    status: "ACTIVE",
+                    guestName: order.guestName,
+                    guestEmail: order.guestEmail,
+                  }
+                });
+              }
+            }
+          }
+        }
+      }
+
+      return updatedOrder;
+    } catch (error: any) {
+      throw new Error(`Razorpay Verification Failed: ${error.message || 'Invalid Transaction ID'}`);
+    }
+  }
+
   // Book Management
   static async getBooks() {
     const books = await prisma.book.findMany({
+      where: {
+        NOT: [
+          { id: { endsWith: "-private" } },
+          { id: { endsWith: "-group" } }
+        ]
+      },
       orderBy: { createdAt: "desc" }
     });
     const coupon = await prisma.discountCoupon.findFirst({

@@ -158,11 +158,11 @@ export class AdminController {
       }
 
       const folder = (req.query.folder as string) || '';
-      
+
       // Upload to local storage (includes optimization)
       const { filename, url } = await StorageService.uploadFile(req.file.path, folder);
 
-      res.status(200).json({ 
+      res.status(200).json({
         url,
         filename,
         message: "File uploaded successfully to remote storage"
@@ -176,9 +176,16 @@ export class AdminController {
   static async getOrders(req: Request, res: Response, next: NextFunction) {
     try {
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const search = req.query.search as string | undefined;
-      const result = await AdminService.getOrders(page, limit, search);
+      const limit = parseInt(req.query.limit as string) || 25;
+      const filters = {
+        search: req.query.search as string,
+        dateFrom: req.query.dateFrom as string,
+        dateTo: req.query.dateTo as string,
+        status: req.query.status as string,
+        paymentMethod: req.query.paymentMethod as string,
+        paymentStatus: req.query.paymentStatus as string,
+      };
+      const result = await AdminService.getOrders(page, limit, filters);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -198,6 +205,24 @@ export class AdminController {
   static async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const order = await AdminService.updateOrderStatus(req.params.id as string, req.body.status);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async verifyManualPayment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.verifyManualPayment(req.params.id as string, req.body.transactionId as string);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async convertToCod(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.convertToCod(req.params.id as string);
       res.status(200).json(order);
     } catch (error) {
       next(error);

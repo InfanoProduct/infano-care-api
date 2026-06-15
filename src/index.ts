@@ -3,6 +3,7 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { prisma } from "./db/client.js";
 import { initTrackerJobs } from "./jobs/tracker.cron.js";
+import { initParentJobs } from "./jobs/parent.cron.js";
 import { Server } from "socket.io";
 import { setupExpertSocket } from "./modules/expert/socket.service.js";
 import { setupPeerLineSocket } from "./modules/peerline/peerline.socket.js";
@@ -20,6 +21,7 @@ async function bootstrap() {
 
     // Initialize background jobs
     initTrackerJobs();
+    initParentJobs();
 
     const server = app.listen(env.PORT, "0.0.0.0", () => {
       logger.info(`Server running on http://0.0.0.0:${env.PORT} (LAN accessible)`);
@@ -53,6 +55,7 @@ async function bootstrap() {
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
     console.log("[HEARTBEAT] Server bootstrap completed.");
+    // Force restart
   } catch (error) {
     logger.error({ err: error }, "Failed to start server:");
     process.exit(1);

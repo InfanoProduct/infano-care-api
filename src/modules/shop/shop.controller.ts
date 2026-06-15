@@ -35,8 +35,13 @@ export class ShopController {
     try {
       const order = await ShopService.createOrder(req.body);
       res.status(201).json(order);
-    } catch (error) {
-      next(error);
+    } catch (error: any) {
+      console.error("[createOrder] Error:", error?.message, error?.statusCode, error?.error);
+      console.error("[createOrder] Full error:", JSON.stringify(error, null, 2));
+      res.status(error?.statusCode || 500).json({
+        message: error?.message || "Order creation failed",
+        details: error?.error?.description || error?.description || undefined,
+      });
     }
   }
 
@@ -93,6 +98,52 @@ export class ShopController {
     try {
       await ShopService.adminDeleteCoupon(req.params.id as string);
       res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getUserOrders(req: any, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user.id;
+      const orders = await ShopService.getUserOrders(userId);
+      res.status(200).json(orders);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async adminGetRazorpayTransactions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { from, to } = req.query;
+      
+      let allItems: any[] = [];
+      let currentSkip = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const options: any = {
+          skip: currentSkip,
+          count: 100, // Fetch max allowed per request
+        };
+        if (from) options.from = Number(from);
+        if (to) options.to = Number(to);
+
+        const response = await ShopService.adminGetRazorpayTransactions(options);
+        
+        if (response && response.items) {
+          allItems = allItems.concat(response.items);
+          if (response.items.length < 100) {
+            hasMore = false; // Last page reached
+          } else {
+            currentSkip += 100;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      res.status(200).json({ items: allItems, count: allItems.length });
     } catch (error) {
       next(error);
     }

@@ -27,6 +27,9 @@ import shopRoutes from "./modules/shop/shop.routes.js";
 import mindfulRoutes from "./modules/mindful/mindful.routes.js";
 import enquiryRoutes from "./modules/enquiry/enquiry.routes.js";
 import programsRoutes from "./modules/programs/programs.routes.js";
+import parentRoutes from "./modules/parent/parent.routes.js";
+import teenRouter from "./modules/teen/teen.routes.js";
+import schoolRoutes from "./modules/school/school.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -78,6 +81,9 @@ app.use("/api/shop", shopRoutes);
 app.use("/api/mindful", mindfulRoutes);
 app.use("/api/enquiry", enquiryRoutes);
 app.use("/api/programs", programsRoutes);
+app.use("/api/parent", parentRoutes);
+app.use("/api/teen", teenRouter);
+app.use("/api/school", schoolRoutes);
 app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
 
