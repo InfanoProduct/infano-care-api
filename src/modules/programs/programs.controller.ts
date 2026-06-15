@@ -55,11 +55,10 @@ export class ProgramsController {
 
   static async userDemos(req: any, res: Response, next: NextFunction) {
     try {
-      const userPhone = req.user.phone;
-      if (!userPhone) {
-        return res.status(200).json({ success: true, data: [] });
-      }
-      const demos = await ProgramsService.getUserDemosByPhone(userPhone);
+      const userId = req.user.id;
+      console.log("userDemos API: userId =", userId);
+      const demos = await ProgramsService.getUserDemosForUser(userId);
+      console.log("userDemos API: found demos =", demos);
       res.status(200).json({ success: true, data: demos });
     } catch (error) {
       next(error);

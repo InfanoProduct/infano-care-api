@@ -22,7 +22,7 @@ export class AdminService {
     ]);
 
     // Calculate growth (mocked for now as we'd need historical data)
-    const growth = "+5.2%"; 
+    const growth = "+5.2%";
     const revenue = "$0.00"; // Placeholder if no payment integration yet
 
     return {
@@ -68,7 +68,7 @@ export class AdminService {
 
   static async getUsers(page: number = 1, limit: number = 20, peerOnboarding?: boolean) {
     const skip = (page - 1) * limit;
-    
+
     const whereClause = peerOnboarding !== undefined ? { peerOnboarding } : {};
 
     const [users, total] = await Promise.all([
@@ -145,7 +145,7 @@ export class AdminService {
 
     await prisma.peerApplication.update({
       where: { userId },
-      data: { 
+      data: {
         certificationStatus: 'certified',
         certificateId,
         certifiedAt: new Date()
@@ -166,10 +166,10 @@ export class AdminService {
       });
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'Certification approved. User is now a Peer Mentor.',
-      certificateId 
+      certificateId
     };
   }
 
@@ -185,7 +185,7 @@ export class AdminService {
     // 1. Revert certification to unapproved and RESET attempts/progress
     await prisma.peerApplication.update({
       where: { userId },
-      data: { 
+      data: {
         certificationStatus: 'unapproved',
         assessmentAttempts: 0,
         lastAttemptAt: null,
@@ -225,9 +225,9 @@ export class AdminService {
     if (user.peerApplication) {
       await prisma.peerApplication.update({
         where: { userId },
-        data: { 
+        data: {
           status: 'pending',
-          certificationStatus: 'uncertified' 
+          certificationStatus: 'uncertified'
         }
       });
     }
@@ -529,6 +529,42 @@ export class AdminService {
   static async getEnquiryById(id: string) {
     return prisma.enquiry.findUnique({
       where: { id }
+    });
+  }
+
+  // Expert Session Schedule Management
+  static async getExpertSessions() {
+    return prisma.expertSessionSchedule.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            role: true,
+            profile: { select: { displayName: true } }
+          }
+        },
+        expert: {
+          select: {
+            id: true,
+            username: true,
+            profile: { select: { displayName: true, specialisation: true } }
+          }
+        },
+        program: {
+          select: { id: true, title: true }
+        }
+      },
+      orderBy: { scheduledAt: "desc" }
+    });
+  }
+
+  static async updateSessionMeetLink(id: string, meetLink: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id } });
+    if (!session) throw new Error("Session not found");
+    return prisma.expertSessionSchedule.update({
+      where: { id },
+      data: { meetLink }
     });
   }
 }

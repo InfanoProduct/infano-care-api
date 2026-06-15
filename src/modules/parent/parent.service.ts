@@ -375,8 +375,8 @@ export class ParentService {
         userId: link && link.teenId ? link.teenId : userId, // Book for teen if linked
         expertId: data.expertId,
         scheduledAt: data.scheduledAt,
-        status: "SCHEDULED",
-        meetLink: `https://meet.infano.com/${data.razorpayOrderId}`
+        status: "SCHEDULED"
+        // meetLink is intentionally null here — admin or expert will set it after booking
       }
     });
 
@@ -395,7 +395,7 @@ export class ParentService {
       include: {
         expert: { include: { profile: true } }
       },
-      orderBy: { scheduledAt: "asc" }
+      orderBy: { scheduledAt: "desc" }
     });
   }
 

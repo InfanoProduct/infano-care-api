@@ -499,7 +499,8 @@ export class ProgramsService {
         pricePrivate: parseFloat(data.pricePrivate) || 0,
         priceGroup: parseFloat(data.priceGroup) || 0,
         isActive: data.isActive !== undefined ? data.isActive : true,
-        curriculum: data.curriculum !== undefined ? data.curriculum : []
+        curriculum: data.curriculum !== undefined ? data.curriculum : [],
+        consultations: data.consultations !== undefined ? data.consultations : []
       }
     });
   }
@@ -526,7 +527,8 @@ export class ProgramsService {
         pricePrivate: data.pricePrivate !== undefined ? parseFloat(data.pricePrivate) : undefined,
         priceGroup: data.priceGroup !== undefined ? parseFloat(data.priceGroup) : undefined,
         isActive: data.isActive !== undefined ? data.isActive : undefined,
-        curriculum: data.curriculum !== undefined ? data.curriculum : undefined
+        curriculum: data.curriculum !== undefined ? data.curriculum : undefined,
+        consultations: data.consultations !== undefined ? data.consultations : undefined
       }
     });
   }
@@ -726,15 +728,83 @@ export class ProgramsService {
     });
   }
 
-  static async getUserDemosByPhone(phone: string) {
-    if (!phone) {
-      throw new AppError("Phone number is required", 400);
+  static async getUserDemosForUser(userId: string) {
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
     }
+
+    // Find the user to get their phone
+    const loggedInUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true }
+    });
+
+    if (!loggedInUser || !loggedInUser.phone) {
+      return [];
+    }
+
+    const allPhones = [loggedInUser.phone];
+
+    // Find all related user IDs via ParentLink
+    try {
+      const links = await prisma.parentLink.findMany({
+        where: {
+          OR: [
+            { teenId: userId },
+            { parentId: userId }
+          ],
+          status: "LINKED"
+        },
+        select: { parentId: true, teenId: true }
+      });
+
+      const relatedIds = [userId];
+      links.forEach(link => {
+        if (link.parentId) relatedIds.push(link.parentId);
+        if (link.teenId) relatedIds.push(link.teenId);
+      });
+
+      const uniqueIds = Array.from(new Set(relatedIds.filter(Boolean)));
+
+      // Fetch phone numbers for all linked users
+      const users = await prisma.user.findMany({
+        where: { id: { in: uniqueIds } },
+        select: { phone: true }
+      });
+
+      users.forEach(u => {
+        if (u.phone) allPhones.push(u.phone);
+      });
+    } catch (err) {
+      console.error("Failed to query parent links for demo sessions:", err);
+    }
+
     const { normalizePhone } = await import("../../common/utils/phone.js");
-    const normalizedPhone = normalizePhone(phone);
+
+    // Generate possible database variations of all phone numbers to handle inconsistent formatting
+    const possiblePhones: string[] = [];
+    for (const p of allPhones) {
+      const normalizedPhone = normalizePhone(p);
+      const phoneDigits = p.replace(/\D/g, '');
+      const tenDigits = phoneDigits.length >= 10 ? phoneDigits.substring(phoneDigits.length - 10) : phoneDigits;
+      const zeroTenDigits = '0' + tenDigits;
+
+      possiblePhones.push(p);
+      possiblePhones.push(normalizedPhone);
+      possiblePhones.push(tenDigits);
+      possiblePhones.push(zeroTenDigits);
+      possiblePhones.push(`+91${tenDigits}`);
+      possiblePhones.push(`91${tenDigits}`);
+    }
+
+    const uniquePhones = Array.from(new Set(possiblePhones.filter(Boolean)));
 
     return prisma.demoSession.findMany({
-      where: { phone: normalizedPhone },
+      where: {
+        phone: {
+          in: uniquePhones
+        }
+      },
       orderBy: { createdAt: "desc" }
     });
   }

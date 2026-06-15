@@ -158,11 +158,11 @@ export class AdminController {
       }
 
       const folder = (req.query.folder as string) || '';
-      
+
       // Upload to local storage (includes optimization)
       const { filename, url } = await StorageService.uploadFile(req.file.path, folder);
 
-      res.status(200).json({ 
+      res.status(200).json({
         url,
         filename,
         message: "File uploaded successfully to remote storage"
@@ -317,6 +317,29 @@ export class AdminController {
       const folder = typeof folderQuery === 'string' ? folderQuery : 'assets';
       await StorageService.deleteAsset(filename, folder);
       res.status(200).json({ success: true, message: "Asset deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Expert Session Schedule Management
+  static async getExpertSessions(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const sessions = await AdminService.getExpertSessions();
+      res.status(200).json(sessions);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateSessionMeetLink(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { meetLink } = req.body;
+      if (!meetLink || typeof meetLink !== 'string') {
+        return res.status(400).json({ message: "meetLink is required" });
+      }
+      const session = await AdminService.updateSessionMeetLink(req.params.id as string, meetLink);
+      res.status(200).json(session);
     } catch (error) {
       next(error);
     }

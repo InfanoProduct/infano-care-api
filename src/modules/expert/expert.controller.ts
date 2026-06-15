@@ -55,4 +55,21 @@ export class ExpertController {
       res.status(400).json({ error: error.message });
     }
   }
+
+  static async updateSessionMeetLink(req: Request, res: Response) {
+    try {
+      const expertId = (req as any).userId;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+
+      const { meetLink } = req.body;
+      if (!meetLink || typeof meetLink !== 'string') {
+        return res.status(400).json({ error: "meetLink is required" });
+      }
+
+      const session = await ExpertService.updateSessionMeetLink(expertId, req.params.id as string, meetLink);
+      res.json(session);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
 }
