@@ -112,4 +112,40 @@ export class ShopController {
       next(error);
     }
   }
+
+  static async adminGetRazorpayTransactions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { from, to } = req.query;
+      
+      let allItems: any[] = [];
+      let currentSkip = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const options: any = {
+          skip: currentSkip,
+          count: 100, // Fetch max allowed per request
+        };
+        if (from) options.from = Number(from);
+        if (to) options.to = Number(to);
+
+        const response = await ShopService.adminGetRazorpayTransactions(options);
+        
+        if (response && response.items) {
+          allItems = allItems.concat(response.items);
+          if (response.items.length < 100) {
+            hasMore = false; // Last page reached
+          } else {
+            currentSkip += 100;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      res.status(200).json({ items: allItems, count: allItems.length });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

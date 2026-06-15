@@ -436,4 +436,8 @@ export class ShopService {
       where: { id }
     });
   }
+
+  static async adminGetRazorpayTransactions(options: { skip?: number; count?: number; from?: number; to?: number }) {
+    return razorpay.payments.all(options);
+  }
 }
