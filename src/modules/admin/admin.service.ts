@@ -463,7 +463,7 @@ export class AdminService {
         codRevenue += amount;
       }
 
-      const isFailed = (o.paymentMethod === 'ONLINE' && !o.razorpayPaymentId && o.orderStatus !== 'CANCELLED') || o.orderStatus === 'FAILED';
+      const isFailed = (o.paymentMethod === 'ONLINE' && !o.razorpayPaymentId && o.orderStatus !== 'CANCELLED') || (o as any).orderStatus === 'FAILED';
 
       if (isFailed) {
         failedCount++;
