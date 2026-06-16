@@ -1170,6 +1170,7 @@ model Program {
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
   curriculum     Json?                   @default("[]")
+  consultations  Json?                   @default("[]")
   thumbnailUrl   String?
   enrolledCount  Int                     @default(1200)
   features       String[]                @default([])
