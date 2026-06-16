@@ -6,6 +6,7 @@ import { normalizePhone } from "../../common/utils/phone.js";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
+import { AppError } from "../../common/middleware/errorHandler.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -542,8 +543,8 @@ export class AdminService {
       include: { items: { include: { book: true } } }
     });
 
-    if (!order) throw new Error("Order not found");
-    if (order.paymentStatus === 'COMPLETED') throw new Error("Order is already paid");
+    if (!order) throw new AppError("Order not found", 404);
+    if (order.paymentStatus === 'COMPLETED') throw new AppError("Order is already paid", 400);
 
     try {
       const payment = await razorpay.payments.fetch(transactionId);
@@ -554,21 +555,21 @@ export class AdminService {
       });
 
       if (existingOrderWithPayment && existingOrderWithPayment.id !== orderId) {
-        throw new Error("Security Error: This payment ID is already associated with another order.");
+        throw new AppError("Security Error: This payment ID is already associated with another order.", 400);
       }
 
       // Security Check 2: Ensure payment belongs to the correct Razorpay order (if applicable)
       if (order.razorpayOrderId && payment.order_id && payment.order_id !== order.razorpayOrderId) {
-        throw new Error("Security Error: This payment ID belongs to a different Razorpay order.");
+        throw new AppError("Security Error: This payment ID belongs to a different Razorpay order.", 400);
       }
 
       if (payment.status !== 'captured') {
-        throw new Error(`Payment is not captured. Current status: ${payment.status}`);
+        throw new AppError(`Payment is not captured. Current status: ${payment.status}`, 400);
       }
 
       const expectedAmount = Math.round(order.totalAmount * 100);
       if (Number(payment.amount) < expectedAmount) {
-        throw new Error(`Payment amount mismatch. Expected at least ₹${order.totalAmount}, but got ₹${(Number(payment.amount) / 100).toFixed(2)}`);
+        throw new AppError(`Payment amount mismatch. Expected at least ₹${order.totalAmount}, but got ₹${(Number(payment.amount) / 100).toFixed(2)}`, 400);
       }
 
       let userId = order.userId;
@@ -641,7 +642,8 @@ export class AdminService {
 
       return updatedOrder;
     } catch (error: any) {
-      throw new Error(`Razorpay Verification Failed: ${error.message || 'Invalid Transaction ID'}`);
+      if (error instanceof AppError) throw error;
+      throw new AppError(`Razorpay Verification Failed: ${error.message || 'Invalid Transaction ID'}`, 400);
     }
   }
 
