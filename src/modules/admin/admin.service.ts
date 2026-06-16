@@ -331,10 +331,88 @@ export class AdminService {
   }
 
   // Order Management
-  static async getOrders(page: number = 1, limit: number = 20) {
+  static async getOrders(
+    page: number = 1,
+    limit: number = 25,
+    filters?: {
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      status?: string;
+      paymentMethod?: string;
+      paymentStatus?: string;
+    }
+  ) {
     const skip = (page - 1) * limit;
-    const [orders, total] = await Promise.all([
+
+    const where: any = {};
+
+    if (filters?.search) {
+      where.OR = [
+        { id: { contains: filters.search, mode: 'insensitive' } },
+        { guestName: { contains: filters.search, mode: 'insensitive' } },
+        { guestEmail: { contains: filters.search, mode: 'insensitive' } },
+        { user: { username: { contains: filters.search, mode: 'insensitive' } } }
+      ];
+    }
+
+    if (filters?.dateFrom || filters?.dateTo) {
+      where.createdAt = {};
+      if (filters.dateFrom) {
+        where.createdAt.gte = new Date(filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        const toDate = new Date(filters.dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        where.createdAt.lte = toDate;
+      }
+    }
+
+    if (filters?.paymentMethod && filters.paymentMethod !== 'ALL') {
+      where.paymentMethod = filters.paymentMethod;
+    }
+
+    if (filters?.paymentStatus && filters.paymentStatus !== 'ALL') {
+      where.paymentStatus = filters.paymentStatus;
+    }
+
+    if (filters?.status && filters.status !== 'ALL') {
+      if (filters.status === 'FAILED') {
+        // Find explicitly FAILED or (ONLINE, no paymentId, not CANCELLED)
+        const failedCondition = {
+          OR: [
+            { orderStatus: 'FAILED' },
+            {
+              paymentMethod: 'ONLINE',
+              razorpayPaymentId: null,
+              orderStatus: { not: 'CANCELLED' }
+            }
+          ]
+        };
+        if (where.OR) {
+          where.AND = [
+            { OR: where.OR },
+            failedCondition
+          ];
+          delete where.OR;
+        } else {
+          where.OR = failedCondition.OR;
+        }
+      } else {
+        where.orderStatus = filters.status;
+        if (filters.status === 'PLACED') {
+          // exclude FAILED logic
+          where.NOT = {
+            paymentMethod: 'ONLINE',
+            razorpayPaymentId: null
+          };
+        }
+      }
+    }
+
+    const [orders, total, allMatchingOrders] = await Promise.all([
       prisma.order.findMany({
+        where,
         skip,
         take: limit,
         include: {
@@ -347,8 +425,60 @@ export class AdminService {
         },
         orderBy: { createdAt: "desc" }
       }),
-      prisma.order.count()
+      prisma.order.count({ where }),
+      prisma.order.findMany({
+        where,
+        select: {
+          totalAmount: true,
+          orderStatus: true,
+          paymentMethod: true,
+          razorpayPaymentId: true
+        }
+      })
     ]);
+
+    let totalRevenue = 0;
+    let onlineRevenue = 0;
+    let codRevenue = 0;
+
+    let onlineCount = 0;
+    let codCount = 0;
+
+    let placedCount = 0;
+    let processingCount = 0;
+    let shippedCount = 0;
+    let deliveredCount = 0;
+    let failedCount = 0;
+    let cancelledCount = 0;
+
+    for (const o of allMatchingOrders) {
+      const amount = Number(o.totalAmount) || 0;
+      totalRevenue += amount;
+
+      if (o.paymentMethod === 'ONLINE' && !!o.razorpayPaymentId) {
+        onlineCount++;
+        onlineRevenue += amount;
+      } else if (o.paymentMethod === 'COD') {
+        codCount++;
+        codRevenue += amount;
+      }
+
+      const isFailed = (o.paymentMethod === 'ONLINE' && !o.razorpayPaymentId && o.orderStatus !== 'CANCELLED') || (o as any).orderStatus === 'FAILED';
+
+      if (isFailed) {
+        failedCount++;
+      } else if (o.orderStatus === 'PLACED') {
+        placedCount++;
+      } else if (o.orderStatus === 'PROCESSING') {
+        processingCount++;
+      } else if (o.orderStatus === 'SHIPPED') {
+        shippedCount++;
+      } else if (o.orderStatus === 'DELIVERED') {
+        deliveredCount++;
+      } else if (o.orderStatus === 'CANCELLED') {
+        cancelledCount++;
+      }
+    }
 
     return {
       orders,
@@ -357,6 +487,20 @@ export class AdminService {
         page,
         limit,
         pages: Math.ceil(total / limit)
+      },
+      stats: {
+        totalOrders: allMatchingOrders.length,
+        totalRevenue,
+        onlineRevenue,
+        codRevenue,
+        onlineCount,
+        codCount,
+        placedCount,
+        processingCount,
+        shippedCount,
+        deliveredCount,
+        failedCount,
+        cancelledCount
       }
     };
   }
@@ -381,7 +525,7 @@ export class AdminService {
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new Error("Order not found");
     if (order.paymentStatus === 'COMPLETED') throw new Error("Order is already paid");
-    
+
     return prisma.order.update({
       where: { id: orderId },
       data: {
@@ -417,7 +561,7 @@ export class AdminService {
       if (order.razorpayOrderId && payment.order_id && payment.order_id !== order.razorpayOrderId) {
         throw new Error("Security Error: This payment ID belongs to a different Razorpay order.");
       }
-      
+
       if (payment.status !== 'captured') {
         throw new Error(`Payment is not captured. Current status: ${payment.status}`);
       }

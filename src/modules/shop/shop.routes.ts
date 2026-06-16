@@ -136,4 +136,6 @@ router.post("/admin/coupons", authenticate, requireAdmin, ShopController.adminCr
 router.patch("/admin/coupons/:id", authenticate, requireAdmin, ShopController.adminUpdateCoupon);
 router.delete("/admin/coupons/:id", authenticate, requireAdmin, ShopController.adminDeleteCoupon);
 
+router.get("/admin/transactions", authenticate, requireAdmin, ShopController.adminGetRazorpayTransactions);
+
 export default router;
