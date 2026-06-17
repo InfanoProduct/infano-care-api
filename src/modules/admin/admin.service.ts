@@ -823,7 +823,7 @@ export class AdminService {
           select: {
             id: true,
             username: true,
-            profile: { select: { displayName: true, specialisation: true } }
+            profile: { select: { displayName: true, specialisation: true, sessionPrice: true } }
           }
         },
         program: {
@@ -840,6 +840,27 @@ export class AdminService {
     return prisma.expertSessionSchedule.update({
       where: { id },
       data: { meetLink }
+    });
+  }
+
+  static async updateSessionStatus(id: string, status: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id } });
+    if (!session) throw new Error("Session not found");
+    return prisma.expertSessionSchedule.update({
+      where: { id },
+      data: { status }
+    });
+  }
+
+  static async rescheduleSession(id: string, scheduledAt: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id } });
+    if (!session) throw new Error("Session not found");
+    return prisma.expertSessionSchedule.update({
+      where: { id },
+      data: {
+        scheduledAt: new Date(scheduledAt),
+        status: "RESCHEDULED"
+      }
     });
   }
 }

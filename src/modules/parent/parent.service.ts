@@ -267,7 +267,7 @@ export class ParentService {
       where: {
         userId: teenId,
         scheduledAt: { gte: new Date() },
-        status: "SCHEDULED"
+        status: { in: ["SCHEDULED", "RESCHEDULED"] }
       },
       orderBy: { scheduledAt: "asc" }
     });
@@ -296,6 +296,7 @@ export class ParentService {
       activeJourney,
       moodTrend: recentLogs,
       nextExpertSession: nextSession ? nextSession.scheduledAt : null,
+      nextExpertSessionStatus: nextSession ? nextSession.status : null,
       programs: programTitles
     };
   }
@@ -325,7 +326,7 @@ export class ParentService {
 
   static async bookExpertSession(userId: string, expertId: string, scheduledAt: string) {
     const expert = await prisma.user.findUnique({
-      where: { id: expertId, role: "EXPERT" },
+      where: { id: expertId },
       include: { profile: true }
     });
     if (!expert) throw new Error("Expert not found");
@@ -374,14 +375,23 @@ export class ParentService {
     const link = await prisma.parentLink.findFirst({
       where: { parentId: userId, status: "LINKED" }
     });
-    
+
+    // Retrieve expert to check session price
+    const expert = await prisma.user.findUnique({
+      where: { id: data.expertId },
+      include: { profile: true }
+    });
+    const price = expert?.profile?.sessionPrice || 500;
+
     const schedule = await prisma.expertSessionSchedule.create({
       data: {
         userId: link && link.teenId ? link.teenId : userId, // Book for teen if linked
         expertId: data.expertId,
         scheduledAt: data.scheduledAt,
-        status: "SCHEDULED"
-        // meetLink is intentionally null here — admin or expert will set it after booking
+        status: "SCHEDULED",
+        razorpayPaymentId: data.razorpayPaymentId,
+        razorpayOrderId: data.razorpayOrderId,
+        amount: price
       }
     });
 

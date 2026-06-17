@@ -110,5 +110,7 @@ router.patch("/programs/demos/:id", ProgramsController.adminUpdateDemoStatus);
 // Expert Session Schedule Management (Admin can view all & set meeting links)
 router.get("/expert-sessions", AdminController.getExpertSessions);
 router.patch("/expert-sessions/:id/meet-link", AdminController.updateSessionMeetLink);
+router.patch("/expert-sessions/:id/status", AdminController.updateSessionStatus);
+router.patch("/expert-sessions/:id/reschedule", AdminController.rescheduleSession);
 
 export default router;

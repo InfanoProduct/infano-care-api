@@ -370,4 +370,30 @@ export class AdminController {
       next(error);
     }
   }
+
+  static async updateSessionStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { status } = req.body;
+      if (!status || typeof status !== 'string') {
+        return res.status(400).json({ message: "status is required" });
+      }
+      const session = await AdminService.updateSessionStatus(req.params.id as string, status);
+      res.status(200).json(session);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async rescheduleSession(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { scheduledAt } = req.body;
+      if (!scheduledAt || typeof scheduledAt !== 'string') {
+        return res.status(400).json({ message: "scheduledAt is required" });
+      }
+      const session = await AdminService.rescheduleSession(req.params.id as string, scheduledAt);
+      res.status(200).json(session);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

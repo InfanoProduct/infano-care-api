@@ -56,6 +56,23 @@ export class ExpertController {
     }
   }
 
+  static async updateSessionStatus(req: Request, res: Response) {
+    try {
+      const expertId = (req as any).userId;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+
+      const { status } = req.body;
+      if (!status || typeof status !== 'string') {
+        return res.status(400).json({ error: "status is required" });
+      }
+
+      const session = await ExpertService.updateSessionStatus(expertId, req.params.id as string, status);
+      res.json(session);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   static async updateSessionMeetLink(req: Request, res: Response) {
     try {
       const expertId = (req as any).userId;
@@ -67,6 +84,23 @@ export class ExpertController {
       }
 
       const session = await ExpertService.updateSessionMeetLink(expertId, req.params.id as string, meetLink);
+      res.json(session);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  static async rescheduleSession(req: Request, res: Response) {
+    try {
+      const expertId = (req as any).userId;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+
+      const { scheduledAt } = req.body;
+      if (!scheduledAt || typeof scheduledAt !== 'string') {
+        return res.status(400).json({ error: "scheduledAt is required" });
+      }
+
+      const session = await ExpertService.rescheduleSession(expertId, req.params.id as string, scheduledAt);
       res.json(session);
     } catch (error: any) {
       res.status(400).json({ error: error.message });

@@ -13,7 +13,9 @@ router.get("/enrollments/:id", ExpertController.getEnrollmentDetails);
 router.get("/sessions", ExpertController.getSessions);
 router.post("/sessions", ExpertController.scheduleSession);
 router.patch("/sessions/:id/complete", ExpertController.completeSession);
+router.patch("/sessions/:id/status", ExpertController.updateSessionStatus);
 router.patch("/sessions/:id/meet-link", ExpertController.updateSessionMeetLink);
+router.patch("/sessions/:id/reschedule", ExpertController.rescheduleSession);
 
 
 export default router;
