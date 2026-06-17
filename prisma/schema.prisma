@@ -502,6 +502,9 @@ model ExpertSessionSchedule {
   updatedAt     DateTime @updatedAt
   programId     String?
   sessionNumber Int?
+  razorpayPaymentId String?
+  razorpayOrderId   String?
+  amount            Float?
   expert        User     @relation("ExpertScheduledSessions", fields: [expertId], references: [id], onDelete: Cascade)
   program       Program? @relation(fields: [programId], references: [id])
   user          User     @relation("UserScheduledSessions", fields: [userId], references: [id], onDelete: Cascade)
@@ -1170,6 +1173,7 @@ model Program {
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
   curriculum     Json?                   @default("[]")
+  consultations  Json?                   @default("[]")
   thumbnailUrl   String?
   enrolledCount  Int                     @default(1200)
   features       String[]                @default([])

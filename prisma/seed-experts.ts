@@ -30,6 +30,42 @@ const EXPERTS_TO_SEED = [
     expertise: { department: 'Educator', clinicalFocus: 'Puberty hygiene, safe boundaries, confidence coaching', credentials: 'MA in Social Work, Certified Sexuality Educator' },
     specialisation: 'Menstrual Hygiene Educator',
     sessionPrice: 500
+  },
+  {
+    username: 'dr.kiran.shah@infano.com',
+    displayName: 'Dr. Kiran Shah',
+    phone: '+919811122266',
+    bio: 'Board-certified Dermatologist specializing in adolescent acne, skincare routines, and body positive dermatology.',
+    expertise: { department: 'Dermatology', clinicalFocus: 'Adolescent acne, skincare, skin conditions', credentials: 'MD in Dermatology, MBBS' },
+    specialisation: 'Dermatologist',
+    sessionPrice: 900
+  },
+  {
+    username: 'rohan.mehta@infano.com',
+    displayName: 'Rohan Mehta',
+    phone: '+919811122277',
+    bio: 'Adolescent Career Counselor helping teens identify their passions, build study plans, and navigate college applications.',
+    expertise: { department: 'Career Counseling', clinicalFocus: 'Academic planning, goal setting, stream selection', credentials: 'MA in Counseling, Certified Career Coach' },
+    specialisation: 'Career Counselor',
+    sessionPrice: 700
+  },
+  {
+    username: 'kavita.sen@infano.com',
+    displayName: 'Kavita Sen',
+    phone: '+919811122288',
+    bio: 'Youth Financial Literacy expert educating teens and parents on budgeting, savings, pocket money habits, and investment basics.',
+    expertise: { department: 'Finance', clinicalFocus: 'Financial literacy, basic budgeting, savings coach', credentials: 'MBA in Finance, Certified Financial Planner' },
+    specialisation: 'Financial Advisor',
+    sessionPrice: 650
+  },
+  {
+    username: 'adv.priya.roy@infano.com',
+    displayName: 'Adv. Priya Roy',
+    phone: '+919811122299',
+    bio: 'Child & Family Rights Advocate providing guidance on personal boundaries, child safety laws, and legal self-awareness.',
+    expertise: { department: 'Legal Advocacy', clinicalFocus: 'Adolescent rights, safe spaces, legal literacy', credentials: 'BA LLB (Hons), Child Rights Specialist' },
+    specialisation: 'Advocate',
+    sessionPrice: 750
   }
 ];
 

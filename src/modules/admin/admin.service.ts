@@ -808,4 +808,61 @@ export class AdminService {
       where: { id }
     });
   }
+
+  // Expert Session Schedule Management
+  static async getExpertSessions() {
+    return prisma.expertSessionSchedule.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            role: true,
+            profile: { select: { displayName: true } }
+          }
+        },
+        expert: {
+          select: {
+            id: true,
+            username: true,
+            profile: { select: { displayName: true, specialisation: true, sessionPrice: true } }
+          }
+        },
+        program: {
+          select: { id: true, title: true }
+        }
+      },
+      orderBy: { scheduledAt: "desc" }
+    });
+  }
+
+  static async updateSessionMeetLink(id: string, meetLink: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id } });
+    if (!session) throw new Error("Session not found");
+    return prisma.expertSessionSchedule.update({
+      where: { id },
+      data: { meetLink }
+    });
+  }
+
+  static async updateSessionStatus(id: string, status: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id } });
+    if (!session) throw new Error("Session not found");
+    return prisma.expertSessionSchedule.update({
+      where: { id },
+      data: { status }
+    });
+  }
+
+  static async rescheduleSession(id: string, scheduledAt: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id } });
+    if (!session) throw new Error("Session not found");
+    return prisma.expertSessionSchedule.update({
+      where: { id },
+      data: {
+        scheduledAt: new Date(scheduledAt),
+        status: "RESCHEDULED"
+      }
+    });
+  }
 }

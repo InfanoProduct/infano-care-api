@@ -38,7 +38,7 @@ export class ExpertService {
       where: { id: enrollmentId },
       include: {
         program: {
-          select: { id: true, title: true, sessions: true }
+          select: { id: true, title: true, sessions: true, consultations: true }
         },
         user: {
           select: { id: true, profile: { select: { displayName: true } }, username: true }
@@ -57,7 +57,18 @@ export class ExpertService {
         programId: enrollment.programId
       },
       orderBy: { sessionNumber: "asc" },
-      include: { expert: { select: { username: true } } }
+      include: {
+        expert: {
+          select: {
+            username: true,
+            profile: {
+              select: {
+                displayName: true
+              }
+            }
+          }
+        }
+      }
     });
 
     return {
@@ -85,7 +96,7 @@ export class ExpertService {
       include: {
         user: { select: { username: true, profile: { select: { displayName: true } } } }
       },
-      orderBy: { scheduledAt: "asc" }
+      orderBy: { scheduledAt: "desc" }
     });
   }
 
@@ -135,7 +146,43 @@ export class ExpertService {
     });
   }
 
+  static async updateSessionStatus(expertId: string, sessionId: string, status: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id: sessionId } });
+    if (!session) throw new Error("Session not found");
+    if (session.expertId !== expertId) throw new Error("Unauthorized: this session does not belong to you");
+
+    return await prisma.expertSessionSchedule.update({
+      where: { id: sessionId },
+      data: { status }
+    });
+  }
+
+  static async updateSessionMeetLink(expertId: string, sessionId: string, meetLink: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id: sessionId } });
+    if (!session) throw new Error("Session not found");
+    if (session.expertId !== expertId) throw new Error("Unauthorized: this session does not belong to you");
+    return await prisma.expertSessionSchedule.update({
+      where: { id: sessionId },
+      data: { meetLink }
+    });
+  }
+
+  static async rescheduleSession(expertId: string, sessionId: string, scheduledAt: string) {
+    const session = await prisma.expertSessionSchedule.findUnique({ where: { id: sessionId } });
+    if (!session) throw new Error("Session not found");
+    if (session.expertId !== expertId) throw new Error("Unauthorized: this session does not belong to you");
+
+    return await prisma.expertSessionSchedule.update({
+      where: { id: sessionId },
+      data: {
+        scheduledAt: new Date(scheduledAt),
+        status: "RESCHEDULED"
+      }
+    });
+  }
+
   // --- RESTORED CHAT METHODS ---
+
 
   async listExperts(userId: string) {
     try {

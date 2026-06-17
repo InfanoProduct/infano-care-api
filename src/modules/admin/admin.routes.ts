@@ -5,6 +5,7 @@ import { requireAdmin } from "../../common/middleware/requireAdmin.js";
 import { upload } from "../../common/middleware/upload.js";
 import { TrackerContentController } from "../tracker/tracker_content.controller.js";
 import { ProgramsController } from "../programs/programs.controller.js";
+import { requireRole } from "../school/requireRole.middleware.js";
 
 const router = Router();
 
@@ -90,14 +91,14 @@ router.delete("/tracker/articles/:id", TrackerContentController.deleteArticle);
 
 // Learning Programs Management
 router.get("/programs", ProgramsController.adminList);
-router.post("/programs", ProgramsController.adminCreate);
-router.patch("/programs/:id", ProgramsController.adminUpdate);
-router.delete("/programs/:id", ProgramsController.adminDelete);
+router.post("/programs", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminCreate);
+router.patch("/programs/:id", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminUpdate);
+router.delete("/programs/:id", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminDelete);
 
 // Learning Programs Enrollments
 router.get("/programs/check-user", ProgramsController.checkUserByPhone);
 router.get("/programs/enrollments", ProgramsController.adminListEnrollments);
-router.post("/programs/enrollments", ProgramsController.adminCreateEnrollment);
+router.post("/programs/enrollments", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminCreateEnrollment);
 
 router.patch("/programs/enrollments/:id", ProgramsController.adminUpdateEnrollmentStatus);
 
@@ -105,5 +106,11 @@ router.patch("/programs/enrollments/:id", ProgramsController.adminUpdateEnrollme
 router.get("/programs/demos", ProgramsController.adminListDemos);
 router.get("/programs/demos/:id", ProgramsController.adminGetDemo);
 router.patch("/programs/demos/:id", ProgramsController.adminUpdateDemoStatus);
+
+// Expert Session Schedule Management (Admin can view all & set meeting links)
+router.get("/expert-sessions", AdminController.getExpertSessions);
+router.patch("/expert-sessions/:id/meet-link", AdminController.updateSessionMeetLink);
+router.patch("/expert-sessions/:id/status", AdminController.updateSessionStatus);
+router.patch("/expert-sessions/:id/reschedule", AdminController.rescheduleSession);
 
 export default router;
