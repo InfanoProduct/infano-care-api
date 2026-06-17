@@ -101,11 +101,13 @@ export class ShopService {
         discountAmount = calculatedDiscount;
         couponId = coupon.id;
 
-        // Increment coupon usage
-        await tx.discountCoupon.update({
-          where: { id: coupon.id },
-          data: { usedCount: { increment: 1 } }
-        });
+        // For COD, increment coupon immediately. For ONLINE, increment upon successful payment
+        if (data.paymentMethod === PaymentMethod.COD) {
+          await tx.discountCoupon.update({
+            where: { id: coupon.id },
+            data: { usedCount: { increment: 1 } }
+          });
+        }
       }
 
       // 3. Calculate GST and Total (Production Grade Reverse Calculation)
@@ -167,17 +169,30 @@ export class ShopService {
 
       // 6. Update User Profile if userId is present (as requested)
       if (data.userId) {
-        await tx.user.update({
-          where: { id: data.userId },
-          data: {
-            email: data.guestEmail,
-            profile: {
-              upsert: {
-                create: { displayName: data.guestName || "User" },
-                update: { displayName: data.guestName },
-              }
+        const updateData: any = {
+          profile: {
+            upsert: {
+              create: { displayName: data.guestName || "User" },
+              update: { displayName: data.guestName },
             }
           }
+        };
+
+        if (data.guestEmail) {
+          const emailExists = await tx.user.findFirst({
+            where: {
+              email: data.guestEmail,
+              id: { not: data.userId }
+            }
+          });
+          if (!emailExists) {
+            updateData.email = data.guestEmail;
+          }
+        }
+
+        await tx.user.update({
+          where: { id: data.userId },
+          data: updateData
         });
       }
 
@@ -242,6 +257,23 @@ export class ShopService {
         userId: userId || undefined,
       },
     });
+
+    // 2. Process Inventory and Coupon usage for successful Online payments
+    if (order.paymentMethod === PaymentMethod.ONLINE) {
+      for (const item of order.items) {
+        await prisma.book.update({
+          where: { id: item.bookId },
+          data: { stock: { decrement: item.quantity } }
+        });
+      }
+
+      if (order.couponId) {
+        await prisma.discountCoupon.update({
+          where: { id: order.couponId },
+          data: { usedCount: { increment: 1 } }
+        });
+      }
+    }
 
     // 2. Automatically create program enrollment if ordered item is a program
     if (userId) {
