@@ -211,6 +211,15 @@ export class AdminController {
     }
   }
 
+  static async addOrderComment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.addOrderComment(req.params.id as string, req.body.text as string);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async verifyManualPayment(req: Request, res: Response, next: NextFunction) {
     try {
       const order = await AdminService.verifyManualPayment(req.params.id as string, req.body.transactionId as string);

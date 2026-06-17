@@ -968,6 +968,7 @@ model Order {
   coupon            DiscountCoupon? @relation(fields: [couponId], references: [id])
   user              User?           @relation(fields: [userId], references: [id])
   items             OrderItem[]
+  comments          Json?           @default("[]")
 }
 
 model DiscountCoupon {

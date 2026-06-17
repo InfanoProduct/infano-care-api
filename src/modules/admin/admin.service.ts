@@ -353,7 +353,9 @@ export class AdminService {
         { id: { contains: filters.search, mode: 'insensitive' } },
         { guestName: { contains: filters.search, mode: 'insensitive' } },
         { guestEmail: { contains: filters.search, mode: 'insensitive' } },
-        { user: { username: { contains: filters.search, mode: 'insensitive' } } }
+        { guestPhone: { contains: filters.search, mode: 'insensitive' } },
+        { user: { username: { contains: filters.search, mode: 'insensitive' } } },
+        { user: { phone: { contains: filters.search, mode: 'insensitive' } } }
       ];
     }
 
@@ -382,7 +384,6 @@ export class AdminService {
         // Find explicitly FAILED or (ONLINE, no paymentId, not CANCELLED)
         const failedCondition = {
           OR: [
-            { orderStatus: 'FAILED' },
             {
               paymentMethod: 'ONLINE',
               razorpayPaymentId: null,
@@ -520,6 +521,19 @@ export class AdminService {
 
   static async updateOrderStatus(id: string, status: any) {
     return ShopService.updateStatus(id, status);
+  }
+
+  static async addOrderComment(id: string, text: string) {
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) throw new Error("Order not found");
+
+    const comments = Array.isArray(order.comments) ? order.comments : [];
+    comments.push({ text, createdAt: new Date().toISOString() });
+
+    return prisma.order.update({
+      where: { id },
+      data: { comments }
+    });
   }
 
   static async convertToCod(orderId: string) {
