@@ -37,5 +37,5 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Expose the API port
 EXPOSE 4000
 
-# Start the application
-CMD ["npm", "run", "start"]
+# Start the application with migrations
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
