@@ -49,7 +49,8 @@ app.use(
 );
 app.use(cors({ origin: "*" }));
 app.use(compression());
-app.use(express.json());
+app.use(express.json({ limit: "200mb" }));
+app.use(express.urlencoded({ limit: "200mb", extended: true }));
 app.use((req, res, next) => {
   console.log(`[RAW REQUEST] ${req.method} ${req.url}`);
   next();

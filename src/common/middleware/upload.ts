@@ -30,8 +30,8 @@ const storage = multer.diskStorage({
       .replace(/^-+|-+$/g, '');
     
     const base = sanitized || 'file';
-    const uniqueSuffix = uuidv4();
-    cb(null, `${base}-${uniqueSuffix}${ext}`);
+    // Use the sanitized original name without adding a UUID
+    cb(null, `${base}${ext}`);
   },
 });
 
