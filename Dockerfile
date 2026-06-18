@@ -27,7 +27,8 @@ ENV NODE_ENV=production
 
 # Copy only production dependencies
 COPY package*.json ./
-RUN npm install --omit=dev
+# Install production dependencies AND the prisma CLI (needed for migrate deploy)
+RUN npm install --omit=dev && npm install prisma
 
 # Copy compiled code and prisma from builder
 COPY --from=builder /app/dist ./dist
