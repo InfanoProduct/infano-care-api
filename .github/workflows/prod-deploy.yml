@@ -58,5 +58,3 @@ jobs:
           # Deploy with production compose
           docker-compose -f docker-compose.prod.yml up -d
           
-          # Run database migrations automatically in the production container
-          docker-compose -f docker-compose.prod.yml exec -T prod-api npx prisma migrate deploy
