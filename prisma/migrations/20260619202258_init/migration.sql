@@ -1,76 +1,340 @@
-/*
-  Warnings:
+-- CreateEnum
+CREATE TYPE "MessageType" AS ENUM ('TEXT', 'VOICE', 'IMAGE');
 
-  - You are about to drop the column `iconUrl` on the `Badge` table. All the data in the column will be lost.
-  - You are about to drop the `Quest` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `UserQuest` table. If the table is not empty, all the data it contains will be lost.
-  - A unique constraint covering the columns `[slug]` on the table `Badge` will be added. If there are existing duplicate values, this will fail.
-  - A unique constraint covering the columns `[username]` on the table `User` will be added. If there are existing duplicate values, this will fail.
-  - A unique constraint covering the columns `[email]` on the table `User` will be added. If there are existing duplicate values, this will fail.
-  - A unique constraint covering the columns `[userId,badgeId]` on the table `UserBadge` will be added. If there are existing duplicate values, this will fail.
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('TEEN', 'PARENT', 'GUARDIAN', 'EXPERT', 'ADMIN', 'PEER', 'OPS_MANAGER', 'SCHOOL_COORDINATOR');
 
-*/
+-- CreateEnum
+CREATE TYPE "ContentTier" AS ENUM ('JUNIOR', 'TEEN_EARLY', 'TEEN_LATE', 'ADULT');
 
--- DropForeignKey
-ALTER TABLE "UserQuest" DROP CONSTRAINT "UserQuest_questId_fkey";
+-- CreateEnum
+CREATE TYPE "AccountStatus" AS ENUM ('PENDING_SETUP', 'PENDING_CONSENT', 'ACTIVE_MINOR', 'ACTIVE', 'SUSPENDED', 'DELETED');
 
--- DropForeignKey
-ALTER TABLE "UserQuest" DROP CONSTRAINT "UserQuest_userId_fkey";
+-- CreateEnum
+CREATE TYPE "TrackerMode" AS ENUM ('active', 'watching_waiting', 'irregular_support');
 
--- AlterTable
-ALTER TABLE "Badge" DROP COLUMN "iconUrl",
-ADD COLUMN     "availableFrom" TIMESTAMP(3),
-ADD COLUMN     "availableUntil" TIMESTAMP(3),
-ADD COLUMN     "collection" TEXT,
-ADD COLUMN     "conditionFnId" TEXT,
-ADD COLUMN     "illustrationUrl" TEXT,
-ADD COLUMN     "isAnimated" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "isSeasonal" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "rarity" TEXT NOT NULL DEFAULT 'common',
-ADD COLUMN     "slug" TEXT,
-ALTER COLUMN "description" DROP NOT NULL;
+-- CreateEnum
+CREATE TYPE "PeriodContentTone" AS ENUM ('GENTLE', 'MODERATE', 'DIRECT');
 
--- AlterTable
-ALTER TABLE "Episode" ADD COLUMN     "isPremium" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "thumbnailUrl" TEXT;
+-- CreateEnum
+CREATE TYPE "ConsentRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'EXPIRED');
 
--- AlterTable
-ALTER TABLE "LearningJourney" ADD COLUMN     "isPremium" BOOLEAN NOT NULL DEFAULT false;
+-- CreateEnum
+CREATE TYPE "ChatSender" AS ENUM ('USER', 'GIGI', 'MODERATOR');
 
--- AlterTable
-ALTER TABLE "Profile" ADD COLUMN     "avatarUrl" TEXT,
-ADD COLUMN     "bio" TEXT DEFAULT 'Helping girls navigate their journey with empathy and care.',
-ADD COLUMN     "certifiedTopicIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
-ADD COLUMN     "completedSessionsCount" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN     "isAvailable" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "mentorExpertise" JSONB NOT NULL DEFAULT '{}',
-ADD COLUMN     "mentorStatus" TEXT NOT NULL DEFAULT 'none',
-ADD COLUMN     "pendingSafetyCheckin" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "sessionPrice" DOUBLE PRECISION DEFAULT 500,
-ADD COLUMN     "specialisation" TEXT,
-ADD COLUMN     "unavailableUntil" TIMESTAMP(3);
+-- CreateEnum
+CREATE TYPE "EscalationLevel" AS ENUM ('LEVEL_0', 'LEVEL_1', 'LEVEL_2', 'LEVEL_3', 'LEVEL_4');
 
--- AlterTable
-ALTER TABLE "User" ADD COLUMN     "email" TEXT,
-ADD COLUMN     "fcmToken" TEXT,
-ADD COLUMN     "password" TEXT,
-ADD COLUMN     "peerOnboarding" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "schoolId" TEXT,
-ADD COLUMN     "tempPasswordExpiresAt" TIMESTAMP(3),
-ADD COLUMN     "username" TEXT;
+-- CreateEnum
+CREATE TYPE "CrisisSeverity" AS ENUM ('NONE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
 
--- AlterTable
-ALTER TABLE "UserBadge" ADD COLUMN     "isFeatured" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "sourceQuestId" TEXT;
+-- CreateEnum
+CREATE TYPE "ModerationDecision" AS ENUM ('APPROVE', 'HOLD', 'REMOVE', 'ESCALATE');
 
--- AlterTable
-ALTER TABLE "UserProgress" ADD COLUMN     "history" JSONB;
+-- CreateEnum
+CREATE TYPE "PeerLineStatus" AS ENUM ('MATCHING', 'QUEUED', 'ACTIVE', 'PAUSED', 'COMPLETED', 'CANCELLED');
 
--- DropTable
-DROP TABLE "Quest";
+-- CreateEnum
+CREATE TYPE "PostStatus" AS ENUM ('PENDING_AI', 'PENDING_HUMAN', 'APPROVED', 'REMOVED', 'AUTHOR_DELETED');
 
--- DropTable
-DROP TABLE "UserQuest";
+-- CreateEnum
+CREATE TYPE "MatchStatus" AS ENUM ('PENDING', 'MATCHED', 'REJECTED', 'UNMATCHED', 'SAVED');
+
+-- CreateEnum
+CREATE TYPE "CouponType" AS ENUM ('PERCENTAGE', 'FLAT');
+
+-- CreateEnum
+CREATE TYPE "PaymentMethod" AS ENUM ('ONLINE', 'COD');
+
+-- CreateEnum
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
+
+-- CreateEnum
+CREATE TYPE "OrderStatus" AS ENUM ('PLACED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "SchoolTier" AS ENUM ('SEEDING', 'GROW', 'THRIVE', 'CUSTOM');
+
+-- CreateEnum
+CREATE TYPE "SchoolStatus" AS ENUM ('PENDING_ONBOARDING', 'ACTIVE', 'INACTIVE', 'SUSPENDED');
+
+-- CreateEnum
+CREATE TYPE "SessionStatus" AS ENUM ('SCHEDULED', 'CONFIRMED', 'COMPLETED', 'RESCHEDULED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "ReportType" AS ENUM ('QUARTERLY', 'SEMI_ANNUAL', 'ANNUAL_IMPACT');
+
+-- CreateEnum
+CREATE TYPE "ReportStatus" AS ENUM ('DRAFT', 'PUBLISHED');
+
+-- CreateEnum
+CREATE TYPE "DispatchStatus" AS ENUM ('DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'ACKNOWLEDGED');
+
+-- CreateEnum
+CREATE TYPE "AssetType" AS ENUM ('PR_ARTICLE', 'SOCIAL_PACK', 'PHOTO_GALLERY', 'IMPACT_VIDEO');
+
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "accountStatus" "AccountStatus" NOT NULL DEFAULT 'PENDING_SETUP',
+    "ageAtSignup" INTEGER,
+    "birthMonth" INTEGER,
+    "birthYear" INTEGER,
+    "contentTier" "ContentTier",
+    "coppaConsentAt" TIMESTAMP(3),
+    "coppaConsentGranted" BOOLEAN,
+    "coppaConsentRequired" BOOLEAN NOT NULL DEFAULT false,
+    "isTestNumber" BOOLEAN NOT NULL DEFAULT false,
+    "locale" TEXT NOT NULL DEFAULT 'en',
+    "marketingOptIn" BOOLEAN NOT NULL DEFAULT false,
+    "onboardingCompletedAt" TIMESTAMP(3),
+    "otpRetryCount" INTEGER NOT NULL DEFAULT 0,
+    "otpSendOn" TIMESTAMP(3),
+    "parentEmail" TEXT,
+    "phone" TEXT NOT NULL,
+    "privacyAcceptedAt" TIMESTAMP(3),
+    "role" "UserRole" NOT NULL DEFAULT 'TEEN',
+    "termsAcceptedAt" TIMESTAMP(3),
+    "timezone" TEXT,
+    "onboardingStep" INTEGER NOT NULL DEFAULT 0,
+    "fcmToken" TEXT,
+    "password" TEXT,
+    "username" TEXT,
+    "peerOnboarding" BOOLEAN NOT NULL DEFAULT false,
+    "email" TEXT,
+    "schoolId" TEXT,
+    "tempPasswordExpiresAt" TIMESTAMP(3),
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Profile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "displayName" TEXT NOT NULL,
+    "pronouns" TEXT,
+    "journeyName" TEXT,
+    "totalPoints" INTEGER NOT NULL DEFAULT 0,
+    "bloomLevel" INTEGER NOT NULL DEFAULT 1,
+    "bio" TEXT DEFAULT 'Helping girls navigate their journey with empathy and care.',
+    "certifiedTopicIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "completedSessionsCount" INTEGER NOT NULL DEFAULT 0,
+    "isAvailable" BOOLEAN NOT NULL DEFAULT false,
+    "mentorStatus" TEXT NOT NULL DEFAULT 'none',
+    "pendingSafetyCheckin" BOOLEAN NOT NULL DEFAULT false,
+    "unavailableUntil" TIMESTAMP(3),
+    "mentorExpertise" JSONB NOT NULL DEFAULT '{}',
+    "sessionPrice" DOUBLE PRECISION DEFAULT 500,
+    "specialisation" TEXT,
+    "avatarUrl" TEXT,
+
+    CONSTRAINT "Profile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PersonalizationProfile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "goals" TEXT[],
+    "periodComfortScore" INTEGER,
+    "periodStatus" TEXT NOT NULL DEFAULT 'waiting',
+    "periodContentTone" TEXT NOT NULL DEFAULT 'moderate',
+    "interestTopics" TEXT[],
+    "contentWeights" JSONB NOT NULL DEFAULT '{}',
+    "quizCompletedAt" TIMESTAMP(3),
+    "lastUpdatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PersonalizationProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserAvatar" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "bodyTypeId" INTEGER NOT NULL DEFAULT 1,
+    "skinToneId" INTEGER NOT NULL DEFAULT 1,
+    "hairStyleId" INTEGER NOT NULL DEFAULT 1,
+    "hairColorId" INTEGER NOT NULL DEFAULT 1,
+    "eyeShapeId" INTEGER NOT NULL DEFAULT 1,
+    "eyeColorId" INTEGER NOT NULL DEFAULT 1,
+    "outfitId" INTEGER NOT NULL DEFAULT 1,
+    "accessories" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+    "unlockedOutfits" INTEGER[] DEFAULT ARRAY[1]::INTEGER[],
+    "unlockedAccessories" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserAvatar_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ConsentRequest" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "parentEmail" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "status" "ConsentRequestStatus" NOT NULL DEFAULT 'PENDING',
+    "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "approvedAt" TIMESTAMP(3),
+    "approvedIp" TEXT,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "reminder1Sent" BOOLEAN NOT NULL DEFAULT false,
+    "reminder2Sent" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "ConsentRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CycleProfile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "trackerMode" "TrackerMode" NOT NULL DEFAULT 'watching_waiting',
+    "lastPeriodStart" TIMESTAMP(3),
+    "lastPeriodEnd" TIMESTAMP(3),
+    "avgCycleLength" DOUBLE PRECISION,
+    "setupCompletedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "avgPeriodDuration" DOUBLE PRECISION,
+    "coefficientOfVar" DOUBLE PRECISION,
+    "confidenceLevel" TEXT NOT NULL DEFAULT 'none',
+    "currentCycleDay" INTEGER,
+    "currentLogStreak" INTEGER NOT NULL DEFAULT 0,
+    "currentPhase" TEXT NOT NULL DEFAULT 'waiting',
+    "federatedLearningConsent" BOOLEAN NOT NULL DEFAULT false,
+    "lastLogDate" TIMESTAMP(3),
+    "longestLogStreak" INTEGER NOT NULL DEFAULT 0,
+    "patternCache" JSONB,
+    "predictedNextEnd" TIMESTAMP(3),
+    "predictedNextStart" TIMESTAMP(3),
+    "predictionWindowEarly" TIMESTAMP(3),
+    "predictionWindowLate" TIMESTAMP(3),
+    "showFertilityWindow" BOOLEAN NOT NULL DEFAULT false,
+    "stdCycleLength" DOUBLE PRECISION,
+
+    CONSTRAINT "CycleProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CycleLog" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "flow" TEXT,
+    "symptoms" TEXT[],
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "activityTags" TEXT[],
+    "crampIntensity" INTEGER,
+    "energyLevel" INTEGER,
+    "hasVoiceNote" BOOLEAN NOT NULL DEFAULT false,
+    "isRetroactive" BOOLEAN NOT NULL DEFAULT false,
+    "moodPrimary" TEXT,
+    "moodSecondary" TEXT[],
+    "noteCiphertext" TEXT,
+    "noteIv" TEXT,
+    "nutritionTags" TEXT[],
+    "sleepHours" DOUBLE PRECISION,
+    "sleepQuality" INTEGER,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "vaginalDischarge" TEXT,
+
+    CONSTRAINT "CycleLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CycleRecord" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "cycleNumber" INTEGER NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3),
+    "periodStartDate" TIMESTAMP(3) NOT NULL,
+    "periodEndDate" TIMESTAMP(3),
+    "cycleLengthDays" INTEGER,
+    "periodDurationDays" INTEGER,
+    "isComplete" BOOLEAN NOT NULL DEFAULT false,
+    "avgCrampIntensity" DOUBLE PRECISION,
+    "mostCommonSymptoms" TEXT[],
+    "predictedStartDate" TIMESTAMP(3),
+    "predictionErrorDays" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CycleRecord_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LearningJourney" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "ageBand" TEXT,
+    "topics" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "goals" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "contentTone" TEXT NOT NULL DEFAULT 'moderate',
+    "minContentTier" "ContentTier" NOT NULL DEFAULT 'TEEN_EARLY',
+    "bannerImage" TEXT,
+    "category" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "slug" TEXT NOT NULL,
+    "thumbnailUrl" TEXT,
+    "totalXP" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "isPremium" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "LearningJourney_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Episode" (
+    "id" TEXT NOT NULL,
+    "journeyId" TEXT NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "title" TEXT NOT NULL,
+    "content" JSONB NOT NULL DEFAULT '[]',
+    "points" INTEGER NOT NULL DEFAULT 50,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "description" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "slug" TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "isPremium" BOOLEAN NOT NULL DEFAULT false,
+    "thumbnailUrl" TEXT,
+
+    CONSTRAINT "Episode_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserProgress" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "episodeId" TEXT NOT NULL,
+    "completed" BOOLEAN NOT NULL DEFAULT false,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "completedItems" JSONB NOT NULL DEFAULT '[]',
+    "lastViewedItemId" TEXT,
+    "history" JSONB,
+
+    CONSTRAINT "UserProgress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Reflection" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "episodeId" TEXT NOT NULL,
+    "content" TEXT,
+    "voiceUrl" TEXT,
+    "isPrivate" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Reflection_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "QuestTemplate" (
@@ -125,6 +389,36 @@ CREATE TABLE "PointsLedger" (
 );
 
 -- CreateTable
+CREATE TABLE "Badge" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "availableFrom" TIMESTAMP(3),
+    "availableUntil" TIMESTAMP(3),
+    "collection" TEXT,
+    "conditionFnId" TEXT,
+    "illustrationUrl" TEXT,
+    "isAnimated" BOOLEAN NOT NULL DEFAULT false,
+    "isSeasonal" BOOLEAN NOT NULL DEFAULT false,
+    "rarity" TEXT NOT NULL DEFAULT 'common',
+    "slug" TEXT,
+
+    CONSTRAINT "Badge_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserBadge" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "badgeId" TEXT NOT NULL,
+    "awardedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "isFeatured" BOOLEAN NOT NULL DEFAULT false,
+    "sourceQuestId" TEXT,
+
+    CONSTRAINT "UserBadge_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "UserStreak" (
     "userId" TEXT NOT NULL,
     "logStreakCurrent" INTEGER NOT NULL DEFAULT 0,
@@ -157,6 +451,17 @@ CREATE TABLE "SeasonalEvent" (
     "availableUntil" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SeasonalEvent_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Subscription" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "tier" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3),
+
+    CONSTRAINT "Subscription_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -236,6 +541,46 @@ CREATE TABLE "ExpertSessionSchedule" (
     "amount" DOUBLE PRECISION,
 
     CONSTRAINT "ExpertSessionSchedule_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ChatSession" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "title" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "maxDistressLevel" "EscalationLevel" NOT NULL DEFAULT 'LEVEL_0',
+    "lastMsgAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ChatSession_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ChatMessage" (
+    "id" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "sender" "ChatSender" NOT NULL,
+    "content" TEXT NOT NULL,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ChatMessage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "EscalationEvent" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "sessionId" TEXT,
+    "level" "EscalationLevel" NOT NULL,
+    "reason" TEXT NOT NULL,
+    "resolvedAt" TIMESTAMP(3),
+    "resolvedBy" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "EscalationEvent_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1138,6 +1483,57 @@ CREATE TABLE "_PostCategories" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Profile_userId_key" ON "Profile"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PersonalizationProfile_userId_key" ON "PersonalizationProfile"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserAvatar_userId_key" ON "UserAvatar"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ConsentRequest_token_key" ON "ConsentRequest"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CycleProfile_userId_key" ON "CycleProfile"("userId");
+
+-- CreateIndex
+CREATE INDEX "CycleProfile_userId_idx" ON "CycleProfile"("userId");
+
+-- CreateIndex
+CREATE INDEX "CycleLog_userId_date_idx" ON "CycleLog"("userId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CycleLog_userId_date_key" ON "CycleLog"("userId", "date");
+
+-- CreateIndex
+CREATE INDEX "CycleRecord_userId_cycleNumber_idx" ON "CycleRecord"("userId", "cycleNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LearningJourney_slug_key" ON "LearningJourney"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Episode_slug_key" ON "Episode"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserProgress_userId_episodeId_key" ON "UserProgress"("userId", "episodeId");
+
+-- CreateIndex
+CREATE INDEX "Reflection_userId_idx" ON "Reflection"("userId");
+
+-- CreateIndex
+CREATE INDEX "Reflection_episodeId_idx" ON "Reflection"("episodeId");
+
+-- CreateIndex
 CREATE INDEX "UserDailyQuest_userId_questDate_idx" ON "UserDailyQuest"("userId", "questDate");
 
 -- CreateIndex
@@ -1145,6 +1541,15 @@ CREATE UNIQUE INDEX "UserDailyQuest_userId_questTemplateId_questDate_key" ON "Us
 
 -- CreateIndex
 CREATE INDEX "PointsLedger_userId_createdAt_idx" ON "PointsLedger"("userId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Badge_slug_key" ON "Badge"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserBadge_userId_badgeId_key" ON "UserBadge"("userId", "badgeId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Subscription_userId_key" ON "Subscription"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "NotificationPreferences_userId_key" ON "NotificationPreferences"("userId");
@@ -1166,6 +1571,15 @@ CREATE INDEX "ExpertChatMessage_sessionId_idx" ON "ExpertChatMessage"("sessionId
 
 -- CreateIndex
 CREATE INDEX "ExpertSessionSchedule_userId_status_idx" ON "ExpertSessionSchedule"("userId", "status");
+
+-- CreateIndex
+CREATE INDEX "ChatSession_userId_idx" ON "ChatSession"("userId");
+
+-- CreateIndex
+CREATE INDEX "ChatMessage_sessionId_idx" ON "ChatMessage"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "EscalationEvent_userId_idx" ON "EscalationEvent"("userId");
 
 -- CreateIndex
 CREATE INDEX "CommunityActivityLog_userId_circleId_idx" ON "CommunityActivityLog"("userId", "circleId");
@@ -1284,20 +1698,44 @@ CREATE INDEX "_PostCTAs_B_index" ON "_PostCTAs"("B");
 -- CreateIndex
 CREATE INDEX "_PostCategories_B_index" ON "_PostCategories"("B");
 
--- CreateIndex
-CREATE UNIQUE INDEX "Badge_slug_key" ON "Badge"("slug");
-
--- CreateIndex
-CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
-
--- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-
--- CreateIndex
-CREATE UNIQUE INDEX "UserBadge_userId_badgeId_key" ON "UserBadge"("userId", "badgeId");
-
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Profile" ADD CONSTRAINT "Profile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PersonalizationProfile" ADD CONSTRAINT "PersonalizationProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserAvatar" ADD CONSTRAINT "UserAvatar_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ConsentRequest" ADD CONSTRAINT "ConsentRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CycleProfile" ADD CONSTRAINT "CycleProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CycleLog" ADD CONSTRAINT "CycleLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CycleRecord" ADD CONSTRAINT "CycleRecord_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Episode" ADD CONSTRAINT "Episode_journeyId_fkey" FOREIGN KEY ("journeyId") REFERENCES "LearningJourney"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserProgress" ADD CONSTRAINT "UserProgress_episodeId_fkey" FOREIGN KEY ("episodeId") REFERENCES "Episode"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserProgress" ADD CONSTRAINT "UserProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Reflection" ADD CONSTRAINT "Reflection_episodeId_fkey" FOREIGN KEY ("episodeId") REFERENCES "Episode"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Reflection" ADD CONSTRAINT "Reflection_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "QuestTemplate" ADD CONSTRAINT "QuestTemplate_badgeRewardId_fkey" FOREIGN KEY ("badgeRewardId") REFERENCES "Badge"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1315,10 +1753,19 @@ ALTER TABLE "UserDailyQuest" ADD CONSTRAINT "UserDailyQuest_userId_fkey" FOREIGN
 ALTER TABLE "PointsLedger" ADD CONSTRAINT "PointsLedger_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "UserBadge" ADD CONSTRAINT "UserBadge_badgeId_fkey" FOREIGN KEY ("badgeId") REFERENCES "Badge"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserBadge" ADD CONSTRAINT "UserBadge_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "UserStreak" ADD CONSTRAINT "UserStreak_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "UserLevel" ADD CONSTRAINT "UserLevel_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "NotificationPreferences" ADD CONSTRAINT "NotificationPreferences_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1343,6 +1790,15 @@ ALTER TABLE "ExpertSessionSchedule" ADD CONSTRAINT "ExpertSessionSchedule_progra
 
 -- AddForeignKey
 ALTER TABLE "ExpertSessionSchedule" ADD CONSTRAINT "ExpertSessionSchedule_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ChatSession" ADD CONSTRAINT "ChatSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ChatMessage" ADD CONSTRAINT "ChatMessage_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "ChatSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "EscalationEvent" ADD CONSTRAINT "EscalationEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CommunityActivityLog" ADD CONSTRAINT "CommunityActivityLog_circleId_fkey" FOREIGN KEY ("circleId") REFERENCES "CommunityCircle"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
