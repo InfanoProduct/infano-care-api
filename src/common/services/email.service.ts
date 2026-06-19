@@ -42,7 +42,7 @@ export const sendEmail = async (to: string, subject: string, html: string, text?
   }
 };
 
-import { compileEmailTemplate } from './template.service';
+import { compileEmailTemplate } from './template.service.js';
 
 export const sendGigiBookOrderPlacedEmail = async (to: string, data: {
   parent_name: string;
