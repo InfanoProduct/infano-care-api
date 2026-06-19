@@ -4,6 +4,7 @@ import { env } from "../../config/env.js";
 import crypto from "crypto";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
+import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail } from "../../common/services/email.service.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -75,7 +76,7 @@ export class ShopService {
     couponCode?: string;
     gstNumber?: string;
   }) {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // 1. Calculate subtotal and verify stock
       let subtotal = 0;
       const orderItems = [];
@@ -163,7 +164,7 @@ export class ShopService {
           },
         },
         include: {
-          items: true,
+          items: { include: { book: true } },
         }
       });
 
@@ -210,6 +211,12 @@ export class ShopService {
     }, {
       timeout: 20000
     });
+
+    if (result.paymentMethod === PaymentMethod.COD && result.guestEmail) {
+      this._sendPlacedEmail(result);
+    }
+
+    return result;
   }
 
   static async completeOrder(razorpayOrderId: string, razorpayPaymentId?: string, razorpaySignature?: string) {
@@ -273,6 +280,10 @@ export class ShopService {
           data: { usedCount: { increment: 1 } }
         });
       }
+    }
+
+    if (order.guestEmail) {
+      this._sendPlacedEmail({ ...order, paymentStatus: PaymentStatus.COMPLETED });
     }
 
     // 2. Automatically create program enrollment if ordered item is a program
@@ -376,10 +387,20 @@ export class ShopService {
         });
       });
     } else {
-      return prisma.order.update({
+      const updated = await prisma.order.update({
         where: { id },
-        data: { orderStatus: nextStatus }
+        data: { orderStatus: nextStatus },
+        include: { items: { include: { book: true } } }
       });
+
+      if (updated.guestEmail) {
+        if (nextStatus === OrderStatus.SHIPPED) {
+          this._sendShippedEmail(updated);
+        } else if (nextStatus === OrderStatus.DELIVERED) {
+          this._sendDeliveredEmail(updated);
+        }
+      }
+      return updated;
     }
   }
 
@@ -471,5 +492,91 @@ export class ShopService {
 
   static async adminGetRazorpayTransactions(options: { skip?: number; count?: number; from?: number; to?: number }) {
     return razorpay.payments.all(options);
+  }
+
+  private static async _sendPlacedEmail(order: any) {
+    try {
+      const orderDate = new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+      const address = {
+        name: order.guestName || "Customer",
+        full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
+      };
+      
+      const items = order.items.map((i: any) => ({
+        title: i.book?.title || "Gigi Book",
+        quantity: i.quantity,
+        price: `₹${i.price}`
+      }));
+
+      await sendGigiBookOrderPlacedEmail(order.guestEmail || "", {
+        parent_name: order.guestName || "Parent",
+        order_id: order.id.slice(-8).toUpperCase(),
+        order_date: orderDate,
+        shipping_address: address,
+        payment_method: order.paymentMethod,
+        order_items: items,
+        subtotal: `₹${order.subtotal}`,
+        discount: order.discountAmount > 0 ? `₹${order.discountAmount}` : "₹0",
+        total: `₹${order.totalAmount}`,
+        track_order_url: "https://infano.care/store/track"
+      });
+    } catch (err) {
+      console.error("Failed to send Placed email", err);
+    }
+  }
+
+  private static async _sendShippedEmail(order: any) {
+    try {
+      const address = {
+        name: order.guestName || "Customer",
+        full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
+      };
+      
+      const items = order.items.map((i: any) => ({
+        title: i.book?.title || "Gigi Book",
+        quantity: i.quantity
+      }));
+
+      // Mock courier info as it's not in schema
+      const courierName = "Delhivery";
+      const trackingId = "AWB123456789";
+      const deliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+      await sendGigiBookOrderShippedEmail(order.guestEmail || "", {
+        parent_name: order.guestName || "Parent",
+        order_id: order.id.slice(-8).toUpperCase(),
+        courier_name: courierName,
+        tracking_id: trackingId,
+        delivery_date: deliveryDate,
+        shipping_address: address,
+        order_items: items,
+        track_order_url: "https://infano.care/store/track",
+        tracking_url: "https://infano.care/store/track?awb=" + trackingId
+      });
+    } catch (err) {
+      console.error("Failed to send Shipped email", err);
+    }
+  }
+
+  private static async _sendDeliveredEmail(order: any) {
+    try {
+      const items = order.items.map((i: any) => ({
+        title: i.book?.title || "Gigi Book",
+        quantity: i.quantity
+      }));
+
+      const deliveryDate = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+      await sendGigiBookOrderDeliveredEmail(order.guestEmail || "", {
+        parent_name: order.guestName || "Parent",
+        order_id: order.id.slice(-8).toUpperCase(),
+        delivery_date: deliveryDate,
+        order_items: items,
+        view_order_url: "https://infano.care/store/track",
+        explore_url: "https://infano.care/explore"
+      });
+    } catch (err) {
+      console.error("Failed to send Delivered email", err);
+    }
   }
 }

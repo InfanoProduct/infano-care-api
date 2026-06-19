@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview Email</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@400;500;700&display=swap');
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background-color: #F5F0F6; /* very slight purple tint */
+      color: #333333;
+      -webkit-font-smoothing: antialiased;
+    }
+    table {
+      border-spacing: 0;
+      border-collapse: collapse;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #F5F0F6;
+      padding: 40px 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #FFFFFF;
+      border: 1px solid #EAE3EC;
+      border-top: 4px solid #9C27B0; /* Purple accent top border */
+      border-radius: 8px;
+    }
+    .header {
+      text-align: left;
+      padding: 30px 40px;
+      border-bottom: 1px solid #F0EBF1;
+    }
+    .header img {
+      height: 45px;
+      width: auto;
+      display: block;
+    }
+    .preheader {
+      display: none;
+      max-height: 0px;
+      overflow: hidden;
+    }
+    .content {
+      padding: 40px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #444444;
+    }
+    .button {
+      display: inline-block;
+      padding: 14px 28px;
+      background-color: #9C27B0; /* Violet/Purple */
+      color: #FFFFFF !important;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      margin: 20px 0;
+      text-align: center;
+      transition: background-color 0.2s ease;
+      border-radius: 6px;
+      box-shadow: 0 4px 6px rgba(156, 39, 176, 0.15);
+    }
+    .button:hover {
+      background-color: #7B1FA2;
+    }
+    .tracker {
+      display: table;
+      width: 100%;
+      margin: 10px 0 40px;
+      table-layout: fixed;
+    }
+    .tracker-cell {
+      display: table-cell;
+      text-align: center;
+      vertical-align: top;
+      position: relative;
+    }
+    .tracker-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background-color: #F0EBF1;
+      color: #999999;
+      display: inline-block;
+      line-height: 36px;
+      font-size: 14px;
+      font-weight: 700;
+      position: relative;
+      z-index: 2;
+    }
+    .tracker-circle img {
+      width: 18px;
+      height: 18px;
+      display: block;
+      margin: 9px auto 0;
+    }
+    .tracker-circle.completed {
+      background-color: #9C27B0; /* Purple */
+      color: #FFFFFF;
+    }
+    .tracker-circle.current {
+      background-color: #D81B60; /* Pinkish */
+      color: #FFFFFF;
+      box-shadow: 0 0 0 4px rgba(216, 27, 96, 0.15);
+    }
+    .tracker-line {
+      position: absolute;
+      top: 17px;
+      left: 50%;
+      width: 100%;
+      height: 3px;
+      background-color: #F0EBF1;
+      z-index: 1;
+    }
+    .tracker-line.completed {
+      background-color: #9C27B0;
+    }
+    .tracker-label {
+      font-size: 13px;
+      color: #888888;
+      margin-top: 12px;
+      display: block;
+      font-weight: 500;
+    }
+    .tracker-label.completed {
+      color: #9C27B0;
+      font-weight: 600;
+    }
+    .tracker-label.current {
+      color: #D81B60;
+      font-weight: 600;
+    }
+    .footer {
+      text-align: left;
+      padding: 30px 40px;
+      font-size: 13px;
+      color: #888888;
+      background-color: #FAFAFA;
+      border-top: 1px solid #EAE3EC;
+      line-height: 1.6;
+      border-radius: 0 0 8px 8px;
+    }
+    .footer a {
+      color: #9C27B0;
+      text-decoration: underline;
+    }
+    .help-section {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px dashed #EAE3EC;
+      font-size: 14px;
+      color: #666666;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <img src="https://api.infano.care/uploads/assets/infano-logo-for-light-bg.png" alt="Infano Care Logo">
+      </div>
+      <div class="preheader">
+        This is a preview of the email template.
+      </div>
+      
+      <div class="content">
+
+
+  <h1 style="font-size: 28px; color: #111111; margin-top: 0; margin-bottom: 24px; font-weight: 700; letter-spacing: -0.5px;">Order Shipped 🚀</h1>
+  <p style="font-size: 16px; font-weight: 600; color: #222222; margin-bottom: 12px;">Hi Jane Doe,</p>
+  <p style="font-size: 16px; color: #555555; line-height: 1.6; margin-top: 0; margin-bottom: 30px;">Great news! The following items from your order <strong>#INF-102938</strong> have been shipped and are on their way to you.</p>
+
+  <h3 style="border-bottom: 1px solid #E5E5E5; padding-bottom: 10px; margin-top: 30px; font-size: 16px; font-weight: 500; color: #111111;">Shipment Details</h3>
+  <table style="width: 100%; margin-top: 15px; border-collapse: collapse;">
+  </table>
+
+  <div class="tracker" style="margin-top: 40px; margin-bottom: 20px;">
+    <div class="tracker-cell">
+      <div class="tracker-circle completed"><img src="https://img.icons8.com/ios-filled/50/ffffff/checkmark--v1.png" alt="Done"></div>
+      <div class="tracker-line completed"></div>
+      <span class="tracker-label completed">Ordered</span>
+    </div>
+    <div class="tracker-cell">
+      <div class="tracker-circle current"><img src="https://img.icons8.com/ios-filled/50/ffffff/truck.png" alt="Shipped"></div>
+      <div class="tracker-line"></div>
+      <span class="tracker-label current">Shipped</span>
+    </div>
+    <div class="tracker-cell">
+      <div class="tracker-circle"><img src="https://img.icons8.com/ios-filled/50/999999/box.png" alt="Delivered"></div>
+      <span class="tracker-label">Delivered</span>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px; margin-bottom: 40px; text-align: center;">
+    <a href="#" class="button">Track Package</a>
+  </div>
+
+  <table style="width: 100%; margin-top: 30px;">
+    <tr>
+      <td style="width: 50%; vertical-align: top; padding-right: 15px;">
+        <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #666666; text-transform: uppercase; letter-spacing: 0.5px;">Tracking Information</h4>
+        <p style="margin: 0; color: #111111; font-size: 14px; line-height: 1.5;">
+          Carrier: Delhivery<br>
+          Tracking #: <strong>AWB987654321</strong>
+        </p>
+      </td>
+      <td style="width: 50%; vertical-align: top; padding-left: 15px;">
+        <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #666666; text-transform: uppercase; letter-spacing: 0.5px;">Shipping Address</h4>
+        <p style="margin: 0; color: #111111; font-size: 14px; line-height: 1.5;">
+          Jane Doe<br>
+          
+        </p>
+      </td>
+    </tr>
+  </table>
+
+
+
+  <div class="help-section">
+    <p style="margin: 0;">Need help? Reply to this email or visit our <a href="https://infano.care/support" style="color: #111111; text-decoration: underline;">Support Center</a>.</p>
+  </div>
+</div>
+
+      
+      <div class="footer">
+        <img src="https://api.infano.care/uploads/assets/infano-logo-for-light-bg.png" alt="Infano Care Logo" style="height: 28px; margin-bottom: 15px; opacity: 0.8;">
+        <p style="margin: 0 0 10px 0;"><strong>Infano.Care</strong></p>
+        <p style="margin: 0 0 20px 0;">Empowering adolescent girls, one family at a time.</p>
+        <p style="margin: 0;">
+          <a href="https://infano.care/about">About Us</a> &nbsp;|&nbsp; 
+          <a href="https://infano.care/contact">Contact</a> &nbsp;|&nbsp; 
+          <a href="https://infano.care/privacy">Privacy Policy</a>
+        </p>
+        <p style="margin: 20px 0 0 0;">&copy; 2026 Infano Care. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

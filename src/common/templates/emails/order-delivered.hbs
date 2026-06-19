@@ -1,0 +1,59 @@
+<div class="content">
+
+
+  <h1 style="font-size: 28px; color: #111111; margin-top: 0; margin-bottom: 24px; font-weight: 700; letter-spacing: -0.5px;">Order Delivered 🎁</h1>
+  <p style="font-size: 16px; font-weight: 600; color: #222222; margin-bottom: 12px;">Hi {{parent_name}},</p>
+  <p style="font-size: 16px; color: #555555; line-height: 1.6; margin-top: 0; margin-bottom: 30px;">Your order <strong>#{{order_id}}</strong> has been delivered successfully. We hope you and your daughter enjoy the experience.</p>
+
+  <h3 style="border-bottom: 1px solid #E5E5E5; padding-bottom: 10px; margin-top: 30px; font-size: 16px; font-weight: 500; color: #111111;">Delivered Items</h3>
+  <table style="width: 100%; margin-top: 15px; border-collapse: collapse;">
+    {{#each order_items}}
+    <tr>
+      <td style="padding: 15px 0; border-bottom: 1px solid #F0F0F0; width: 70px;">
+        <img src="https://api.infano.care/uploads/assets/Page-1.png" alt="{{this.title}}" style="width: 50px; height: auto; border: 1px solid #E5E5E5;">
+      </td>
+      <td style="padding: 15px 10px; border-bottom: 1px solid #F0F0F0; vertical-align: middle;">
+        <p style="margin: 0; font-weight: 500; color: #111111;">{{this.title}}</p>
+        <p style="margin: 4px 0 0 0; font-size: 13px; color: #666666;">Quantity: {{this.quantity}}</p>
+      </td>
+    </tr>
+    {{/each}}
+  </table>
+
+  <div class="tracker" style="margin-top: 40px; margin-bottom: 20px;">
+    <div class="tracker-cell">
+      <div class="tracker-circle completed"><img src="https://img.icons8.com/ios-filled/50/ffffff/checkmark--v1.png" alt="Done"></div>
+      <div class="tracker-line completed"></div>
+      <span class="tracker-label completed">Ordered</span>
+    </div>
+    <div class="tracker-cell">
+      <div class="tracker-circle completed"><img src="https://img.icons8.com/ios-filled/50/ffffff/checkmark--v1.png" alt="Done"></div>
+      <div class="tracker-line completed"></div>
+      <span class="tracker-label completed">Shipped</span>
+    </div>
+    <div class="tracker-cell">
+      <div class="tracker-circle current"><img src="https://img.icons8.com/ios-filled/50/ffffff/box.png" alt="Delivered"></div>
+      <span class="tracker-label current">Delivered</span>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px; margin-bottom: 40px; text-align: center;">
+    <a href="{{explore_url}}" class="button">Explore the Guide</a>
+  </div>
+
+  <h3 style="margin-top: 30px; font-size: 16px; font-weight: 500; color: #111111;">Getting Started</h3>
+  <p style="color: #444444; line-height: 1.6; margin-bottom: 20px;">
+    To make the most of the Gigi-Book:
+  </p>
+  <ul style="color: #444444; line-height: 1.8; margin-top: 0; padding-left: 20px;">
+    <li>Open it together with your daughter.</li>
+    <li>Start with the "About Me" section.</li>
+    <li>Let her set the pace—there's no pressure.</li>
+  </ul>
+
+
+
+  <div class="help-section">
+    <p style="margin: 0;">Have feedback or questions? Reply to this email or visit our <a href="https://infano.care/support" style="color: #111111; text-decoration: underline;">Support Center</a>.</p>
+  </div>
+</div>
