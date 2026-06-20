@@ -77,7 +77,10 @@ export class AdminService {
   static async getUsers(page: number = 1, limit: number = 20, peerOnboarding?: boolean) {
     const skip = (page - 1) * limit;
 
-    const whereClause = peerOnboarding !== undefined ? { peerOnboarding } : {};
+    const whereClause: any = { role: { in: ["TEEN", "PARENT", "PEER"] } };
+    if (peerOnboarding !== undefined) {
+      whereClause.peerOnboarding = peerOnboarding;
+    }
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
