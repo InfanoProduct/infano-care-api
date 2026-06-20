@@ -357,6 +357,43 @@ export class AdminController {
     }
   }
 
+  // Expert Management
+  static async getExperts(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const experts = await AdminService.getExperts();
+      res.status(200).json(experts);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createExpert(req: Request, res: Response, next: NextFunction) {
+    try {
+      const expert = await AdminService.createExpert(req.body);
+      res.status(201).json(expert);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateExpert(req: Request, res: Response, next: NextFunction) {
+    try {
+      const expert = await AdminService.updateExpert(req.params.id as string, req.body);
+      res.status(200).json(expert);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteExpert(req: Request, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteExpert(req.params.id as string);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Expert Session Schedule Management
   static async getExpertSessions(_req: Request, res: Response, next: NextFunction) {
     try {

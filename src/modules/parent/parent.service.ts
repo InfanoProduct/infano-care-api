@@ -318,7 +318,7 @@ export class ParentService {
       id: expert.id,
       displayName: expert.profile?.displayName || expert.username,
       specialisation: expert.profile?.specialisation || "General Expert",
-      sessionPrice: expert.profile?.sessionPrice || 500,
+      consultationPrice: expert.profile?.consultationPrice || 500,
       avatarUrl: expert.profile?.userId, // mock photo handling
       availableSlots: ["2026-06-01T10:00:00Z", "2026-06-02T14:00:00Z"] // mock available slots
     }));
@@ -331,7 +331,7 @@ export class ParentService {
     });
     if (!expert) throw new Error("Expert not found");
 
-    const price = expert.profile?.sessionPrice || 500;
+    const price = expert.profile?.consultationPrice || 500;
     
     const options = {
       amount: Math.round(price * 100),
@@ -381,7 +381,7 @@ export class ParentService {
       where: { id: data.expertId },
       include: { profile: true }
     });
-    const price = expert?.profile?.sessionPrice || 500;
+    const price = expert?.profile?.consultationPrice || 500;
 
     const schedule = await prisma.expertSessionSchedule.create({
       data: {

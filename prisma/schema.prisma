@@ -103,7 +103,7 @@ model Profile {
   pendingSafetyCheckin   Boolean   @default(false)
   unavailableUntil       DateTime?
   mentorExpertise        Json      @default("{}")
-  sessionPrice           Float?    @default(500)
+  consultationPrice      Float?    @default(500)
   specialisation         String?
   avatarUrl              String?
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)

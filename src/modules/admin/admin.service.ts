@@ -826,6 +826,90 @@ export class AdminService {
     });
   }
 
+  // Expert Management
+  static async getExperts() {
+    return prisma.user.findMany({
+      where: { role: "EXPERT" },
+      include: { profile: true },
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  static async createExpert(data: any) {
+    const { email, phone, displayName, specialisation, consultationPrice, bio } = data;
+    
+    // Generate default password and hash it
+    const defaultPassword = "Expert@123";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    
+    // Create base user and profile in transaction
+    return prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          phone: phone || `expert-${Date.now()}`,
+          password: hashedPassword,
+          role: "EXPERT",
+          accountStatus: "ACTIVE",
+          username: email
+        }
+      });
+      
+      await tx.profile.create({
+        data: {
+          userId: user.id,
+          displayName,
+          specialisation,
+          consultationPrice: consultationPrice ? parseFloat(consultationPrice) : 500,
+          bio: bio || "Expert Consultant"
+        }
+      });
+      
+      return tx.user.findUnique({
+        where: { id: user.id },
+        include: { profile: true }
+      });
+    });
+  }
+
+  static async updateExpert(id: string, data: any) {
+    const { email, phone, displayName, specialisation, consultationPrice, bio } = data;
+    
+    return prisma.$transaction(async (tx) => {
+      // Update User
+      await tx.user.update({
+        where: { id },
+        data: {
+          ...(email && { email, username: email }),
+          ...(phone && { phone })
+        }
+      });
+      
+      // Update Profile
+      await tx.profile.update({
+        where: { userId: id },
+        data: {
+          ...(displayName && { displayName }),
+          ...(specialisation && { specialisation }),
+          ...(consultationPrice && { consultationPrice: parseFloat(consultationPrice) }),
+          ...(bio && { bio })
+        }
+      });
+      
+      return tx.user.findUnique({
+        where: { id },
+        include: { profile: true }
+      });
+    });
+  }
+
+  static async deleteExpert(id: string) {
+    // Delete user. Because profile has onDelete: Cascade, it's removed too.
+    return prisma.user.delete({
+      where: { id }
+    });
+  }
+
   // Expert Session Schedule Management
   static async getExpertSessions() {
     return prisma.expertSessionSchedule.findMany({
@@ -842,7 +926,7 @@ export class AdminService {
           select: {
             id: true,
             username: true,
-            profile: { select: { displayName: true, specialisation: true, sessionPrice: true } }
+            profile: { select: { displayName: true, specialisation: true, consultationPrice: true } }
           }
         },
         program: {

@@ -114,4 +114,10 @@ router.patch("/expert-sessions/:id/meet-link", AdminController.updateSessionMeet
 router.patch("/expert-sessions/:id/status", AdminController.updateSessionStatus);
 router.patch("/expert-sessions/:id/reschedule", AdminController.rescheduleSession);
 
+// Expert Management
+router.get("/experts", AdminController.getExperts);
+router.post("/experts", AdminController.createExpert);
+router.patch("/experts/:id", AdminController.updateExpert);
+router.delete("/experts/:id", AdminController.deleteExpert);
+
 export default router;
