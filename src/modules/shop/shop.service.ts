@@ -298,7 +298,6 @@ export class ShopService {
             where: { title: { equals: programTitle, mode: "insensitive" } }
           });
           if (program) {
-            const type = (item.book as any).id.endsWith("-private") ? "PRIVATE" : "GROUP";
             // Check if already enrolled
             const existingEnrollment = await prisma.programEnrollment.findUnique({
               where: {
@@ -313,7 +312,6 @@ export class ShopService {
                 data: {
                   userId,
                   programId: program.id,
-                  type,
                   pricePaid: item.price,
                   status: "ACTIVE",
                   guestName: order.guestName,

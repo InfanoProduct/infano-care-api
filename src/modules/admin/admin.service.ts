@@ -644,7 +644,6 @@ export class AdminService {
                   data: {
                     userId,
                     programId: program.id,
-                    type,
                     pricePaid: item.price,
                     status: "ACTIVE",
                     guestName: order.guestName,
@@ -861,7 +860,8 @@ export class AdminService {
           displayName,
           specialisation,
           consultationPrice: consultationPrice ? parseFloat(consultationPrice) : 500,
-          bio: bio || "Expert Consultant"
+          bio: bio || "Expert Consultant",
+          ...(data.avatarUrl && { avatarUrl: data.avatarUrl })
         }
       });
       
@@ -892,7 +892,8 @@ export class AdminService {
           ...(displayName && { displayName }),
           ...(specialisation && { specialisation }),
           ...(consultationPrice && { consultationPrice: parseFloat(consultationPrice) }),
-          ...(bio && { bio })
+          ...(bio && { bio }),
+          ...(data.avatarUrl && { avatarUrl: data.avatarUrl })
         }
       });
       

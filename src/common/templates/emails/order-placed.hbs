@@ -7,11 +7,11 @@
 
   <table style="width: 100%; margin-top: 30px; border-top: 1px solid #E5E5E5; padding-top: 20px;">
     <tr>
-      <td style="width: 50%; vertical-align: top;">
+      <td class="mobile-block mobile-pr-0" style="width: 50%; vertical-align: top; padding-bottom: 15px;">
         <p style="margin: 0; color: #666666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Order Number</p>
         <p style="margin: 5px 0 0 0; font-weight: 600; color: #111111;">#{{order_id}}</p>
       </td>
-      <td style="width: 50%; vertical-align: top;">
+      <td class="mobile-block mobile-pl-0" style="width: 50%; vertical-align: top;">
         <p style="margin: 0; color: #666666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Order Date</p>
         <p style="margin: 5px 0 0 0; font-weight: 600; color: #111111;">{{order_date}}</p>
       </td>
@@ -71,14 +71,14 @@
 
   <table style="width: 100%; margin-top: 30px;">
     <tr>
-      <td style="width: 50%; vertical-align: top; padding-right: 15px;">
+      <td class="mobile-block mobile-pr-0" style="width: 50%; vertical-align: top; padding-right: 15px; padding-bottom: 20px;">
         <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #666666; text-transform: uppercase; letter-spacing: 0.5px;">Shipping Address</h4>
         <p style="margin: 0; color: #111111; font-size: 14px; line-height: 1.5;">
           {{shipping_address.name}}<br>
           {{shipping_address.full_address}}
         </p>
       </td>
-      <td style="width: 50%; vertical-align: top; padding-left: 15px;">
+      <td class="mobile-block mobile-pl-0" style="width: 50%; vertical-align: top; padding-left: 15px;">
          <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #666666; text-transform: uppercase; letter-spacing: 0.5px;">Payment Method</h4>
          <p style="margin: 0; color: #111111; font-size: 14px; line-height: 1.5;">
            {{payment_method}}

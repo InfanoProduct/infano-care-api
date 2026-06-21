@@ -1165,11 +1165,9 @@ model Program {
   classRange     String
   minClass       Int
   maxClass       Int
-  sessions       Int
   duration       String
   topics         String[]
-  pricePrivate   Float
-  priceGroup     Float
+  price          Float                   @default(0)
   isActive       Boolean                 @default(true)
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
@@ -1186,7 +1184,6 @@ model ProgramEnrollment {
   id         String   @id @default(uuid())
   userId     String
   programId  String
-  type       String
   status     String   @default("ACTIVE")
   pricePaid  Float
   createdAt  DateTime @default(now())

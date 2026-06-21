@@ -369,7 +369,12 @@ export class AdminController {
 
   static async createExpert(req: Request, res: Response, next: NextFunction) {
     try {
-      const expert = await AdminService.createExpert(req.body);
+      const data = { ...req.body };
+      if (req.file) {
+        const { url } = await StorageService.uploadFile(req.file.path, 'experts');
+        data.avatarUrl = url;
+      }
+      const expert = await AdminService.createExpert(data);
       res.status(201).json(expert);
     } catch (error) {
       next(error);
@@ -378,7 +383,12 @@ export class AdminController {
 
   static async updateExpert(req: Request, res: Response, next: NextFunction) {
     try {
-      const expert = await AdminService.updateExpert(req.params.id as string, req.body);
+      const data = { ...req.body };
+      if (req.file) {
+        const { url } = await StorageService.uploadFile(req.file.path, 'experts');
+        data.avatarUrl = url;
+      }
+      const expert = await AdminService.updateExpert(req.params.id as string, data);
       res.status(200).json(expert);
     } catch (error) {
       next(error);

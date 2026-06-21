@@ -27,16 +27,8 @@ export class ProgramsController {
     try {
       const userId = req.user.id;
       const programId = req.params.id;
-      const { type } = req.body; // "PRIVATE" | "GROUP"
-      
-      if (!type || (type !== "PRIVATE" && type !== "GROUP")) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Invalid enrollment type. Must be 'PRIVATE' or 'GROUP'." 
-        });
-      }
 
-      const result = await ProgramsService.enrollUser(userId, programId, type);
+      const result = await ProgramsService.enrollUser(userId, programId);
       res.status(201).json(result);
     } catch (error) {
       next(error);

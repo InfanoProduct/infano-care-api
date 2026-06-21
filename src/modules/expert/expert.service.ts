@@ -11,7 +11,7 @@ export class ExpertService {
       },
       include: {
         program: {
-          select: { id: true, title: true, sessions: true }
+          select: { id: true, title: true }
         },
         user: {
           select: { id: true, profile: { select: { displayName: true } }, username: true }
@@ -38,7 +38,7 @@ export class ExpertService {
       where: { id: enrollmentId },
       include: {
         program: {
-          select: { id: true, title: true, sessions: true, consultations: true }
+          select: { id: true, title: true, consultations: true }
         },
         user: {
           select: { id: true, profile: { select: { displayName: true } }, username: true }

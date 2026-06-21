@@ -325,7 +325,7 @@ export class ProgramsService {
   /**
    * Enroll a user in a program
    */
-  static async enrollUser(userId: string, programId: string, type: "PRIVATE" | "GROUP") {
+  static async enrollUser(userId: string, programId: string) {
     // 1. Fetch program
     const program = await prisma.program.findUnique({
       where: { id: programId },
@@ -368,7 +368,7 @@ export class ProgramsService {
     }
 
     // 3. Determine price
-    const pricePaid = type === "PRIVATE" ? program.pricePrivate : program.priceGroup;
+    const pricePaid = program.price;
 
     // 4. Create enrollment (upsert or simple create with catch for duplicates)
     try {
@@ -376,7 +376,6 @@ export class ProgramsService {
         data: {
           userId,
           programId,
-          type,
           pricePaid,
           status: "ACTIVE"
         },
@@ -480,7 +479,7 @@ export class ProgramsService {
 
   static async adminCreate(data: any) {
     // Validate required fields
-    if (!data.title || !data.classRange || !data.sessions || !data.duration) {
+    if (!data.title || !data.classRange || !data.duration) {
       throw new AppError("Missing required fields for creating a program", 400);
     }
 
@@ -493,11 +492,9 @@ export class ProgramsService {
         classRange: data.classRange,
         minClass: parseInt(data.minClass) || 5,
         maxClass: parseInt(data.maxClass) || 6,
-        sessions: parseInt(data.sessions) || 8,
         duration: data.duration,
         topics: Array.isArray(data.topics) ? data.topics : [],
-        pricePrivate: parseFloat(data.pricePrivate) || 0,
-        priceGroup: parseFloat(data.priceGroup) || 0,
+        price: parseFloat(data.price) || 0,
         isActive: data.isActive !== undefined ? data.isActive : true,
         curriculum: data.curriculum !== undefined ? data.curriculum : [],
         consultations: data.consultations !== undefined ? data.consultations : [],
@@ -523,11 +520,9 @@ export class ProgramsService {
         classRange: data.classRange,
         minClass: data.minClass !== undefined ? parseInt(data.minClass) : undefined,
         maxClass: data.maxClass !== undefined ? parseInt(data.maxClass) : undefined,
-        sessions: data.sessions !== undefined ? parseInt(data.sessions) : undefined,
         duration: data.duration,
         topics: Array.isArray(data.topics) ? data.topics : undefined,
-        pricePrivate: data.pricePrivate !== undefined ? parseFloat(data.pricePrivate) : undefined,
-        priceGroup: data.priceGroup !== undefined ? parseFloat(data.priceGroup) : undefined,
+        price: data.price !== undefined ? parseFloat(data.price) : undefined,
         isActive: data.isActive !== undefined ? data.isActive : undefined,
         curriculum: data.curriculum !== undefined ? data.curriculum : undefined,
         consultations: data.consultations !== undefined ? data.consultations : undefined,
@@ -587,10 +582,10 @@ export class ProgramsService {
   }
 
   static async adminCreateEnrollment(data: any) {
-    const { studentName, phone, email, role, programId, type, pricePaid } = data;
+    const { studentName, phone, email, role, programId, pricePaid } = data;
 
-    if (!studentName || !phone || !programId || !type) {
-      throw new AppError("Missing required fields: studentName, phone, programId, type", 400);
+    if (!studentName || !phone || !programId) {
+      throw new AppError("Missing required fields: studentName, phone, programId", 400);
     }
 
     // 1. Fetch program
@@ -653,7 +648,7 @@ export class ProgramsService {
     }
 
     // Determine price
-    const finalPrice = pricePaid !== undefined && pricePaid !== "" ? Number(pricePaid) : (type === "PRIVATE" ? program.pricePrivate : program.priceGroup);
+    const finalPrice = pricePaid !== undefined && pricePaid !== "" ? Number(pricePaid) : program.price;
 
     // 3. Create program enrollment
     try {
@@ -661,7 +656,6 @@ export class ProgramsService {
         data: {
           userId: user.id,
           programId,
-          type,
           pricePaid: finalPrice,
           status: "ACTIVE",
           guestName: studentName,

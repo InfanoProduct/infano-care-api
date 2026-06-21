@@ -44,7 +44,7 @@ export class ChatService {
 
     try {
       const [allPrograms, allJourneys] = await Promise.all([
-        prisma.program.findMany({ where: { isActive: true }, select: { title: true, tagline: true, description: true, sessions: true, duration: true } }),
+        prisma.program.findMany({ where: { isActive: true }, select: { title: true, tagline: true, description: true, duration: true } }),
         prisma.learningJourney.findMany({ where: { isActive: true }, select: { title: true, description: true } })
       ]);
 
@@ -376,7 +376,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
         userProgramsProgress = await Promise.all(
           userEnrollments.map(async (enrollment) => {
             const program = enrollment.program;
-            const totalSessions = program.sessions || 8;
+            const totalSessions = (program as any).curriculum?.length || 8;
             const [completedSessions, nextProgSession] = await Promise.all([
               prisma.expertSessionSchedule.count({
                 where: { userId, programId: program.id, status: "COMPLETED" }
@@ -489,7 +489,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
               const parentProgramsProgress = await Promise.all(
                 parentEnrollments.map(async (enrollment) => {
                   const program = enrollment.program;
-                  const totalSessions = program.sessions || 8;
+                  const totalSessions = (program as any).curriculum?.length || 8;
                   const [completedSessions, nextProgSession] = await Promise.all([
                     prisma.expertSessionSchedule.count({ where: { userId: parentId, programId: program.id, status: 'COMPLETED' } }),
                     prisma.expertSessionSchedule.findFirst({ where: { userId: parentId, programId: program.id, scheduledAt: { gte: new Date() }, status: 'SCHEDULED' }, orderBy: { scheduledAt: 'asc' } })
@@ -591,7 +591,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
             const teenProgramsProgress = await Promise.all(
               teenEnrollments.map(async (enrollment) => {
                 const program = enrollment.program;
-                const totalSessions = program.sessions || 8;
+                const totalSessions = (program as any).curriculum?.length || 8;
                 const [completedSessions, nextProgSession] = await Promise.all([
                   prisma.expertSessionSchedule.count({
                     where: { userId: { in: [teenId, userId] }, programId: program.id, status: "COMPLETED" }
@@ -747,7 +747,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
           // Prepend active programs and journeys database info
           let databaseInfo = '\n[AVAILABLE PROGRAMS & JOURNEYS IN DATABASE:';
           if (context.allPrograms && context.allPrograms.length > 0) {
-            databaseInfo += ` Programs: ${context.allPrograms.map((p: any) => `"${p.title}" - ${p.tagline || ''} (${p.description || ''}) [Sessions: ${p.sessions || 8}, Duration: ${p.duration || ''}]`).join('; ')}.`;
+            databaseInfo += ` Programs: ${context.allPrograms.map((p: any) => `"${p.title}" - ${p.tagline || ''} (${p.description || ''}) [Duration: ${p.duration || ''}]`).join('; ')}.`;
           } else {
             databaseInfo += ' No active programs.';
           }

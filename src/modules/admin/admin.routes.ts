@@ -116,8 +116,8 @@ router.patch("/expert-sessions/:id/reschedule", AdminController.rescheduleSessio
 
 // Expert Management
 router.get("/experts", AdminController.getExperts);
-router.post("/experts", AdminController.createExpert);
-router.patch("/experts/:id", AdminController.updateExpert);
+router.post("/experts", upload.single('profilePhoto'), AdminController.createExpert);
+router.patch("/experts/:id", upload.single('profilePhoto'), AdminController.updateExpert);
 router.delete("/experts/:id", AdminController.deleteExpert);
 
 export default router;
