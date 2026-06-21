@@ -840,6 +840,16 @@ export class AdminService {
     // Generate default password and hash it
     const defaultPassword = "Expert@123";
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    // Check for existing user
+    if (email) {
+      const existingEmail = await prisma.user.findFirst({ where: { email } });
+      if (existingEmail) throw new Error('An account with this email already exists.');
+    }
+    if (phone) {
+      const existingPhone = await prisma.user.findFirst({ where: { phone } });
+      if (existingPhone) throw new Error('An account with this phone number already exists.');
+    }
     
     // Create base user and profile in transaction
     return prisma.$transaction(async (tx) => {
@@ -874,6 +884,16 @@ export class AdminService {
 
   static async updateExpert(id: string, data: any) {
     const { email, phone, displayName, specialisation, consultationPrice, bio } = data;
+
+    // Check for existing user
+    if (email) {
+      const existingEmail = await prisma.user.findFirst({ where: { email, id: { not: id } } });
+      if (existingEmail) throw new Error('An account with this email already exists.');
+    }
+    if (phone) {
+      const existingPhone = await prisma.user.findFirst({ where: { phone, id: { not: id } } });
+      if (existingPhone) throw new Error('An account with this phone number already exists.');
+    }
     
     return prisma.$transaction(async (tx) => {
       // Update User
