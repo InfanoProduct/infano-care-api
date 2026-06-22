@@ -26,6 +26,7 @@ export const compileEmailTemplate = async (templateName: string, data: Record<st
 
     // 4. Render the base layout passing the inner HTML and global data (like subject/preheader)
     const finalHtml = baseTemplate({
+      IMAGE_BASE_URL: process.env.IMAGE_BASE_URL || 'https://api.infano.care/uploads',
       ...data,
       body: innerHtml,
     });

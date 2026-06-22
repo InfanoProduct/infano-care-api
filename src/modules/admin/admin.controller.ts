@@ -184,6 +184,7 @@ export class AdminController {
         status: req.query.status as string,
         paymentMethod: req.query.paymentMethod as string,
         paymentStatus: req.query.paymentStatus as string,
+        isActive: req.query.isActive !== undefined ? req.query.isActive === 'true' : true,
       };
       const result = await AdminService.getOrders(page, limit, filters);
       res.status(200).json(result);
@@ -205,6 +206,16 @@ export class AdminController {
   static async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const order = await AdminService.updateOrderStatus(req.params.id as string, req.body.status);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateOrderActiveStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { isActive } = req.body;
+      const order = await AdminService.updateOrderActiveStatus(req.params.id as string, isActive);
       res.status(200).json(order);
     } catch (error) {
       next(error);

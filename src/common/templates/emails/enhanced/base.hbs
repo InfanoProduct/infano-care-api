@@ -76,77 +76,75 @@
     .button:hover {
       box-shadow: 0 6px 15px rgba(156, 39, 176, 0.35);
     }
-    .tracker {
-      display: block;
+    /* ── Delivery Progress Tracker ─────────────────────────────────────── */
+    .tracker-table {
       width: 100%;
-      margin: 20px 0 35px;
-      font-size: 0;
-      text-align: center;
+      border-collapse: collapse;
+      margin: 20px 0 10px;
     }
-    .tracker-cell {
-      display: inline-block;
+    .tracker-td {
       width: 33.33%;
       text-align: center;
-      vertical-align: top;
+      vertical-align: middle;
+      padding: 0;
+    }
+    /* Circle wrapper — holds the circle and positions the line */
+    .tracker-icon-wrap {
+      display: inline-block;
       position: relative;
-      box-sizing: border-box;
+      width: 100%;
+    }
+    /* Horizontal connecting line drawn with border-bottom on a pseudo-element.
+       We use a nested table approach: left-half, circle, right-half so the
+       line only spans between circles, not outside the first/last. */
+    .tracker-line-left,
+    .tracker-line-right {
+      display: inline-block;
+      vertical-align: middle;
+      height: 3px;
+      width: calc(50% - 22px); /* 22px = half circle width (44px / 2) */
+      background-color: #E9D5FF;
+    }
+    .tracker-line-left.completed,
+    .tracker-line-right.completed {
+      background: linear-gradient(90deg, #9C27B0 0%, #E91E63 100%);
     }
     .tracker-circle {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background-color: #F3E8FF; /* Very soft violet background */
-      color: #A855F7;
+      background-color: #F3E8FF;
       display: inline-block;
-      vertical-align: top;
-      line-height: 40px;
+      vertical-align: middle;
       position: relative;
       z-index: 2;
       border: 2px solid #FFFFFF;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.07);
     }
     .tracker-circle img {
-      width: 18px;
-      height: 18px;
+      width: 20px;
+      height: 20px;
       display: block;
-      margin: 11px auto 0;
+      margin: 12px auto 0;
     }
     .tracker-circle.completed {
       background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
-      color: #FFFFFF;
-      box-shadow: 0 2px 8px rgba(156, 39, 176, 0.2);
+      box-shadow: 0 2px 8px rgba(156, 39, 176, 0.25);
     }
     .tracker-circle.current {
-      background: linear-gradient(135deg, #E91E63 0%, #D81B60 100%); /* Rose-pink highlight for active state */
-      color: #FFFFFF;
-      box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.2);
-    }
-    .tracker-line {
-      height: 3px;
-      background-color: #E9D5FF;
-      border-radius: 2px;
-      line-height: 3px;
-      font-size: 0;
-      display: block;
-    }
-    .tracker-line.completed {
-      background: linear-gradient(90deg, #9C27B0 0%, #E91E63 100%);
+      background: linear-gradient(135deg, #E91E63 0%, #D81B60 100%);
+      box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.18);
     }
     .tracker-label {
-      font-size: 13px;
+      font-size: 12px;
       color: #6B7280;
-      margin-top: 10px;
+      margin-top: 8px;
       display: block;
       font-weight: 500;
+      text-align: center;
     }
-    .tracker-label.completed {
-      color: #7B1FA2;
-      font-weight: 600;
-    }
-    .tracker-label.current {
-      color: #E91E63;
-      font-weight: 600;
-    }
+    .tracker-label.completed { color: #7B1FA2; font-weight: 600; }
+    .tracker-label.current   { color: #E91E63; font-weight: 600; }
     .footer {
       text-align: center; /* Centered footer for standard layout balance */
       padding: 35px 40px;
@@ -208,19 +206,21 @@
         padding-right: 0 !important;
       }
       .tracker-label {
-        font-size: 11px !important;
+        font-size: 10px !important;
       }
       .tracker-circle {
-        width: 32px !important;
-        height: 32px !important;
-        line-height: 32px !important;
+        width: 34px !important;
+        height: 34px !important;
       }
       .tracker-circle img {
-        width: 14px !important;
-        height: 14px !important;
-        margin: 9px auto 0 !important;
+        width: 15px !important;
+        height: 15px !important;
+        margin: 10px auto 0 !important;
       }
-      /* no mobile overrides needed for table-based line */
+      .tracker-line-left,
+      .tracker-line-right {
+        width: calc(50% - 19px) !important;
+      }
     }
   </style>
 </head>

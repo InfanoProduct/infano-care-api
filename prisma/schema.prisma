@@ -969,6 +969,7 @@ model Order {
   user              User?           @relation(fields: [userId], references: [id])
   items             OrderItem[]
   comments          Json?           @default("[]")
+  isActive          Boolean         @default(true)
 }
 
 model DiscountCoupon {

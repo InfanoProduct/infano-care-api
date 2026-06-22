@@ -345,11 +345,16 @@ export class AdminService {
       status?: string;
       paymentMethod?: string;
       paymentStatus?: string;
+      isActive?: boolean;
     }
   ) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
+
+    if (filters?.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
 
     if (filters?.search) {
       where.OR = [
@@ -524,6 +529,13 @@ export class AdminService {
 
   static async updateOrderStatus(id: string, status: any) {
     return ShopService.updateStatus(id, status);
+  }
+
+  static async updateOrderActiveStatus(id: string, isActive: boolean) {
+    return prisma.order.update({
+      where: { id },
+      data: { isActive }
+    });
   }
 
   static async addOrderComment(id: string, text: string) {

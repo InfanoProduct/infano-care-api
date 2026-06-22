@@ -1,68 +1,245 @@
 <div class="content">
+  <!-- Transit Custom Vector SVG Animation -->
+  <div style="text-align: center; margin: 15px 0 25px 0;">
+    <svg width="150" height="110" viewBox="0 0 150 120" fill="none" xmlns="http://www.w3.org/2000/svg"
+      style="display: inline-block;">
+      <style>
+        @keyframes truckBounce {
 
+          0%,
+          100% {
+            transform: translateY(0);
+          }
 
-  <h1 style="font-size: 28px; color: #111111; margin-top: 0; margin-bottom: 24px; font-weight: 700; letter-spacing: -0.5px;">Order Shipped 🚀</h1>
-  <p style="font-size: 16px; font-weight: 600; color: #222222; margin-bottom: 12px;">Hi {{parent_name}},</p>
-  <p style="font-size: 16px; color: #555555; line-height: 1.6; margin-top: 0; margin-bottom: 30px;">Great news! The following items from your order <strong>#{{order_id}}</strong> have been shipped and are on their way to you.</p>
+          50% {
+            transform: translateY(-4px);
+          }
+        }
 
-  <h3 style="border-bottom: 1px solid #E5E5E5; padding-bottom: 10px; margin-top: 30px; font-size: 16px; font-weight: 500; color: #111111;">Shipment Details</h3>
-  <table style="width: 100%; margin-top: 15px; border-collapse: collapse;">
-    {{#each order_items}}
-    <tr>
-      <td style="padding: 15px 0; border-bottom: 1px solid #F0F0F0; width: 70px;">
-        <img src="https://api.infano.care/uploads/assets/Page-1.png" alt="{{this.title}}" style="width: 50px; height: auto; border: 1px solid #E5E5E5;">
-      </td>
-      <td style="padding: 15px 10px; border-bottom: 1px solid #F0F0F0; vertical-align: middle;">
-        <p style="margin: 0; font-weight: 500; color: #111111;">{{this.title}}</p>
-        <p style="margin: 4px 0 0 0; font-size: 13px; color: #666666;">Quantity: {{this.quantity}}</p>
-      </td>
-    </tr>
-    {{/each}}
-  </table>
+        @keyframes wheelRotate {
+          0% {
+            transform: rotate(0deg);
+          }
 
-  <div class="tracker" style="margin-top: 40px; margin-bottom: 20px;">
-    <div class="tracker-cell">
-      <div class="tracker-circle completed"><img src="https://img.icons8.com/ios-filled/50/ffffff/checkmark--v1.png" alt="Done"></div>
-      <div class="tracker-line completed"></div>
-      <span class="tracker-label completed">Ordered</span>
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes roadMove {
+          0% {
+            stroke-dashoffset: 0;
+          }
+
+          100% {
+            stroke-dashoffset: -20;
+          }
+        }
+
+        @keyframes puff {
+          0% {
+            transform: translate(0, 0) scale(0.5);
+            opacity: 0;
+          }
+
+          50% {
+            opacity: 0.6;
+          }
+
+          100% {
+            transform: translate(-20px, -5px) scale(1.2);
+            opacity: 0;
+          }
+        }
+
+        .truck-body {
+          animation: truckBounce 0.6s ease-in-out infinite;
+          transform-origin: bottom;
+        }
+
+        .wheel {
+          animation: wheelRotate 0.4s linear infinite;
+          transform-origin: center;
+        }
+
+        .road {
+          stroke: #E9D5FF;
+          stroke-width: 4;
+          stroke-linecap: round;
+          stroke-dasharray: 10 10;
+          animation: roadMove 0.4s linear infinite;
+        }
+
+        .exhaust-puff {
+          fill: #CBD5E1;
+          animation: puff 0.8s ease-out infinite;
+          transform-origin: center;
+        }
+      </style>
+
+      <!-- Exhaust Puffs -->
+      <circle cx="35" cy="75" r="4" class="exhaust-puff" style="animation-delay: 0s;" />
+      <circle cx="30" cy="77" r="5" class="exhaust-puff" style="animation-delay: 0.3s;" />
+
+      <g class="truck-body">
+        <!-- Truck Trailer (Infano Purple) -->
+        <rect x="45" y="30" width="60" height="42" rx="6" fill="#9C27B0" />
+        <!-- Logo decal on truck trailer -->
+        <circle cx="75" cy="51" r="8" fill="#FFFFFF" opacity="0.2" />
+
+        <!-- Cabin (Infano Pink) -->
+        <path d="M105 42H118C121.314 42 124 44.6863 124 48V72H105V42Z" fill="#E91E63" />
+        <!-- Cabin Window -->
+        <path d="M109 46H116C117.105 46 118 46.8954 118 48V56H109V46Z" fill="#F3E8FF" />
+        <!-- Bumper / Mudguards -->
+        <rect x="40" y="70" width="86" height="5" rx="2.5" fill="#374151" />
+
+        <!-- Wheels -->
+        <!-- Left Wheel -->
+        <g class="wheel" style="transform-origin: 58px 78px;">
+          <circle cx="58" cy="78" r="10" fill="#374151" />
+          <circle cx="58" cy="78" r="4" fill="#FFFFFF" />
+          <line x1="58" y1="68" x2="58" y2="88" stroke="#9CA3AF" stroke-width="1.5" />
+          <line x1="48" y1="78" x2="68" y2="78" stroke="#9CA3AF" stroke-width="1.5" />
+        </g>
+
+        <!-- Right Wheel -->
+        <g class="wheel" style="transform-origin: 108px 78px;">
+          <circle cx="108" cy="78" r="10" fill="#374151" />
+          <circle cx="108" cy="78" r="4" fill="#FFFFFF" />
+          <line x1="108" y1="68" x2="108" y2="88" stroke="#9CA3AF" stroke-width="1.5" />
+          <line x1="98" y1="78" x2="118" y2="78" stroke="#9CA3AF" stroke-width="1.5" />
+        </g>
+      </g>
+
+      <!-- Moving Road Underneath -->
+      <line x1="20" y1="92" x2="130" y2="92" class="road" />
+    </svg>
+  </div>
+
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1
+      style="font-family: 'Poppins', sans-serif; font-size: 26px; color: #1F2937; margin: 0 0 10px 0; font-weight: 700; letter-spacing: -0.5px;">
+      Your Package is on the Way! 🚀</h1>
+    <p style="font-size: 15px; color: #4B5563; margin: 0; line-height: 1.5;">Great news! Your Gigi-Book order
+      <strong>#{{order_id}}</strong> has been dispatched and is traveling to you.
+    </p>
+  </div>
+
+  <p
+    style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 12px; font-family: 'Poppins', sans-serif;">
+    Hi {{parent_name}},</p>
+  <p style="font-size: 15px; color: #4B5563; line-height: 1.6; margin-top: 0; margin-bottom: 30px;">Our shipping partner
+    has picked up your package. You can monitor its delivery status in real-time below.</p>
+
+  <!-- Tracking Details Card -->
+  <div
+    style="background-color: #FAF8FD; border: 1px solid #F3E8FF; border-radius: 12px; padding: 22px 24px; margin-bottom: 35px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <p
+      style="margin: 0; color: #6B7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;">
+      Shipping Carrier</p>
+    <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #1F2937;">{{courier_name}}</p>
+
+    <div style="margin: 15px 0;">
+      <p
+        style="margin: 0; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">
+        Tracking Number</p>
+      <div
+        style="margin-top: 6px; display: inline-block; background-color: #FFFFFF; border: 1px solid #E9D5FF; padding: 6px 14px; border-radius: 8px; font-family: 'Geist Mono', 'Courier New', monospace; font-size: 15px; font-weight: 700; color: #7B1FA2; letter-spacing: 0.5px;">
+        {{tracking_id}}
+      </div>
     </div>
-    <div class="tracker-cell">
-      <div class="tracker-circle current"><img src="https://img.icons8.com/ios-filled/50/ffffff/truck.png" alt="Shipped"></div>
-      <div class="tracker-line"></div>
-      <span class="tracker-label current">Shipped</span>
-    </div>
-    <div class="tracker-cell">
-      <div class="tracker-circle"><img src="https://img.icons8.com/ios-filled/50/999999/box.png" alt="Delivered"></div>
-      <span class="tracker-label">Delivered</span>
+
+    <div style="margin-top: 15px;">
+      <a href="{{tracking_url}}" class="button" style="margin: 0;">Track My Package</a>
     </div>
   </div>
 
-  <div style="margin-top: 20px; margin-bottom: 40px; text-align: center;">
-    <a href="{{tracking_url}}" class="button">Track Package</a>
+  <!-- Stepper Tracker -->
+  <div style="margin-bottom: 35px;">
+    <h3
+      style="text-align: center; margin-bottom: 20px; font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 650; color: #4B5563; text-transform: uppercase; letter-spacing: 0.5px;">
+      Delivery Progress</h3>
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0 10px;">
+      <tr>
+        <td align="center" width="15%" style="vertical-align: middle;">
+          <div class="tracker-circle completed">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/checkmark--v1.png" alt="Done"
+              style="display: block; margin: 11px auto 0;">
+          </div>
+        </td>
+        <td style="vertical-align: middle; padding: 0;">
+          <div class="tracker-line completed"></div>
+        </td>
+        <td align="center" width="15%" style="vertical-align: middle;">
+          <div class="tracker-circle current">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/truck.png" alt="Shipped"
+              style="display: block; margin: 11px auto 0;">
+          </div>
+        </td>
+        <td style="vertical-align: middle; padding: 0;">
+          <div class="tracker-line"></div>
+        </td>
+        <td align="center" width="15%" style="vertical-align: middle;">
+          <div class="tracker-circle">
+            <img src="https://img.icons8.com/ios-filled/50/9CA3AF/box.png" alt="Delivered"
+              style="display: block; margin: 11px auto 0;">
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding-top: 8px; vertical-align: top;">
+          <span class="tracker-label completed">Ordered</span>
+        </td>
+        <td>&nbsp;</td>
+        <td align="center" style="padding-top: 8px; vertical-align: top;">
+          <span class="tracker-label current">Shipped</span>
+        </td>
+        <td>&nbsp;</td>
+        <td align="center" style="padding-top: 8px; vertical-align: top;">
+          <span class="tracker-label">Delivered</span>
+        </td>
+      </tr>
+    </table>
   </div>
 
-  <table style="width: 100%; margin-top: 30px;">
-    <tr>
-      <td style="width: 50%; vertical-align: top; padding-right: 15px;">
-        <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #666666; text-transform: uppercase; letter-spacing: 0.5px;">Tracking Information</h4>
-        <p style="margin: 0; color: #111111; font-size: 14px; line-height: 1.5;">
-          Carrier: {{courier_name}}<br>
-          Tracking #: <strong>{{tracking_id}}</strong>
-        </p>
-      </td>
-      <td style="width: 50%; vertical-align: top; padding-left: 15px;">
-        <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #666666; text-transform: uppercase; letter-spacing: 0.5px;">Shipping Address</h4>
-        <p style="margin: 0; color: #111111; font-size: 14px; line-height: 1.5;">
-          {{shipping_address.name}}<br>
-          {{shipping_address.full_address}}
-        </p>
-      </td>
-    </tr>
-  </table>
+  <!-- Items In Shipment -->
+  <div
+    style="border: 1px solid #E5E7EB; border-radius: 12px; padding: 0 24px; margin-bottom: 35px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <h3
+      style="margin: 0; padding: 20px 0 12px 0; border-bottom: 1px solid #F3F4F6; font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 600; color: #1F2937;">
+      Items in this Shipment</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+      {{#each order_items}}
+      <tr>
+        <td style="padding: 16px 0; border-bottom: 1px solid #F3F4F6; width: 64px;">
+          <img src="https://api.infano.care/uploads/assets/Page-1.png" alt="{{this.title}}"
+            style="width: 48px; height: auto; border-radius: 6px; border: 1px solid #E5E7EB; display: block;">
+        </td>
+        <td style="padding: 16px 12px; border-bottom: 1px solid #F3F4F6; vertical-align: middle;">
+          <p style="margin: 0; font-weight: 600; color: #1F2937; font-size: 14px; line-height: 1.4;">{{this.title}}</p>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #6B7280; font-weight: 500;">Quantity: {{this.quantity}}
+          </p>
+        </td>
+      </tr>
+      {{/each}}
+    </table>
+  </div>
 
-
+  <!-- Shipping Address Card -->
+  <div
+    style="background-color: #FAF9FB; border: 1px solid #F3E8FF; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+    <h4
+      style="margin: 0 0 10px 0; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9C27B0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+      📍 Delivery Destination</h4>
+    <p style="margin: 0; color: #374151; font-size: 13.5px; line-height: 1.5; font-weight: 550;">
+      {{shipping_address.name}}</p>
+    <p style="margin: 4px 0 0 0; color: #6B7280; font-size: 13px; line-height: 1.5;">{{shipping_address.full_address}}
+    </p>
+  </div>
 
   <div class="help-section">
-    <p style="margin: 0;">Need help? Reply to this email or visit our <a href="https://infano.care/support" style="color: #111111; text-decoration: underline;">Support Center</a>.</p>
+    <p style="margin: 0;">Have queries about your shipment? Reply to this email or visit our <a
+        href="https://infano.care/support">Support Center</a>.</p>
   </div>
 </div>
