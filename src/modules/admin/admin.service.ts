@@ -456,6 +456,7 @@ export class AdminService {
 
     let placedCount = 0;
     let processingCount = 0;
+    let onHoldCount = 0;
     let shippedCount = 0;
     let deliveredCount = 0;
     let failedCount = 0;
@@ -481,6 +482,8 @@ export class AdminService {
         placedCount++;
       } else if (o.orderStatus === 'PROCESSING') {
         processingCount++;
+      } else if (o.orderStatus === 'ON_HOLD') {
+        onHoldCount++;
       } else if (o.orderStatus === 'SHIPPED') {
         shippedCount++;
       } else if (o.orderStatus === 'DELIVERED') {
@@ -507,6 +510,7 @@ export class AdminService {
         codCount,
         placedCount,
         processingCount,
+        onHoldCount,
         shippedCount,
         deliveredCount,
         failedCount,

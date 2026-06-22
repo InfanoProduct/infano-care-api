@@ -60,9 +60,12 @@ export class StorageService {
     }
 
     const ext = path.extname(localPath);
-    // Use existing filename if it has a UUID, otherwise add one
     const baseName = path.basename(localPath, ext);
-    const filename = baseName.includes('-') ? `${baseName}${ext}` : `${baseName}-${uuidv4()}${ext}`;
+    let filename = path.basename(localPath);
+    if (folder !== 'assets') {
+      // Use existing filename if it has a UUID, otherwise add one
+      filename = baseName.includes('-') ? `${baseName}${ext}` : `${baseName}-${uuidv4()}${ext}`;
+    }
     
     // Cross-platform path handling
     let baseDir: string;

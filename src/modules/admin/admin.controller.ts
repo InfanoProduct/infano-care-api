@@ -177,6 +177,16 @@ export class AdminController {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 25;
+      
+      // Parse isActive query parameter robustly
+      let isActive = true;
+      if (req.query.isActive !== undefined) {
+        const val = String(req.query.isActive).toLowerCase().trim();
+        isActive = val === 'true' || val === 'active';
+      }
+      
+      console.log(`[AdminController.getOrders] Raw query isActive:`, req.query.isActive, `-> Parsed isActive:`, isActive);
+
       const filters = {
         search: req.query.search as string,
         dateFrom: req.query.dateFrom as string,
@@ -184,7 +194,7 @@ export class AdminController {
         status: req.query.status as string,
         paymentMethod: req.query.paymentMethod as string,
         paymentStatus: req.query.paymentStatus as string,
-        isActive: req.query.isActive !== undefined ? req.query.isActive === 'true' : true,
+        isActive,
       };
       const result = await AdminService.getOrders(page, limit, filters);
       res.status(200).json(result);

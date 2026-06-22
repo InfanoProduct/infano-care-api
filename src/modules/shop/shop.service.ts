@@ -352,13 +352,14 @@ export class ShopService {
 
   static isValidTransition(current: OrderStatus, next: OrderStatus): boolean {
     const transitions: Record<OrderStatus, OrderStatus[]> = {
-      [OrderStatus.PLACED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+      [OrderStatus.PLACED]: [OrderStatus.PROCESSING, OrderStatus.ON_HOLD, OrderStatus.CANCELLED],
       [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+      [OrderStatus.ON_HOLD]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
       [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.DELIVERED]: [],
       [OrderStatus.CANCELLED]: [],
     };
-    return transitions[current].includes(next);
+    return transitions[current]?.includes(next) || false;
   }
 
   static async updateStatus(id: string, nextStatus: OrderStatus) {
@@ -432,7 +433,7 @@ export class ShopService {
   }
 
   static async getUserOrders(userId: string) {
-    return prisma.order.findMany({
+    const orders = await prisma.order.findMany({
       where: { userId },
       include: {
         items: {
@@ -442,6 +443,13 @@ export class ShopService {
         }
       },
       orderBy: { createdAt: "desc" }
+    });
+
+    return orders.map(order => {
+      if (order.orderStatus === OrderStatus.ON_HOLD) {
+        order.orderStatus = OrderStatus.PLACED;
+      }
+      return order;
     });
   }
 
