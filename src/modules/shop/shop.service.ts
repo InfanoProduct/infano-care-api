@@ -499,7 +499,7 @@ export class ShopService {
         name: order.guestName || "Customer",
         full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
       };
-      
+
       const items = order.items.map((i: any) => ({
         title: i.book?.title || "Gigi Book",
         quantity: i.quantity,
@@ -529,7 +529,7 @@ export class ShopService {
         name: order.guestName || "Customer",
         full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
       };
-      
+
       const items = order.items.map((i: any) => ({
         title: i.book?.title || "Gigi Book",
         quantity: i.quantity

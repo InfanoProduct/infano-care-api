@@ -1,7 +1,8 @@
 <div class="content">
   <!-- Celebratory Custom Vector SVG Animation -->
   <div style="text-align: center; margin: 15px 0 25px 0;">
-    <img src="https://api.infano.care/uploads/assets/order-placed.gif" width="120" height="120" alt="Order Confirmed Animation" style="display: inline-block; border: none; outline: none;">
+    <img src="https://api.infano.care/uploads/assets/order-placed.gif" width="120" height="120"
+      alt="Order Confirmed Animation" style="display: inline-block; border: none; outline: none;">
   </div>
 
   <div style="text-align: center; margin-bottom: 30px;">
@@ -90,44 +91,36 @@
   <!-- Stepper Tracker -->
   <div style="margin-bottom: 35px;">
     <h3
-      style="text-align: center; margin-bottom: 20px; font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 650; color: #4B5563; text-transform: uppercase; letter-spacing: 0.5px;">
+      style="text-align: center; margin-bottom: 16px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: #4B5563; text-transform: uppercase; letter-spacing: 0.8px;">
       Delivery Progress</h3>
-    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0 10px;">
+    <table class="tracker-table" cellpadding="0" cellspacing="0">
       <tr>
-        <td align="center" width="15%" style="vertical-align: middle;">
-          <div class="tracker-circle current">
-            <img src="https://img.icons8.com/ios-filled/50/ffffff/shopping-bag.png" alt="Ordered" style="display: block; margin: 11px auto 0;">
-          </div>
+        <!-- Step 1: Ordered (current) -->
+        <td class="tracker-td">
+          <span class="tracker-line-right" style="float: right; visibility: hidden;"></span>
+          <span class="tracker-circle current" style="display:inline-block;"><img
+              src="https://img.icons8.com/ios-filled/50/ffffff/shopping-bag.png" alt="Ordered"></span>
+          <span class="tracker-line-right"></span>
         </td>
-        <td style="vertical-align: middle; padding: 0;">
-          <div class="tracker-line"></div>
+        <!-- Step 2: Shipped -->
+        <td class="tracker-td">
+          <span class="tracker-line-left"></span>
+          <span class="tracker-circle" style="display:inline-block;"><img
+              src="https://img.icons8.com/ios-filled/50/9CA3AF/truck.png" alt="Shipped"></span>
+          <span class="tracker-line-right"></span>
         </td>
-        <td align="center" width="15%" style="vertical-align: middle;">
-          <div class="tracker-circle">
-            <img src="https://img.icons8.com/ios-filled/50/9CA3AF/truck.png" alt="Shipped" style="display: block; margin: 11px auto 0;">
-          </div>
-        </td>
-        <td style="vertical-align: middle; padding: 0;">
-          <div class="tracker-line"></div>
-        </td>
-        <td align="center" width="15%" style="vertical-align: middle;">
-          <div class="tracker-circle">
-            <img src="https://img.icons8.com/ios-filled/50/9CA3AF/box.png" alt="Delivered" style="display: block; margin: 11px auto 0;">
-          </div>
+        <!-- Step 3: Delivered -->
+        <td class="tracker-td">
+          <span class="tracker-line-left"></span>
+          <span class="tracker-circle" style="display:inline-block;"><img
+              src="https://img.icons8.com/ios-filled/50/9CA3AF/box.png" alt="Delivered"></span>
+          <span class="tracker-line-left" style="visibility: hidden;"></span>
         </td>
       </tr>
       <tr>
-        <td align="center" style="padding-top: 8px; vertical-align: top;">
-          <span class="tracker-label current">Ordered</span>
-        </td>
-        <td>&nbsp;</td>
-        <td align="center" style="padding-top: 8px; vertical-align: top;">
-          <span class="tracker-label">Shipped</span>
-        </td>
-        <td>&nbsp;</td>
-        <td align="center" style="padding-top: 8px; vertical-align: top;">
-          <span class="tracker-label">Delivered</span>
-        </td>
+        <td class="tracker-td"><span class="tracker-label current">Ordered</span></td>
+        <td class="tracker-td"><span class="tracker-label">Shipped</span></td>
+        <td class="tracker-td"><span class="tracker-label">Delivered</span></td>
       </tr>
     </table>
   </div>
