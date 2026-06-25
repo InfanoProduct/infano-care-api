@@ -358,7 +358,6 @@ export class ShopService {
       [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.DELIVERED]: [],
       [OrderStatus.CANCELLED]: [],
-      [OrderStatus.ON_HOLD]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
     };
     return transitions[current]?.includes(next) || false;
   }
