@@ -1545,7 +1545,6 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
-  ON_HOLD
 }
 
 enum SchoolTier {
