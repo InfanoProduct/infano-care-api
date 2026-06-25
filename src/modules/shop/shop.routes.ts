@@ -35,6 +35,19 @@ router.get("/books/:id", ShopController.getBook);
 
 /**
  * @openapi
+ * /shop/recent-purchases:
+ *   get:
+ *     summary: Get recent book purchases
+ *     tags: [Shop]
+ *     responses:
+ *       200:
+ *         description: List of recent purchases
+ */
+router.get("/recent-purchases", ShopController.getRecentPurchases);
+
+
+/**
+ * @openapi
  * /shop/coupons/validate:
  *   post:
  *     summary: Validate a discount coupon

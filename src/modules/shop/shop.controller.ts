@@ -148,4 +148,14 @@ export class ShopController {
       next(error);
     }
   }
+
+  static async getRecentPurchases(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const purchases = await ShopService.getRecentPurchases();
+      res.status(200).json(purchases);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
+

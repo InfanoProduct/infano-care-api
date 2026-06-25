@@ -578,4 +578,75 @@ export class ShopService {
       console.error("Failed to send Delivered email", err);
     }
   }
+
+  static async getRecentPurchases() {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        isActive: true,
+        orderStatus: { not: OrderStatus.CANCELLED },
+        OR: [
+          { paymentStatus: PaymentStatus.COMPLETED },
+          { paymentMethod: PaymentMethod.COD }
+        ],
+        createdAt: {
+          gte: startOfToday
+        }
+      },
+      include: {
+        user: {
+          include: {
+            profile: true
+          }
+        },
+        items: {
+          include: {
+            book: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
+    const formattedOrders = orders
+      .filter(o => o.items.some(item => item.book))
+      .map(o => {
+        let rawName = "Someone";
+        if (o.guestName) {
+          rawName = o.guestName;
+        } else if (o.user?.profile?.displayName) {
+          rawName = o.user.profile.displayName;
+        } else if (o.user?.username) {
+          rawName = o.user.username;
+        }
+
+        const firstName = rawName.trim().split(/\s+/)[0] || "Someone";
+        const bookTitle = o.items[0]?.book?.title || "The Awkward Age";
+
+        return {
+          name: firstName,
+          bookTitle,
+          createdAt: o.createdAt
+        };
+      });
+
+    const now = new Date();
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+
+    const last2HoursPurchases = formattedOrders.filter(o => new Date(o.createdAt) >= twoHoursAgo);
+    const olderTodayPurchases = formattedOrders.filter(o => new Date(o.createdAt) < twoHoursAgo);
+
+    // Sort last2Hours: newest first
+    last2HoursPurchases.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Sort olderToday: oldest to latest of current date
+    olderTodayPurchases.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+    return [...last2HoursPurchases, ...olderTodayPurchases];
+  }
 }
+
