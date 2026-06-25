@@ -199,6 +199,103 @@ export class QuestService {
     if (uq.questTemplate.badgeRewardId) {
       await this.awardBadge(userId, uq.questTemplate.badgeRewardId, uq.id);
     }
+
+    // 4. Update complex badge progress
+    await this.updateBadgeProgress(userId, "quest_completed", uq.questTemplate);
+  }
+
+  static async updateBadgeProgress(userId: string, type: 'quest_completed' | 'period_logged', payload: any) {
+    // ── PERIOD PIONEER LOGIC ──────────────────────────────────────────────
+    const PERIOD_PIONEER_ID = '1d809215-1a62-4237-b1eb-8b85a5a38f36';
+    await this._updateSpecificBadgeProgress(userId, PERIOD_PIONEER_ID, type, payload, {
+      totalSteps: 90,
+      evaluate: (meta, t, p) => {
+        let changed = false;
+        if (t === 'quest_completed' && (p.title === 'Log Your Day' || p.title === 'Log Your Flow')) {
+          meta.logDays = (meta.logDays || 0) + 1;
+          changed = true;
+        }
+        if (t === 'period_logged') {
+          const currentMonth = new Date().toISOString().substring(0, 7);
+          if (meta.lastLogMonth !== currentMonth) {
+            meta.consecutiveMonths = (meta.consecutiveMonths || 0) + 1;
+            meta.lastLogMonth = currentMonth;
+            changed = true;
+          }
+        }
+        if (changed) {
+          const logPart = Math.min(((meta.logDays || 0) / 90) * 50, 50);
+          const monthPart = Math.min(((meta.consecutiveMonths || 0) / 3) * 50, 50);
+          return { percentage: Math.round(logPart + monthPart), currentStep: meta.logDays || 0 };
+        }
+        return null;
+      }
+    });
+
+    // ── COMMUNITY PILLAR LOGIC ───────────────────────────────────────────
+    const COMMUNITY_PILLAR_ID = '5d9aa7e4-017b-419f-845c-64573b3dfc81';
+    await this._updateSpecificBadgeProgress(userId, COMMUNITY_PILLAR_ID, type, payload, {
+      totalSteps: 60,
+      evaluate: (meta, t, p) => {
+        if (t === 'quest_completed' && (p.title === 'Connect & Share' || p.title === 'Support a Friend')) {
+          const today = new Date().toISOString().substring(0, 10);
+          if (meta.lastActivityDate !== today) {
+            meta.daysActive = (meta.daysActive || 0) + 1;
+            meta.lastActivityDate = today;
+            return { 
+              percentage: Math.min(Math.round(((meta.daysActive || 0) / 60) * 100), 100),
+              currentStep: meta.daysActive || 0 
+            };
+          }
+        }
+        return null;
+      }
+    });
+  }
+
+  private static async _updateSpecificBadgeProgress(
+    userId: string, 
+    badgeId: string, 
+    type: string, 
+    payload: any, 
+    config: { 
+      totalSteps: number, 
+      evaluate: (meta: any, type: string, payload: any) => { percentage: number, currentStep: number } | null 
+    }
+  ) {
+    // Check if user already has the badge
+    const earned = await prisma.userBadge.findUnique({
+      where: { userId_badgeId: { userId, badgeId } }
+    });
+    if (earned) return;
+
+    let progress = await prisma.userBadgeProgress.findUnique({
+      where: { userId_badgeId: { userId, badgeId } }
+    });
+
+    if (!progress) {
+      progress = await prisma.userBadgeProgress.create({
+        data: { userId, badgeId, totalSteps: config.totalSteps, metadata: {} }
+      });
+    }
+
+    const metadata = progress.metadata as any;
+    const result = config.evaluate(metadata, type, payload);
+
+    if (result) {
+      await prisma.userBadgeProgress.update({
+        where: { id: progress.id },
+        data: { 
+          progress: result.percentage,
+          currentStep: result.currentStep,
+          metadata 
+        }
+      });
+
+      if (result.percentage >= 100) {
+        await this.awardBadge(userId, badgeId);
+      }
+    }
   }
 
   static async awardBadge(userId: string, badgeId: string, sourceQuestId?: string) {
@@ -223,13 +320,35 @@ export class QuestService {
   }
 
   static async getMyBadges(userId: string) {
-    return prisma.userBadge.findMany({
+    const earned = await prisma.userBadge.findMany({
       where: { userId },
       include: { badge: true }
     });
+
+    const progress = await prisma.userBadgeProgress.findMany({
+      where: { userId }
+    });
+
+    return { earned, progress };
   }
 
   static async getAllBadges() {
-    return prisma.badge.findMany();
+    return prisma.badge.findMany({
+      include: {
+        rewardForQuests: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            category: true,
+            pointsBase: true,
+            difficulty: true,
+            estimatedMinutes: true,
+            completionCondition: true,
+          },
+        },
+      },
+    });
   }
 }

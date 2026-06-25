@@ -64,6 +64,7 @@ model User {
   subscription            Subscription?
   avatar                  UserAvatar?
   userBadges              UserBadge[]
+  badgeProgress           UserBadgeProgress[]
   userDailyQuests         UserDailyQuest[]
   pointsLedger            PointsLedger[]
   userStreak              UserStreak?
@@ -358,7 +359,23 @@ model Badge {
   availableFrom   DateTime?
   availableUntil  DateTime?        // null = permanent
   userBadges      UserBadge[]
+  userProgress    UserBadgeProgress[]
   rewardForQuests QuestTemplate[] @relation("BadgeReward")
+}
+
+model UserBadgeProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  badgeId     String
+  progress    Float    @default(0)
+  currentStep Int      @default(0)
+  totalSteps  Int      @default(0)
+  metadata    Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
 }
 
 model UserBadge {

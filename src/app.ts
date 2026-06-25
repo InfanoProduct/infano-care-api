@@ -74,6 +74,7 @@ app.use("/api/blog", blogRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/mindful", mindfulRoutes);
 app.use("/uploads", express.static("uploads"));
+app.use("/assets", express.static("public/assets"));
 
 
 /**
