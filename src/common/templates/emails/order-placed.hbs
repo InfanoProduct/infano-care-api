@@ -66,6 +66,15 @@
         <td style="padding: 16px 0 8px 0; text-align: right; font-weight: 500; color: #374151; font-size: 13px;">
           {{subtotal}}</td>
       </tr>
+      {{#if isCOD}}
+      <tr>
+        <td colspan="2"
+          style="padding: 4px 12px 8px 12px; text-align: right; color: #6B7280; font-size: 13px; font-weight: 500;">
+          Cash on Delivery Charges</td>
+        <td style="padding: 4px 0 8px 0; text-align: right; font-weight: 600; color: #374151; font-size: 13px;">
+          ₹40</td>
+      </tr>
+      {{else}}
       <tr>
         <td colspan="2"
           style="padding: 4px 12px 8px 12px; text-align: right; color: #6B7280; font-size: 13px; font-weight: 500;">
@@ -73,6 +82,7 @@
         <td style="padding: 4px 0 8px 0; text-align: right; font-weight: 600; color: #10B981; font-size: 13px;">
           {{discount}}</td>
       </tr>
+      {{/if}}
       <tr>
         <td colspan="2"
           style="padding: 12px 12px 20px 12px; text-align: right; color: #111827; font-weight: 600; font-size: 15px; border-top: 1px solid #F3F4F6;">
