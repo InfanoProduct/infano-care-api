@@ -531,8 +531,17 @@ export class AdminService {
     });
   }
 
-  static async updateOrderStatus(id: string, status: any) {
-    return ShopService.updateStatus(id, status);
+  static async updateOrderStatus(id: string, status: any, awbNumber?: string) {
+    return ShopService.updateStatus(id, status, awbNumber);
+  }
+
+  static async updateOrderAwb(id: string, awbNumber: string) {
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) throw new Error("Order not found");
+    return prisma.order.update({
+      where: { id },
+      data: { awbNumber }
+    });
   }
 
   static async updateOrderActiveStatus(id: string, isActive: boolean) {

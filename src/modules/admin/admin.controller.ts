@@ -215,7 +215,20 @@ export class AdminController {
 
   static async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await AdminService.updateOrderStatus(req.params.id as string, req.body.status);
+      const order = await AdminService.updateOrderStatus(req.params.id as string, req.body.status, req.body.awbNumber);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateOrderAwb(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { awbNumber } = req.body;
+      if (!awbNumber || typeof awbNumber !== 'string' || !awbNumber.trim()) {
+        return res.status(400).json({ message: "awbNumber is required" });
+      }
+      const order = await AdminService.updateOrderAwb(req.params.id as string, awbNumber.trim());
       res.status(200).json(order);
     } catch (error) {
       next(error);

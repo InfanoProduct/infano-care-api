@@ -363,12 +363,20 @@ export class ShopService {
     return transitions[current]?.includes(next) || false;
   }
 
-  static async updateStatus(id: string, nextStatus: OrderStatus) {
+  static async updateStatus(id: string, nextStatus: OrderStatus, awbNumber?: string) {
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) throw new Error("Order not found");
 
     if (!this.isValidTransition(order.orderStatus, nextStatus)) {
       throw new Error(`Invalid status transition from ${order.orderStatus} to ${nextStatus}`);
+    }
+
+    // AWB number is mandatory before marking as SHIPPED
+    if (nextStatus === OrderStatus.SHIPPED) {
+      const resolvedAwb = awbNumber?.trim() || order.awbNumber?.trim();
+      if (!resolvedAwb) {
+        throw new Error("AWB (Air Waybill) number is required before marking the order as Shipped.");
+      }
     }
 
     // If cancelled, restore stock
@@ -387,9 +395,14 @@ export class ShopService {
         });
       });
     } else {
+      const updateData: any = { orderStatus: nextStatus };
+      if (nextStatus === OrderStatus.SHIPPED && awbNumber?.trim()) {
+        updateData.awbNumber = awbNumber.trim();
+      }
+
       const updated = await prisma.order.update({
         where: { id },
-        data: { orderStatus: nextStatus },
+        data: updateData,
         include: { items: { include: { book: true } } }
       });
 
@@ -550,21 +563,29 @@ export class ShopService {
         quantity: i.quantity
       }));
 
-      // Mock courier info as it's not in schema
       const courierName = "Delhivery";
-      const trackingId = "AWB123456789";
       const deliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+      // Use real AWB if available; otherwise fall back to order number display
+      const awb = order.awbNumber?.trim();
+      const displayTrackingId = awb || order.id.slice(-8).toUpperCase();
+      const trackingUrl = awb
+        ? `https://www.delhivery.com/track-v2/package/${awb}`
+        : "https://infano.care/login";
+      const trackOrderUrl = awb
+        ? `https://www.delhivery.com/track-v2/package/${awb}`
+        : "https://infano.care/login";
 
       const res = await sendGigiBookOrderShippedEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
         order_id: order.id.slice(-8).toUpperCase(),
         courier_name: courierName,
-        tracking_id: trackingId,
+        tracking_id: displayTrackingId,
         delivery_date: deliveryDate,
         shipping_address: address,
         order_items: items,
-        track_order_url: "https://infano.care/store/track",
-        tracking_url: "https://infano.care/store/track?awb=" + trackingId
+        track_order_url: trackOrderUrl,
+        tracking_url: trackingUrl
       });
 
       logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Shipped email sent successfully");
