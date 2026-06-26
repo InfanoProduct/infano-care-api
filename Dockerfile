@@ -34,6 +34,7 @@ RUN npm install --omit=dev && npm install prisma
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/src/common/templates ./src/common/templates
 
 # Expose the API port
 EXPOSE 4000

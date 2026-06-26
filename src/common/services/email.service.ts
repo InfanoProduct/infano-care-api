@@ -87,8 +87,8 @@ export const sendGigiBookOrderDeliveredEmail = async (to: string, data: {
   view_order_url: string;
   explore_url: string;
 }) => {
-  const subject = `Order #${data.order_id} - Your Gigi-Book has arrived! Here's how to get started 🌟`;
-  const preheaderText = 'Tips to make the most of this wellness journey together.';
+  const subject = `Order #${data.order_id} - Delivered 📦`;
+  const preheaderText = 'Your order has been successfully delivered.';
   const html = await compileEmailTemplate('order-delivered', { ...data, subject, preheaderText });
   return sendEmail(to, subject, html);
 };

@@ -2,6 +2,7 @@ import { prisma } from "../../db/client.js";
 import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import crypto from "crypto";
+import { logger } from "../../config/logger.js";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
 import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail } from "../../common/services/email.service.js";
@@ -495,6 +496,8 @@ export class ShopService {
 
   private static async _sendPlacedEmail(order: any) {
     try {
+      logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Placed email");
+
       const orderDate = new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
       const address = {
         name: order.guestName || "Customer",
@@ -507,7 +510,7 @@ export class ShopService {
         price: `₹${i.price}`
       }));
 
-      await sendGigiBookOrderPlacedEmail(order.guestEmail || "", {
+      const res = await sendGigiBookOrderPlacedEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
         order_id: order.id.slice(-8).toUpperCase(),
         order_date: orderDate,
@@ -519,13 +522,17 @@ export class ShopService {
         total: `₹${order.totalAmount}`,
         track_order_url: "https://infano.care/store/track"
       });
-    } catch (err) {
-      console.error("Failed to send Placed email", err);
+
+      logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Placed email sent successfully");
+    } catch (err: any) {
+      logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Placed email");
     }
   }
 
   private static async _sendShippedEmail(order: any) {
     try {
+      logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Shipped email");
+
       const address = {
         name: order.guestName || "Customer",
         full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
@@ -541,7 +548,7 @@ export class ShopService {
       const trackingId = "AWB123456789";
       const deliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
-      await sendGigiBookOrderShippedEmail(order.guestEmail || "", {
+      const res = await sendGigiBookOrderShippedEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
         order_id: order.id.slice(-8).toUpperCase(),
         courier_name: courierName,
@@ -552,13 +559,17 @@ export class ShopService {
         track_order_url: "https://infano.care/store/track",
         tracking_url: "https://infano.care/store/track?awb=" + trackingId
       });
-    } catch (err) {
-      console.error("Failed to send Shipped email", err);
+
+      logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Shipped email sent successfully");
+    } catch (err: any) {
+      logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Shipped email");
     }
   }
 
   private static async _sendDeliveredEmail(order: any) {
     try {
+      logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Delivered email");
+
       const items = order.items.map((i: any) => ({
         title: i.book?.title || "Gigi Book",
         quantity: i.quantity
@@ -566,7 +577,7 @@ export class ShopService {
 
       const deliveryDate = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
-      await sendGigiBookOrderDeliveredEmail(order.guestEmail || "", {
+      const res = await sendGigiBookOrderDeliveredEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
         order_id: order.id.slice(-8).toUpperCase(),
         delivery_date: deliveryDate,
@@ -574,8 +585,10 @@ export class ShopService {
         view_order_url: "https://infano.care/store/track",
         explore_url: "https://infano.care/explore"
       });
-    } catch (err) {
-      console.error("Failed to send Delivered email", err);
+
+      logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Delivered email sent successfully");
+    } catch (err: any) {
+      logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Delivered email");
     }
   }
 
