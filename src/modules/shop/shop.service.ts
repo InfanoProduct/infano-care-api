@@ -371,14 +371,6 @@ export class ShopService {
       throw new Error(`Invalid status transition from ${order.orderStatus} to ${nextStatus}`);
     }
 
-    // AWB number is mandatory before marking as SHIPPED
-    if (nextStatus === OrderStatus.SHIPPED) {
-      const resolvedAwb = awbNumber?.trim() || order.awbNumber?.trim();
-      if (!resolvedAwb) {
-        throw new Error("AWB (Air Waybill) number is required before marking the order as Shipped.");
-      }
-    }
-
     // If cancelled, restore stock
     if (nextStatus === OrderStatus.CANCELLED) {
       const items = await prisma.orderItem.findMany({ where: { orderId: id } });
