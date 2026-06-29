@@ -1,62 +1,21 @@
-import { Router } from 'express';
-import { ExpertController } from './expert.controller.js';
-import { authenticate } from '../../common/middleware/auth.js';
+import { Router } from "express";
+import { ExpertController } from "./expert.controller.js";
+import { authenticate } from "../../common/middleware/auth.js";
+
 
 const router = Router();
-const expertController = new ExpertController();
 
-/**
- * @openapi
- * /api/expert/list:
- *   get:
- *     summary: List all experts
- *     tags: [Expert Chat]
- *     responses:
- *       200:
- *         description: List of experts.
- */
-router.get('/list', authenticate, expertController.listExperts);
+router.use(authenticate);
+// router.use(requireRole(["EXPERT", "ADMIN"])); // Optional, depending on strictness
 
-/**
- * @openapi
- * /api/expert/session:
- *   post:
- *     summary: Create or get expert chat session
- *     tags: [Expert Chat]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               expertId:
- *                 type: string
- *     responses:
- *       200:
- *         description: Expert session info.
- */
-router.post('/session', authenticate, expertController.getOrCreateSession);
+router.get("/enrollments", ExpertController.getEnrollments);
+router.get("/enrollments/:id", ExpertController.getEnrollmentDetails);
+router.get("/sessions", ExpertController.getSessions);
+router.post("/sessions", ExpertController.scheduleSession);
+router.patch("/sessions/:id/complete", ExpertController.completeSession);
+router.patch("/sessions/:id/status", ExpertController.updateSessionStatus);
+router.patch("/sessions/:id/meet-link", ExpertController.updateSessionMeetLink);
+router.patch("/sessions/:id/reschedule", ExpertController.rescheduleSession);
 
-/**
- * @openapi
- * /api/expert/messages/{sessionId}:
- *   get:
- *     summary: Get chat history with expert
- *     tags: [Expert Chat]
- *     parameters:
- *       - in: path
- *         name: sessionId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Array of messages.
- */
-router.get('/messages/:sessionId', authenticate, expertController.getMessages);
-
-router.get('/my-sessions', authenticate, (req, res) => expertController.getMySessions(req, res));
-router.patch('/session/:sessionId/read', authenticate, (req, res) => expertController.markAsRead(req, res));
 
 export default router;

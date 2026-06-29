@@ -4,6 +4,8 @@ import { authenticate } from "../../common/middleware/auth.js";
 import { requireAdmin } from "../../common/middleware/requireAdmin.js";
 import { upload } from "../../common/middleware/upload.js";
 import { TrackerContentController } from "../tracker/tracker_content.controller.js";
+import { ProgramsController } from "../programs/programs.controller.js";
+import { requireRole } from "../school/requireRole.middleware.js";
 
 const router = Router();
 
@@ -35,10 +37,19 @@ router.delete("/learning/episodes/:id", AdminController.deleteEpisode);
 // File Upload
 router.post("/upload", upload.single("file"), AdminController.upload);
 
+// Universal Assets Management
+router.get("/assets", AdminController.listAssets);
+router.delete("/assets/:filename", AdminController.deleteAsset);
+
 // Order Management
 router.get("/orders", AdminController.getOrders);
 router.get("/orders/:id", AdminController.getOrder);
+router.post("/orders/:id/comments", AdminController.addOrderComment);
 router.patch("/orders/:id/status", AdminController.updateOrderStatus);
+router.patch("/orders/:id/awb", AdminController.updateOrderAwb);
+router.patch("/orders/:id/active", AdminController.updateOrderActiveStatus);
+router.post("/orders/:id/manual-payment", AdminController.verifyManualPayment);
+router.post("/orders/:id/convert-to-cod", AdminController.convertToCod);
 
 // Book Management
 router.get("/books", AdminController.getBooks);
@@ -51,6 +62,11 @@ router.get("/circles", AdminController.getCircles);
 router.post("/circles", AdminController.createCircle);
 router.patch("/circles/:id", AdminController.updateCircle);
 router.delete("/circles/:id", AdminController.deleteCircle);
+
+// Enquiry Management
+router.get("/enquiries", AdminController.getEnquiries);
+router.get("/enquiries/:id", AdminController.getEnquiry);
+
 
 // ─── Tracker Content Management ─────────────────────────────────────────────
 // Daily Insights (cards shown in "My Daily Insights" section)
@@ -75,5 +91,35 @@ router.get("/tracker/articles", TrackerContentController.listArticles);
 router.post("/tracker/articles", TrackerContentController.createArticle);
 router.patch("/tracker/articles/:id", TrackerContentController.updateArticle);
 router.delete("/tracker/articles/:id", TrackerContentController.deleteArticle);
+
+// Learning Programs Management
+router.get("/programs", ProgramsController.adminList);
+router.post("/programs", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminCreate);
+router.patch("/programs/:id", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminUpdate);
+router.delete("/programs/:id", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminDelete);
+
+// Learning Programs Enrollments
+router.get("/programs/check-user", ProgramsController.checkUserByPhone);
+router.get("/programs/enrollments", ProgramsController.adminListEnrollments);
+router.post("/programs/enrollments", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminCreateEnrollment);
+
+router.patch("/programs/enrollments/:id", ProgramsController.adminUpdateEnrollmentStatus);
+
+// Learning Programs Demo Sessions Bookings
+router.get("/programs/demos", ProgramsController.adminListDemos);
+router.get("/programs/demos/:id", ProgramsController.adminGetDemo);
+router.patch("/programs/demos/:id", ProgramsController.adminUpdateDemoStatus);
+
+// Expert Session Schedule Management (Admin can view all & set meeting links)
+router.get("/expert-sessions", AdminController.getExpertSessions);
+router.patch("/expert-sessions/:id/meet-link", AdminController.updateSessionMeetLink);
+router.patch("/expert-sessions/:id/status", AdminController.updateSessionStatus);
+router.patch("/expert-sessions/:id/reschedule", AdminController.rescheduleSession);
+
+// Expert Management
+router.get("/experts", AdminController.getExperts);
+router.post("/experts", upload.single('profilePhoto'), AdminController.createExpert);
+router.patch("/experts/:id", upload.single('profilePhoto'), AdminController.updateExpert);
+router.delete("/experts/:id", AdminController.deleteExpert);
 
 export default router;

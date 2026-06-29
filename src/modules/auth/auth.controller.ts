@@ -48,11 +48,49 @@ export class AuthController {
     } catch (e) { next(e); }
   }
 
+  static async checkUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { phone } = req.body;
+      if (!phone) {
+        return res.status(400).json({ exists: false, message: "Phone required" });
+      }
+      const { normalizePhone } = await import("../../common/utils/phone.js");
+      const { prisma } = await import("../../db/client.js");
+      
+      const finalPhone = normalizePhone(phone);
+      const user = await prisma.user.findUnique({
+        where: { phone: finalPhone },
+        select: { id: true, role: true }
+      });
+      
+      res.status(200).json({ exists: !!user, role: user?.role });
+    } catch (e) { next(e); }
+  }
+
   static async logout(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshToken } = refreshSchema.parse(req.body);
       await AuthService.logout(refreshToken);
       res.status(200).json({ message: "Logged out." });
+    } catch (e) { next(e); }
+  }
+
+  static async resetCoordinatorPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized access" });
+        return;
+      }
+      const result = await AuthService.resetCoordinatorPassword(userId, req.body);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async requestNewCredentials(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AuthService.requestNewCredentials(req.body);
+      res.status(200).json(result);
     } catch (e) { next(e); }
   }
 }

@@ -73,9 +73,14 @@ export class BlogService {
 
   static async createPost(data: any) {
     const { categoryIds, ctaIds, authorId, seoTitle, seoDescription, seoKeywords, ...rest } = data;
+    
+    // Ensure unique slug
+    const uniqueSlug = await this.getUniqueSlug('blogPost', rest.title, rest.slug);
+    
     return prisma.blogPost.create({
       data: {
         ...rest,
+        slug: uniqueSlug,
         author: authorId ? {
           connect: { id: authorId }
         } : undefined,
@@ -91,10 +96,18 @@ export class BlogService {
 
   static async updatePost(id: string, data: any) {
     const { categoryIds, ctaIds, authorId, seoTitle, seoDescription, seoKeywords, ...rest } = data;
+    
+    // Ensure unique slug if provided
+    let slug = rest.slug;
+    if (slug || rest.title) {
+      slug = await this.getUniqueSlug('blogPost', rest.title, rest.slug, id);
+    }
+
     return prisma.blogPost.update({
       where: { id },
       data: {
         ...rest,
+        ...(slug ? { slug } : {}),
         author: authorId ? {
           connect: { id: authorId }
         } : undefined,
@@ -131,13 +144,15 @@ export class BlogService {
   }
 
   static async createAuthor(data: any) {
-    return prisma.blogAuthor.create({ data });
+    const { instagramFollowers, facebookFollowers, linkedInFollowers, ...rest } = data;
+    return prisma.blogAuthor.create({ data: rest });
   }
 
   static async updateAuthor(id: string, data: any) {
+    const { instagramFollowers, facebookFollowers, linkedInFollowers, ...rest } = data;
     return prisma.blogAuthor.update({
       where: { id },
-      data,
+      data: rest,
     });
   }
 
@@ -162,13 +177,26 @@ export class BlogService {
   }
 
   static async createCategory(data: any) {
-    return prisma.blogCategory.create({ data });
+    const slug = await this.getUniqueSlug('blogCategory', data.name, data.slug);
+    return prisma.blogCategory.create({ 
+      data: {
+        ...data,
+        slug
+      } 
+    });
   }
 
   static async updateCategory(id: string, data: any) {
+    let slug = data.slug;
+    if (slug || data.name) {
+      slug = await this.getUniqueSlug('blogCategory', data.name, data.slug, id);
+    }
     return prisma.blogCategory.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        ...(slug ? { slug } : {})
+      },
     });
   }
 
@@ -241,5 +269,55 @@ export class BlogService {
       where: { id: stats.id },
       data,
     });
+  }
+
+  // --- Comments ---
+  static async getCommentsByPostId(postId: string) {
+    return prisma.blogComment.findMany({
+      where: { postId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  static async createComment(postId: string, data: any) {
+    const { name, email, content } = data;
+    return prisma.blogComment.create({
+      data: {
+        postId,
+        name,
+        email,
+        content,
+      },
+    });
+  }
+
+  // --- Helpers ---
+  private static async getUniqueSlug(model: 'blogPost' | 'blogCategory', title: string, slug?: string, excludeId?: string) {
+    let baseSlug = (slug || title || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+    
+    if (!baseSlug) baseSlug = 'untitled';
+
+    let uniqueSlug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      const existing = await (prisma[model] as any).findFirst({
+        where: {
+          slug: uniqueSlug,
+          ...(excludeId ? { id: { not: excludeId } } : {})
+        },
+        select: { id: true }
+      });
+
+      if (!existing) break;
+
+      uniqueSlug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    return uniqueSlug;
   }
 }

@@ -35,6 +35,19 @@ router.get("/books/:id", ShopController.getBook);
 
 /**
  * @openapi
+ * /shop/recent-purchases:
+ *   get:
+ *     summary: Get recent book purchases
+ *     tags: [Shop]
+ *     responses:
+ *       200:
+ *         description: List of recent purchases
+ */
+router.get("/recent-purchases", ShopController.getRecentPurchases);
+
+
+/**
+ * @openapi
  * /shop/coupons/validate:
  *   post:
  *     summary: Validate a discount coupon
@@ -124,5 +137,18 @@ router.post("/orders/verify", ShopController.verifyPayment);
  *         description: Webhook received
  */
 router.post("/webhook", ShopController.webhook);
+
+// Admin Coupon Management Routes (Secure)
+import { authenticate } from "../../common/middleware/auth.js";
+import { requireAdmin } from "../../common/middleware/requireAdmin.js";
+
+router.get("/orders/me", authenticate, ShopController.getUserOrders);
+
+router.get("/admin/coupons", authenticate, requireAdmin, ShopController.adminListCoupons);
+router.post("/admin/coupons", authenticate, requireAdmin, ShopController.adminCreateCoupon);
+router.patch("/admin/coupons/:id", authenticate, requireAdmin, ShopController.adminUpdateCoupon);
+router.delete("/admin/coupons/:id", authenticate, requireAdmin, ShopController.adminDeleteCoupon);
+
+router.get("/admin/transactions", authenticate, requireAdmin, ShopController.adminGetRazorpayTransactions);
 
 export default router;

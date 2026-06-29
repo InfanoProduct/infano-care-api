@@ -1,0 +1,96 @@
+<div class="content">
+  <!-- Arrival Custom Vector SVG Animation -->
+  <div style="text-align: center; margin: 15px 0 25px 0;">
+    <img src="http://109.199.120.104:8084/uploads/assets/Order-Delivery.gif" alt="Order Delivered" style="width: 120px; height: auto; display: inline-block;" />
+  </div>
+
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1
+      style="font-family: 'Poppins', sans-serif; font-size: 26px; color: #1F2937; margin: 0 0 10px 0; font-weight: 700; letter-spacing: -0.5px;">
+      Your Gigi-Book Has Arrived! 🎁</h1>
+    <p style="font-size: 15px; color: #4B5563; margin: 0; line-height: 1.5;">Exciting news! Your order
+      <strong>#{{order_id}}</strong> has been successfully delivered.
+    </p>
+  </div>
+
+  <p
+    style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 12px; font-family: 'Poppins', sans-serif;">
+    Hi {{parent_name}},</p>
+  <p style="font-size: 15px; color: #4B5563; line-height: 1.6; margin-top: 0; margin-bottom: 30px;">We are pleased to inform you that your package has been successfully delivered. Please find your delivery and order details below.</p>
+
+  <!-- Stepper Tracker -->
+  <div style="margin-bottom: 35px;">
+    <h3
+      style="text-align: center; margin-bottom: 20px; font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 650; color: #4B5563; text-transform: uppercase; letter-spacing: 0.5px;">
+      Delivery Complete</h3>
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0 10px;">
+      <tr>
+        <td align="center" width="15%" style="vertical-align: middle;">
+          <div class="tracker-circle completed">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/checkmark--v1.png" alt="Done"
+              style="display: block; margin: 11px auto 0;">
+          </div>
+        </td>
+        <td style="vertical-align: middle; padding: 0;">
+          <div class="tracker-line completed"></div>
+        </td>
+        <td align="center" width="15%" style="vertical-align: middle;">
+          <div class="tracker-circle completed">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/checkmark--v1.png" alt="Done"
+              style="display: block; margin: 11px auto 0;">
+          </div>
+        </td>
+        <td style="vertical-align: middle; padding: 0;">
+          <div class="tracker-line completed"></div>
+        </td>
+        <td align="center" width="15%" style="vertical-align: middle;">
+          <div class="tracker-circle current">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/box.png" alt="Delivered"
+              style="display: block; margin: 11px auto 0;">
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding-top: 8px; vertical-align: top;">
+          <span class="tracker-label completed">Ordered</span>
+        </td>
+        <td>&nbsp;</td>
+        <td align="center" style="padding-top: 8px; vertical-align: top;">
+          <span class="tracker-label completed">Shipped</span>
+        </td>
+        <td>&nbsp;</td>
+        <td align="center" style="padding-top: 8px; vertical-align: top;">
+          <span class="tracker-label current">Delivered</span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Items Delivered Card Table -->
+  <div
+    style="border: 1px solid #E5E7EB; border-radius: 12px; padding: 0 24px; margin-bottom: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <h3
+      style="margin: 0; padding: 20px 0 12px 0; border-bottom: 1px solid #F3F4F6; font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 600; color: #1F2937;">
+      Delivered Summary</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+      {{#each order_items}}
+      <tr>
+        <td style="padding: 16px 0; border-bottom: 1px solid #F3F4F6; width: 64px;">
+          <img src="https://api.infano.care/uploads/assets/Page-1.png" alt="{{this.title}}"
+            style="width: 48px; height: auto; border-radius: 6px; border: 1px solid #E5E7EB; display: block;">
+        </td>
+        <td style="padding: 16px 12px; border-bottom: 1px solid #F3F4F6; vertical-align: middle;">
+          <p style="margin: 0; font-weight: 600; color: #1F2937; font-size: 14px; line-height: 1.4;">{{this.title}}</p>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #6B7280; font-weight: 500;">Quantity: {{this.quantity}}
+          </p>
+        </td>
+      </tr>
+      {{/each}}
+    </table>
+  </div>
+
+  <div class="help-section">
+    <p style="margin: 0;">Have feedback or thoughts to share? Reply to this email or visit our <a
+        href="https://infano.care/support">Support Center</a>.</p>
+  </div>
+</div>

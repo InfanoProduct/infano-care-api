@@ -211,6 +211,25 @@ export class BlogController {
     }
   }
 
+  // --- Comments ---
+  static async getComments(req: Request, res: Response, next: NextFunction) {
+    try {
+      const comments = await BlogService.getCommentsByPostId(req.params.id as string);
+      res.status(200).json(comments);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createComment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const comment = await BlogService.createComment(req.params.id as string, req.body);
+      res.status(201).json(comment);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // --- Upload ---
   static async uploadImage(req: Request, res: Response, next: NextFunction) {
     try {

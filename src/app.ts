@@ -1,4 +1,5 @@
 import express from "express";
+import path from "path";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
@@ -24,6 +25,11 @@ import adminRoutes from "./modules/admin/admin.routes.js";
 import blogRoutes from "./modules/blog/blog.routes.js";
 import shopRoutes from "./modules/shop/shop.routes.js";
 import mindfulRoutes from "./modules/mindful/mindful.routes.js";
+import enquiryRoutes from "./modules/enquiry/enquiry.routes.js";
+import programsRoutes from "./modules/programs/programs.routes.js";
+import parentRoutes from "./modules/parent/parent.routes.js";
+import teenRouter from "./modules/teen/teen.routes.js";
+import schoolRoutes from "./modules/school/school.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -43,7 +49,8 @@ app.use(
 );
 app.use(cors({ origin: "*" }));
 app.use(compression());
-app.use(express.json());
+app.use(express.json({ limit: "200mb" }));
+app.use(express.urlencoded({ limit: "200mb", extended: true }));
 app.use((req, res, next) => {
   console.log(`[RAW REQUEST] ${req.method} ${req.url}`);
   next();
@@ -73,8 +80,12 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/blog", blogRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/mindful", mindfulRoutes);
-app.use("/uploads", express.static("uploads"));
-app.use("/assets", express.static("public/assets"));
+app.use("/api/enquiry", enquiryRoutes);
+app.use("/api/programs", programsRoutes);
+app.use("/api/parent", parentRoutes);
+app.use("/api/teen", teenRouter);
+app.use("/api/school", schoolRoutes);
+app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
 
 /**

@@ -158,11 +158,11 @@ export class AdminController {
       }
 
       const folder = (req.query.folder as string) || '';
-      
+
       // Upload to local storage (includes optimization)
       const { filename, url } = await StorageService.uploadFile(req.file.path, folder);
 
-      res.status(200).json({ 
+      res.status(200).json({
         url,
         filename,
         message: "File uploaded successfully to remote storage"
@@ -176,8 +176,27 @@ export class AdminController {
   static async getOrders(req: Request, res: Response, next: NextFunction) {
     try {
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const result = await AdminService.getOrders(page, limit);
+      const limit = parseInt(req.query.limit as string) || 25;
+      
+      // Parse isActive query parameter robustly
+      let isActive = true;
+      if (req.query.isActive !== undefined) {
+        const val = String(req.query.isActive).toLowerCase().trim();
+        isActive = val === 'true' || val === 'active';
+      }
+      
+      console.log(`[AdminController.getOrders] Raw query isActive:`, req.query.isActive, `-> Parsed isActive:`, isActive);
+
+      const filters = {
+        search: req.query.search as string,
+        dateFrom: req.query.dateFrom as string,
+        dateTo: req.query.dateTo as string,
+        status: req.query.status as string,
+        paymentMethod: req.query.paymentMethod as string,
+        paymentStatus: req.query.paymentStatus as string,
+        isActive,
+      };
+      const result = await AdminService.getOrders(page, limit, filters);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -196,7 +215,57 @@ export class AdminController {
 
   static async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await AdminService.updateOrderStatus(req.params.id as string, req.body.status);
+      const order = await AdminService.updateOrderStatus(req.params.id as string, req.body.status, req.body.awbNumber);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateOrderAwb(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { awbNumber } = req.body;
+      if (!awbNumber || typeof awbNumber !== 'string' || !awbNumber.trim()) {
+        return res.status(400).json({ message: "awbNumber is required" });
+      }
+      const order = await AdminService.updateOrderAwb(req.params.id as string, awbNumber.trim());
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateOrderActiveStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { isActive } = req.body;
+      const order = await AdminService.updateOrderActiveStatus(req.params.id as string, isActive);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async addOrderComment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.addOrderComment(req.params.id as string, req.body.text as string);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async verifyManualPayment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.verifyManualPayment(req.params.id as string, req.body.transactionId as string);
+      res.status(200).json(order);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async convertToCod(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.convertToCod(req.params.id as string);
       res.status(200).json(order);
     } catch (error) {
       next(error);
@@ -291,6 +360,128 @@ export class AdminController {
       const enquiry = await AdminService.getEnquiryById(req.params.id as string);
       if (!enquiry) return res.status(404).json({ message: "Enquiry not found" });
       res.status(200).json(enquiry);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listAssets(req: Request, res: Response, next: NextFunction) {
+    try {
+      const folderQuery = req.query.folder;
+      const folder = typeof folderQuery === 'string' ? folderQuery : 'assets';
+      const assets = await StorageService.listAssets(folder);
+      res.status(200).json(assets);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteAsset(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { filename } = req.params;
+      if (!filename || typeof filename !== 'string') {
+        return res.status(400).json({ message: "Filename parameter is required and must be a string" });
+      }
+      const folderQuery = req.query.folder;
+      const folder = typeof folderQuery === 'string' ? folderQuery : 'assets';
+      await StorageService.deleteAsset(filename, folder);
+      res.status(200).json({ success: true, message: "Asset deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Expert Management
+  static async getExperts(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const experts = await AdminService.getExperts();
+      res.status(200).json(experts);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createExpert(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = { ...req.body };
+      if (req.file) {
+        const { url } = await StorageService.uploadFile(req.file.path, 'experts');
+        data.avatarUrl = url;
+      }
+      const expert = await AdminService.createExpert(data);
+      res.status(201).json(expert);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateExpert(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = { ...req.body };
+      if (req.file) {
+        const { url } = await StorageService.uploadFile(req.file.path, 'experts');
+        data.avatarUrl = url;
+      }
+      const expert = await AdminService.updateExpert(req.params.id as string, data);
+      res.status(200).json(expert);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteExpert(req: Request, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteExpert(req.params.id as string);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Expert Session Schedule Management
+  static async getExpertSessions(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const sessions = await AdminService.getExpertSessions();
+      res.status(200).json(sessions);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateSessionMeetLink(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { meetLink } = req.body;
+      if (!meetLink || typeof meetLink !== 'string') {
+        return res.status(400).json({ message: "meetLink is required" });
+      }
+      const session = await AdminService.updateSessionMeetLink(req.params.id as string, meetLink);
+      res.status(200).json(session);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateSessionStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { status } = req.body;
+      if (!status || typeof status !== 'string') {
+        return res.status(400).json({ message: "status is required" });
+      }
+      const session = await AdminService.updateSessionStatus(req.params.id as string, status);
+      res.status(200).json(session);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async rescheduleSession(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { scheduledAt } = req.body;
+      if (!scheduledAt || typeof scheduledAt !== 'string') {
+        return res.status(400).json({ message: "scheduledAt is required" });
+      }
+      const session = await AdminService.rescheduleSession(req.params.id as string, scheduledAt);
+      res.status(200).json(session);
     } catch (error) {
       next(error);
     }

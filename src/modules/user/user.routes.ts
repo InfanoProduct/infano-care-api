@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { UserController } from "./user.controller.js";
 import { requireAuth } from "../../common/middleware/requireAuth.js";
+import { upload } from "../../common/middleware/upload.js";
 
 const router = Router();
 
@@ -72,5 +73,8 @@ router.patch("/onboarding-step", UserController.updateOnboardingStep);
  *         description: Token registered successfully
  */
 router.post("/register-fcm-token", UserController.registerFcmToken);
+router.patch("/role", UserController.updateRole);
+router.put("/profile", UserController.updateProfile);
+router.post("/profile/avatar", upload.single("file"), UserController.uploadAvatar);
 
 export default router;

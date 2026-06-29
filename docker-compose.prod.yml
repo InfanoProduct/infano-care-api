@@ -4,7 +4,7 @@ services:
     container_name: infano-api-prod
     restart: always
     ports:
-      - "8085:4000"
+      - "5000:4000"
     # Unified environment management via .env file on the VPS
     env_file:
       - .env
@@ -13,10 +13,10 @@ services:
     volumes:
       - ./uploads:/app/uploads
     logging:
-      driver: gelf
+      driver: json-file
       options:
-        gelf-address: "udp://109.199.120.104:12201"
-        tag: "infano-api-prod"
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:4000/health || exit 1"]
       interval: 30s

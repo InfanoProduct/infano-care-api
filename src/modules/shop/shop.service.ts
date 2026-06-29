@@ -2,7 +2,10 @@ import { prisma } from "../../db/client.js";
 import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import crypto from "crypto";
+import { logger } from "../../config/logger.js";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
+import { normalizePhone } from "../../common/utils/phone.js";
+import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail } from "../../common/services/email.service.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -13,15 +16,30 @@ const GST_RATE = 0.05; // 5% for books
 
 export class ShopService {
   static async getBooks() {
-    return prisma.book.findMany({
-      where: { isActive: true },
+    const books = await prisma.book.findMany({
+      where: {
+        isActive: true,
+        NOT: [
+          { id: { endsWith: "-private" } },
+          { id: { endsWith: "-group" } }
+        ]
+      },
     });
+    const coupon = await prisma.discountCoupon.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    return books.map(book => ({ ...book, coupon }));
   }
 
   static async getBook(id: string) {
-    return prisma.book.findUnique({
+    const book = await prisma.book.findUnique({
       where: { id },
     });
+    if (!book) return null;
+    const coupon = await prisma.discountCoupon.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    return { ...book, coupon };
   }
 
   static async validateCoupon(code: string, amount: number) {
@@ -59,7 +77,7 @@ export class ShopService {
     couponCode?: string;
     gstNumber?: string;
   }) {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // 1. Calculate subtotal and verify stock
       let subtotal = 0;
       const orderItems = [];
@@ -84,24 +102,26 @@ export class ShopService {
         const { coupon, discountAmount: calculatedDiscount } = await this.validateCoupon(data.couponCode, subtotal);
         discountAmount = calculatedDiscount;
         couponId = coupon.id;
-        
-        // Increment coupon usage
-        await tx.discountCoupon.update({
-          where: { id: coupon.id },
-          data: { usedCount: { increment: 1 } }
-        });
+
+        // For COD, increment coupon immediately. For ONLINE, increment upon successful payment
+        if (data.paymentMethod === PaymentMethod.COD) {
+          await tx.discountCoupon.update({
+            where: { id: coupon.id },
+            data: { usedCount: { increment: 1 } }
+          });
+        }
       }
 
       // 3. Calculate GST and Total (Production Grade Reverse Calculation)
       const taxableSubtotal = subtotal - discountAmount;
-      const deliveryCharge = taxableSubtotal < 500 ? 50 : 0;
-      
+      const deliveryCharge = data.paymentMethod === PaymentMethod.COD ? 40 : 0;
+
       // Reverse GST calculation: Price = Taxable + (Taxable * Rate) => Taxable = Price / (1 + Rate)
       const taxableAmount = Math.round((taxableSubtotal / (1 + GST_RATE)) * 100) / 100;
       const gstAmount = Math.round((taxableSubtotal - taxableAmount) * 100) / 100;
       const cgstAmount = Math.round((gstAmount / 2) * 100) / 100;
       const sgstAmount = Math.round((gstAmount / 2) * 100) / 100;
-      
+
       const totalAmount = taxableSubtotal + deliveryCharge;
 
       // 4. Create Razorpay order if needed
@@ -138,24 +158,174 @@ export class ShopService {
           pincode: data.pincode,
           razorpayOrderId,
           couponId,
+          orderStatus: data.paymentMethod === PaymentMethod.COD ? OrderStatus.PLACED : OrderStatus.PLACED,
           gstNumber: data.gstNumber,
           items: {
             create: orderItems,
           },
         },
-        include: { items: { include: { book: true } } }
+        include: {
+          items: { include: { book: true } },
+        }
       });
 
-      // 6. Reduce stock immediately (will rollback if transaction fails)
-      for (const item of orderItems) {
-        await tx.book.update({
+      // 6. Update User Profile if userId is present (as requested)
+      if (data.userId) {
+        const updateData: any = {
+          profile: {
+            upsert: {
+              create: { displayName: data.guestName || "User" },
+              update: { displayName: data.guestName },
+            }
+          }
+        };
+
+        if (data.guestEmail) {
+          const emailExists = await tx.user.findFirst({
+            where: {
+              email: data.guestEmail,
+              id: { not: data.userId }
+            }
+          });
+          if (!emailExists) {
+            updateData.email = data.guestEmail;
+          }
+        }
+
+        await tx.user.update({
+          where: { id: data.userId },
+          data: updateData
+        });
+      }
+
+      // 7. Manage Inventory
+      if (data.paymentMethod === PaymentMethod.COD) {
+        for (const item of orderItems) {
+          await tx.book.update({
+            where: { id: item.bookId },
+            data: { stock: { decrement: item.quantity } }
+          });
+        }
+      }
+
+      return order;
+    }, {
+      timeout: 20000
+    });
+
+    if (result.paymentMethod === PaymentMethod.COD && result.guestEmail) {
+      this._sendPlacedEmail(result);
+    }
+
+    return result;
+  }
+
+  static async completeOrder(razorpayOrderId: string, razorpayPaymentId?: string, razorpaySignature?: string) {
+    const order = await prisma.order.findUnique({
+      where: { razorpayOrderId },
+      include: { items: { include: { book: true } } }
+    });
+    if (!order) return null;
+
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
+      return order; // already completed
+    }
+
+    // 1. Find or create user from guestPhone if userId is missing
+    let userId = order.userId;
+    if (!userId && order.guestPhone) {
+      const normalized = normalizePhone(order.guestPhone);
+      let user = await prisma.user.findUnique({ where: { phone: normalized } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            phone: normalized,
+            accountStatus: "PENDING_SETUP",
+            onboardingStep: 1,
+            role: "PARENT",
+            profile: {
+              create: {
+                displayName: order.guestName || "Parent",
+                totalPoints: 0,
+              }
+            }
+          }
+        });
+      }
+      userId = user.id;
+    }
+
+    // Update order status to COMPLETED
+    const updatedOrder = await prisma.order.update({
+      where: { razorpayOrderId },
+      data: {
+        paymentStatus: PaymentStatus.COMPLETED,
+        razorpayPaymentId,
+        razorpaySignature,
+        userId: userId || undefined,
+      },
+    });
+
+    // 2. Process Inventory and Coupon usage for successful Online payments
+    if (order.paymentMethod === PaymentMethod.ONLINE) {
+      for (const item of order.items) {
+        await prisma.book.update({
           where: { id: item.bookId },
           data: { stock: { decrement: item.quantity } }
         });
       }
 
-      return order;
-    });
+      if (order.couponId) {
+        await prisma.discountCoupon.update({
+          where: { id: order.couponId },
+          data: { usedCount: { increment: 1 } }
+        });
+      }
+    }
+
+    if (order.guestEmail) {
+      this._sendPlacedEmail({ ...order, paymentStatus: PaymentStatus.COMPLETED });
+    }
+
+    // 2. Automatically create program enrollment if ordered item is a program
+    if (userId) {
+      for (const item of order.items) {
+        const book = item.book as any;
+        if (!book) continue;
+        const isProg = book.id.endsWith("-private") || book.id.endsWith("-group");
+        if (isProg) {
+          const programTitle = book.id.split("-")[0].toUpperCase();
+          const program = await prisma.program.findFirst({
+            where: { title: { equals: programTitle, mode: "insensitive" } }
+          });
+          if (program) {
+            // Check if already enrolled
+            const existingEnrollment = await prisma.programEnrollment.findUnique({
+              where: {
+                userId_programId: {
+                  userId,
+                  programId: program.id
+                }
+              }
+            });
+            if (!existingEnrollment) {
+              await prisma.programEnrollment.create({
+                data: {
+                  userId,
+                  programId: program.id,
+                  pricePaid: item.price,
+                  status: "ACTIVE",
+                  guestName: order.guestName,
+                  guestEmail: order.guestEmail,
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return updatedOrder;
   }
 
   static async verifyPayment(data: {
@@ -171,14 +341,7 @@ export class ShopService {
       .digest("hex");
 
     if (expectedSignature === razorpaySignature) {
-      return prisma.order.update({
-        where: { razorpayOrderId },
-        data: {
-          paymentStatus: PaymentStatus.COMPLETED,
-          razorpayPaymentId,
-          razorpaySignature,
-        },
-      });
+      return await this.completeOrder(razorpayOrderId, razorpayPaymentId, razorpaySignature);
     } else {
       await prisma.order.update({
         where: { razorpayOrderId },
@@ -190,16 +353,17 @@ export class ShopService {
 
   static isValidTransition(current: OrderStatus, next: OrderStatus): boolean {
     const transitions: Record<OrderStatus, OrderStatus[]> = {
-      [OrderStatus.PLACED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+      [OrderStatus.PLACED]: [OrderStatus.PROCESSING, OrderStatus.ON_HOLD, OrderStatus.CANCELLED],
       [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+      [OrderStatus.ON_HOLD]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
       [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.DELIVERED]: [],
       [OrderStatus.CANCELLED]: [],
     };
-    return transitions[current].includes(next);
+    return transitions[current]?.includes(next) || false;
   }
 
-  static async updateStatus(id: string, nextStatus: OrderStatus) {
+  static async updateStatus(id: string, nextStatus: OrderStatus, awbNumber?: string) {
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) throw new Error("Order not found");
 
@@ -210,23 +374,38 @@ export class ShopService {
     // If cancelled, restore stock
     if (nextStatus === OrderStatus.CANCELLED) {
       const items = await prisma.orderItem.findMany({ where: { orderId: id } });
-      await prisma.$transaction(async (tx) => {
+      return await prisma.$transaction(async (tx) => {
         for (const item of items) {
           await tx.book.update({
             where: { id: item.bookId },
             data: { stock: { increment: item.quantity } }
           });
         }
-        await tx.order.update({
+        return await tx.order.update({
           where: { id },
           data: { orderStatus: nextStatus }
         });
       });
     } else {
-      return prisma.order.update({
+      const updateData: any = { orderStatus: nextStatus };
+      if (nextStatus === OrderStatus.SHIPPED && awbNumber?.trim()) {
+        updateData.awbNumber = awbNumber.trim();
+      }
+
+      const updated = await prisma.order.update({
         where: { id },
-        data: { orderStatus: nextStatus }
+        data: updateData,
+        include: { items: { include: { book: true } } }
       });
+
+      if (updated.guestEmail) {
+        if (nextStatus === OrderStatus.SHIPPED) {
+          this._sendShippedEmail(updated);
+        } else if (nextStatus === OrderStatus.DELIVERED) {
+          this._sendDeliveredEmail(updated);
+        }
+      }
+      return updated;
     }
   }
 
@@ -246,16 +425,10 @@ export class ShopService {
       const { id: razorpayOrderId } = event.payload.order.entity;
       const { id: razorpayPaymentId } = event.payload.payment.entity;
 
-      await prisma.order.update({
-        where: { razorpayOrderId },
-        data: {
-          paymentStatus: PaymentStatus.COMPLETED,
-          razorpayPaymentId,
-        },
-      });
+      await this.completeOrder(razorpayOrderId, razorpayPaymentId);
     } else if (event.event === "payment.failed") {
       const { order_id: razorpayOrderId } = event.payload.payment.entity;
-      
+
       await prisma.order.update({
         where: { razorpayOrderId },
         data: { paymentStatus: PaymentStatus.FAILED }
@@ -264,4 +437,249 @@ export class ShopService {
 
     return { received: true };
   }
+
+  static async getUserOrders(userId: string) {
+    const orders = await prisma.order.findMany({
+      where: { userId },
+      include: {
+        items: {
+          include: {
+            book: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    return orders.map(order => {
+      if (order.orderStatus === OrderStatus.ON_HOLD) {
+        order.orderStatus = OrderStatus.PLACED;
+      }
+      return order;
+    });
+  }
+
+  static async adminListCoupons() {
+    return prisma.discountCoupon.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  static async adminCreateCoupon(data: any) {
+    return prisma.discountCoupon.create({
+      data: {
+        code: data.code,
+        type: data.type,
+        value: Number(data.value),
+        minOrderAmount: Number(data.minOrderAmount ?? 0),
+        maxDiscount: data.maxDiscount ? Number(data.maxDiscount) : null,
+        expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+        usageLimit: Number(data.usageLimit ?? 100),
+        isActive: data.isActive ?? true,
+      }
+    });
+  }
+
+  static async adminUpdateCoupon(id: string, data: any) {
+    return prisma.discountCoupon.update({
+      where: { id },
+      data: {
+        code: data.code,
+        type: data.type,
+        value: data.value !== undefined ? Number(data.value) : undefined,
+        minOrderAmount: data.minOrderAmount !== undefined ? Number(data.minOrderAmount) : undefined,
+        maxDiscount: data.maxDiscount !== undefined ? (data.maxDiscount ? Number(data.maxDiscount) : null) : undefined,
+        expiryDate: data.expiryDate !== undefined ? (data.expiryDate ? new Date(data.expiryDate) : null) : undefined,
+        usageLimit: data.usageLimit !== undefined ? Number(data.usageLimit) : undefined,
+        isActive: data.isActive !== undefined ? data.isActive : undefined,
+      }
+    });
+  }
+
+  static async adminDeleteCoupon(id: string) {
+    return prisma.discountCoupon.delete({
+      where: { id }
+    });
+  }
+
+  static async adminGetRazorpayTransactions(options: { skip?: number; count?: number; from?: number; to?: number }) {
+    return razorpay.payments.all(options);
+  }
+
+  private static async _sendPlacedEmail(order: any) {
+    try {
+      logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Placed email");
+
+      const orderDate = new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+      const address = {
+        name: order.guestName || "Customer",
+        full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
+      };
+
+      const items = order.items.map((i: any) => ({
+        title: i.book?.title || "Gigi Book",
+        quantity: i.quantity,
+        price: `₹${i.price}`
+      }));
+
+      const res = await sendGigiBookOrderPlacedEmail(order.guestEmail || "", {
+        parent_name: order.guestName || "Parent",
+        order_id: order.id.slice(-8).toUpperCase(),
+        order_date: orderDate,
+        shipping_address: address,
+        payment_method: order.paymentMethod,
+        order_items: items,
+        subtotal: `₹${order.subtotal}`,
+        discount: order.discountAmount > 0 ? `₹${order.discountAmount}` : "₹0",
+        total: `₹${order.totalAmount}`,
+        track_order_url: "https://infano.care/store/track"
+      });
+
+      logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Placed email sent successfully");
+    } catch (err: any) {
+      logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Placed email");
+    }
+  }
+
+  private static async _sendShippedEmail(order: any) {
+    try {
+      logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Shipped email");
+
+      const address = {
+        name: order.guestName || "Customer",
+        full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
+      };
+
+      const items = order.items.map((i: any) => ({
+        title: i.book?.title || "Gigi Book",
+        quantity: i.quantity
+      }));
+
+      const courierName = "Delhivery";
+      const deliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+      // Use real AWB if available; otherwise fall back to order number display
+      const awb = order.awbNumber?.trim();
+      const displayTrackingId = awb || order.id.slice(-8).toUpperCase();
+      const trackingUrl = awb
+        ? `https://www.delhivery.com/track-v2/package/${awb}`
+        : "https://infano.care/login";
+      const trackOrderUrl = awb
+        ? `https://www.delhivery.com/track-v2/package/${awb}`
+        : "https://infano.care/login";
+
+      const res = await sendGigiBookOrderShippedEmail(order.guestEmail || "", {
+        parent_name: order.guestName || "Parent",
+        order_id: order.id.slice(-8).toUpperCase(),
+        courier_name: courierName,
+        tracking_id: displayTrackingId,
+        delivery_date: deliveryDate,
+        shipping_address: address,
+        order_items: items,
+        track_order_url: trackOrderUrl,
+        tracking_url: trackingUrl
+      });
+
+      logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Shipped email sent successfully");
+    } catch (err: any) {
+      logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Shipped email");
+    }
+  }
+
+  private static async _sendDeliveredEmail(order: any) {
+    try {
+      logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Delivered email");
+
+      const items = order.items.map((i: any) => ({
+        title: i.book?.title || "Gigi Book",
+        quantity: i.quantity
+      }));
+
+      const deliveryDate = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+      const res = await sendGigiBookOrderDeliveredEmail(order.guestEmail || "", {
+        parent_name: order.guestName || "Parent",
+        order_id: order.id.slice(-8).toUpperCase(),
+        delivery_date: deliveryDate,
+        order_items: items,
+        view_order_url: "https://infano.care/store/track",
+        explore_url: "https://infano.care/explore"
+      });
+
+      logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Delivered email sent successfully");
+    } catch (err: any) {
+      logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Delivered email");
+    }
+  }
+
+  static async getRecentPurchases() {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        isActive: true,
+        orderStatus: { not: OrderStatus.CANCELLED },
+        OR: [
+          { paymentStatus: PaymentStatus.COMPLETED },
+          { paymentMethod: PaymentMethod.COD }
+        ],
+        createdAt: {
+          gte: startOfToday
+        }
+      },
+      include: {
+        user: {
+          include: {
+            profile: true
+          }
+        },
+        items: {
+          include: {
+            book: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
+    const formattedOrders = orders
+      .filter(o => o.items.some(item => item.book))
+      .map(o => {
+        let rawName = "Someone";
+        if (o.guestName) {
+          rawName = o.guestName;
+        } else if (o.user?.profile?.displayName) {
+          rawName = o.user.profile.displayName;
+        } else if (o.user?.username) {
+          rawName = o.user.username;
+        }
+
+        const firstName = rawName.trim().split(/\s+/)[0] || "Someone";
+        const bookTitle = o.items[0]?.book?.title || "The Awkward Age";
+
+        return {
+          name: firstName,
+          bookTitle,
+          createdAt: o.createdAt
+        };
+      });
+
+    const now = new Date();
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+
+    const last2HoursPurchases = formattedOrders.filter(o => new Date(o.createdAt) >= twoHoursAgo);
+    const olderTodayPurchases = formattedOrders.filter(o => new Date(o.createdAt) < twoHoursAgo);
+
+    // Sort last2Hours: newest first
+    last2HoursPurchases.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Sort olderToday: oldest to latest of current date
+    olderTodayPurchases.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+    return [...last2HoursPurchases, ...olderTodayPurchases];
+  }
 }
+

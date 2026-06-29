@@ -1,0 +1,122 @@
+<div class="content">
+  <!-- Transit Custom Vector SVG Animation -->
+  <div style="text-align: center; margin: 15px 0 25px 0;">
+    <img src="https://api.infano.care/uploads/assets/order-shipped.gif" width="150" height="110"
+      alt="Order Shipped Animation" style="display: inline-block; border: none; outline: none;">
+  </div>
+
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1
+      style="font-family: 'Poppins', sans-serif; font-size: 26px; color: #1F2937; margin: 0 0 10px 0; font-weight: 700; letter-spacing: -0.5px;">
+      Your Package is on the Way! 🚀</h1>
+    <p style="font-size: 15px; color: #4B5563; margin: 0; line-height: 1.5;">Great news! Your Gigi-Book order
+      <strong>#{{order_id}}</strong> has been dispatched and is traveling to you.
+    </p>
+  </div>
+
+  <p
+    style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 12px; font-family: 'Poppins', sans-serif;">
+    Hi {{parent_name}},</p>
+  <p style="font-size: 15px; color: #4B5563; line-height: 1.6; margin-top: 0; margin-bottom: 30px;">Our shipping partner
+    has picked up your package. You can monitor its delivery status in real-time below.</p>
+
+  <!-- Tracking Details Card -->
+  <div
+    style="background-color: #FAF8FD; border: 1px solid #F3E8FF; border-radius: 12px; padding: 22px 24px; margin-bottom: 35px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <p
+      style="margin: 0; color: #6B7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;">
+      Shipping Carrier</p>
+    <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #1F2937;">{{courier_name}}</p>
+
+    <div style="margin: 15px 0;">
+      <p
+        style="margin: 0; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">
+        Tracking Number</p>
+      <div
+        style="margin-top: 6px; display: inline-block; background-color: #FFFFFF; border: 1px solid #E9D5FF; padding: 6px 14px; border-radius: 8px; font-family: 'Geist Mono', 'Courier New', monospace; font-size: 15px; font-weight: 700; color: #7B1FA2; letter-spacing: 0.5px;">
+        {{tracking_id}}
+      </div>
+    </div>
+
+    <div style="margin-top: 15px;">
+      <a href="{{tracking_url}}" class="button" style="margin: 0;">Track My Package</a>
+    </div>
+  </div>
+
+  <!-- Stepper Tracker -->
+  <div style="margin-bottom: 35px;">
+    <h3
+      style="text-align: center; margin-bottom: 16px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: #4B5563; text-transform: uppercase; letter-spacing: 0.8px;">
+      Delivery Progress</h3>
+    <table class="tracker-table" cellpadding="0" cellspacing="0">
+      <tr>
+        <!-- Step 1: Ordered (completed) -->
+        <td class="tracker-td">
+          <span class="tracker-line-right" style="visibility: hidden;"></span>
+          <span class="tracker-circle completed" style="display:inline-block;"><img
+              src="https://img.icons8.com/ios-filled/50/ffffff/checkmark--v1.png" alt="Done"></span>
+          <span class="tracker-line-right completed"></span>
+        </td>
+        <!-- Step 2: Shipped (current) -->
+        <td class="tracker-td">
+          <span class="tracker-line-left completed"></span>
+          <span class="tracker-circle current" style="display:inline-block;"><img
+              src="https://img.icons8.com/ios-filled/50/ffffff/truck.png" alt="Shipped"></span>
+          <span class="tracker-line-right"></span>
+        </td>
+        <!-- Step 3: Delivered -->
+        <td class="tracker-td">
+          <span class="tracker-line-left"></span>
+          <span class="tracker-circle" style="display:inline-block;"><img
+              src="https://img.icons8.com/ios-filled/50/9CA3AF/box.png" alt="Delivered"></span>
+          <span class="tracker-line-left" style="visibility: hidden;"></span>
+        </td>
+      </tr>
+      <tr>
+        <td class="tracker-td"><span class="tracker-label completed">Ordered</span></td>
+        <td class="tracker-td"><span class="tracker-label current">Shipped</span></td>
+        <td class="tracker-td"><span class="tracker-label">Delivered</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Items In Shipment -->
+  <div
+    style="border: 1px solid #E5E7EB; border-radius: 12px; padding: 0 24px; margin-bottom: 35px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <h3
+      style="margin: 0; padding: 20px 0 12px 0; border-bottom: 1px solid #F3F4F6; font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 600; color: #1F2937;">
+      Items in this Shipment</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+      {{#each order_items}}
+      <tr>
+        <td style="padding: 16px 0; border-bottom: 1px solid #F3F4F6; width: 64px;">
+          <img src="https://api.infano.care/uploads/assets/Page-1.png" alt="{{this.title}}"
+            style="width: 48px; height: auto; border-radius: 6px; border: 1px solid #E5E7EB; display: block;">
+        </td>
+        <td style="padding: 16px 12px; border-bottom: 1px solid #F3F4F6; vertical-align: middle;">
+          <p style="margin: 0; font-weight: 600; color: #1F2937; font-size: 14px; line-height: 1.4;">{{this.title}}</p>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #6B7280; font-weight: 500;">Quantity: {{this.quantity}}
+          </p>
+        </td>
+      </tr>
+      {{/each}}
+    </table>
+  </div>
+
+  <!-- Shipping Address Card -->
+  <div
+    style="background-color: #FAF9FB; border: 1px solid #F3E8FF; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+    <h4
+      style="margin: 0 0 10px 0; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9C27B0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+      📍 Delivery Destination</h4>
+    <p style="margin: 0; color: #374151; font-size: 13.5px; line-height: 1.5; font-weight: 550;">
+      {{shipping_address.name}}</p>
+    <p style="margin: 4px 0 0 0; color: #6B7280; font-size: 13px; line-height: 1.5;">{{shipping_address.full_address}}
+    </p>
+  </div>
+
+  <div class="help-section">
+    <p style="margin: 0;">Have queries about your shipment? Reply to this email or visit our <a
+        href="https://infano.care/support">Support Center</a>.</p>
+  </div>
+</div>
