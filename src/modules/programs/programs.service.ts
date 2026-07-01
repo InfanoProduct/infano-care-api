@@ -814,7 +814,7 @@ export class ProgramsService {
     });
   }
 
-  static async adminUpdateDemoStatus(id: string, payload: { status?: string; isReadyToEnroll?: boolean; comment?: string }) {
+  static async adminUpdateDemoStatus(id: string, payload: { status?: string; isReadyToEnroll?: boolean; comment?: string; meetLink?: string; slotDate?: string; slotTime?: string }) {
     const existing = await prisma.demoSession.findUnique({ where: { id } });
     if (!existing) {
       throw new AppError("Demo session booking not found", 404);
@@ -823,6 +823,9 @@ export class ProgramsService {
     if (payload.status !== undefined) data.status = payload.status;
     if (payload.isReadyToEnroll !== undefined) data.isReadyToEnroll = payload.isReadyToEnroll;
     if (payload.comment !== undefined) data.comment = payload.comment;
+    if (payload.meetLink !== undefined) data.meetLink = payload.meetLink;
+    if (payload.slotDate !== undefined) data.slotDate = payload.slotDate;
+    if (payload.slotTime !== undefined) data.slotTime = payload.slotTime;
     return prisma.demoSession.update({
       where: { id },
       data

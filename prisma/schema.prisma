@@ -1218,6 +1218,7 @@ model DemoSession {
   updatedAt         DateTime @updatedAt
   comment           String?  @default("")
   isReadyToEnroll   Boolean  @default(false)
+  meetLink          String?
 }
 
 model ParentLink {
