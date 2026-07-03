@@ -3,6 +3,7 @@ import { normalizePhone } from "../../common/utils/phone.js";
 import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import crypto from "crypto";
+import { FirebaseService } from "../../common/services/firebase.service.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "rzp_test_mock",
@@ -12,7 +13,10 @@ const razorpay = new Razorpay({
 export class ParentService {
   static async invite(senderId: string, rawReceiverPhone: string) {
     const receiverPhone = normalizePhone(rawReceiverPhone);
-    const sender = await prisma.user.findUnique({ where: { id: senderId } });
+    const sender = await prisma.user.findUnique({ 
+      where: { id: senderId },
+      include: { profile: true }
+    });
     if (!sender) throw new Error("Sender not found");
 
     if (receiverPhone === "1234567890") {
@@ -95,6 +99,38 @@ export class ParentService {
         status: "PENDING"
       }
     });
+
+    const senderName = sender.profile?.displayName || sender.username || sender.phone;
+    const type = "linkRequest";
+    const title = "Link Request Received";
+    const body = `${senderName} wants to link accounts with you.`;
+    const deepLink = "infano://account/family";
+
+    // 1. Create InApp Notification History
+    await prisma.notificationHistory.create({
+      data: {
+        userId: receiver.id,
+        type,
+        title,
+        body,
+        deepLink,
+        sentAt: new Date()
+      }
+    });
+
+    // 2. Send Push Notification if FCM token is registered
+    if (receiver.fcmToken) {
+      try {
+        await FirebaseService.sendPushNotification(receiver.fcmToken, {
+          title,
+          body,
+          deepLink,
+          data: { notificationType: type }
+        });
+      } catch (err) {
+        console.error("Failed to send firebase push notification for link request:", err);
+      }
+    }
     
     return link;
   }
@@ -139,15 +175,40 @@ export class ParentService {
         include: { profile: true }
       });
       const declinerName = user?.profile?.displayName || user?.username || link.receiverPhone;
+      const type = "linkDeclined";
+      const title = "Link Request Declined";
+      const body = `${declinerName} has declined your account linking request.`;
+      const deepLink = "infano://account/family";
+
+      // 1. Create InApp Notification History
       await prisma.notificationHistory.create({
         data: {
           userId: link.senderId,
-          type: "linkDeclined",
-          title: "Link Request Declined",
-          body: `${declinerName} has declined your account linking request.`,
+          type,
+          title,
+          body,
+          deepLink,
           sentAt: new Date()
         }
       });
+
+      // 2. Send Push Notification if FCM token is registered
+      const senderUser = await prisma.user.findUnique({
+        where: { id: link.senderId },
+        select: { fcmToken: true }
+      });
+      if (senderUser?.fcmToken) {
+        try {
+          await FirebaseService.sendPushNotification(senderUser.fcmToken, {
+            title,
+            body,
+            deepLink,
+            data: { notificationType: type }
+          });
+        } catch (err) {
+          console.error("Failed to send firebase push notification for link decline:", err);
+        }
+      }
     }
 
     return deletedLink;
@@ -171,15 +232,40 @@ export class ParentService {
     });
 
     const accepterName = user.profile?.displayName || user.username || user.phone;
+    const type = "linkAcceptance";
+    const title = "Link Request Accepted";
+    const body = `${accepterName} has accepted your account linking request.`;
+    const deepLink = "infano://account/family";
+
+    // 1. Create InApp Notification History
     await prisma.notificationHistory.create({
       data: {
         userId: link.senderId,
-        type: "linkAcceptance",
-        title: "Link Request Accepted",
-        body: `${accepterName} has accepted your account linking request.`,
+        type,
+        title,
+        body,
+        deepLink,
         sentAt: new Date()
       }
     });
+
+    // 2. Send Push Notification if FCM token is registered
+    const senderUser = await prisma.user.findUnique({
+      where: { id: link.senderId },
+      select: { fcmToken: true }
+    });
+    if (senderUser?.fcmToken) {
+      try {
+        await FirebaseService.sendPushNotification(senderUser.fcmToken, {
+          title,
+          body,
+          deepLink,
+          data: { notificationType: type }
+        });
+      } catch (err) {
+        console.error("Failed to send firebase push notification for link acceptance:", err);
+      }
+    }
 
     return updatedLink;
   }
@@ -372,8 +458,21 @@ export class ParentService {
     }
 
     // Determine teenId if the user is a parent booking for teen
-    const link = await prisma.parentLink.findFirst({
+    const parentBookingLink = await prisma.parentLink.findFirst({
       where: { parentId: userId, status: "LINKED" }
+    });
+
+    const targetUserId = parentBookingLink && parentBookingLink.teenId ? parentBookingLink.teenId : userId;
+
+    // Find general linkage for notifying parent/teen
+    const link = await prisma.parentLink.findFirst({
+      where: {
+        OR: [
+          { teenId: targetUserId },
+          { parentId: targetUserId }
+        ],
+        status: "LINKED"
+      }
     });
 
     // Retrieve expert to check session price
@@ -385,7 +484,7 @@ export class ParentService {
 
     const schedule = await prisma.expertSessionSchedule.create({
       data: {
-        userId: link && link.teenId ? link.teenId : userId, // Book for teen if linked
+        userId: targetUserId,
         expertId: data.expertId,
         scheduledAt: data.scheduledAt,
         status: "SCHEDULED",
@@ -394,6 +493,110 @@ export class ParentService {
         amount: price
       }
     });
+
+    try {
+      const expertName = expert?.profile?.displayName || expert?.username || "Expert";
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        include: { profile: true }
+      });
+      const userName = targetUser?.profile?.displayName || targetUser?.username || "User";
+      const formattedDate = new Date(data.scheduledAt).toLocaleString();
+
+      // 1. Notify User/Teen
+      const userTitle = "Expert Session Scheduled";
+      const userBody = `Your session with ${expertName} is scheduled for ${formattedDate}.`;
+      const deepLink = `infano://expert/chat/${schedule.id}`;
+
+      await prisma.notificationHistory.create({
+        data: {
+          userId: targetUserId,
+          type: "sessionScheduled",
+          title: userTitle,
+          body: userBody,
+          deepLink,
+          sentAt: new Date()
+        }
+      });
+
+      if (targetUser?.fcmToken) {
+        try {
+          await FirebaseService.sendPushNotification(targetUser.fcmToken, {
+            title: userTitle,
+            body: userBody,
+            deepLink,
+            data: { notificationType: "sessionScheduled", sessionId: schedule.id }
+          });
+        } catch (err) {
+          console.error("Failed to send push notification to user for scheduled session:", err);
+        }
+      }
+
+      // 2. Notify Linked Partner if linked
+      if (link) {
+        const partnerId = targetUserId === link.teenId ? link.parentId : link.teenId;
+        if (partnerId) {
+          const partnerUser = await prisma.user.findUnique({
+            where: { id: partnerId }
+          });
+          const parentBody = `The session for ${userName} with ${expertName} is scheduled for ${formattedDate}.`;
+
+          await prisma.notificationHistory.create({
+            data: {
+              userId: partnerId,
+              type: "sessionScheduled",
+              title: userTitle,
+              body: parentBody,
+              deepLink,
+              sentAt: new Date()
+            }
+          });
+
+          if (partnerUser?.fcmToken) {
+            try {
+              await FirebaseService.sendPushNotification(partnerUser.fcmToken, {
+                title: userTitle,
+                body: parentBody,
+                deepLink,
+                data: { notificationType: "sessionScheduled", sessionId: schedule.id }
+              });
+            } catch (err) {
+              console.error("Failed to send push notification to partner for scheduled session:", err);
+            }
+          }
+        }
+      }
+
+      // 3. Notify Expert
+      const expertTitle = "New Session Booked";
+      const expertBody = `A new session with ${userName} has been booked for ${formattedDate}.`;
+
+      await prisma.notificationHistory.create({
+        data: {
+          userId: data.expertId,
+          type: "sessionScheduled",
+          title: expertTitle,
+          body: expertBody,
+          deepLink,
+          sentAt: new Date()
+        }
+      });
+
+      if (expert?.fcmToken) {
+        try {
+          await FirebaseService.sendPushNotification(expert.fcmToken, {
+            title: expertTitle,
+            body: expertBody,
+            deepLink,
+            data: { notificationType: "sessionScheduled", sessionId: schedule.id }
+          });
+        } catch (err) {
+          console.error("Failed to send push notification to expert for scheduled session:", err);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to send notifications for scheduled session:", err);
+    }
 
     return schedule;
   }
@@ -446,11 +649,19 @@ export class ParentService {
     const session = await prisma.expertSessionSchedule.findUnique({ where: { id: sessionId } });
     if (!session) throw new Error("Session not found");
 
-    const link = await prisma.parentLink.findFirst({ where: { parentId: userId, status: "LINKED" }});
-    const validUserIds = [userId];
-    if (link && link.teenId) validUserIds.push(link.teenId);
+    const link = await prisma.parentLink.findFirst({
+      where: {
+        OR: [
+          { teenId: session.userId },
+          { parentId: session.userId }
+        ],
+        status: "LINKED"
+      }
+    });
+    const validUserIds = [session.userId];
+    if (link && link.parentId) validUserIds.push(link.parentId);
 
-    if (!validUserIds.includes(session.userId)) {
+    if (!validUserIds.includes(userId)) {
       throw new Error("Unauthorized to reschedule this session");
     }
 
@@ -464,8 +675,118 @@ export class ParentService {
       data: { scheduledAt: newScheduledAt }
     });
 
-    // Notify Expert (simulated via log — no NotificationHistory model yet)
-    console.log(`[Notification] Expert ${session.expertId}: Session rescheduled to ${newScheduledAt.toLocaleString()} by parent.`);
+    try {
+      // Fetch expert details
+      const expert = await prisma.user.findUnique({
+        where: { id: session.expertId },
+        include: { profile: true }
+      });
+      const expertName = expert?.profile?.displayName || expert?.username || "Expert";
+
+      // Fetch user details
+      const targetUser = await prisma.user.findUnique({
+        where: { id: session.userId },
+        include: { profile: true }
+      });
+      const userName = targetUser?.profile?.displayName || targetUser?.username || "User";
+
+      // Formatted date-time
+      const formattedDate = new Date(newScheduledAt).toLocaleString();
+
+      // 1. Notify User/Teen
+      const userTitle = "Expert Session Rescheduled";
+      const userBody = `Your session with ${expertName} has been rescheduled to ${formattedDate}.`;
+      const deepLink = `infano://expert/chat/${sessionId}`;
+
+      await prisma.notificationHistory.create({
+        data: {
+          userId: session.userId,
+          type: "sessionRescheduled",
+          title: userTitle,
+          body: userBody,
+          deepLink,
+          sentAt: new Date()
+        }
+      });
+
+      if (targetUser?.fcmToken) {
+        try {
+          await FirebaseService.sendPushNotification(targetUser.fcmToken, {
+            title: userTitle,
+            body: userBody,
+            deepLink,
+            data: { notificationType: "sessionRescheduled", sessionId }
+          });
+        } catch (err) {
+          console.error("Failed to send push notification to user for rescheduled session:", err);
+        }
+      }
+
+      // 2. Notify Linked Partner if link exists
+      if (link) {
+        const partnerId = session.userId === link.teenId ? link.parentId : link.teenId;
+        if (partnerId) {
+          const partnerUser = await prisma.user.findUnique({
+            where: { id: partnerId }
+          });
+          const parentBody = `The session for ${userName} with ${expertName} has been rescheduled to ${formattedDate}.`;
+
+          await prisma.notificationHistory.create({
+            data: {
+              userId: partnerId,
+              type: "sessionRescheduled",
+              title: userTitle,
+              body: parentBody,
+              deepLink,
+              sentAt: new Date()
+            }
+          });
+
+          if (partnerUser?.fcmToken) {
+            try {
+              await FirebaseService.sendPushNotification(partnerUser.fcmToken, {
+                title: userTitle,
+                body: parentBody,
+                deepLink,
+                data: { notificationType: "sessionRescheduled", sessionId }
+              });
+            } catch (err) {
+              console.error("Failed to send push notification to partner for rescheduled session:", err);
+            }
+          }
+        }
+      }
+
+      // 3. Notify Expert
+      const expertTitle = "Session Rescheduled";
+      const expertBody = `Your session with ${userName} has been rescheduled to ${formattedDate}.`;
+
+      await prisma.notificationHistory.create({
+        data: {
+          userId: session.expertId,
+          type: "sessionRescheduled",
+          title: expertTitle,
+          body: expertBody,
+          deepLink,
+          sentAt: new Date()
+        }
+      });
+
+      if (expert?.fcmToken) {
+        try {
+          await FirebaseService.sendPushNotification(expert.fcmToken, {
+            title: expertTitle,
+            body: expertBody,
+            deepLink,
+            data: { notificationType: "sessionRescheduled", sessionId }
+          });
+        } catch (err) {
+          console.error("Failed to send push notification to expert for rescheduled session:", err);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to send notifications for rescheduled session:", err);
+    }
 
     return rescheduled;
   }
@@ -593,10 +914,24 @@ export class ParentService {
         }
       }
 
-      // 4. Check for upcoming expert sessions
+      // 4. Check for upcoming expert sessions for user OR their linked partner
+      const link = await prisma.parentLink.findFirst({
+        where: {
+          OR: [
+            { teenId: userId },
+            { parentId: userId }
+          ],
+          status: "LINKED"
+        }
+      });
+
+      const partnerId = link ? (userId === link.teenId ? link.parentId : link.teenId) : null;
+      const targetUserIds = [userId];
+      if (partnerId) targetUserIds.push(partnerId);
+
       const sessions = await prisma.expertSessionSchedule.findMany({
         where: {
-          userId,
+          userId: { in: targetUserIds },
           status: "SCHEDULED",
           scheduledAt: {
             gte: new Date(),
@@ -609,7 +944,18 @@ export class ParentService {
         const durationMs = session.scheduledAt.getTime() - Date.now();
         const hoursLeft = Math.ceil(durationMs / (60 * 60 * 1000));
         const programTitle = session.program?.title ? session.program.title.toLowerCase() : "expert session";
-        const alertBody = `reminder: expert session for program '${programTitle}' starts in ${hoursLeft} hours.`;
+        
+        let alertBody = "";
+        if (session.userId === userId) {
+          alertBody = `reminder: expert session for program '${programTitle}' starts in ${hoursLeft} hours.`;
+        } else {
+          const targetUser = await prisma.user.findUnique({
+            where: { id: session.userId },
+            include: { profile: true }
+          });
+          const targetUserName = targetUser?.profile?.displayName || targetUser?.username || "your family member";
+          alertBody = `reminder: expert session for ${targetUserName} of program '${programTitle}' starts in ${hoursLeft} hours.`;
+        }
         
         const existing = await prisma.notificationHistory.findFirst({
           where: { userId, type: "upcomingSessions", body: { contains: programTitle } }

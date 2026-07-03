@@ -1004,12 +1004,21 @@ export class AdminService {
   static async rescheduleSession(id: string, scheduledAt: string) {
     const session = await prisma.expertSessionSchedule.findUnique({ where: { id } });
     if (!session) throw new Error("Session not found");
-    return prisma.expertSessionSchedule.update({
+    const updated = await prisma.expertSessionSchedule.update({
       where: { id },
       data: {
         scheduledAt: new Date(scheduledAt),
         status: "RESCHEDULED"
       }
     });
+
+    try {
+      const { notifyProgramSessionEvent } = await import("../expert/expert.service.js");
+      await notifyProgramSessionEvent(updated.id, "rescheduled");
+    } catch (err) {
+      console.error("Failed to send notifications for admin rescheduled session:", err);
+    }
+
+    return updated;
   }
 }

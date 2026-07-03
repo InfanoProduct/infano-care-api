@@ -429,6 +429,9 @@ export class ProgramsService {
             id: true,
             role: true,
             username: true,
+            phone: true,
+            email: true,
+            parentEmail: true,
             profile: {
               select: { displayName: true }
             }

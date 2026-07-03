@@ -43,13 +43,24 @@ export class UserController {
     try {
       const userId = (req as any).userId || (req as any).user?.id;
       const { fcmToken } = req.body;
-      if (!fcmToken) throw new AppError("FCM Token is required", 400);
+      const tokenValue = (fcmToken === null || fcmToken === undefined || fcmToken === '') ? null : fcmToken;
+
+      if (tokenValue) {
+        // Clear this token from any other users to prevent notification leak on shared devices
+        await prisma.user.updateMany({
+          where: {
+            fcmToken: tokenValue,
+            id: { not: userId }
+          },
+          data: { fcmToken: null }
+        });
+      }
 
       await prisma.user.update({
         where: { id: userId },
-        data: { fcmToken },
+        data: { fcmToken: tokenValue },
       });
-      res.status(200).json({ success: true, message: "FCM token registered successfully" });
+      res.status(200).json({ success: true, message: tokenValue ? "FCM token registered successfully" : "FCM token unregistered successfully" });
     } catch (error) {
       next(error);
     }
