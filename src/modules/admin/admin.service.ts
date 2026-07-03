@@ -370,11 +370,15 @@ export class AdminService {
     if (filters?.dateFrom || filters?.dateTo) {
       where.createdAt = {};
       if (filters.dateFrom) {
-        where.createdAt.gte = new Date(filters.dateFrom);
+        const [year, month, day] = filters.dateFrom.split('-').map(Number) as [number, number, number];
+        const fromDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        fromDate.setMinutes(fromDate.getMinutes() - 330); // Offset to 00:00:00 IST in UTC
+        where.createdAt.gte = fromDate;
       }
       if (filters.dateTo) {
-        const toDate = new Date(filters.dateTo);
-        toDate.setHours(23, 59, 59, 999);
+        const [year, month, day] = filters.dateTo.split('-').map(Number) as [number, number, number];
+        const toDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+        toDate.setMinutes(toDate.getMinutes() - 330); // Offset to 23:59:59 IST in UTC
         where.createdAt.lte = toDate;
       }
     }
@@ -462,6 +466,7 @@ export class AdminService {
     let failedCount = 0;
     let cancelledCount = 0;
 
+    let activeOrdersCount = 0;
     for (const o of allMatchingOrders) {
       const amount = Number(o.totalAmount) || 0;
       totalRevenue += amount;
@@ -475,6 +480,7 @@ export class AdminService {
       }
 
       const isFailed = (o.paymentMethod === 'ONLINE' && !o.razorpayPaymentId && o.orderStatus !== 'CANCELLED') || (o as any).orderStatus === 'FAILED';
+      const isCancelled = o.orderStatus === 'CANCELLED';
 
       if (isFailed) {
         failedCount++;
@@ -491,6 +497,10 @@ export class AdminService {
       } else if (o.orderStatus === 'CANCELLED') {
         cancelledCount++;
       }
+
+      if (!isFailed && !isCancelled) {
+        activeOrdersCount++;
+      }
     }
 
     return {
@@ -502,7 +512,7 @@ export class AdminService {
         pages: Math.ceil(total / limit)
       },
       stats: {
-        totalOrders: allMatchingOrders.length,
+        totalOrders: activeOrdersCount,
         totalRevenue,
         onlineRevenue,
         codRevenue,
