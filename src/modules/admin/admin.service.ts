@@ -15,23 +15,229 @@ const razorpay = new Razorpay({
 
 export class AdminService {
   static async getStats() {
+    // 1. Module Counts
     const [
       totalMembers,
       activeConsultations,
       totalJourneys,
       totalEpisodes,
-      totalEnquiries
+      totalEnquiries,
+      learningPrograms,
+      books,
+      blogs,
+      schools,
+      orders
     ] = await Promise.all([
       prisma.user.count({ where: { role: "TEEN" } }),
-      prisma.expertChatSession.count({ where: { status: "active" } }),
+      prisma.expertSessionSchedule.count({ where: { status: "SCHEDULED", programId: null } }),
       prisma.learningJourney.count(),
       prisma.episode.count(),
-      prisma.enquiry.count()
+      prisma.enquiry.count(),
+      prisma.program.count(),
+      prisma.book.count(),
+      prisma.blogPost.count({ where: { isDeleted: false } }),
+      prisma.school.count(),
+      prisma.order.count()
     ]);
 
-    // Calculate growth (mocked for now as we'd need historical data)
-    const growth = "+5.2%";
-    const revenue = "$0.00"; // Placeholder if no payment integration yet
+    // 2. Financial Metrics & Breakdown
+    const [bookRevenueResult, programRevenueResult, expertRevenueResult] = await Promise.all([
+      prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { orderStatus: { not: "CANCELLED" } }
+      }),
+      prisma.programEnrollment.aggregate({
+        _sum: { pricePaid: true }
+      }),
+      prisma.expertSessionSchedule.aggregate({
+        _sum: { amount: true },
+        where: { status: { not: "CANCELLED" }, programId: null }
+      })
+    ]);
+
+    const bookRevenue = bookRevenueResult._sum.totalAmount || 0;
+    const programRevenue = programRevenueResult._sum.pricePaid || 0;
+    const expertRevenue = expertRevenueResult._sum.amount || 0;
+    const totalRevenue = bookRevenue + programRevenue + expertRevenue;
+
+    // 3. Recent Activity Collections
+    const [recentOrders, recentSchools, recentBookings, recentPrograms] = await Promise.all([
+      prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: {
+              username: true,
+              profile: {
+                select: { displayName: true }
+              }
+            }
+          }
+        }
+      }),
+      prisma.school.findMany({
+        take: 5,
+        orderBy: { mouSignedDate: "desc" }
+      }),
+      prisma.expertSessionSchedule.findMany({
+        take: 5,
+        where: { programId: null },
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: { profile: { select: { displayName: true } }, username: true }
+          },
+          expert: {
+            select: { profile: { select: { displayName: true } }, username: true }
+          }
+        }
+      }),
+      prisma.program.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          enrollments: {
+            select: {
+              pricePaid: true
+            }
+          }
+        }
+      })
+    ]);
+
+    // 4. Dynamic Growth Percentages (Last 30 Days vs Preceding 30 Days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+    const calculateGrowth = (current: number, previous: number): string => {
+      if (previous === 0) {
+        return current > 0 ? "↗ 100%" : "- 0%";
+      }
+      const pct = ((current - previous) / previous) * 100;
+      if (pct === 0) return "- 0%";
+      const arrow = pct > 0 ? "↗" : "↘";
+      return `${arrow} ${Math.abs(Math.round(pct))}%`;
+    };
+
+    const [
+      currMembers, prevMembers,
+      currSchools, prevSchools,
+      currPrograms, prevPrograms,
+      currJourneys, prevJourneys,
+      currBooks, prevBooks,
+      currOrders, prevOrders,
+      currRevResult, prevRevResult
+    ] = await Promise.all([
+      // Members
+      prisma.user.count({ where: { role: "TEEN", createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.user.count({ where: { role: "TEEN", createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Schools
+      prisma.school.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.school.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Programs
+      prisma.program.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.program.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Journeys
+      prisma.learningJourney.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.learningJourney.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Books
+      prisma.book.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.book.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Orders
+      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.order.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Revenue
+      prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { orderStatus: { not: "CANCELLED" }, createdAt: { gte: thirtyDaysAgo } }
+      }),
+      prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { orderStatus: { not: "CANCELLED" }, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } }
+      })
+    ]);
+
+    const memberGrowth = calculateGrowth(currMembers, prevMembers);
+    const schoolGrowth = calculateGrowth(currSchools, prevSchools);
+    const programGrowth = calculateGrowth(currPrograms, prevPrograms);
+    const journeyGrowth = calculateGrowth(currJourneys, prevJourneys);
+    const bookGrowth = calculateGrowth(currBooks, prevBooks);
+    const orderGrowth = calculateGrowth(currOrders, prevOrders);
+    
+    const currRev = currRevResult._sum.totalAmount || 0;
+    const prevRev = prevRevResult._sum.totalAmount || 0;
+    const revenueGrowth = calculateGrowth(currRev, prevRev);
+
+    // 5. Dynamic 6-Month Grouping Trends
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    const [usersIn6Months, ordersIn6Months] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          role: "TEEN",
+          createdAt: { gte: sixMonthsAgo }
+        },
+        select: { createdAt: true }
+      }),
+      prisma.order.findMany({
+        where: {
+          orderStatus: { not: "CANCELLED" },
+          createdAt: { gte: sixMonthsAgo }
+        },
+        select: { createdAt: true, totalAmount: true }
+      })
+    ]);
+
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const trends = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mIndex = d.getMonth();
+      const monthLabel = months[mIndex];
+      const year = d.getFullYear();
+
+      // Accumulate registrations in this month
+      const userCount = usersIn6Months.filter(u => {
+        const uDate = new Date(u.createdAt);
+        return uDate.getMonth() === mIndex && uDate.getFullYear() === year;
+      }).length;
+
+      // Accumulate revenue in this month
+      const monthRevenue = ordersIn6Months.filter(o => {
+        const oDate = new Date(o.createdAt);
+        return oDate.getMonth() === mIndex && oDate.getFullYear() === year;
+      }).reduce((sum, o) => sum + o.totalAmount, 0);
+
+      trends.push({
+        month: monthLabel,
+        users: userCount,
+        revenue: Math.round(monthRevenue)
+      });
+    }
+
+    const formattedRecentPrograms = recentPrograms.map((p) => {
+      const enrolledCount = p.enrollments.length;
+      const revenue = p.enrollments.reduce((sum, e) => sum + e.pricePaid, 0);
+      return {
+        id: p.id,
+        title: p.title,
+        tagline: p.tagline,
+        classRange: p.classRange,
+        duration: p.duration,
+        price: p.price,
+        enrolledCount,
+        revenue,
+        createdAt: p.createdAt
+      };
+    });
 
     return {
       totalMembers,
@@ -39,8 +245,27 @@ export class AdminService {
       totalJourneys,
       totalEpisodes,
       totalEnquiries,
-      revenue,
-      growth
+      learningPrograms,
+      books,
+      blogs,
+      schools,
+      orders,
+      bookRevenue,
+      programRevenue,
+      expertRevenue,
+      totalRevenue,
+      recentOrders,
+      recentSchools,
+      recentBookings,
+      recentPrograms: formattedRecentPrograms,
+      trends,
+      growth: revenueGrowth,
+      memberGrowth,
+      schoolGrowth,
+      programGrowth,
+      journeyGrowth,
+      bookGrowth,
+      orderGrowth
     };
   }
 
