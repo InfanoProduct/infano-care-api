@@ -14,8 +14,10 @@ const razorpay = new Razorpay({
 });
 
 export class AdminService {
-  static async getStats() {
-    // 1. Module Counts
+  static async getStats(startDate?: Date, endDate?: Date) {
+    const dateFilter = startDate && endDate ? { gte: startDate, lte: endDate } : undefined;
+
+    // 1. Module Counts (Overall Lifetime Totals)
     const [
       totalMembers,
       activeConsultations,
@@ -28,7 +30,7 @@ export class AdminService {
       schools,
       orders
     ] = await Promise.all([
-      prisma.user.count({ where: { role: "TEEN" } }),
+      prisma.user.count({ where: { role: { in: ["TEEN", "PARENT", "GUARDIAN", "PEER"] } } }),
       prisma.expertSessionSchedule.count({ where: { status: "SCHEDULED", programId: null } }),
       prisma.learningJourney.count(),
       prisma.episode.count(),
@@ -44,14 +46,15 @@ export class AdminService {
     const [bookRevenueResult, programRevenueResult, expertRevenueResult] = await Promise.all([
       prisma.order.aggregate({
         _sum: { totalAmount: true },
-        where: { orderStatus: { not: "CANCELLED" } }
+        where: { orderStatus: { not: "CANCELLED" }, ...(dateFilter ? { createdAt: dateFilter } : {}) }
       }),
       prisma.programEnrollment.aggregate({
-        _sum: { pricePaid: true }
+        _sum: { pricePaid: true },
+        where: dateFilter ? { createdAt: dateFilter } : {}
       }),
       prisma.expertSessionSchedule.aggregate({
         _sum: { amount: true },
-        where: { status: { not: "CANCELLED" }, programId: null }
+        where: { status: { not: "CANCELLED" }, programId: null, ...(dateFilter ? { scheduledAt: dateFilter } : {}) }
       })
     ]);
 
@@ -65,6 +68,7 @@ export class AdminService {
       prisma.order.findMany({
         take: 5,
         orderBy: { createdAt: "desc" },
+        where: dateFilter ? { createdAt: dateFilter } : {},
         include: {
           user: {
             select: {
@@ -78,11 +82,12 @@ export class AdminService {
       }),
       prisma.school.findMany({
         take: 5,
-        orderBy: { mouSignedDate: "desc" }
+        orderBy: { mouSignedDate: "desc" },
+        where: dateFilter ? { createdAt: dateFilter } : {}
       }),
       prisma.expertSessionSchedule.findMany({
         take: 5,
-        where: { programId: null },
+        where: { programId: null, ...(dateFilter ? { scheduledAt: dateFilter } : {}) },
         orderBy: { createdAt: "desc" },
         include: {
           user: {
@@ -96,6 +101,7 @@ export class AdminService {
       prisma.program.findMany({
         take: 5,
         orderBy: { createdAt: "desc" },
+        where: dateFilter ? { createdAt: dateFilter } : {},
         include: {
           enrollments: {
             select: {
@@ -106,11 +112,23 @@ export class AdminService {
       })
     ]);
 
-    // 4. Dynamic Growth Percentages (Last 30 Days vs Preceding 30 Days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    // 4. Dynamic Growth Percentages (Last 30 Days vs Preceding 30 Days OR Selected Range vs Preceding Duration)
+    let currentStart = new Date();
+    currentStart.setDate(currentStart.getDate() - 30);
+    let currentEnd = new Date();
+    
+    let previousStart = new Date();
+    previousStart.setDate(previousStart.getDate() - 60);
+    let previousEnd = new Date();
+    previousEnd.setDate(previousEnd.getDate() - 30);
+
+    if (startDate && endDate) {
+      currentStart = startDate;
+      currentEnd = endDate;
+      const durationMs = endDate.getTime() - startDate.getTime();
+      previousStart = new Date(startDate.getTime() - durationMs);
+      previousEnd = startDate;
+    }
 
     const calculateGrowth = (current: number, previous: number): string => {
       if (previous === 0) {
@@ -131,32 +149,32 @@ export class AdminService {
       currOrders, prevOrders,
       currRevResult, prevRevResult
     ] = await Promise.all([
-      // Members
-      prisma.user.count({ where: { role: "TEEN", createdAt: { gte: thirtyDaysAgo } } }),
-      prisma.user.count({ where: { role: "TEEN", createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Members (Include TEEN, PARENT, GUARDIAN, PEER)
+      prisma.user.count({ where: { role: { in: ["TEEN", "PARENT", "GUARDIAN", "PEER"] }, createdAt: { gte: currentStart, lte: currentEnd } } }),
+      prisma.user.count({ where: { role: { in: ["TEEN", "PARENT", "GUARDIAN", "PEER"] }, createdAt: { gte: previousStart, lt: currentStart } } }),
       // Schools
-      prisma.school.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-      prisma.school.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      prisma.school.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
+      prisma.school.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
       // Programs
-      prisma.program.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-      prisma.program.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      prisma.program.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
+      prisma.program.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
       // Journeys
-      prisma.learningJourney.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-      prisma.learningJourney.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      prisma.learningJourney.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
+      prisma.learningJourney.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
       // Books
-      prisma.book.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-      prisma.book.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      prisma.book.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
+      prisma.book.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
       // Orders
-      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-      prisma.order.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      prisma.order.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
+      prisma.order.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
       // Revenue
       prisma.order.aggregate({
         _sum: { totalAmount: true },
-        where: { orderStatus: { not: "CANCELLED" }, createdAt: { gte: thirtyDaysAgo } }
+        where: { orderStatus: { not: "CANCELLED" }, createdAt: { gte: currentStart, lte: currentEnd } }
       }),
       prisma.order.aggregate({
         _sum: { totalAmount: true },
-        where: { orderStatus: { not: "CANCELLED" }, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } }
+        where: { orderStatus: { not: "CANCELLED" }, createdAt: { gte: previousStart, lt: currentStart } }
       })
     ]);
 
@@ -171,56 +189,159 @@ export class AdminService {
     const prevRev = prevRevResult._sum.totalAmount || 0;
     const revenueGrowth = calculateGrowth(currRev, prevRev);
 
-    // 5. Dynamic 6-Month Grouping Trends
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-    sixMonthsAgo.setDate(1);
-    sixMonthsAgo.setHours(0, 0, 0, 0);
-
-    const [usersIn6Months, ordersIn6Months] = await Promise.all([
-      prisma.user.findMany({
-        where: {
-          role: "TEEN",
-          createdAt: { gte: sixMonthsAgo }
-        },
-        select: { createdAt: true }
-      }),
-      prisma.order.findMany({
-        where: {
-          orderStatus: { not: "CANCELLED" },
-          createdAt: { gte: sixMonthsAgo }
-        },
-        select: { createdAt: true, totalAmount: true }
-      })
-    ]);
-
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    // 5. Dynamic Grouping Trends based on range
     const trends = [];
-    
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const mIndex = d.getMonth();
-      const monthLabel = months[mIndex];
-      const year = d.getFullYear();
+    const monthsNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-      // Accumulate registrations in this month
-      const userCount = usersIn6Months.filter(u => {
-        const uDate = new Date(u.createdAt);
-        return uDate.getMonth() === mIndex && uDate.getFullYear() === year;
-      }).length;
+    if (startDate && endDate) {
+      const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      const [usersInRange, ordersInRange] = await Promise.all([
+        prisma.user.findMany({
+          where: {
+            role: { in: ["TEEN", "PARENT", "GUARDIAN", "PEER"] },
+            createdAt: { gte: startDate, lte: endDate }
+          },
+          select: { createdAt: true }
+        }),
+        prisma.order.findMany({
+          where: {
+            orderStatus: { not: "CANCELLED" },
+            createdAt: { gte: startDate, lte: endDate }
+          },
+          select: { createdAt: true, totalAmount: true }
+        })
+      ]);
 
-      // Accumulate revenue in this month
-      const monthRevenue = ordersIn6Months.filter(o => {
-        const oDate = new Date(o.createdAt);
-        return oDate.getMonth() === mIndex && oDate.getFullYear() === year;
-      }).reduce((sum, o) => sum + o.totalAmount, 0);
+      if (durationDays <= 31) {
+        // Group by Day
+        const current = new Date(startDate);
+        while (current <= endDate) {
+          const dayLabel = current.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          const year = current.getFullYear();
+          const monthIndex = current.getMonth();
+          const dayVal = current.getDate();
 
-      trends.push({
-        month: monthLabel,
-        users: userCount,
-        revenue: Math.round(monthRevenue)
-      });
+          const userCount = usersInRange.filter(u => {
+            const uDate = new Date(u.createdAt);
+            return uDate.getDate() === dayVal && uDate.getMonth() === monthIndex && uDate.getFullYear() === year;
+          }).length;
+
+          const dayRevenue = ordersInRange.filter(o => {
+            const oDate = new Date(o.createdAt);
+            return oDate.getDate() === dayVal && oDate.getMonth() === monthIndex && oDate.getFullYear() === year;
+          }).reduce((sum, o) => sum + o.totalAmount, 0);
+
+          trends.push({
+            month: dayLabel,
+            users: userCount,
+            revenue: Math.round(dayRevenue)
+          });
+
+          current.setDate(current.getDate() + 1);
+        }
+      } else if (durationDays <= 180) {
+        // Group by Week
+        const current = new Date(startDate);
+        let weekIndex = 1;
+        while (current <= endDate) {
+          const nextWeek = new Date(current);
+          nextWeek.setDate(nextWeek.getDate() + 7);
+
+          const weekLabel = `W${weekIndex}`;
+          const userCount = usersInRange.filter(u => {
+            const uDate = new Date(u.createdAt);
+            return uDate >= current && uDate < nextWeek;
+          }).length;
+
+          const weekRevenue = ordersInRange.filter(o => {
+            const oDate = new Date(o.createdAt);
+            return oDate >= current && oDate < nextWeek;
+          }).reduce((sum, o) => sum + o.totalAmount, 0);
+
+          trends.push({
+            month: weekLabel,
+            users: userCount,
+            revenue: Math.round(weekRevenue)
+          });
+
+          current.setDate(current.getDate() + 7);
+          weekIndex++;
+        }
+      } else {
+        // Group by Month
+        const current = new Date(startDate);
+        while (current <= endDate) {
+          const mIndex = current.getMonth();
+          const year = current.getFullYear();
+          const monthLabel = `${monthsNames[mIndex]} ${year.toString().slice(-2)}`;
+
+          const userCount = usersInRange.filter(u => {
+            const uDate = new Date(u.createdAt);
+            return uDate.getMonth() === mIndex && uDate.getFullYear() === year;
+          }).length;
+
+          const monthRevenue = ordersInRange.filter(o => {
+            const oDate = new Date(o.createdAt);
+            return oDate.getMonth() === mIndex && oDate.getFullYear() === year;
+          }).reduce((sum, o) => sum + o.totalAmount, 0);
+
+          trends.push({
+            month: monthLabel,
+            users: userCount,
+            revenue: Math.round(monthRevenue)
+          });
+
+          current.setMonth(current.getMonth() + 1);
+        }
+      }
+    } else {
+      // Default: Last 6 Months Grouping Trends (include all community roles in members)
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+      sixMonthsAgo.setDate(1);
+      sixMonthsAgo.setHours(0, 0, 0, 0);
+
+      const [usersIn6Months, ordersIn6Months] = await Promise.all([
+        prisma.user.findMany({
+          where: {
+            role: { in: ["TEEN", "PARENT", "GUARDIAN", "PEER"] },
+            createdAt: { gte: sixMonthsAgo }
+          },
+          select: { createdAt: true }
+        }),
+        prisma.order.findMany({
+          where: {
+            orderStatus: { not: "CANCELLED" },
+            createdAt: { gte: sixMonthsAgo }
+          },
+          select: { createdAt: true, totalAmount: true }
+        })
+      ]);
+
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mIndex = d.getMonth();
+        const monthLabel = monthsNames[mIndex];
+        const year = d.getFullYear();
+
+        const userCount = usersIn6Months.filter(u => {
+          const uDate = new Date(u.createdAt);
+          return uDate.getMonth() === mIndex && uDate.getFullYear() === year;
+        }).length;
+
+        const monthRevenue = ordersIn6Months.filter(o => {
+          const oDate = new Date(o.createdAt);
+          return oDate.getMonth() === mIndex && oDate.getFullYear() === year;
+        }).reduce((sum, o) => sum + o.totalAmount, 0);
+
+        trends.push({
+          month: monthLabel,
+          users: userCount,
+          revenue: Math.round(monthRevenue)
+        });
+      }
     }
 
     const formattedRecentPrograms = recentPrograms.map((p) => {
@@ -302,7 +423,10 @@ export class AdminService {
   static async getUsers(page: number = 1, limit: number = 20, peerOnboarding?: boolean) {
     const skip = (page - 1) * limit;
 
-    const whereClause: any = { role: { in: ["TEEN", "PARENT", "PEER"] } };
+    const whereClause: any = { 
+      role: { in: ["TEEN", "PARENT", "PEER"] },
+      accountStatus: { not: "DELETED" }
+    };
     if (peerOnboarding !== undefined) {
       whereClause.peerOnboarding = peerOnboarding;
     }
@@ -336,6 +460,242 @@ export class AdminService {
     });
     if (!user) throw new Error('User not found');
     return user;
+  }
+
+  static async getUserOverview(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profile: true,
+        peerApplication: true,
+        programEnrollments: {
+          include: {
+            program: true
+          }
+        },
+        scheduledSessions: {
+          include: {
+            expert: {
+              select: {
+                username: true,
+                profile: { select: { displayName: true } }
+              }
+            }
+          },
+          orderBy: { scheduledAt: 'desc' }
+        },
+        orders: {
+          include: {
+            items: {
+              include: {
+                book: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!user) throw new Error('User not found');
+
+    // Fetch user progress for learning journeys
+    const userProgress = await prisma.userProgress.findMany({
+      where: { userId },
+      include: {
+        episode: {
+          include: {
+            journey: true
+          }
+        }
+      }
+    });
+
+    // Fetch learning journeys and calculate progress
+    const journeys = await prisma.learningJourney.findMany({
+      where: { isActive: true },
+      include: {
+        episodes: {
+          where: { isActive: true }
+        }
+      }
+    });
+
+    const journeysWithProgress = journeys.map(journey => {
+      const journeyEpisodeIds = new Set(journey.episodes.map(e => e.id));
+      const completedEpisodesCount = userProgress.filter(
+        up => journeyEpisodeIds.has(up.episodeId) && up.completed
+      ).length;
+      const totalEpisodes = journey.episodes.length;
+      const progressPercentage = totalEpisodes > 0 
+        ? Math.round((completedEpisodesCount / totalEpisodes) * 100) 
+        : 0;
+
+      return {
+        id: journey.id,
+        title: journey.title,
+        description: journey.description,
+        thumbnailUrl: journey.thumbnailUrl,
+        totalEpisodes,
+        completedEpisodesCount,
+        progressPercentage
+      };
+    });
+
+    // Fetch enquiries matching user email or phone
+    const enquiries = await prisma.enquiry.findMany({
+      where: {
+        OR: [
+          ...(user.email ? [{ email: user.email }] : []),
+          ...(user.phone ? [{ phone: user.phone }] : [])
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Find active parent-teen link
+    const parentLink = await prisma.parentLink.findFirst({
+      where: {
+        OR: [
+          { parentId: userId, status: 'LINKED' },
+          { teenId: userId, status: 'LINKED' }
+        ]
+      },
+      include: {
+        parent: {
+          include: { profile: true }
+        },
+        teen: {
+          include: { profile: true }
+        }
+      }
+    });
+
+    let linkedUser = null;
+    if (parentLink) {
+      linkedUser = parentLink.parentId === userId ? parentLink.teen : parentLink.parent;
+    }
+
+    // Get combined eligible user IDs for curriculum sessions
+    const eligibleUserIds = [userId];
+    if (linkedUser) {
+      eligibleUserIds.push(linkedUser.id);
+    }
+
+    // Fetch all completed curriculum sessions for both main and linked user
+    const completedCurriculumSessions = await prisma.expertSessionSchedule.findMany({
+      where: {
+        userId: { in: eligibleUserIds },
+        status: 'COMPLETED'
+      }
+    });
+
+    // Map main user's enrollments with progress
+    const programEnrollmentsWithProgress = user.programEnrollments.map(enr => {
+      const total = (Array.isArray(enr.program.curriculum) ? enr.program.curriculum.length : 0) || 8;
+      const completed = completedCurriculumSessions.filter(s => s.programId === enr.programId).length;
+      const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return {
+        id: enr.id,
+        status: enr.status,
+        pricePaid: enr.pricePaid,
+        createdAt: enr.createdAt,
+        program: enr.program,
+        completedSessionsCount: completed,
+        totalSessions: total,
+        progressPercentage
+      };
+    });
+
+    let linkedEnrollments: any[] = [];
+    if (linkedUser) {
+      const enrollments = await prisma.programEnrollment.findMany({
+        where: { userId: linkedUser.id },
+        include: {
+          program: true
+        }
+      });
+
+      linkedEnrollments = enrollments.map(enr => {
+        const total = (Array.isArray(enr.program.curriculum) ? enr.program.curriculum.length : 0) || 8;
+        const completed = completedCurriculumSessions.filter(s => s.programId === enr.programId).length;
+        const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        return {
+          id: enr.id,
+          status: enr.status,
+          pricePaid: enr.pricePaid,
+          createdAt: enr.createdAt,
+          program: enr.program,
+          completedSessionsCount: completed,
+          totalSessions: total,
+          progressPercentage
+        };
+      });
+    }
+
+    // Fetch demo sessions matching user email or phone
+    const demoSessions = await prisma.demoSession.findMany({
+      where: {
+        OR: [
+          ...(user.email ? [{ email: user.email }] : []),
+          ...(user.phone ? [{ phone: user.phone }] : [])
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const expertSessions = user.scheduledSessions.filter(
+      (s: any) => s.programId === null && s.amount !== null && s.amount > 0
+    );
+
+    return {
+      user: {
+        id: user.id,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        accountStatus: user.accountStatus,
+        createdAt: user.createdAt,
+        peerOnboarding: user.peerOnboarding
+      },
+      profile: user.profile,
+      peerApplication: user.peerApplication,
+      programEnrollments: programEnrollmentsWithProgress,
+      scheduledSessions: user.scheduledSessions,
+      expertSessions,
+      orders: user.orders,
+      journeys: journeysWithProgress,
+      enquiries,
+      linkedUser: linkedUser ? {
+        id: linkedUser.id,
+        phone: linkedUser.phone,
+        email: linkedUser.email,
+        role: linkedUser.role,
+        displayName: linkedUser.profile?.displayName || 'Linked User'
+      } : null,
+      linkedEnrollments,
+      demoSessions
+    };
+  }
+
+  static async updateUserStatus(userId: string, status: 'ACTIVE' | 'SUSPENDED') {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("User not found");
+    return prisma.user.update({
+      where: { id: userId },
+      data: { accountStatus: status }
+    });
+  }
+
+  static async deleteUser(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("User not found");
+    return prisma.user.update({
+      where: { id: userId },
+      data: { accountStatus: 'DELETED' }
+    });
   }
 
   static async approvePeerApplication(userId: string) {
