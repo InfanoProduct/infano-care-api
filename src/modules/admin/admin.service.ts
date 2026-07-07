@@ -420,7 +420,13 @@ export class AdminService {
     return user;
   }
 
-  static async getUsers(page: number = 1, limit: number = 20, peerOnboarding?: boolean) {
+  static async getUsers(
+    page: number = 1, 
+    limit: number = 20, 
+    peerOnboarding?: boolean,
+    role?: string,
+    accountStatus?: string
+  ) {
     const skip = (page - 1) * limit;
 
     const whereClause: any = { 
@@ -430,8 +436,14 @@ export class AdminService {
     if (peerOnboarding !== undefined) {
       whereClause.peerOnboarding = peerOnboarding;
     }
+    if (role) {
+      whereClause.role = role;
+    }
+    if (accountStatus) {
+      whereClause.accountStatus = accountStatus;
+    }
 
-    const [users, total] = await Promise.all([
+    const [users, total, activeCount, inactiveCount, peerCount, pendingCount] = await Promise.all([
       prisma.user.findMany({
         where: whereClause,
         skip,
@@ -439,7 +451,11 @@ export class AdminService {
         include: { profile: true, peerApplication: true },
         orderBy: { createdAt: "desc" }
       }),
-      prisma.user.count({ where: whereClause })
+      prisma.user.count({ where: whereClause }),
+      prisma.user.count({ where: { role: { in: ["TEEN", "PARENT", "PEER"] }, accountStatus: "ACTIVE" } }),
+      prisma.user.count({ where: { role: { in: ["TEEN", "PARENT", "PEER"] }, accountStatus: "SUSPENDED" } }),
+      prisma.user.count({ where: { role: "PEER", accountStatus: { not: "DELETED" } } }),
+      prisma.user.count({ where: { role: { in: ["TEEN", "PARENT", "PEER"] }, accountStatus: "PENDING_SETUP" } })
     ]);
 
     return {
@@ -449,6 +465,12 @@ export class AdminService {
         page,
         limit,
         pages: Math.ceil(total / limit)
+      },
+      counts: {
+        active: activeCount,
+        inactive: inactiveCount,
+        peer: peerCount,
+        pending: pendingCount
       }
     };
   }
@@ -499,28 +521,63 @@ export class AdminService {
 
     if (!user) throw new Error('User not found');
 
-    // Fetch user progress for learning journeys
-    const userProgress = await prisma.userProgress.findMany({
-      where: { userId },
-      include: {
-        episode: {
-          include: {
-            journey: true
+    // Run independent database queries in parallel
+    const [userProgress, journeys, enquiries, parentLink, demoSessions] = await Promise.all([
+      prisma.userProgress.findMany({
+        where: { userId },
+        include: {
+          episode: {
+            include: {
+              journey: true
+            }
           }
         }
-      }
-    });
-
-    // Fetch learning journeys and calculate progress
-    const journeys = await prisma.learningJourney.findMany({
-      where: { isActive: true },
-      include: {
-        episodes: {
-          where: { isActive: true }
+      }),
+      prisma.learningJourney.findMany({
+        where: { isActive: true },
+        include: {
+          episodes: {
+            where: { isActive: true }
+          }
         }
-      }
-    });
+      }),
+      prisma.enquiry.findMany({
+        where: {
+          OR: [
+            ...(user.email ? [{ email: user.email }] : []),
+            ...(user.phone ? [{ phone: user.phone }] : [])
+          ]
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.parentLink.findFirst({
+        where: {
+          OR: [
+            { parentId: userId, status: 'LINKED' },
+            { teenId: userId, status: 'LINKED' }
+          ]
+        },
+        include: {
+          parent: {
+            include: { profile: true }
+          },
+          teen: {
+            include: { profile: true }
+          }
+        }
+      }),
+      prisma.demoSession.findMany({
+        where: {
+          OR: [
+            ...(user.email ? [{ email: user.email }] : []),
+            ...(user.phone ? [{ phone: user.phone }] : [])
+          ]
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
 
+    // Calculate learning journey progress
     const journeysWithProgress = journeys.map(journey => {
       const journeyEpisodeIds = new Set(journey.episodes.map(e => e.id));
       const completedEpisodesCount = userProgress.filter(
@@ -542,53 +599,33 @@ export class AdminService {
       };
     });
 
-    // Fetch enquiries matching user email or phone
-    const enquiries = await prisma.enquiry.findMany({
-      where: {
-        OR: [
-          ...(user.email ? [{ email: user.email }] : []),
-          ...(user.phone ? [{ phone: user.phone }] : [])
-        ]
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // Find active parent-teen link
-    const parentLink = await prisma.parentLink.findFirst({
-      where: {
-        OR: [
-          { parentId: userId, status: 'LINKED' },
-          { teenId: userId, status: 'LINKED' }
-        ]
-      },
-      include: {
-        parent: {
-          include: { profile: true }
-        },
-        teen: {
-          include: { profile: true }
-        }
-      }
-    });
-
     let linkedUser = null;
     if (parentLink) {
       linkedUser = parentLink.parentId === userId ? parentLink.teen : parentLink.parent;
     }
 
-    // Get combined eligible user IDs for curriculum sessions
     const eligibleUserIds = [userId];
     if (linkedUser) {
       eligibleUserIds.push(linkedUser.id);
     }
 
-    // Fetch all completed curriculum sessions for both main and linked user
-    const completedCurriculumSessions = await prisma.expertSessionSchedule.findMany({
-      where: {
-        userId: { in: eligibleUserIds },
-        status: 'COMPLETED'
-      }
-    });
+    // Parallelize dependent calls
+    const [completedCurriculumSessions, linkedEnrollmentsRaw] = await Promise.all([
+      prisma.expertSessionSchedule.findMany({
+        where: {
+          userId: { in: eligibleUserIds },
+          status: 'COMPLETED'
+        }
+      }),
+      linkedUser
+        ? prisma.programEnrollment.findMany({
+            where: { userId: linkedUser.id },
+            include: {
+              program: true
+            }
+          })
+        : Promise.resolve([])
+    ]);
 
     // Map main user's enrollments with progress
     const programEnrollmentsWithProgress = user.programEnrollments.map(enr => {
@@ -608,42 +645,22 @@ export class AdminService {
       };
     });
 
-    let linkedEnrollments: any[] = [];
-    if (linkedUser) {
-      const enrollments = await prisma.programEnrollment.findMany({
-        where: { userId: linkedUser.id },
-        include: {
-          program: true
-        }
-      });
+    // Map linked enrollments
+    const linkedEnrollments = linkedEnrollmentsRaw.map(enr => {
+      const total = (Array.isArray(enr.program.curriculum) ? enr.program.curriculum.length : 0) || 8;
+      const completed = completedCurriculumSessions.filter(s => s.programId === enr.programId).length;
+      const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-      linkedEnrollments = enrollments.map(enr => {
-        const total = (Array.isArray(enr.program.curriculum) ? enr.program.curriculum.length : 0) || 8;
-        const completed = completedCurriculumSessions.filter(s => s.programId === enr.programId).length;
-        const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-        return {
-          id: enr.id,
-          status: enr.status,
-          pricePaid: enr.pricePaid,
-          createdAt: enr.createdAt,
-          program: enr.program,
-          completedSessionsCount: completed,
-          totalSessions: total,
-          progressPercentage
-        };
-      });
-    }
-
-    // Fetch demo sessions matching user email or phone
-    const demoSessions = await prisma.demoSession.findMany({
-      where: {
-        OR: [
-          ...(user.email ? [{ email: user.email }] : []),
-          ...(user.phone ? [{ phone: user.phone }] : [])
-        ]
-      },
-      orderBy: { createdAt: 'desc' }
+      return {
+        id: enr.id,
+        status: enr.status,
+        pricePaid: enr.pricePaid,
+        createdAt: enr.createdAt,
+        program: enr.program,
+        completedSessionsCount: completed,
+        totalSessions: total,
+        progressPercentage
+      };
     });
 
     const expertSessions = user.scheduledSessions.filter(
@@ -658,7 +675,12 @@ export class AdminService {
         role: user.role,
         accountStatus: user.accountStatus,
         createdAt: user.createdAt,
-        peerOnboarding: user.peerOnboarding
+        peerOnboarding: user.peerOnboarding,
+        onboardingStep: user.onboardingStep,
+        onboardingCompletedAt: user.onboardingCompletedAt,
+        birthMonth: user.birthMonth,
+        birthYear: user.birthYear,
+        ageAtSignup: user.ageAtSignup
       },
       profile: user.profile,
       peerApplication: user.peerApplication,

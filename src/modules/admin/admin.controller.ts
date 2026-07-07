@@ -36,7 +36,10 @@ export class AdminController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
       const peerOnboarding = req.query.peerOnboarding === 'true' ? true : undefined;
-      const result = await AdminService.getUsers(page, limit, peerOnboarding);
+      const role = req.query.role as string || undefined;
+      const accountStatus = req.query.accountStatus as string || undefined;
+
+      const result = await AdminService.getUsers(page, limit, peerOnboarding, role, accountStatus);
       res.status(200).json(result);
     } catch (error) {
       next(error);
