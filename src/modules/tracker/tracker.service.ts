@@ -338,7 +338,10 @@ export class TrackerService {
       // 4. Recalculate Baselines
       await this.recalculateBaselines(userId);
 
-      // 5. Milestone: Detect Watching -> Active transition
+      // 5. Update Badge Progress
+      await QuestService.updateBadgeProgress(userId, "period_logged", { date });
+
+      // 6. Milestone: Detect Watching -> Active transition
       if (wasWatching) {
         firstPeriod = true;
         // Award 200 points for first period milestone

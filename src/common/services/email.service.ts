@@ -5,23 +5,35 @@ let transporter: nodemailer.Transporter | null = null;
 export const sendEmail = async (to: string, subject: string, html: string, text?: string) => {
   const mailjetApiKey = process.env.MAILJET_API_KEY;
   const mailjetSecretKey = process.env.MAILJET_SECRET_KEY;
-  const mailFrom = process.env.MAIL_FROM || 'hello@infano.care';
-
-  if (!mailjetApiKey || !mailjetSecretKey) {
-    console.error('Mailjet credentials not found in environment variables.');
-    return;
-  }
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_PASS;
+  let mailFrom = process.env.MAIL_FROM || 'hello@infano.care';
 
   if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: 'in-v3.mailjet.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: mailjetApiKey,
-        pass: mailjetSecretKey,
-      },
-    });
+    if (gmailUser && gmailPass) {
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass,
+        },
+      });
+      // Override sender address for Gmail SMTP compatibility
+      mailFrom = gmailUser;
+    } else if (mailjetApiKey && mailjetSecretKey) {
+      transporter = nodemailer.createTransport({
+        host: 'in-v3.mailjet.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: mailjetApiKey,
+          pass: mailjetSecretKey,
+        },
+      });
+    } else {
+      console.error('No email credentials (Gmail or Mailjet) found in environment variables.');
+      return;
+    }
   }
 
   try {
@@ -37,7 +49,7 @@ export const sendEmail = async (to: string, subject: string, html: string, text?
     console.log(`Email sent successfully to ${to}: ${info.messageId}`);
     return info;
   } catch (error) {
-    console.error('Error sending email via Mailjet SMTP:', error);
+    console.error('Error sending email via SMTP:', error);
     throw error;
   }
 };
@@ -106,5 +118,21 @@ export const sendGigiBookOrderDeliveredEmail = async (to: string, data: {
   const subject = `Order #${data.order_id} - Delivered 📦`;
   const preheaderText = 'Your order has been successfully delivered.';
   const html = await compileEmailTemplate('order-delivered', { ...data, subject, preheaderText });
+  return sendEmail(to, subject, html);
+};
+
+export const sendDemoSessionBookedEmail = async (to: string, data: {
+  parent_name: string;
+  phone: string;
+  email?: string;
+  class_range: string;
+  slot_date: string;
+  slot_time: string;
+  comment?: string;
+  programs?: { title: string; classRange: string; duration: string; thumbnailUrl?: string }[];
+}) => {
+  const subject = `Your Demo Session at Infano Care is Confirmed! 🌟`;
+  const preheaderText = 'Confirmation details for your upcoming interactive demo.';
+  const html = await compileEmailTemplate('demo-session-booked', { ...data, subject, preheaderText });
   return sendEmail(to, subject, html);
 };

@@ -19,14 +19,14 @@ export function initTrackerJobs() {
     }
   });
 
-  // 2. Evening Log Reminder (8:00 PM)
-  // Sends a gentle nudge if the user hasn't logged today.
-  cron.schedule("0 20 * * *", async () => {
-    logger.info("Running evening log reminder check...");
+  // 2. Log Reminder & Streak Alert Check (Every minute)
+  // Evaluates if any user needs a Daily Log Reminder or Streak At Risk Alert right now in their local timezone.
+  cron.schedule("*/1 * * * *", async () => {
     try {
       await TrackerNotificationService.checkDailyLogReminders();
+      await TrackerNotificationService.checkStreakAtRiskAlerts();
     } catch (error) {
-      logger.error({ err: error }, "Failed to run log reminders");
+      logger.error({ err: error }, "Failed to run log/streak reminders");
     }
   });
 }

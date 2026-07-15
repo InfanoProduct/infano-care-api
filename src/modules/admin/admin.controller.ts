@@ -3,9 +3,19 @@ import { AdminService } from "./admin.service.js";
 import { StorageService } from "../../common/utils/storage.js";
 
 export class AdminController {
-  static async getStats(_req: Request, res: Response, next: NextFunction) {
+  static async getStats(req: Request, res: Response, next: NextFunction) {
     try {
-      const stats = await AdminService.getStats();
+      const startDateQuery = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDateQuery = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      
+      if (startDateQuery) {
+        startDateQuery.setUTCHours(0, 0, 0, 0);
+      }
+      if (endDateQuery) {
+        endDateQuery.setUTCHours(23, 59, 59, 999);
+      }
+
+      const stats = await AdminService.getStats(startDateQuery, endDateQuery);
       res.status(200).json(stats);
     } catch (error) {
       next(error);
@@ -26,7 +36,10 @@ export class AdminController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
       const peerOnboarding = req.query.peerOnboarding === 'true' ? true : undefined;
-      const result = await AdminService.getUsers(page, limit, peerOnboarding);
+      const role = req.query.role as string || undefined;
+      const accountStatus = req.query.accountStatus as string || undefined;
+
+      const result = await AdminService.getUsers(page, limit, peerOnboarding, role, accountStatus);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -37,6 +50,37 @@ export class AdminController {
     try {
       const user = await AdminService.getUserById(req.params.id as string);
       res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getUserOverview(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.getUserOverview(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateUserStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { status } = req.body;
+      if (!status || (status !== 'ACTIVE' && status !== 'SUSPENDED')) {
+        return res.status(400).json({ message: "Invalid status. Must be ACTIVE or SUSPENDED" });
+      }
+      const result = await AdminService.updateUserStatus(req.params.id as string, status);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await AdminService.deleteUser(req.params.id as string);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }

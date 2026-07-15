@@ -429,6 +429,9 @@ export class ProgramsService {
             id: true,
             role: true,
             username: true,
+            phone: true,
+            email: true,
+            parentEmail: true,
             profile: {
               select: { displayName: true }
             }
@@ -698,19 +701,50 @@ export class ProgramsService {
    * Demo Sessions Methods
    * ========================================= */
 
-  static async bookDemoSession(data: any) {
+  static async bookDemoSession(data: any, loggedInUserId?: string) {
     if (!data.parentName || !data.phone || !data.classRange || !data.slotDate || !data.slotTime) {
       throw new AppError("Missing required fields for booking a demo session (parentName, phone, classRange, slotDate, slotTime)", 400);
     }
-
     const { normalizePhone } = await import("../../common/utils/phone.js");
     const normalizedPhone = normalizePhone(data.phone);
 
-    return prisma.demoSession.create({
+    // Resolve email to send confirmation to
+    let emailToSend = data.email || null;
+
+    // If logged in, prioritize retrieving email from their user record
+    if (!emailToSend && loggedInUserId) {
+      const loggedInUser = await prisma.user.findUnique({
+        where: { id: loggedInUserId }
+      });
+      if (loggedInUser) {
+        emailToSend = loggedInUser.email || loggedInUser.parentEmail || null;
+      }
+    }
+
+    // If not resolved yet (e.g. guest or missing field), check by phone search matching existing user
+    if (!emailToSend && data.phone) {
+      const rawPhone = data.phone.replace(/[^\d]/g, '');
+      const last10Digits = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
+
+      const matchingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { phone: normalizedPhone },
+            { phone: data.phone },
+            { phone: { endsWith: last10Digits } }
+          ]
+        }
+      });
+      if (matchingUser) {
+        emailToSend = matchingUser.email || matchingUser.parentEmail || null;
+      }
+    }
+
+    const demo = await prisma.demoSession.create({
       data: {
         parentName: data.parentName,
         phone: normalizedPhone,
-        email: data.email || null,
+        email: emailToSend,
         classRange: data.classRange,
         confidence: data.confidence || "",
         interests: Array.isArray(data.interests) ? data.interests : [],
@@ -724,6 +758,44 @@ export class ProgramsService {
         status: "PENDING"
       }
     });
+
+    if (emailToSend) {
+      // Trigger confirmation email asynchronously
+      try {
+        let programsList: any[] = [];
+        if (Array.isArray(data.suggestedPrograms) && data.suggestedPrograms.length > 0) {
+          programsList = await prisma.program.findMany({
+            where: {
+              OR: [
+                { id: { in: data.suggestedPrograms } },
+                { title: { in: data.suggestedPrograms } }
+              ]
+            }
+          });
+        }
+
+        const { sendDemoSessionBookedEmail } = await import("../../common/services/email.service.js");
+        await sendDemoSessionBookedEmail(emailToSend, {
+          parent_name: data.parentName,
+          phone: normalizedPhone,
+          email: emailToSend,
+          class_range: data.classRange,
+          slot_date: data.slotDate,
+          slot_time: data.slotTime,
+          comment: data.comment || data.confidence || "",
+          programs: programsList.map(p => ({
+            title: p.title,
+            classRange: p.classRange,
+            duration: p.duration,
+            thumbnailUrl: p.thumbnailUrl || undefined
+          }))
+        });
+      } catch (emailErr) {
+        console.error("Failed to send demo booking email confirmation:", emailErr);
+      }
+    }
+
+    return demo;
   }
 
   static async getUserDemosForUser(userId: string) {
