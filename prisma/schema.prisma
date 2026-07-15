@@ -78,6 +78,7 @@ model User {
   school                    School?                  @relation("SchoolCoordinator", fields: [schoolId], references: [id])
   avatar                    UserAvatar?
   userBadges                UserBadge[]
+  badgeProgress             UserBadgeProgress[]
   userDailyQuests           UserDailyQuest[]
   userLevel                 UserLevel?
   mindfulCompletions        UserMindfulActivity[]
@@ -376,6 +377,22 @@ model Badge {
   slug            String?         @unique
   rewardForQuests QuestTemplate[] @relation("BadgeReward")
   userBadges      UserBadge[]
+  userProgress    UserBadgeProgress[]
+}
+
+model UserBadgeProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  badgeId     String
+  progress    Float    @default(0)
+  currentStep Int      @default(0)
+  totalSteps  Int      @default(0)
+  metadata    Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
 }
 
 model UserBadge {
