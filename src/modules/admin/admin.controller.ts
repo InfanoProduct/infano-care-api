@@ -194,6 +194,7 @@ export class AdminController {
         status: req.query.status as string,
         paymentMethod: req.query.paymentMethod as string,
         paymentStatus: req.query.paymentStatus as string,
+        country: req.query.country as string,
         isActive,
       };
       const result = await AdminService.getOrders(page, limit, filters);
