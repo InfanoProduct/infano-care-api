@@ -953,55 +953,59 @@ export class AdminService {
       paymentMethod?: string;
       paymentStatus?: string;
       isActive?: boolean;
+      country?: string;
     }
   ) {
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const andConditions: any[] = [];
 
     if (filters?.isActive !== undefined) {
-      where.isActive = filters.isActive;
+      andConditions.push({ isActive: filters.isActive });
     }
 
     if (filters?.search) {
-      where.OR = [
-        { id: { contains: filters.search, mode: 'insensitive' } },
-        { guestName: { contains: filters.search, mode: 'insensitive' } },
-        { guestEmail: { contains: filters.search, mode: 'insensitive' } },
-        { guestPhone: { contains: filters.search, mode: 'insensitive' } },
-        { user: { username: { contains: filters.search, mode: 'insensitive' } } },
-        { user: { phone: { contains: filters.search, mode: 'insensitive' } } }
-      ];
+      andConditions.push({
+        OR: [
+          { id: { contains: filters.search, mode: 'insensitive' } },
+          { guestName: { contains: filters.search, mode: 'insensitive' } },
+          { guestEmail: { contains: filters.search, mode: 'insensitive' } },
+          { guestPhone: { contains: filters.search, mode: 'insensitive' } },
+          { user: { username: { contains: filters.search, mode: 'insensitive' } } },
+          { user: { phone: { contains: filters.search, mode: 'insensitive' } } }
+        ]
+      });
     }
 
     if (filters?.dateFrom || filters?.dateTo) {
-      where.createdAt = {};
+      const dateCond: any = {};
       if (filters.dateFrom) {
         const [year, month, day] = filters.dateFrom.split('-').map(Number) as [number, number, number];
         const fromDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
         fromDate.setMinutes(fromDate.getMinutes() - 330); // Offset to 00:00:00 IST in UTC
-        where.createdAt.gte = fromDate;
+        dateCond.gte = fromDate;
       }
       if (filters.dateTo) {
         const [year, month, day] = filters.dateTo.split('-').map(Number) as [number, number, number];
         const toDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
         toDate.setMinutes(toDate.getMinutes() - 330); // Offset to 23:59:59 IST in UTC
-        where.createdAt.lte = toDate;
+        dateCond.lte = toDate;
       }
+      andConditions.push({ createdAt: dateCond });
     }
 
     if (filters?.paymentMethod && filters.paymentMethod !== 'ALL') {
-      where.paymentMethod = filters.paymentMethod;
+      andConditions.push({ paymentMethod: filters.paymentMethod });
     }
 
     if (filters?.paymentStatus && filters.paymentStatus !== 'ALL') {
-      where.paymentStatus = filters.paymentStatus;
+      andConditions.push({ paymentStatus: filters.paymentStatus });
     }
 
     if (filters?.status && filters.status !== 'ALL') {
       if (filters.status === 'FAILED') {
         // Find explicitly FAILED or (ONLINE, no paymentId, not CANCELLED)
-        const failedCondition = {
+        andConditions.push({
           OR: [
             {
               paymentMethod: 'ONLINE',
@@ -1009,27 +1013,49 @@ export class AdminService {
               orderStatus: { not: 'CANCELLED' }
             }
           ]
-        };
-        if (where.OR) {
-          where.AND = [
-            { OR: where.OR },
-            failedCondition
-          ];
-          delete where.OR;
-        } else {
-          where.OR = failedCondition.OR;
-        }
+        });
       } else {
-        where.orderStatus = filters.status;
+        const statusCond: any = { orderStatus: filters.status };
         if (filters.status === 'PLACED') {
           // exclude FAILED logic
-          where.NOT = {
+          statusCond.NOT = {
             paymentMethod: 'ONLINE',
             razorpayPaymentId: null
           };
         }
+        andConditions.push(statusCond);
       }
     }
+
+    if (filters?.country && filters.country !== 'ALL') {
+      if (filters.country === 'IN') {
+        andConditions.push({
+          NOT: [
+            {
+              comments: {
+                path: ['country'],
+                equals: 'US'
+              }
+            },
+            {
+              comments: {
+                path: ['country'],
+                equals: 'UK'
+              }
+            }
+          ]
+        });
+      } else {
+        andConditions.push({
+          comments: {
+            path: ['country'],
+            equals: filters.country
+          }
+        });
+      }
+    }
+
+    const where = andConditions.length > 0 ? { AND: andConditions } : {};
 
     const [orders, total, allMatchingOrders] = await Promise.all([
       prisma.order.findMany({
@@ -1325,6 +1351,14 @@ export class AdminService {
   static async createBook(data: any) {
     const { promo, id, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
 
+    // Ensure numeric types for pricing fields
+    if (bookData.priceUS !== undefined) bookData.priceUS = bookData.priceUS === '' || bookData.priceUS === null ? null : Number(bookData.priceUS);
+    if (bookData.priceUK !== undefined) bookData.priceUK = bookData.priceUK === '' || bookData.priceUK === null ? null : Number(bookData.priceUK);
+    if (bookData.shippingIN !== undefined) bookData.shippingIN = Number(bookData.shippingIN);
+    if (bookData.shippingUS !== undefined) bookData.shippingUS = Number(bookData.shippingUS);
+    if (bookData.shippingUK !== undefined) bookData.shippingUK = Number(bookData.shippingUK);
+    if (bookData.codChargeIN !== undefined) bookData.codChargeIN = Number(bookData.codChargeIN);
+
     const book = await prisma.book.create({
       data: bookData
     });
@@ -1363,6 +1397,14 @@ export class AdminService {
 
   static async updateBook(id: string, data: any) {
     const { promo, id: _, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
+
+    // Ensure numeric types for pricing fields
+    if (bookData.priceUS !== undefined) bookData.priceUS = bookData.priceUS === '' || bookData.priceUS === null ? null : Number(bookData.priceUS);
+    if (bookData.priceUK !== undefined) bookData.priceUK = bookData.priceUK === '' || bookData.priceUK === null ? null : Number(bookData.priceUK);
+    if (bookData.shippingIN !== undefined) bookData.shippingIN = Number(bookData.shippingIN);
+    if (bookData.shippingUS !== undefined) bookData.shippingUS = Number(bookData.shippingUS);
+    if (bookData.shippingUK !== undefined) bookData.shippingUK = Number(bookData.shippingUK);
+    if (bookData.codChargeIN !== undefined) bookData.codChargeIN = Number(bookData.codChargeIN);
 
     const book = await prisma.book.update({
       where: { id },

@@ -41,6 +41,7 @@ jobs:
         port: 22
         source: "docker-compose.prod.yml"
         target: "/data/infano-prod/"
+        debug: true
 
     - name: deploy api to production server
       uses: appleboy/ssh-action@master
@@ -49,6 +50,7 @@ jobs:
         username: root
         password: ${{ secrets.PROD_SSH_PASSWORD }}
         port: 22
+        debug: true
         script: |
           docker login registry.pocapi.in -u "${{ secrets.REGISTRY_UNAME }}" -p "${{ secrets.REGISTRY_PWD }}"
           docker pull registry.pocapi.in/infano.api:prod-latest
