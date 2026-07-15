@@ -9,7 +9,9 @@ export type TrackerNotificationType =
   | "LATE_PERIOD" 
   | "PHASE_CHANGE" 
   | "DOCTOR_CONNECT" 
-  | "CYCLE_MILESTONE";
+  | "CYCLE_MILESTONE"
+  | "STREAK_AT_RISK"
+  | "MONTHLY_INSIGHTS";
 
 interface NotificationPayload {
   title: string;
@@ -25,11 +27,10 @@ export class TrackerNotificationService {
   static async evaluateDailyNotifications() {
     logger.info("Starting daily notification evaluation...");
     
-    // Process in batches to avoid memory issues
+    // Process all active users to support in-app notifications even without FCM tokens
     const users = await prisma.user.findMany({
       where: { 
-        accountStatus: "ACTIVE",
-        fcmToken: { not: null }
+        accountStatus: "ACTIVE"
       },
       include: {
         cycleProfile: true,
@@ -61,6 +62,17 @@ export class TrackerNotificationService {
       }
     }
 
+    // 2. Symptom Patterns Alert (Opt-in)
+    if (prefs.symptomPatterns) {
+      await this.evaluateSymptomPatterns(user);
+    }
+
+    // 3. Monthly Insights Ready (Opt-in)
+    // Triggered on the first day of the calendar month
+    if (prefs.monthlyInsights && today.getDate() === 1) {
+      await this.send(user.id, "MONTHLY_INSIGHTS");
+    }
+
     // 4. Late Period Alert (5 days after)
     if (prefs.latePeriod && cycleProfile.predictedNextStart) {
       const diffDays = Math.ceil((today.getTime() - new Date(cycleProfile.predictedNextStart).getTime()) / (1000 * 60 * 60 * 24));
@@ -79,8 +91,6 @@ export class TrackerNotificationService {
     }
 
     // 5. Phase Change Notification (Opt-in)
-    // This usually triggers on the day of transition.
-    // Logic: check if cycleProfile.currentPhase just changed today (updatedAt is today)
     if (prefs.phaseChange) {
       const updatedAt = new Date(cycleProfile.updatedAt);
       updatedAt.setHours(0, 0, 0, 0);
@@ -105,26 +115,73 @@ export class TrackerNotificationService {
    * Triggered by a separate cron or user-specific time check.
    */
   static async checkDailyLogReminders() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     const users = await prisma.user.findMany({
-      where: { fcmToken: { not: null } },
+      where: {
+        NotificationPreferences: {
+          dailyReminder: true,
+          globalEnabled: true
+        }
+      },
       include: { NotificationPreferences: true, cycleProfile: true, profile: true }
     });
 
     for (const user of users) {
-      const prefs = user.NotificationPreferences;
-      if (!prefs || !prefs.dailyReminder || !prefs.globalEnabled) continue;
+      const prefs = user.NotificationPreferences!;
+      
+      // Determine user's local time string "HH:mm" in their timezone
+      const tz = user.timezone || "UTC";
+      let localTimeStr: string;
+      try {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        localTimeStr = formatter.format(now);
+      } catch (err) {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          timeZone: "UTC",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        localTimeStr = formatter.format(now);
+      }
 
-      // Check if logged today
+      if (localTimeStr !== prefs.dailyReminderTime) {
+        continue;
+      }
+
+      // Check if logged today in user's local timezone
+      let localDateStr: string;
+      try {
+        const formatter = new Intl.DateTimeFormat("en-CA", {
+          timeZone: tz,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+        localDateStr = formatter.format(now);
+      } catch (e) {
+        const formatter = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "UTC",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+        localDateStr = formatter.format(now);
+      }
+
+      const logDate = new Date(`${localDateStr}T00:00:00.000Z`);
+
       const log = await prisma.cycleLog.findUnique({
-        where: { userId_date: { userId: user.id, date: today } }
+        where: { userId_date: { userId: user.id, date: logDate } }
       });
-      if (log && log.flow !== null) continue; // Already logged
-
-      // Check "Smart Suppression": app open in last 30 mins
-      // (This would require an 'lastActiveAt' field which we might need to add, but for now we skip)
+      
+      if (log && log.flow !== null && log.flow !== "none") continue; // Already logged
 
       await this.send(user.id, "DAILY_LOG_REMINDER", { 
         streak: user.cycleProfile?.currentLogStreak || 0,
@@ -133,16 +190,91 @@ export class TrackerNotificationService {
     }
   }
 
+  /**
+   * Checks and sends "Streak At Risk" notifications at 22:00 user local time.
+   */
+  static async checkStreakAtRiskAlerts() {
+    const now = new Date();
+
+    const users = await prisma.user.findMany({
+      where: {
+        NotificationPreferences: {
+          streakAtRisk: true,
+          globalEnabled: true
+        },
+        cycleProfile: {
+          currentLogStreak: { gt: 0 }
+        }
+      },
+      include: { NotificationPreferences: true, cycleProfile: true }
+    });
+
+    for (const user of users) {
+      const tz = user.timezone || "UTC";
+      let localTimeStr: string;
+      try {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        localTimeStr = formatter.format(now);
+      } catch (err) {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          timeZone: "UTC",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        localTimeStr = formatter.format(now);
+      }
+
+      // We alert the user at 22:00 (10:00 PM) user local time
+      if (localTimeStr !== "22:00") {
+        continue;
+      }
+
+      // Check if logged today in user's local timezone
+      let localDateStr: string;
+      try {
+        const formatter = new Intl.DateTimeFormat("en-CA", {
+          timeZone: tz,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+        localDateStr = formatter.format(now);
+      } catch (e) {
+        const formatter = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "UTC",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+        localDateStr = formatter.format(now);
+      }
+
+      const logDate = new Date(`${localDateStr}T00:00:00.000Z`);
+
+      const log = await prisma.cycleLog.findUnique({
+        where: { userId_date: { userId: user.id, date: logDate } }
+      });
+
+      if (log && log.flow !== null && log.flow !== "none") continue; // Already logged today, streak is safe!
+
+      await this.send(user.id, "STREAK_AT_RISK", {
+        streak: user.cycleProfile?.currentLogStreak || 0
+      });
+    }
+  }
+
   private static async evaluateDoctorConnect(user: any) {
-    // Logic: Intense cramps (>=4) for 3+ consecutive cycles
-    // This is complex and should ideally run on cycle completion or daily.
-    // For now, we'll check the pattern cache or recent logs.
     const lastSent = await prisma.notificationHistory.findFirst({
         where: { userId: user.id, type: "DOCTOR_CONNECT", sentAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }
     });
     if (lastSent) return; // Max 1 per 30 days
 
-    // Basic logic for demonstration: check last 3 cycle records
     const recentCycles = await prisma.cycleRecord.findMany({
         where: { userId: user.id, isComplete: true },
         orderBy: { cycleNumber: "desc" },
@@ -162,12 +294,61 @@ export class TrackerNotificationService {
   private static async evaluateMilestones(user: any) {
     const cycleCount = await prisma.cycleRecord.count({ where: { userId: user.id, isComplete: true } });
     
-    // Logic: First cycle completed
     if (cycleCount === 1) {
-        const alreadySent = await prisma.notificationHistory.findFirst({ where: { userId: user.id, type: "CYCLE_MILESTONE", payload: { path: ["milestone"], equals: "first_cycle" } } });
+        const alreadySent = await prisma.notificationHistory.findFirst({ 
+          where: { 
+            userId: user.id, 
+            type: "CYCLE_MILESTONE", 
+            payload: { path: ["milestone"], equals: "first_cycle" } 
+          } 
+        });
         if (!alreadySent) {
             await this.send(user.id, "CYCLE_MILESTONE", { milestone: "first_cycle" });
         }
+    }
+  }
+
+  /**
+   * Helper to detect and notify if user has recurring symptom patterns (logged same symptom >= 3 times in 30 days)
+   */
+  private static async evaluateSymptomPatterns(user: any) {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const logs = await prisma.cycleLog.findMany({
+      where: {
+        userId: user.id,
+        date: { gte: thirtyDaysAgo }
+      }
+    });
+
+    const symptomCounts: Record<string, number> = {};
+    for (const log of logs) {
+      if (log.symptoms && Array.isArray(log.symptoms)) {
+        for (const symptom of log.symptoms) {
+          symptomCounts[symptom] = (symptomCounts[symptom] || 0) + 1;
+        }
+      }
+    }
+
+    const recurringSymptom = Object.keys(symptomCounts).find(
+      (symptom) => (symptomCounts[symptom] ?? 0) >= 3
+    );
+
+    if (recurringSymptom) {
+      const thirtyDaysAgoForHistory = new Date();
+      thirtyDaysAgoForHistory.setDate(thirtyDaysAgoForHistory.getDate() - 30);
+      const alreadySent = await prisma.notificationHistory.findFirst({
+        where: {
+          userId: user.id,
+          type: "SYMPTOM_PATTERN",
+          sentAt: { gte: thirtyDaysAgoForHistory }
+        }
+      });
+
+      if (!alreadySent) {
+        await this.send(user.id, "SYMPTOM_PATTERN", { symptom: recurringSymptom });
+      }
     }
   }
 
@@ -177,7 +358,7 @@ export class TrackerNotificationService {
         where: { id: userId }, 
         include: { NotificationPreferences: true } 
     });
-    if (!user || !user.fcmToken || !user.NotificationPreferences?.globalEnabled) return;
+    if (!user || !user.NotificationPreferences?.globalEnabled) return;
 
     // 2. Duplicate Check (Same type, Same day)
     const today = new Date();
@@ -225,7 +406,7 @@ export class TrackerNotificationService {
       },
       SYMPTOM_PATTERN: {
         title: "Your body has a pattern 💡",
-        body: "I've noticed a recurring pattern in your symptoms. There's something worth knowing about this 💜",
+        body: `I've noticed a recurring pattern in your symptoms${data?.symptom ? ` (${data.symptom})` : ""}. There's something worth knowing about this 💜`,
         deepLink: "infano://tracker/insights",
         optOutLabel: "Cycle pattern insights"
       },
@@ -240,18 +421,36 @@ export class TrackerNotificationService {
         body: "You've logged your way through a complete cycle — that's real self-knowledge. See your first snapshot.",
         deepLink: "infano://tracker/insights",
         optOutLabel: "Cycle celebration notifications"
+      },
+      STREAK_AT_RISK: {
+        title: "Save your streak! 🔥",
+        body: `Log today to save your ${data?.streak || 0}-day tracking streak before midnight.`,
+        deepLink: "infano://tracker/log",
+        optOutLabel: "Streak at risk alerts"
+      },
+      MONTHLY_INSIGHTS: {
+        title: "Your Monthly Insights are ready! 📊",
+        body: "Your monthly reflection and analytics are compiled. Tap to view your insights summary 💜",
+        deepLink: "infano://tracker/insights",
+        optOutLabel: "Monthly insights ready notifications"
       }
     };
 
     const payload = payloads[type];
     
-    // 4. Send via Firebase
-    await FirebaseService.sendPushNotification(user.fcmToken, {
-        title: payload.title,
-        body: payload.body,
-        deepLink: payload.deepLink,
-        data: { notificationType: type }
-    });
+    // 4. Send via Firebase if token exists
+    if (user.fcmToken) {
+      try {
+        await FirebaseService.sendPushNotification(user.fcmToken, {
+            title: payload.title,
+            body: payload.body,
+            deepLink: payload.deepLink,
+            data: { notificationType: type }
+        });
+      } catch (err) {
+        logger.error({ err, userId }, "Failed to send push notification");
+      }
+    }
 
     // 5. Record History
     await prisma.notificationHistory.create({

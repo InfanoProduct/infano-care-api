@@ -129,7 +129,8 @@ export class ProgramsController {
 
   static async bookDemo(req: Request, res: Response, next: NextFunction) {
     try {
-      const demo = await ProgramsService.bookDemoSession(req.body);
+      const userId = (req as any).userId;
+      const demo = await ProgramsService.bookDemoSession(req.body, userId);
       res.status(201).json({ success: true, data: demo });
     } catch (error) {
       next(error);

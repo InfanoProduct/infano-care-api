@@ -1,6 +1,6 @@
 services:
   dev-api:
-    image: registry.pocapi.in/infano.api:dev-latest
+    image: registry.infano.care/infano.api:dev-latest
     container_name: infano-api-dev
     restart: always
     ports:

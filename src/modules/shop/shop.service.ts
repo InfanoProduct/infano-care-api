@@ -6,6 +6,7 @@ import { logger } from "../../config/logger.js";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
 import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail } from "../../common/services/email.service.js";
+import { v4 as uuidv4 } from "uuid";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -76,22 +77,61 @@ export class ShopService {
     items: { bookId: string; quantity: number }[];
     couponCode?: string;
     gstNumber?: string;
+    comments?: string;
   }) {
     const result = await prisma.$transaction(async (tx) => {
+      // Parse country from comments
+      let country = "IN";
+      if (data.comments) {
+        try {
+          const parsed = JSON.parse(data.comments);
+          if (parsed && typeof parsed === "object" && parsed.country) {
+            country = String(parsed.country).toUpperCase();
+          } else if (typeof parsed === "string") {
+            country = parsed.toUpperCase();
+          }
+        } catch (e) {
+          if (typeof data.comments === "string") {
+            const cleaned = data.comments.trim().toUpperCase();
+            if (cleaned === "US" || cleaned === "UK" || cleaned === "IN") {
+              country = cleaned;
+            }
+          }
+        }
+      }
+
+      // Generate order ID beforehand so Stripe can use it
+      const orderId = uuidv4();
+
       // 1. Calculate subtotal and verify stock
       let subtotal = 0;
       const orderItems = [];
+      const bookTitles: Record<string, string> = {};
 
       for (const item of data.items) {
         const book = await tx.book.findUnique({ where: { id: item.bookId } });
         if (!book) throw new Error(`Book not found: ${item.bookId}`);
         if (book.stock < item.quantity) throw new Error(`Out of stock: ${book.title}`);
 
-        subtotal += book.price * item.quantity;
+        bookTitles[item.bookId] = book.title;
+
+        // Apply country-specific pricing from DB; fall back to conversion if not set
+        let bookPrice = book.price;
+        if (country === "US") {
+          bookPrice = (book as any).priceUS != null
+            ? (book as any).priceUS
+            : Math.round((book.price / 83) * 100) / 100;
+        } else if (country === "UK") {
+          bookPrice = (book as any).priceUK != null
+            ? (book as any).priceUK
+            : Math.round((book.price / 105) * 100) / 100;
+        }
+
+        subtotal += bookPrice * item.quantity;
         orderItems.push({
           bookId: item.bookId,
           quantity: item.quantity,
-          price: book.price,
+          price: bookPrice,
         });
       }
 
@@ -113,32 +153,112 @@ export class ShopService {
       }
 
       // 3. Calculate GST and Total (Production Grade Reverse Calculation)
-      const taxableSubtotal = subtotal - discountAmount;
-      const deliveryCharge = data.paymentMethod === PaymentMethod.COD ? 40 : 0;
+      let taxableSubtotal = subtotal - discountAmount;
+      let taxableAmount = taxableSubtotal;
+      let cgstAmount = 0;
+      let sgstAmount = 0;
+      let gstAmount = 0;
+      let deliveryCharge = 0;
+      let totalAmount = taxableSubtotal;
 
-      // Reverse GST calculation: Price = Taxable + (Taxable * Rate) => Taxable = Price / (1 + Rate)
-      const taxableAmount = Math.round((taxableSubtotal / (1 + GST_RATE)) * 100) / 100;
-      const gstAmount = Math.round((taxableSubtotal - taxableAmount) * 100) / 100;
-      const cgstAmount = Math.round((gstAmount / 2) * 100) / 100;
-      const sgstAmount = Math.round((gstAmount / 2) * 100) / 100;
+      // Determine delivery charge from first book's DB settings (applies uniformly across items)
+      const firstBook = await tx.book.findUnique({ where: { id: data.items[0]?.bookId || "" } });
 
-      const totalAmount = taxableSubtotal + deliveryCharge;
+      if (country === "IN") {
+        const baseShipping = (firstBook as any)?.shippingIN ?? 0;
+        if (data.paymentMethod === PaymentMethod.COD) {
+          const codSurcharge = (firstBook as any)?.codChargeIN ?? 40;
+          deliveryCharge = baseShipping + codSurcharge;
+        } else {
+          deliveryCharge = baseShipping;
+        }
+        // Reverse GST calculation: Price = Taxable + (Taxable * Rate) => Taxable = Price / (1 + Rate)
+        taxableAmount = Math.round((taxableSubtotal / (1 + GST_RATE)) * 100) / 100;
+        gstAmount = Math.round((taxableSubtotal - taxableAmount) * 100) / 100;
+        cgstAmount = Math.round((gstAmount / 2) * 100) / 100;
+        sgstAmount = Math.round((gstAmount / 2) * 100) / 100;
+        totalAmount = taxableSubtotal + deliveryCharge;
+      } else if (country === "US") {
+        deliveryCharge = (firstBook as any)?.shippingUS ?? 0;
+        totalAmount = taxableSubtotal + deliveryCharge;
+      } else if (country === "UK") {
+        deliveryCharge = (firstBook as any)?.shippingUK ?? 0;
+        totalAmount = taxableSubtotal + deliveryCharge;
+      }
 
-      // 4. Create Razorpay order if needed
+      // 4. Create payment session/order if needed
       let razorpayOrderId = null;
+      let stripeSessionUrl: string | undefined = undefined;
+
       if (data.paymentMethod === PaymentMethod.ONLINE) {
-        const options = {
-          amount: Math.round(totalAmount * 100),
-          currency: "INR",
-          receipt: `rcpt_${Date.now()}`,
-        };
-        const rpOrder = await razorpay.orders.create(options);
-        razorpayOrderId = rpOrder.id;
+        if (country === "US" || country === "UK") {
+          if (env.STRIPE_SECRET_KEY) {
+            const frontendUrl = env.ALLOWED_ORIGINS?.[0] || "http://localhost:3000";
+
+            const firstItemId = data.items[0]?.bookId || "";
+            const firstItemTitle = firstItemId ? (bookTitles[firstItemId] || "Gigi Book") : "Gigi Book";
+
+            // Construct success URL with all parameters for receipt display
+            const successUrl = `${frontendUrl}/purchase-success?transaction_id=${orderId}&session_id={CHECKOUT_SESSION_ID}`
+              + `&value=${totalAmount}&quantity=${data.items[0]?.quantity || 1}&item_id=${firstItemId}`
+              + `&item_name=${encodeURIComponent(firstItemTitle)}`
+              + `&price=${orderItems[0]?.price || 0}&discount=${discountAmount}&delivery=${deliveryCharge}`
+              + `&subtotal=${subtotal}&payment_method=ONLINE`;
+
+            const params = new URLSearchParams();
+            params.append("payment_method_types[0]", "card");
+            params.append("mode", "payment");
+            params.append("success_url", successUrl);
+            params.append("cancel_url", `${frontendUrl}/checkout`);
+            if (data.guestEmail) {
+              params.append("customer_email", data.guestEmail);
+            }
+            params.append("metadata[orderId]", orderId);
+
+            // Add line items using array params syntax
+            orderItems.forEach((item, idx) => {
+              params.append(`line_items[${idx}][price_data][currency]`, country === "US" ? "usd" : "gbp");
+              params.append(`line_items[${idx}][price_data][unit_amount]`, Math.round(item.price * 100).toString());
+              params.append(`line_items[${idx}][price_data][product_data][name]`, bookTitles[item.bookId] || "Gigi Book");
+              params.append(`line_items[${idx}][quantity]`, item.quantity.toString());
+            });
+
+            const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: params.toString(),
+            });
+
+            if (!stripeRes.ok) {
+              const errBody = await stripeRes.text();
+              logger.error(`[Stripe Checkout Session Error]: ${errBody}`);
+              throw new Error("Stripe checkout session initialization failed");
+            }
+
+            const session = await stripeRes.json() as any;
+            stripeSessionUrl = session.url || undefined;
+            razorpayOrderId = `STRIPE_${session.id}`;
+          } else {
+            razorpayOrderId = `INT_MOCK_${orderId}`;
+          }
+        } else {
+          const options = {
+            amount: Math.round(totalAmount * 100),
+            currency: "INR",
+            receipt: `rcpt_${Date.now()}`,
+          };
+          const rpOrder = await razorpay.orders.create(options);
+          razorpayOrderId = rpOrder.id;
+        }
       }
 
       // 5. Create Order record
       const order = await tx.order.create({
         data: {
+          id: orderId,
           userId: data.userId,
           guestEmail: data.guestEmail,
           guestName: data.guestName,
@@ -160,6 +280,7 @@ export class ShopService {
           couponId,
           orderStatus: data.paymentMethod === PaymentMethod.COD ? OrderStatus.PLACED : OrderStatus.PLACED,
           gstNumber: data.gstNumber,
+          comments: data.comments ? JSON.parse(data.comments) : undefined,
           items: {
             create: orderItems,
           },
@@ -208,7 +329,7 @@ export class ShopService {
         }
       }
 
-      return order;
+      return { ...order, stripeSessionUrl };
     }, {
       timeout: 20000
     });
@@ -334,6 +455,12 @@ export class ShopService {
     razorpaySignature: string;
   }) {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = data;
+
+    // Bypass verification signature check for simulated and Stripe payments
+    if (razorpayOrderId.startsWith("INT_MOCK_") || razorpayOrderId.startsWith("STRIPE_")) {
+      return await this.completeOrder(razorpayOrderId, razorpayPaymentId, razorpaySignature);
+    }
+
     const body = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
       .createHmac("sha256", env.RAZORPAY_KEY_SECRET || "")
@@ -354,7 +481,7 @@ export class ShopService {
   static isValidTransition(current: OrderStatus, next: OrderStatus): boolean {
     const transitions: Record<OrderStatus, OrderStatus[]> = {
       [OrderStatus.PLACED]: [OrderStatus.PROCESSING, OrderStatus.ON_HOLD, OrderStatus.CANCELLED],
-      [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+      [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.ON_HOLD, OrderStatus.CANCELLED],
       [OrderStatus.ON_HOLD]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
       [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.DELIVERED]: [],

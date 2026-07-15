@@ -11,6 +11,6 @@ router.get("/me/demos", authenticate, ProgramsController.userDemos);
 router.get("/:id", optionalAuthenticate, ProgramsController.get);
 
 router.post("/:id/enroll", authenticate, ProgramsController.enroll);
-router.post("/demo/book", ProgramsController.bookDemo);
+router.post("/demo/book", optionalAuthenticate, ProgramsController.bookDemo);
 
 export default router;

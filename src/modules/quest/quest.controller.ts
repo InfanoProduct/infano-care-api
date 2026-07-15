@@ -34,16 +34,28 @@ export class QuestController {
 
   static async getBadges(req: Request, res: Response) {
     const userId = (req as any).user.id;
-    const earned = await QuestService.getMyBadges(userId);
+    const { earned, progress } = await QuestService.getMyBadges(userId);
     const all = await QuestService.getAllBadges();
     
-    // Map earned badges to include status
+    // Map earned badges to include status + linked unlock quests + progress
     const earnedIds = new Set(earned.map(b => b.badgeId));
-    const badgeGallery = all.map(b => ({
-      ...b,
-      isEarned: earnedIds.has(b.id),
-      awardedAt: earned.find(eb => eb.badgeId === b.id)?.awardedAt,
-    }));
+    const progressMap = new Map(progress.map(p => [p.badgeId, p]));
+
+    const badgeGallery = all.map(b => {
+      const earnedRecord = earned.find(eb => eb.badgeId === b.id);
+      const progressRecord = progressMap.get(b.id);
+
+      return {
+        ...b,
+        isEarned: earnedIds.has(b.id),
+        awardedAt: earnedRecord?.awardedAt ?? null,
+        sourceQuestId: earnedRecord?.sourceQuestId ?? null,
+        progressPercentage: progressRecord?.progress ?? 0,
+        currentStep: progressRecord?.currentStep ?? 0,
+        totalSteps: progressRecord?.totalSteps ?? 0,
+        // rewardForQuests is already included from getAllBadges()
+      };
+    });
 
     res.json({ success: true, data: badgeGallery });
   }

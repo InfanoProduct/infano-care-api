@@ -78,6 +78,7 @@ model User {
   school                    School?                  @relation("SchoolCoordinator", fields: [schoolId], references: [id])
   avatar                    UserAvatar?
   userBadges                UserBadge[]
+  badgeProgress             UserBadgeProgress[]
   userDailyQuests           UserDailyQuest[]
   userLevel                 UserLevel?
   mindfulCompletions        UserMindfulActivity[]
@@ -376,6 +377,22 @@ model Badge {
   slug            String?         @unique
   rewardForQuests QuestTemplate[] @relation("BadgeReward")
   userBadges      UserBadge[]
+  userProgress    UserBadgeProgress[]
+}
+
+model UserBadgeProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  badgeId     String
+  progress    Float    @default(0)
+  currentStep Int      @default(0)
+  totalSteps  Int      @default(0)
+  metadata    Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
 }
 
 model UserBadge {
@@ -925,16 +942,22 @@ model FriendMessage {
 }
 
 model Book {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  imageUrl    String?
-  stock       Int         @default(0)
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  orderItems  OrderItem[]
+  id               String      @id @default(uuid())
+  title            String
+  description      String
+  price            Float                    // India unit price (INR)
+  priceUS          Float?                   // USA unit price (USD); if null falls back to conversion
+  priceUK          Float?                   // UK unit price (GBP); if null falls back to conversion
+  shippingIN       Float       @default(0)  // India shipping for both payment methods (INR)
+  shippingUS       Float       @default(0)  // USA shipping (USD) - ONLINE only
+  shippingUK       Float       @default(0)  // UK shipping (GBP) - ONLINE only
+  codChargeIN      Float       @default(40) // India COD Surcharge (INR)
+  imageUrl         String?
+  stock            Int         @default(0)
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  orderItems       OrderItem[]
 }
 
 model Order {
