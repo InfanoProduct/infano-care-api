@@ -1,6 +1,6 @@
 services:
   prod-api:
-    image: registry.pocapi.in/infano.api:prod-latest
+    image: registry.infano.care/infano.api:prod-latest
     container_name: infano-api-prod
     restart: always
     ports:

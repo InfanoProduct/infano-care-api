@@ -18,7 +18,7 @@ jobs:
     - name: Login to Docker registry
       uses: docker/login-action@v3
       with:
-        registry: registry.pocapi.in
+        registry: registry.infano.care
         username: ${{ secrets.REGISTRY_UNAME }}
         password: ${{ secrets.REGISTRY_PWD }}
         
@@ -27,7 +27,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: registry.pocapi.in/infano.api:prod-latest
+        tags: registry.infano.care/infano.api:prod-latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
         provenance: false
@@ -52,8 +52,8 @@ jobs:
         port: 22
         debug: true
         script: |
-          docker login registry.pocapi.in -u "${{ secrets.REGISTRY_UNAME }}" -p "${{ secrets.REGISTRY_PWD }}"
-          docker pull registry.pocapi.in/infano.api:prod-latest
+          docker login registry.infano.care -u "${{ secrets.REGISTRY_UNAME }}" -p "${{ secrets.REGISTRY_PWD }}"
+          docker pull registry.infano.care/infano.api:prod-latest
           mkdir -p /data/infano-prod
           cd /data/infano-prod
           
