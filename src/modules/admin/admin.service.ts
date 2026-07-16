@@ -959,29 +959,125 @@ export class AdminService {
   ) {
     const skip = (page - 1) * limit;
 
+    if (filters?.isWebinar === true) {
+      const andConditions: any[] = [];
+
+      if (filters?.search) {
+        andConditions.push({
+          OR: [
+            { id: { contains: filters.search, mode: 'insensitive' } },
+            { guestName: { contains: filters.search, mode: 'insensitive' } },
+            { guestEmail: { contains: filters.search, mode: 'insensitive' } },
+            { guestPhone: { contains: filters.search, mode: 'insensitive' } },
+            { user: { username: { contains: filters.search, mode: 'insensitive' } } },
+            { user: { phone: { contains: filters.search, mode: 'insensitive' } } }
+          ]
+        });
+      }
+
+      if (filters?.paymentStatus && filters.paymentStatus !== 'ALL') {
+        andConditions.push({ paymentStatus: filters.paymentStatus });
+      }
+
+      const where = andConditions.length > 0 ? { AND: andConditions } : {};
+
+      const [registrations, total, allMatching] = await Promise.all([
+        prisma.webinarRegistration.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            webinar: true,
+            user: {
+              select: { phone: true, username: true }
+            }
+          },
+          orderBy: { createdAt: "desc" }
+        }),
+        prisma.webinarRegistration.count({ where }),
+        prisma.webinarRegistration.findMany({
+          where,
+          select: {
+            amount: true,
+            paymentStatus: true,
+            paymentMethod: true
+          }
+        })
+      ]);
+
+      let totalRevenue = 0;
+      let activePasses = 0;
+      let pendingPayments = 0;
+
+      for (const r of allMatching) {
+        const amt = Number(r.amount) || 0;
+        if (r.paymentStatus === 'COMPLETED') {
+          totalRevenue += amt;
+          activePasses++;
+        } else if (r.paymentStatus === 'PENDING') {
+          pendingPayments++;
+        }
+      }
+
+      const mappedOrders = registrations.map((r) => ({
+        id: r.id,
+        guestName: r.guestName,
+        guestEmail: r.guestEmail,
+        guestPhone: r.guestPhone,
+        paymentStatus: r.paymentStatus,
+        paymentMethod: r.paymentMethod,
+        totalAmount: r.amount,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        items: [
+          {
+            bookId: r.webinarId,
+            book: {
+              id: r.webinarId,
+              title: r.webinar.title
+            }
+          }
+        ],
+        user: r.user
+      }));
+
+      return {
+        orders: mappedOrders,
+        pagination: {
+          total,
+          page,
+          limit,
+          pages: Math.ceil(total / limit)
+        },
+        stats: {
+          totalOrders: activePasses,
+          totalRevenue,
+          onlineRevenue: totalRevenue,
+          codRevenue: 0,
+          onlineCount: registrations.filter(r => r.paymentMethod === 'ONLINE').length,
+          codCount: registrations.filter(r => r.paymentMethod === 'COD').length,
+          placedCount: activePasses,
+          processingCount: 0,
+          onHoldCount: pendingPayments,
+          shippedCount: 0,
+          deliveredCount: 0,
+          failedCount: registrations.filter(r => r.paymentStatus === 'FAILED').length,
+          cancelledCount: 0
+        }
+      };
+    }
+
     const andConditions: any[] = [];
 
-    if (filters?.isWebinar === true) {
-      andConditions.push({
-        items: {
-          some: {
-            bookId: {
-              startsWith: 'webinar-'
-            }
+    andConditions.push({
+      items: {
+        none: {
+          bookId: {
+            startsWith: 'webinar-'
           }
         }
-      });
-    } else {
-      andConditions.push({
-        items: {
-          none: {
-            bookId: {
-              startsWith: 'webinar-'
-            }
-          }
-        }
-      });
-    }
+      }
+    });
 
     if (filters?.isActive !== undefined) {
       andConditions.push({ isActive: filters.isActive });
@@ -1186,7 +1282,7 @@ export class AdminService {
   }
 
   static async getOrderById(id: string) {
-    return prisma.order.findUnique({
+    const order = await prisma.order.findUnique({
       where: { id },
       include: {
         items: {
@@ -1195,6 +1291,45 @@ export class AdminService {
         user: true
       }
     });
+
+    if (order) return order;
+
+    const registration = await prisma.webinarRegistration.findUnique({
+      where: { id },
+      include: {
+        webinar: true,
+        user: true
+      }
+    });
+
+    if (registration) {
+      return {
+        id: registration.id,
+        guestName: registration.guestName,
+        guestEmail: registration.guestEmail,
+        guestPhone: registration.guestPhone,
+        paymentStatus: registration.paymentStatus,
+        paymentMethod: registration.paymentMethod,
+        razorpayOrderId: registration.razorpayOrderId,
+        razorpayPaymentId: registration.razorpayPaymentId,
+        razorpaySignature: registration.razorpaySignature,
+        totalAmount: registration.amount,
+        createdAt: registration.createdAt,
+        updatedAt: registration.updatedAt,
+        items: [
+          {
+            bookId: registration.webinarId,
+            book: {
+              id: registration.webinarId,
+              title: registration.webinar.title
+            }
+          }
+        ],
+        user: registration.user
+      };
+    }
+
+    return null;
   }
 
   static async updateOrderStatus(id: string, status: any, awbNumber?: string) {
@@ -1480,6 +1615,82 @@ export class AdminService {
 
   static async deleteBook(id: string) {
     return prisma.book.delete({ where: { id } });
+  }
+
+  static async getWebinars() {
+    return await prisma.webinar.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  static async createWebinar(data: any) {
+    if (!data.slug) {
+      data.slug = data.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      if (!data.slug) {
+        data.slug = crypto.randomUUID();
+      }
+    }
+    
+    const existing = await prisma.webinar.findUnique({ where: { slug: data.slug } });
+    if (existing) {
+      data.slug = `${data.slug}-${Math.floor(Math.random() * 1000)}`;
+    }
+
+    if (data.date) {
+      data.date = new Date(data.date);
+    }
+    if (data.price !== undefined) {
+      data.price = Number(data.price);
+    }
+
+    return await prisma.webinar.create({
+      data
+    });
+  }
+
+  static async updateWebinar(idOrSlug: string, data: any) {
+    const webinar = await prisma.webinar.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
+    });
+    if (!webinar) throw new Error("Webinar not found");
+
+    if (data.date) {
+      data.date = new Date(data.date);
+    }
+    if (data.price !== undefined) {
+      data.price = Number(data.price);
+    }
+    if (data.slug) {
+      const existing = await prisma.webinar.findUnique({ where: { slug: data.slug } });
+      if (existing && existing.id !== webinar.id) {
+        throw new Error("Webinar slug already in use");
+      }
+    }
+
+    return await prisma.webinar.update({
+      where: { id: webinar.id },
+      data
+    });
+  }
+
+  static async getWebinar(idOrSlug: string) {
+    return await prisma.webinar.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
+    });
+  }
+
+  static async deleteWebinar(idOrSlug: string) {
+    const webinar = await prisma.webinar.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
+    });
+    if (!webinar) throw new Error("Webinar not found");
+
+    return await prisma.webinar.delete({
+      where: { id: webinar.id }
+    });
   }
 
   // Circle Management

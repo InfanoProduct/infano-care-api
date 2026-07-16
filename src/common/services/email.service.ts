@@ -145,8 +145,11 @@ export const sendWebinarConfirmationEmail = async (to: string, data: {
   download_pdf_url: string;
   whatsapp_group_url: string;
   zoom_link: string;
+  webinar_title?: string;
+  webinar_platform?: string;
 }) => {
-  const subject = `You're Confirmed! Decoding Her Silence Parent Webinar 🎉`;
+  const title = data.webinar_title || "Decoding Her Silence Parent Webinar";
+  const subject = `You're Confirmed! ${title} 🎉`;
   const preheaderText = "Your registration details and free bonuses inside.";
   const html = await compileEmailTemplate('webinar-registered', { ...data, subject, preheaderText });
   return sendEmail(to, subject, html);

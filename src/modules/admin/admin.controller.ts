@@ -356,6 +356,54 @@ export class AdminController {
     }
   }
 
+  static async getWebinars(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const webinars = await AdminService.getWebinars();
+      res.status(200).json(webinars);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getWebinar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const webinar = await AdminService.getWebinar(req.params.id as string);
+      if (!webinar) {
+        return res.status(404).json({ message: "Webinar not found" });
+      }
+      res.status(200).json(webinar);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createWebinar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const webinar = await AdminService.createWebinar(req.body);
+      res.status(201).json(webinar);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateWebinar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const webinar = await AdminService.updateWebinar(req.params.id as string, req.body);
+      res.status(200).json(webinar);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteWebinar(req: Request, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteWebinar(req.params.id as string);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Circle Management
   static async getCircles(_req: Request, res: Response, next: NextFunction) {
     try {

@@ -60,6 +60,13 @@ router.post("/books", AdminController.createBook);
 router.patch("/books/:id", AdminController.updateBook);
 router.delete("/books/:id", AdminController.deleteBook);
 
+// Webinar Management
+router.get("/webinars", AdminController.getWebinars);
+router.get("/webinars/:id", AdminController.getWebinar);
+router.post("/webinars", AdminController.createWebinar);
+router.patch("/webinars/:id", AdminController.updateWebinar);
+router.delete("/webinars/:id", AdminController.deleteWebinar);
+
 // Circle Management
 router.get("/circles", AdminController.getCircles);
 router.post("/circles", AdminController.createCircle);

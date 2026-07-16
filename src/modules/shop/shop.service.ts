@@ -44,6 +44,12 @@ export class ShopService {
     return { ...book, coupon };
   }
 
+  static async getWebinarBySlug(slug: string) {
+    return await prisma.webinar.findFirst({
+      where: { slug, isActive: true },
+    });
+  }
+
   static async validateCoupon(code: string, amount: number) {
     const coupon = await prisma.discountCoupon.findUnique({
       where: { code, isActive: true },
@@ -81,6 +87,113 @@ export class ShopService {
     comments?: string;
   }) {
     const result = await prisma.$transaction(async (tx) => {
+      // Check if it's a webinar checkout
+      const isWebinarCheckout = data.items.some(item => item && item.bookId.startsWith("webinar-"));
+      if (isWebinarCheckout) {
+        if (data.items.length !== 1) {
+          throw new Error("Webinar registration cannot be combined with other items.");
+        }
+        const item = data.items[0];
+        if (!item) {
+          throw new Error("No items in checkout.");
+        }
+        const webinar = await tx.webinar.findUnique({
+          where: { id: item.bookId }
+        });
+        if (!webinar) {
+          throw new Error(`Webinar not found: ${item.bookId}`);
+        }
+        if (!webinar.isActive) {
+          throw new Error(`Webinar is not active: ${webinar.title}`);
+        }
+
+        let subtotal = webinar.price;
+        let discountAmount = 0;
+        let couponId = null;
+
+        if (data.couponCode) {
+          const { coupon, discountAmount: calculatedDiscount } = await this.validateCoupon(data.couponCode, subtotal);
+          discountAmount = calculatedDiscount;
+          couponId = coupon.id;
+
+          // For COD, increment coupon immediately.
+          if (data.paymentMethod === PaymentMethod.COD) {
+            await tx.discountCoupon.update({
+              where: { id: coupon.id },
+              data: { usedCount: { increment: 1 } }
+            });
+          }
+        }
+
+        let totalAmount = subtotal - discountAmount;
+        if (totalAmount < 0) totalAmount = 0;
+
+        let razorpayOrderId = null;
+        if (data.paymentMethod === PaymentMethod.ONLINE) {
+          const options = {
+            amount: Math.round(totalAmount * 100),
+            currency: "INR",
+            receipt: `rcpt_webinar_${Date.now()}`,
+          };
+          const rpOrder = await razorpay.orders.create(options);
+          razorpayOrderId = rpOrder.id;
+        }
+
+        const registrationId = uuidv4();
+
+        const registration = await tx.webinarRegistration.create({
+          data: {
+            id: registrationId,
+            webinarId: webinar.id,
+            userId: data.userId || undefined,
+            guestName: data.guestName,
+            guestEmail: data.guestEmail,
+            guestPhone: data.guestPhone,
+            paymentStatus: data.paymentMethod === PaymentMethod.COD ? PaymentStatus.COMPLETED : PaymentStatus.PENDING,
+            paymentMethod: data.paymentMethod,
+            razorpayOrderId,
+            amount: totalAmount,
+          }
+        });
+
+        // Update User Profile if userId is present
+        if (data.userId) {
+          const updateData: any = {
+            profile: {
+              upsert: {
+                create: { displayName: data.guestName || "User" },
+                update: { displayName: data.guestName },
+              }
+            }
+          };
+          if (data.guestEmail) {
+            const emailExists = await tx.user.findFirst({
+              where: {
+                email: data.guestEmail,
+                id: { not: data.userId }
+              }
+            });
+            if (!emailExists) {
+              updateData.email = data.guestEmail;
+            }
+          }
+          await tx.user.update({
+            where: { id: data.userId },
+            data: updateData
+          });
+        }
+
+        return {
+          id: registration.id,
+          totalAmount: registration.amount,
+          razorpayOrderId: registration.razorpayOrderId,
+          paymentMethod: registration.paymentMethod,
+          paymentStatus: registration.paymentStatus,
+          createdAt: registration.createdAt,
+          updatedAt: registration.updatedAt,
+        } as any;
+      }
+
       // Parse country from comments
       let country = "IN";
       if (data.comments) {
@@ -335,8 +448,9 @@ export class ShopService {
       timeout: 20000
     });
 
-    if (result.paymentMethod === PaymentMethod.COD && result.guestEmail) {
-      this._sendPlacedEmail(result);
+    const finalResult = result as any;
+    if (finalResult.paymentMethod === PaymentMethod.COD && finalResult.guestEmail) {
+      this._sendPlacedEmail(finalResult);
     }
 
     return result;
@@ -347,7 +461,92 @@ export class ShopService {
       where: { razorpayOrderId },
       include: { items: { include: { book: true } } }
     });
-    if (!order) return null;
+    if (!order) {
+      // Check if it's a webinar registration
+      const registration = await prisma.webinarRegistration.findUnique({
+        where: { razorpayOrderId },
+        include: { webinar: true }
+      });
+      if (!registration) return null;
+
+      if (registration.paymentStatus === PaymentStatus.COMPLETED) {
+        return registration; // already completed
+      }
+
+      // Find or create user from guestPhone if userId is missing
+      let userId = registration.userId;
+      if (!userId && registration.guestPhone) {
+        const normalized = normalizePhone(registration.guestPhone);
+        let user = await prisma.user.findUnique({ where: { phone: normalized } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              phone: normalized,
+              accountStatus: "PENDING_SETUP",
+              onboardingStep: 1,
+              role: "PARENT",
+              profile: {
+                create: {
+                  displayName: registration.guestName || "Parent",
+                  totalPoints: 0,
+                }
+              }
+            }
+          });
+        }
+        userId = user.id;
+      }
+
+      // Update webinar registration status to COMPLETED
+      const updatedRegistration = await prisma.webinarRegistration.update({
+        where: { razorpayOrderId },
+        data: {
+          paymentStatus: PaymentStatus.COMPLETED,
+          razorpayPaymentId,
+          razorpaySignature,
+          userId: userId || undefined,
+        },
+        include: { webinar: true }
+      });
+
+      // Send webinar confirmation email using dynamic date & time
+      if (updatedRegistration.guestEmail) {
+        const webinar = updatedRegistration.webinar;
+        
+        // Dynamic Date & Time formatting from DB
+        const date = webinar.date;
+        const formatterDate = new Intl.DateTimeFormat('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'Asia/Kolkata'
+        });
+        const formatterTime = new Intl.DateTimeFormat('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'Asia/Kolkata'
+        });
+
+        const webinar_date = formatterDate.format(date);
+        const webinar_time = `${formatterTime.format(date)} (IST)`;
+
+        sendWebinarConfirmationEmail(updatedRegistration.guestEmail, {
+          parent_name: updatedRegistration.guestName || "Parent",
+          order_id: updatedRegistration.id.slice(-8).toUpperCase(),
+          webinar_date,
+          webinar_time,
+          download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
+          whatsapp_group_url: "https://chat.whatsapp.com/mock-parent-community-group",
+          zoom_link: webinar.zoomLink || webinar.link || "https://zoom.us/j/mock-webinar-id",
+          webinar_title: webinar.title,
+          webinar_platform: webinar.mode === 'ONLINE' ? 'Zoom (Live Online Session)' : 'Offline Session'
+        }).catch(err => logger.error({ err, registrationId: updatedRegistration.id }, "[EMAIL] Failed to send webinar registration email"));
+      }
+
+      return updatedRegistration;
+    }
 
     if (order.paymentStatus === PaymentStatus.COMPLETED) {
       return order; // already completed
@@ -408,15 +607,57 @@ export class ShopService {
     if (order.guestEmail) {
       const containsWebinar = order.items.some((i: any) => i.bookId.startsWith("webinar-"));
       if (containsWebinar) {
-        sendWebinarConfirmationEmail(order.guestEmail, {
-          parent_name: order.guestName || "Parent",
-          order_id: order.id.slice(-8).toUpperCase(),
-          webinar_date: "Saturday, July 25, 2026",
-          webinar_time: "05:00 PM (IST)",
-          download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
-          whatsapp_group_url: "https://chat.whatsapp.com/mock-parent-community-group",
-          zoom_link: "https://zoom.us/j/mock-webinar-id"
-        }).catch(err => logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send webinar email"));
+        (async () => {
+          try {
+            const webinarItem = order.items.find((i: any) => i.bookId.startsWith("webinar-"));
+            let webinarDateStr = "Saturday, July 25, 2026";
+            let webinarTimeStr = "05:00 PM (IST)";
+            let webinarZoomLink = "https://zoom.us/j/mock-webinar-id";
+            let webinarTitle = "Decoding Her Silence Parent Webinar";
+            let webinarPlatform = "Zoom (Live Online Session)";
+
+            if (webinarItem) {
+              const webinar = await prisma.webinar.findUnique({
+                where: { id: webinarItem.bookId }
+              });
+              if (webinar) {
+                const date = webinar.date;
+                const formatterDate = new Intl.DateTimeFormat('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  timeZone: 'Asia/Kolkata'
+                });
+                const formatterTime = new Intl.DateTimeFormat('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                  timeZone: 'Asia/Kolkata'
+                });
+                webinarDateStr = formatterDate.format(date);
+                webinarTimeStr = `${formatterTime.format(date)} (IST)`;
+                webinarZoomLink = webinar.zoomLink || webinar.link || webinarZoomLink;
+                webinarTitle = webinar.title;
+                webinarPlatform = webinar.mode === 'ONLINE' ? 'Zoom (Live Online Session)' : 'Offline Session';
+              }
+            }
+
+            await sendWebinarConfirmationEmail(order.guestEmail!, {
+              parent_name: order.guestName || "Parent",
+              order_id: order.id.slice(-8).toUpperCase(),
+              webinar_date: webinarDateStr,
+              webinar_time: webinarTimeStr,
+              download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
+              whatsapp_group_url: "https://chat.whatsapp.com/mock-parent-community-group",
+              zoom_link: webinarZoomLink,
+              webinar_title: webinarTitle,
+              webinar_platform: webinarPlatform
+            });
+          } catch (err) {
+            logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send webinar email");
+          }
+        })();
       } else {
         this._sendPlacedEmail({ ...order, paymentStatus: PaymentStatus.COMPLETED });
       }
@@ -484,10 +725,21 @@ export class ShopService {
     if (expectedSignature === razorpaySignature) {
       return await this.completeOrder(razorpayOrderId, razorpayPaymentId, razorpaySignature);
     } else {
-      await prisma.order.update({
-        where: { razorpayOrderId },
-        data: { paymentStatus: PaymentStatus.FAILED }
-      });
+      const order = await prisma.order.findUnique({ where: { razorpayOrderId } });
+      if (order) {
+        await prisma.order.update({
+          where: { razorpayOrderId },
+          data: { paymentStatus: PaymentStatus.FAILED }
+        });
+      } else {
+        const registration = await prisma.webinarRegistration.findUnique({ where: { razorpayOrderId } });
+        if (registration) {
+          await prisma.webinarRegistration.update({
+            where: { razorpayOrderId },
+            data: { paymentStatus: PaymentStatus.FAILED }
+          });
+        }
+      }
       throw new Error("Payment verification failed: Invalid signature");
     }
   }
@@ -570,10 +822,21 @@ export class ShopService {
     } else if (event.event === "payment.failed") {
       const { order_id: razorpayOrderId } = event.payload.payment.entity;
 
-      await prisma.order.update({
-        where: { razorpayOrderId },
-        data: { paymentStatus: PaymentStatus.FAILED }
-      });
+      const order = await prisma.order.findUnique({ where: { razorpayOrderId } });
+      if (order) {
+        await prisma.order.update({
+          where: { razorpayOrderId },
+          data: { paymentStatus: PaymentStatus.FAILED }
+        });
+      } else {
+        const registration = await prisma.webinarRegistration.findUnique({ where: { razorpayOrderId } });
+        if (registration) {
+          await prisma.webinarRegistration.update({
+            where: { razorpayOrderId },
+            data: { paymentStatus: PaymentStatus.FAILED }
+          });
+        }
+      }
     }
 
     return { received: true };
