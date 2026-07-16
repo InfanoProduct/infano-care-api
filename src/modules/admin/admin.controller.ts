@@ -240,6 +240,7 @@ export class AdminController {
         paymentStatus: req.query.paymentStatus as string,
         country: req.query.country as string,
         isActive,
+        isWebinar: req.query.isWebinar === 'true',
       };
       const result = await AdminService.getOrders(page, limit, filters);
       res.status(200).json(result);
@@ -318,9 +319,10 @@ export class AdminController {
   }
 
   // Book Management
-  static async getBooks(_req: Request, res: Response, next: NextFunction) {
+  static async getBooks(req: Request, res: Response, next: NextFunction) {
     try {
-      const books = await AdminService.getBooks();
+      const isWebinar = req.query.isWebinar === 'true';
+      const books = await AdminService.getBooks(isWebinar);
       res.status(200).json(books);
     } catch (error) {
       next(error);

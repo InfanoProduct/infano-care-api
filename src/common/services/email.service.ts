@@ -136,3 +136,19 @@ export const sendDemoSessionBookedEmail = async (to: string, data: {
   const html = await compileEmailTemplate('demo-session-booked', { ...data, subject, preheaderText });
   return sendEmail(to, subject, html);
 };
+
+export const sendWebinarConfirmationEmail = async (to: string, data: {
+  parent_name: string;
+  order_id: string;
+  webinar_date: string;
+  webinar_time: string;
+  download_pdf_url: string;
+  whatsapp_group_url: string;
+  zoom_link: string;
+}) => {
+  const subject = `You're Confirmed! Decoding Her Silence Parent Webinar 🎉`;
+  const preheaderText = "Your registration details and free bonuses inside.";
+  const html = await compileEmailTemplate('webinar-registered', { ...data, subject, preheaderText });
+  return sendEmail(to, subject, html);
+};
+

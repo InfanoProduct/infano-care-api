@@ -954,11 +954,34 @@ export class AdminService {
       paymentStatus?: string;
       isActive?: boolean;
       country?: string;
+      isWebinar?: boolean;
     }
   ) {
     const skip = (page - 1) * limit;
 
     const andConditions: any[] = [];
+
+    if (filters?.isWebinar === true) {
+      andConditions.push({
+        items: {
+          some: {
+            bookId: {
+              startsWith: 'webinar-'
+            }
+          }
+        }
+      });
+    } else {
+      andConditions.push({
+        items: {
+          none: {
+            bookId: {
+              startsWith: 'webinar-'
+            }
+          }
+        }
+      });
+    }
 
     if (filters?.isActive !== undefined) {
       andConditions.push({ isActive: filters.isActive });
@@ -1332,12 +1355,19 @@ export class AdminService {
   }
 
   // Book Management
-  static async getBooks() {
+  static async getBooks(isWebinar: boolean = false) {
     const books = await prisma.book.findMany({
       where: {
-        NOT: [
-          { id: { endsWith: "-private" } },
-          { id: { endsWith: "-group" } }
+        AND: [
+          {
+            NOT: [
+              { id: { endsWith: "-private" } },
+              { id: { endsWith: "-group" } }
+            ]
+          },
+          isWebinar
+            ? { id: { startsWith: "webinar-" } }
+            : { NOT: { id: { startsWith: "webinar-" } } }
         ]
       },
       orderBy: { createdAt: "desc" }

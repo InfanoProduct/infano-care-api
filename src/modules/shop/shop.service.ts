@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { logger } from "../../config/logger.js";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
-import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail } from "../../common/services/email.service.js";
+import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail, sendWebinarConfirmationEmail } from "../../common/services/email.service.js";
 import { v4 as uuidv4 } from "uuid";
 
 const razorpay = new Razorpay({
@@ -22,7 +22,8 @@ export class ShopService {
         isActive: true,
         NOT: [
           { id: { endsWith: "-private" } },
-          { id: { endsWith: "-group" } }
+          { id: { endsWith: "-group" } },
+          { id: { startsWith: "webinar-" } }
         ]
       },
     });
@@ -405,7 +406,20 @@ export class ShopService {
     }
 
     if (order.guestEmail) {
-      this._sendPlacedEmail({ ...order, paymentStatus: PaymentStatus.COMPLETED });
+      const containsWebinar = order.items.some((i: any) => i.bookId.startsWith("webinar-"));
+      if (containsWebinar) {
+        sendWebinarConfirmationEmail(order.guestEmail, {
+          parent_name: order.guestName || "Parent",
+          order_id: order.id.slice(-8).toUpperCase(),
+          webinar_date: "Saturday, July 25, 2026",
+          webinar_time: "05:00 PM (IST)",
+          download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
+          whatsapp_group_url: "https://chat.whatsapp.com/mock-parent-community-group",
+          zoom_link: "https://zoom.us/j/mock-webinar-id"
+        }).catch(err => logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send webinar email"));
+      } else {
+        this._sendPlacedEmail({ ...order, paymentStatus: PaymentStatus.COMPLETED });
+      }
     }
 
     // 2. Automatically create program enrollment if ordered item is a program
