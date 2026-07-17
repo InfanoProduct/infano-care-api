@@ -87,6 +87,17 @@ export class ShopService {
     comments?: string;
   }) {
     const result = await prisma.$transaction(async (tx) => {
+      // Resolve valid userId (checking if the user actually exists in DB to prevent foreign key violation)
+      let resolvedUserId: string | undefined = undefined;
+      if (data.userId && typeof data.userId === "string" && data.userId.trim() !== "" && data.userId !== "null" && data.userId !== "undefined") {
+        const userExists = await tx.user.findUnique({
+          where: { id: data.userId }
+        });
+        if (userExists) {
+          resolvedUserId = data.userId;
+        }
+      }
+
       // Check if it's a webinar checkout
       const isWebinarCheckout = data.items.some(item => item && item.bookId.startsWith("webinar-"));
       if (isWebinarCheckout) {
@@ -145,7 +156,7 @@ export class ShopService {
           data: {
             id: registrationId,
             webinarId: webinar.id,
-            userId: data.userId || undefined,
+            userId: resolvedUserId,
             guestName: data.guestName,
             guestEmail: data.guestEmail,
             guestPhone: data.guestPhone,
@@ -157,7 +168,7 @@ export class ShopService {
         });
 
         // Update User Profile if userId is present
-        if (data.userId) {
+        if (resolvedUserId) {
           const updateData: any = {
             profile: {
               upsert: {
@@ -170,7 +181,7 @@ export class ShopService {
             const emailExists = await tx.user.findFirst({
               where: {
                 email: data.guestEmail,
-                id: { not: data.userId }
+                id: { not: resolvedUserId }
               }
             });
             if (!emailExists) {
@@ -178,7 +189,7 @@ export class ShopService {
             }
           }
           await tx.user.update({
-            where: { id: data.userId },
+            where: { id: resolvedUserId },
             data: updateData
           });
         }
@@ -373,7 +384,7 @@ export class ShopService {
       const order = await tx.order.create({
         data: {
           id: orderId,
-          userId: data.userId,
+          userId: resolvedUserId,
           guestEmail: data.guestEmail,
           guestName: data.guestName,
           guestPhone: data.guestPhone,
@@ -405,7 +416,7 @@ export class ShopService {
       });
 
       // 6. Update User Profile if userId is present (as requested)
-      if (data.userId) {
+      if (resolvedUserId) {
         const updateData: any = {
           profile: {
             upsert: {
@@ -419,7 +430,7 @@ export class ShopService {
           const emailExists = await tx.user.findFirst({
             where: {
               email: data.guestEmail,
-              id: { not: data.userId }
+              id: { not: resolvedUserId }
             }
           });
           if (!emailExists) {
@@ -428,7 +439,7 @@ export class ShopService {
         }
 
         await tx.user.update({
-          where: { id: data.userId },
+          where: { id: resolvedUserId },
           data: updateData
         });
       }
