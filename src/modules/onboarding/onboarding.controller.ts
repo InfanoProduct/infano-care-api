@@ -27,7 +27,7 @@ const journeyNameSchema = z.object({
 const setupProfileSchema = z.object({
   displayName:    z.string().min(2).max(30).regex(/^[a-zA-Z0-9\s\-''\u00C0-\u024F\u0900-\u097F]+$/u, "Name contains invalid characters"),
   birthMonth:     z.number().int().min(1).max(12),
-  birthYear:      z.number().int().min(1994).max(new Date().getFullYear() - 3),
+  birthYear:      z.number().int().min(1950).max(new Date().getFullYear() - 3),
   termsAccepted:  z.literal(true),
   privacyAccepted:z.literal(true),
   marketingOptIn: z.boolean().optional().default(false),

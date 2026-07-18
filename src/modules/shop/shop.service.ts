@@ -854,6 +854,36 @@ export class ShopService {
   }
 
   static async getUserOrders(userId: string) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phone: true }
+      });
+      if (user?.phone) {
+        const normalizedPhone = normalizePhone(user.phone);
+        await prisma.order.updateMany({
+          where: {
+            guestPhone: normalizedPhone,
+            userId: { not: userId }
+          },
+          data: {
+            userId
+          }
+        });
+        await prisma.webinarRegistration.updateMany({
+          where: {
+            guestPhone: normalizedPhone,
+            userId: { not: userId }
+          },
+          data: {
+            userId
+          }
+        });
+      }
+    } catch (syncErr) {
+      logger.error({ err: syncErr, userId }, "Failed to sync guest orders/registrations in getUserOrders");
+    }
+
     const orders = await prisma.order.findMany({
       where: { userId },
       include: {

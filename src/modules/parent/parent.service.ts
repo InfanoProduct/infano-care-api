@@ -19,24 +19,9 @@ export class ParentService {
     });
     if (!sender) throw new Error("Sender not found");
 
-    if (receiverPhone === "1234567890") {
+    let testUser = await prisma.user.findUnique({ where: { phone: receiverPhone } });
+    if (testUser?.isTestNumber) {
       // Bypass logic for test account
-      let testUser = await prisma.user.findUnique({ where: { phone: receiverPhone } });
-      if (!testUser) {
-        testUser = await prisma.user.create({
-          data: {
-            phone: receiverPhone,
-            role: "TEEN",
-            accountStatus: "ACTIVE",
-            profile: {
-              create: {
-                displayName: "Test Daughter",
-                totalPoints: 0,
-              }
-            }
-          }
-        });
-      }
 
       const existing = await prisma.parentLink.findUnique({
         where: { senderId_receiverPhone: { senderId, receiverPhone } }

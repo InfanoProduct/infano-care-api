@@ -812,11 +812,12 @@ export class AdminService {
       }
     });
 
-    // 2. Downgrade role to TEEN if they were PEER
+    // 2. Downgrade role to PARENT or TEEN if they were PEER
     if (user.role === 'PEER') {
+      const targetRole = (user.contentTier === 'ADULT' || !user.ageAtSignup) ? 'PARENT' : 'TEEN';
       await prisma.user.update({
         where: { id: userId },
-        data: { role: 'TEEN' }
+        data: { role: targetRole }
       });
     }
 
@@ -850,11 +851,12 @@ export class AdminService {
       });
     }
 
-    // 2. Downgrade role to TEEN
+    // 2. Downgrade role to PARENT or TEEN
     if (user.role === 'PEER' || user.role === 'ADMIN' || user.role === 'EXPERT') { // ensure we just drop PEER role
+      const targetRole = (user.contentTier === 'ADULT' || !user.ageAtSignup) ? 'PARENT' : 'TEEN';
       await prisma.user.update({
         where: { id: userId },
-        data: { role: 'TEEN' }
+        data: { role: targetRole }
       });
     }
 

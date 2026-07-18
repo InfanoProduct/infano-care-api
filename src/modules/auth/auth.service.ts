@@ -80,7 +80,7 @@ export class AuthService {
     logger.debug({ phone: finalPhone, userStatus: user?.accountStatus, isTest: user?.isTestNumber }, "[AUTH] User lookup result");
 
     // 3. Rule 2: Test Number -> Bypass OTP
-    if (user?.isTestNumber || finalPhone === "+917209536820" || finalPhone === "+911234567890" || finalPhone === "+911234567891") {
+    if (user?.isTestNumber) {
       logger.info({ phone: finalPhone }, "Test number detected - bypassing OTP send and providing auto-login");
       const loginData = await this.verifyOtp(finalPhone, "0000"); // 0000 is dummy as it's bypassed anyway
       return { autoLogin: loginData };
@@ -156,7 +156,7 @@ export class AuthService {
     });
 
     // 1. Test Number -> Allow ANY OTP
-    if (user?.isTestNumber || finalPhone === "+917209536820" || finalPhone === "+911234567890" || finalPhone === "+911234567891") {
+    if (user?.isTestNumber) {
       logger.info({ phone: finalPhone }, "Test number detected - allowing ANY OTP bypass");
       // Bypass external verification for test users
     } else if (process.env.SMS_PROVIDER === "mock") {
@@ -194,7 +194,7 @@ export class AuthService {
       finalUser = await prisma.user.create({
         data: {
           phone: finalPhone,
-          isTestNumber: finalPhone === "+917209536820" || finalPhone === "+911234567890" || finalPhone === "+911234567891",
+          isTestNumber: false,
           accountStatus: "PENDING_SETUP",
           onboardingStep: 1,
           profile: {
@@ -217,6 +217,31 @@ export class AuthService {
         }
       });
       logger.info({ userId: finalUser.id }, "Created new user via OTP verify");
+    }
+
+    // Link guest orders and webinar registrations to this user
+    try {
+      await prisma.order.updateMany({
+        where: {
+          guestPhone: finalPhone,
+          userId: { not: finalUser.id }
+        },
+        data: {
+          userId: finalUser.id
+        }
+      });
+      await prisma.webinarRegistration.updateMany({
+        where: {
+          guestPhone: finalPhone,
+          userId: { not: finalUser.id }
+        },
+        data: {
+          userId: finalUser.id
+        }
+      });
+      logger.info({ userId: finalUser.id, phone: finalPhone }, "Linked guest orders/registrations to user");
+    } catch (linkErr) {
+      logger.error({ err: linkErr, userId: finalUser.id }, "Failed to link guest orders/registrations during verifyOtp");
     }
 
     const jti = crypto.randomUUID();
