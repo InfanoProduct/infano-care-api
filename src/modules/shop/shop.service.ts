@@ -45,10 +45,17 @@ export class ShopService {
   }
 
   static async getWebinarBySlug(slug: string) {
+    if (slug === 'active') {
+      return await prisma.webinar.findFirst({
+        where: { isActive: true },
+        orderBy: { date: 'asc' }
+      });
+    }
     return await prisma.webinar.findFirst({
       where: { slug, isActive: true },
     });
   }
+
 
   static async validateCoupon(code: string, amount: number) {
     const coupon = await prisma.discountCoupon.findUnique({
