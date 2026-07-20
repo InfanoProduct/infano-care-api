@@ -14,7 +14,7 @@ export class StorageService {
   static async uploadFile(localPath: string, folder: string = ''): Promise<{ filename: string; url: string }> {
     const UPLOAD_PATH = process.env.UPLOAD_PATH || 'uploads';
     const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'http://localhost:4005/uploads';
-    const REMOTE_UPLOAD_API = process.env.REMOTE_UPLOAD_API; // e.g. http://109.199.120.104:4005/api/admin/upload
+    const REMOTE_UPLOAD_API = process.env.REMOTE_UPLOAD_API; // e.g. https://api-dev.infano.care/api/admin/upload
 
     // 1. Optimize locally first
     await ImageProcessor.optimize(localPath);
