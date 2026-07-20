@@ -486,6 +486,25 @@ export class AdminController {
     }
   }
 
+  static async renameAsset(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { filename } = req.params;
+      const { newFilename } = req.body;
+      if (!filename || typeof filename !== 'string') {
+        return res.status(400).json({ message: "Filename parameter is required and must be a string" });
+      }
+      if (!newFilename || typeof newFilename !== 'string') {
+        return res.status(400).json({ message: "newFilename body parameter is required and must be a string" });
+      }
+      const folderQuery = req.query.folder;
+      const folder = typeof folderQuery === 'string' ? folderQuery : 'assets';
+      const updatedAsset = await StorageService.renameAsset(filename, newFilename, folder);
+      res.status(200).json({ success: true, asset: updatedAsset, message: "Asset renamed successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Expert Management
   static async getExperts(_req: Request, res: Response, next: NextFunction) {
     try {
