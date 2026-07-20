@@ -1633,6 +1633,9 @@ model Webinar {
   mode          WebinarMode           @default(ONLINE)
   link          String?
   instructor    String?
+  seoTitle      String?
+  seoDescription String?
+  seoKeywords   String?
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   registrations WebinarRegistration[]
