@@ -1358,8 +1358,21 @@ export class AdminService {
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) throw new Error("Order not found");
 
-    const comments = Array.isArray(order.comments) ? order.comments : [];
-    comments.push({ text, createdAt: new Date().toISOString() });
+    let comments: any = order.comments;
+    const newComment = { text, createdAt: new Date().toISOString() };
+
+    if (comments && typeof comments === "object" && !Array.isArray(comments)) {
+      const adminComments = Array.isArray(comments.adminComments) ? comments.adminComments : [];
+      adminComments.push(newComment);
+      comments = {
+        ...comments,
+        adminComments
+      };
+    } else {
+      const adminComments = Array.isArray(comments) ? comments : [];
+      adminComments.push(newComment);
+      comments = adminComments;
+    }
 
     return prisma.order.update({
       where: { id },
