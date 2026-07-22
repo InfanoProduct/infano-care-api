@@ -106,7 +106,24 @@ export class ShopService {
       }
 
       // Check if it's a webinar checkout
-      const isWebinarCheckout = data.items.some(item => item && item.bookId.startsWith("webinar-"));
+      let isWebinarCheckout = false;
+      let resolvedWebinar = null;
+
+      if (data.items.length === 1 && data.items[0]) {
+        const item = data.items[0];
+        resolvedWebinar = await tx.webinar.findUnique({
+          where: { id: item.bookId }
+        });
+        if (!resolvedWebinar) {
+          resolvedWebinar = await tx.webinar.findUnique({
+            where: { slug: item.bookId }
+          });
+        }
+        if (resolvedWebinar || item.bookId.startsWith("webinar-")) {
+          isWebinarCheckout = true;
+        }
+      }
+
       if (isWebinarCheckout) {
         if (data.items.length !== 1) {
           throw new Error("Webinar registration cannot be combined with other items.");
@@ -115,7 +132,7 @@ export class ShopService {
         if (!item) {
           throw new Error("No items in checkout.");
         }
-        const webinar = await tx.webinar.findUnique({
+        const webinar = resolvedWebinar || await tx.webinar.findUnique({
           where: { id: item.bookId }
         });
         if (!webinar) {
