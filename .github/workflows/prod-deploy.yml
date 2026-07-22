@@ -3,8 +3,9 @@ name: Production Deployment
 on:
   push:
     branches: [ "production" ]
-  pull_request:
-    branches: [ "production" ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -33,7 +34,7 @@ jobs:
         provenance: false
 
     - name: Copy docker-compose file
-      uses: appleboy/scp-action@master
+      uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.PROD_SSH_HOST }}
         username: root
@@ -44,7 +45,7 @@ jobs:
         debug: true
 
     - name: deploy api to production server
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v1.2.0
       with:
         host: ${{ secrets.PROD_SSH_HOST }}
         username: root
@@ -52,10 +53,14 @@ jobs:
         port: 22
         debug: true
         script: |
-          docker login registry.infano.care -u "${{ secrets.REGISTRY_UNAME }}" -p "${{ secrets.REGISTRY_PWD }}"
+          echo "${{ secrets.REGISTRY_PWD }}" | docker login registry.infano.care -u "${{ secrets.REGISTRY_UNAME }}" --password-stdin
           docker pull registry.infano.care/infano.api:prod-latest
           mkdir -p /data/infano-prod
           cd /data/infano-prod
+          
+          # Clean up any existing/conflicting containers to prevent recreation/rename errors
+          docker rm -f infano-api-prod || true
+          docker rm -f $(docker ps -a -q --filter "name=_infano-api-prod") 2>/dev/null || true
           
           # Deploy with production compose
           docker-compose -f docker-compose.prod.yml up -d
