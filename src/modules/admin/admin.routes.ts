@@ -47,6 +47,7 @@ router.delete("/assets/:filename", AdminController.deleteAsset);
 // Order Management
 router.get("/orders", AdminController.getOrders);
 router.get("/orders/:id", AdminController.getOrder);
+router.post("/orders/:id/resend-email", AdminController.resendOrderEmail);
 router.post("/orders/:id/comments", AdminController.addOrderComment);
 router.patch("/orders/:id/status", AdminController.updateOrderStatus);
 router.patch("/orders/:id/awb", AdminController.updateOrderAwb);
