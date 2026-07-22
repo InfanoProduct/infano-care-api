@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { logger } from '../../config/logger.js';
 import { ImageProcessor } from './imageProcessor.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export class StorageService {
   /**
@@ -184,6 +185,76 @@ export class StorageService {
         logger.error({ error, filePath }, 'Failed to delete file from local storage');
         throw error;
       }
+    }
+  }
+
+  /**
+   * Safely renames an asset in a subfolder under the uploads directory.
+   */
+  static async renameAsset(filename: string, newFilename: string, folder: string = 'assets'): Promise<{ filename: string; url: string; size: number; createdAt: Date }> {
+    const UPLOAD_PATH = process.env.UPLOAD_PATH || 'uploads';
+    const IMAGE_BASE_URL = process.env.IMAGE_BASE_URL || 'http://localhost:4005/uploads';
+
+    let baseDir: string;
+    if (path.isAbsolute(UPLOAD_PATH)) {
+      baseDir = UPLOAD_PATH;
+      if (process.platform === 'win32' && UPLOAD_PATH.startsWith('/')) {
+        baseDir = path.join(process.cwd(), 'uploads');
+      }
+    } else {
+      baseDir = path.join(process.cwd(), UPLOAD_PATH);
+    }
+
+    const sourcePath = path.join(baseDir, folder, filename);
+
+    // Ensure the original extension is preserved
+    const ext = path.extname(filename);
+    const targetExt = path.extname(newFilename);
+    const originalName = path.basename(newFilename, targetExt === ext ? ext : targetExt);
+    const sanitized = originalName
+      .replace(/[^a-zA-Z0-9-_]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    
+    const base = sanitized || 'file';
+    const finalNewFilename = `${base}${ext.toLowerCase()}`;
+    const targetPath = path.join(baseDir, folder, finalNewFilename);
+
+    // Verify source exists
+    try {
+      await fs.access(sourcePath);
+    } catch {
+      throw new AppError("Source file not found", 404);
+    }
+
+    // Check target exists (uniqueness check)
+    if (sourcePath !== targetPath) {
+      try {
+        await fs.access(targetPath);
+        throw new AppError(`A file named "${finalNewFilename}" already exists.`, 400);
+      } catch (err: any) {
+        if (err instanceof AppError) throw err;
+      }
+    }
+
+    try {
+      await fs.rename(sourcePath, targetPath);
+      
+      const stats = await fs.stat(targetPath);
+      const baseUrl = IMAGE_BASE_URL.endsWith('/') ? IMAGE_BASE_URL.slice(0, -1) : IMAGE_BASE_URL;
+      const url = `${baseUrl}/${folder ? folder + '/' : ''}${finalNewFilename}`.replace(/([^:]\/)\/+/g, "$1");
+      
+      logger.info({ sourcePath, targetPath, url }, 'File renamed in local storage');
+      
+      return { 
+        filename: finalNewFilename, 
+        url,
+        size: stats.size,
+        createdAt: stats.mtime
+      };
+    } catch (error) {
+      logger.error({ error, sourcePath, targetPath }, 'Failed to rename file in local storage');
+      throw error;
     }
   }
 }
