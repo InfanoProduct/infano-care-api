@@ -573,7 +573,7 @@ export class ShopService {
           webinar_date,
           webinar_time,
           download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
-          whatsapp_group_url: "https://chat.whatsapp.com/mock-parent-community-group",
+          whatsapp_group_url: "https://chat.whatsapp.com/Hcu2sCgARbqH8PMbmW9nGv?s=cl&p=a&ilr=1&amv=1",
           zoom_link: webinar.zoomLink || webinar.link || "https://zoom.us/j/mock-webinar-id",
           webinar_title: webinar.title,
           webinar_platform: webinar.mode === 'ONLINE' ? 'Zoom (Live Online Session)' : 'Offline Session'
@@ -684,7 +684,7 @@ export class ShopService {
               webinar_date: webinarDateStr,
               webinar_time: webinarTimeStr,
               download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
-              whatsapp_group_url: "https://chat.whatsapp.com/mock-parent-community-group",
+              whatsapp_group_url: "https://chat.whatsapp.com/Hcu2sCgARbqH8PMbmW9nGv?s=cl&p=a&ilr=1&amv=1",
               zoom_link: webinarZoomLink,
               webinar_title: webinarTitle,
               webinar_platform: webinarPlatform
