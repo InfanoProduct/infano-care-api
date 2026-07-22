@@ -58,4 +58,8 @@ jobs:
           
           # No longer creating .env file from secrets (VPS-Managed)
           
+          # Clean up any existing/conflicting containers to prevent recreation/rename errors
+          docker rm -f infano-api-dev || true
+          docker rm -f $(docker ps -a -q --filter "name=_infano-api-dev") 2>/dev/null || true
+          
           docker compose -f docker-compose.dev.yml up -d
