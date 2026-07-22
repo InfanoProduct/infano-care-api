@@ -863,14 +863,14 @@ export class PeerLineService {
       } else {
         await prisma.user.update({
           where: { id: user.id },
-          data: { role: 'TEEN', peerOnboarding: true }
+          data: { peerOnboarding: true }
         });
       }
       targetUserId = user.id;
     } else {
       await prisma.user.update({
         where: { id: targetUserId },
-        data: { role: 'TEEN', peerOnboarding: true }
+        data: { peerOnboarding: true }
       });
     }
 

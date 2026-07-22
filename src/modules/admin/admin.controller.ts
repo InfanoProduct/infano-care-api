@@ -240,6 +240,7 @@ export class AdminController {
         paymentStatus: req.query.paymentStatus as string,
         country: req.query.country as string,
         isActive,
+        isWebinar: req.query.isWebinar === 'true',
       };
       const result = await AdminService.getOrders(page, limit, filters);
       res.status(200).json(result);
@@ -318,9 +319,10 @@ export class AdminController {
   }
 
   // Book Management
-  static async getBooks(_req: Request, res: Response, next: NextFunction) {
+  static async getBooks(req: Request, res: Response, next: NextFunction) {
     try {
-      const books = await AdminService.getBooks();
+      const isWebinar = req.query.isWebinar === 'true';
+      const books = await AdminService.getBooks(isWebinar);
       res.status(200).json(books);
     } catch (error) {
       next(error);
@@ -348,6 +350,54 @@ export class AdminController {
   static async deleteBook(req: Request, res: Response, next: NextFunction) {
     try {
       await AdminService.deleteBook(req.params.id as string);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getWebinars(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const webinars = await AdminService.getWebinars();
+      res.status(200).json(webinars);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getWebinar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const webinar = await AdminService.getWebinar(req.params.id as string);
+      if (!webinar) {
+        return res.status(404).json({ message: "Webinar not found" });
+      }
+      res.status(200).json(webinar);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createWebinar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const webinar = await AdminService.createWebinar(req.body);
+      res.status(201).json(webinar);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateWebinar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const webinar = await AdminService.updateWebinar(req.params.id as string, req.body);
+      res.status(200).json(webinar);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteWebinar(req: Request, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteWebinar(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       next(error);
@@ -431,6 +481,25 @@ export class AdminController {
       const folder = typeof folderQuery === 'string' ? folderQuery : 'assets';
       await StorageService.deleteAsset(filename, folder);
       res.status(200).json({ success: true, message: "Asset deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async renameAsset(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { filename } = req.params;
+      const { newFilename } = req.body;
+      if (!filename || typeof filename !== 'string') {
+        return res.status(400).json({ message: "Filename parameter is required and must be a string" });
+      }
+      if (!newFilename || typeof newFilename !== 'string') {
+        return res.status(400).json({ message: "newFilename body parameter is required and must be a string" });
+      }
+      const folderQuery = req.query.folder;
+      const folder = typeof folderQuery === 'string' ? folderQuery : 'assets';
+      const updatedAsset = await StorageService.renameAsset(filename, newFilename, folder);
+      res.status(200).json({ success: true, asset: updatedAsset, message: "Asset renamed successfully" });
     } catch (error) {
       next(error);
     }

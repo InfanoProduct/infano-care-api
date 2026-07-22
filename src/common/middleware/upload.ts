@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { AppError } from './errorHandler.js';
 
 // Ensure upload directory exists
 const uploadDir = 'uploads';
@@ -30,8 +31,16 @@ const storage = multer.diskStorage({
       .replace(/^-+|-+$/g, '');
     
     const base = sanitized || 'file';
-    // Use the sanitized original name without adding a UUID
-    cb(null, `${base}${ext}`);
+    const filename = `${base}${ext}`;
+    
+    const folder = (req.query.folder as string) || '';
+    const targetPath = path.join(uploadDir, folder, filename);
+
+    if (fs.existsSync(targetPath)) {
+      return cb(new AppError(`A file named "${filename}" already exists.`, 400), "");
+    }
+
+    cb(null, filename);
   },
 });
 

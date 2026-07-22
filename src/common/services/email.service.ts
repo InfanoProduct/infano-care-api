@@ -3,6 +3,8 @@ import nodemailer from 'nodemailer';
 let transporter: nodemailer.Transporter | null = null;
 
 export const sendEmail = async (to: string, subject: string, html: string, text?: string) => {
+  const brevoUser = process.env.BREVO_SMTP_USER;
+  const brevoKey = process.env.BREVO_SMTP_KEY;
   const mailjetApiKey = process.env.MAILJET_API_KEY;
   const mailjetSecretKey = process.env.MAILJET_SECRET_KEY;
   const gmailUser = process.env.GMAIL_USER;
@@ -10,7 +12,17 @@ export const sendEmail = async (to: string, subject: string, html: string, text?
   let mailFrom = process.env.MAIL_FROM || 'hello@infano.care';
 
   if (!transporter) {
-    if (gmailUser && gmailPass) {
+    if (brevoUser && brevoKey) {
+      transporter = nodemailer.createTransport({
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: brevoUser,
+          pass: brevoKey,
+        },
+      });
+    } else if (gmailUser && gmailPass) {
       transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -31,7 +43,7 @@ export const sendEmail = async (to: string, subject: string, html: string, text?
         },
       });
     } else {
-      console.error('No email credentials (Gmail or Mailjet) found in environment variables.');
+      console.error('No email credentials (Brevo, Gmail, or Mailjet) found in environment variables.');
       return;
     }
   }
@@ -136,3 +148,22 @@ export const sendDemoSessionBookedEmail = async (to: string, data: {
   const html = await compileEmailTemplate('demo-session-booked', { ...data, subject, preheaderText });
   return sendEmail(to, subject, html);
 };
+
+export const sendWebinarConfirmationEmail = async (to: string, data: {
+  parent_name: string;
+  order_id: string;
+  webinar_date: string;
+  webinar_time: string;
+  download_pdf_url: string;
+  whatsapp_group_url: string;
+  zoom_link: string;
+  webinar_title?: string;
+  webinar_platform?: string;
+}) => {
+  const title = data.webinar_title || "Decoding Her Silence Parent Webinar";
+  const subject = `You're Confirmed! ${title} 🎉`;
+  const preheaderText = "Your registration details and free bonuses inside.";
+  const html = await compileEmailTemplate('webinar-registered', { ...data, subject, preheaderText });
+  return sendEmail(to, subject, html);
+};
+

@@ -86,6 +86,7 @@ model User {
   userStreak                UserStreak?
   joinedCircles             CommunityCircle[]        @relation("CircleMembers")
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
+  webinarRegistrations      WebinarRegistration[]
 }
 
 model Profile {
@@ -1617,4 +1618,50 @@ enum AssetType {
   SOCIAL_PACK
   PHOTO_GALLERY
   IMPACT_VIDEO
+}
+
+model Webinar {
+  id            String                @id @default(uuid())
+  slug          String?               @unique @default(uuid())
+  title         String
+  description   String
+  price         Float
+  date          DateTime
+  zoomLink      String?
+  isActive      Boolean               @default(true)
+  altform       String?
+  mode          WebinarMode           @default(ONLINE)
+  link          String?
+  instructor    String?
+  seoTitle      String?
+  seoDescription String?
+  seoKeywords   String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  registrations WebinarRegistration[]
+}
+
+model WebinarRegistration {
+  id                String        @id @default(uuid())
+  webinarId         String
+  userId            String?
+  guestName         String?
+  guestEmail        String?
+  guestPhone        String?
+  paymentStatus     PaymentStatus @default(PENDING)
+  paymentMethod     PaymentMethod @default(ONLINE)
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  amount            Float
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  webinar           Webinar       @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+  user              User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+enum WebinarMode {
+  ONLINE
+  OFFLINE
 }

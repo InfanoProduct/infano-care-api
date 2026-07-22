@@ -43,6 +43,7 @@ router.post("/upload", upload.single("file"), AdminController.upload);
 // Universal Assets Management
 router.get("/assets", AdminController.listAssets);
 router.delete("/assets/:filename", AdminController.deleteAsset);
+router.patch("/assets/:filename/rename", AdminController.renameAsset);
 
 // Order Management
 router.get("/orders", AdminController.getOrders);
@@ -59,6 +60,13 @@ router.get("/books", AdminController.getBooks);
 router.post("/books", AdminController.createBook);
 router.patch("/books/:id", AdminController.updateBook);
 router.delete("/books/:id", AdminController.deleteBook);
+
+// Webinar Management
+router.get("/webinars", AdminController.getWebinars);
+router.get("/webinars/:id", AdminController.getWebinar);
+router.post("/webinars", AdminController.createWebinar);
+router.patch("/webinars/:id", AdminController.updateWebinar);
+router.delete("/webinars/:id", AdminController.deleteWebinar);
 
 // Circle Management
 router.get("/circles", AdminController.getCircles);

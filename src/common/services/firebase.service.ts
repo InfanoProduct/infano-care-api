@@ -1,10 +1,11 @@
-import admin from "firebase-admin";
+import { initializeApp, cert, App } from 'firebase-admin/app';
+import { getMessaging, Message } from 'firebase-admin/messaging';
 import fs from "fs/promises";
 import path from "path";
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
 
-let firebaseApp: admin.app.App | null = null;
+let firebaseApp: App | null = null;
 
 /**
  * Initializes the Firebase Admin SDK if not already initialized.
@@ -34,8 +35,8 @@ async function getFirebaseAdmin() {
       }
     }
 
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+    firebaseApp = initializeApp({
+      credential: cert(serviceAccount),
     });
 
     logger.info("Firebase Admin SDK initialized successfully.");
@@ -65,7 +66,7 @@ export class FirebaseService {
     }
 
     try {
-      const message: admin.messaging.Message = {
+      const message: Message = {
         token: fcmToken,
         notification: {
           title: payload.title,
@@ -91,7 +92,7 @@ export class FirebaseService {
         },
       };
 
-      const response = await adminApp.messaging().send(message);
+      const response = await getMessaging(adminApp).send(message);
       logger.info({ response }, `Push notification sent to token successfully.`);
       return response;
     } catch (error: any) {

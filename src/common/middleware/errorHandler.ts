@@ -49,7 +49,24 @@ export const errorHandler = (
   }
 
   const statusCode = err.statusCode || 500;
-  const message = process.env.NODE_ENV === "production" ? "Internal Server Error" : err.message;
+  let message = err.message;
+
+  // Mask database connection/Prisma internal errors to prevent exposing raw DB logs/file paths
+  const lowerMsg = (message || "").toLowerCase();
+  const isDbError = 
+    lowerMsg.includes("prisma") || 
+    lowerMsg.includes("connection closed") || 
+    lowerMsg.includes("closed the connection") || 
+    lowerMsg.includes("can't reach database") ||
+    lowerMsg.includes("unreachable") ||
+    (err.code && typeof err.code === "string" && (err.code.startsWith("P10") || err.code.startsWith("P20")));
+
+  if (isDbError) {
+    message = "Database is temporarily unreachable. Please try again in a few moments.";
+  } else if (process.env.NODE_ENV === "production") {
+    message = "Internal Server Error";
+  }
+
   res.status(statusCode).json({ 
     error: message,
     details: err.details
