@@ -401,7 +401,7 @@ export class ParentService {
       const date = new Date(now);
       date.setDate(date.getDate() + i);
       const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-      const dateString = date.toISOString().split('T')[0];
+      const dateString = date.toISOString().split('T')[0] || "";
       
       const blockDates = (settings.blockDates as string[]) || [];
       if (blockDates.includes(dateString)) {
@@ -412,10 +412,10 @@ export class ParentService {
       const daySlots = defaultAvailability[dayName];
       if (daySlots && Array.isArray(daySlots)) {
         for (const slot of daySlots) {
-           const startParts = slot.start.split(':');
-           const endParts = slot.end.split(':');
-           let currentHour = parseInt(startParts[0]);
-           let endHour = parseInt(endParts[0]);
+           const startParts = (slot.start || "00:00").split(':');
+           const endParts = (slot.end || "00:00").split(':');
+           let currentHour = parseInt(startParts[0] || "0");
+           let endHour = parseInt(endParts[0] || "0");
            
            while (currentHour < endHour) {
              const slotTime = new Date(date);
