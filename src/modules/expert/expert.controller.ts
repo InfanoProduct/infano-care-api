@@ -11,6 +11,29 @@ export class ExpertController {
     }
   }
 
+  static async getCalendarSettings(req: Request, res: Response) {
+    try {
+      const expertId = (req as any).user?.id;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+      const settings = await ExpertService.getCalendarSettings(expertId);
+      res.json(settings || {});
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async updateCalendarSettings(req: Request, res: Response) {
+    try {
+      const expertId = (req as any).user?.id;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+      const settings = await ExpertService.updateCalendarSettings(expertId, req.body);
+      res.json(settings);
+    } catch (error: any) {
+      require('fs').writeFileSync('calendar_error.txt', String(error.stack || error.message));
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   static async getEnrollmentDetails(req: Request, res: Response) {
     try {
       const details = await ExpertService.getEnrollmentDetails(req.params.id as string);

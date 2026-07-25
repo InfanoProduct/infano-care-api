@@ -271,7 +271,8 @@ export class AdminController {
         let webinarTitle = "Decoding Her Silence Webinar";
         let webinarPlatform = "Zoom";
 
-        const bookId = order.items[0].bookId;
+        const bookId = order.items[0]?.bookId;
+        if (!bookId) return res.status(400).json({ message: "Invalid order items" });
         const { prisma } = await import("../../db/client.js");
         
         const webinar = await prisma.webinar.findUnique({

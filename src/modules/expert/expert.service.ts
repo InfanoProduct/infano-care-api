@@ -33,6 +33,35 @@ export class ExpertService {
     }));
   }
 
+  static async getCalendarSettings(expertId: string) {
+    const settings = await prisma.expertCalendarSettings.findUnique({
+      where: { userId: expertId }
+    });
+    return settings;
+  }
+
+  static async updateCalendarSettings(expertId: string, data: any) {
+    const settings = await prisma.expertCalendarSettings.upsert({
+      where: { userId: expertId },
+      update: {
+        timezone: data.timezone,
+        reschedulePolicy: data.reschedulePolicy,
+        bookingPeriodMonths: data.bookingPeriodMonths,
+        defaultAvailability: data.defaultAvailability,
+        blockDates: data.blockDates,
+      },
+      create: {
+        userId: expertId,
+        timezone: data.timezone || "Asia/Kolkata",
+        reschedulePolicy: data.reschedulePolicy || "24 hours prior",
+        bookingPeriodMonths: data.bookingPeriodMonths || 2,
+        defaultAvailability: data.defaultAvailability || {},
+        blockDates: data.blockDates || [],
+      }
+    });
+    return settings;
+  }
+
   static async getEnrollmentDetails(enrollmentId: string) {
     const enrollment = await prisma.programEnrollment.findUnique({
       where: { id: enrollmentId },

@@ -374,6 +374,78 @@ export class ParentService {
 
   // --- Expert Session Methods ---
 
+  static async getExpertSlots(expertId: string) {
+    const expert = await prisma.user.findUnique({
+      where: { id: expertId },
+      include: { calendarSettings: true }
+    });
+    
+    if (!expert || expert.role !== 'EXPERT') {
+      throw new Error("Expert not found");
+    }
+
+    const settings = expert.calendarSettings || {
+      timezone: "Asia/Kolkata",
+      reschedulePolicy: "24 hours prior",
+      bookingPeriodMonths: 2,
+      defaultAvailability: {},
+      blockDates: []
+    };
+
+    const slots: string[] = [];
+    const now = new Date();
+    // Generate up to bookingPeriodMonths
+    const maxDays = (settings.bookingPeriodMonths || 2) * 30;
+    
+    for (let i = 1; i <= maxDays; i++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() + i);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const dateString = date.toISOString().split('T')[0];
+      
+      const blockDates = (settings.blockDates as string[]) || [];
+      if (blockDates.includes(dateString)) {
+        continue;
+      }
+
+      const defaultAvailability = (settings.defaultAvailability as Record<string, {start: string, end: string}[]>) || {};
+      const daySlots = defaultAvailability[dayName];
+      if (daySlots && Array.isArray(daySlots)) {
+        for (const slot of daySlots) {
+           const startParts = slot.start.split(':');
+           const endParts = slot.end.split(':');
+           let currentHour = parseInt(startParts[0]);
+           let endHour = parseInt(endParts[0]);
+           
+           while (currentHour < endHour) {
+             const slotTime = new Date(date);
+             slotTime.setHours(currentHour, parseInt(startParts[1] || "0"), 0, 0);
+             slots.push(slotTime.toISOString());
+             currentHour++;
+           }
+        }
+      }
+    }
+
+    const bookedSessions = await prisma.expertSessionSchedule.findMany({
+      where: {
+        expertId: expertId,
+        scheduledAt: { gte: now }
+      },
+      select: { scheduledAt: true }
+    });
+    const bookedTimes = bookedSessions.map(s => s.scheduledAt.toISOString());
+    const availableSlots = slots.filter(slot => !bookedTimes.includes(slot));
+    
+    return {
+      settings: {
+        timezone: settings.timezone,
+        reschedulePolicy: settings.reschedulePolicy,
+        bookingPeriodMonths: settings.bookingPeriodMonths
+      },
+      availableSlots
+    };
+  }
   static async getExperts(specialisation?: string) {
     const whereClause: any = { role: "EXPERT" };
     if (specialisation) {

@@ -419,7 +419,7 @@ export class AuthService {
       userId: user.id,
       username: user.username,
       role: user.role,
-      requiresPasswordReset: user.role === "SCHOOL_COORDINATOR" && user.accountStatus === "PENDING_SETUP",
+      requiresPasswordReset: (user.role === "SCHOOL_COORDINATOR" && user.accountStatus === "PENDING_SETUP") || (user.role === "EXPERT" && password === "Expert@123"),
       peerApplicationStatus: userWithApp?.peerApplication?.status || 'none'
     };
   }
@@ -432,8 +432,12 @@ export class AuthService {
     return { success: true, onboardingStep: step };
   }
 
-  // ── 6. Reset Coordinator Password ──────────────────────────────────────────
+  // ── 6. Reset Coordinator / Admin Password ──────────────────────────────────────────
   static async resetCoordinatorPassword(userId: string, data: any) {
+    return this.resetAdminPassword(userId, data);
+  }
+
+  static async resetAdminPassword(userId: string, data: any) {
     const { newPassword } = data;
     if (!newPassword || newPassword.length < 6) {
       throw new AppError("Password must be at least 6 characters.", 400);
@@ -443,7 +447,7 @@ export class AuthService {
       where: { id: userId },
     });
 
-    if (!user || user.role !== "SCHOOL_COORDINATOR") {
+    if (!user || (user.role !== "SCHOOL_COORDINATOR" && user.role !== "EXPERT")) {
       throw new AppError("Invalid user or unauthorized operation.", 403);
     }
 
@@ -458,7 +462,7 @@ export class AuthService {
       },
     });
 
-    return { success: true, message: "Password updated successfully. Account is now active." };
+    return { success: true, message: "Password updated successfully." };
   }
 
   // ── 7. Request New Credentials (if expired) ──────────────────────────────────
