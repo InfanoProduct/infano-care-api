@@ -147,6 +147,16 @@ export class ParentController {
     }
   }
 
+  static async getExpertSlots(req: Request, res: Response) {
+    try {
+      const expertId = req.params.id as string;
+      const slots = await ParentService.getExpertSlots(expertId);
+      res.json(slots);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to get expert slots" });
+    }
+  }
+
   static async rescheduleExpertSession(req: Request, res: Response) {
     try {
       const userId = (req as any).userId;

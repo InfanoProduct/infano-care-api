@@ -54,6 +54,7 @@ router.post("/check-user",             AuthController.checkUser);
 router.post("/logout",                 AuthController.logout);
 
 router.post("/coordinator/reset-password", authenticate, AuthController.resetCoordinatorPassword);
+router.post("/admin/reset-password", authenticate, AuthController.resetAdminPassword);
 router.post("/coordinator/request-credentials", AuthController.requestNewCredentials);
 
 export default router;

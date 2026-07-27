@@ -24,6 +24,7 @@ router.post("/accept/:id", ParentController.acceptInvite);
 
 // Expert Session endpoints
 router.get("/experts", ParentController.getExperts);
+router.get("/experts/:id/slots", ParentController.getExpertSlots);
 router.post("/experts/book", ParentController.bookExpertSession);
 router.post("/experts/verify-payment", ParentController.verifyExpertSessionPayment);
 router.get("/expert-sessions", ParentController.getExpertSessions);
