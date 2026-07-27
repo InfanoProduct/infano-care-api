@@ -6,6 +6,10 @@ const router = Router();
 
 // Public routes (no auth required)
 router.get("/resources", ParentController.getResources);
+router.get("/public/experts", ParentController.getExperts);
+router.get("/public/experts/:id/slots", ParentController.getExpertSlots);
+router.post("/public/experts/book", ParentController.bookPublicExpertSession);
+router.post("/public/experts/verify-payment", ParentController.verifyPublicExpertSessionPayment);
 
 router.use(requireAuth);
 

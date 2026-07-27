@@ -258,4 +258,33 @@ export class ParentController {
       res.status(400).json({ error: error.message || "Failed to clear all notifications" });
     }
   }
+
+  static async bookPublicExpertSession(req: Request, res: Response) {
+    try {
+      const { expertId, scheduledAt, name, phone, email } = req.body;
+      const order = await ParentService.bookPublicExpertSession({ expertId, scheduledAt, name, phone, email });
+      res.status(201).json(order);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to initiate booking" });
+    }
+  }
+
+  static async verifyPublicExpertSessionPayment(req: Request, res: Response) {
+    try {
+      const { razorpayOrderId, razorpayPaymentId, razorpaySignature, expertId, scheduledAt, name, phone, email } = req.body;
+      const schedule = await ParentService.verifyPublicExpertSessionPayment({
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+        expertId,
+        scheduledAt: new Date(scheduledAt),
+        name,
+        phone,
+        email
+      });
+      res.json(schedule);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to verify payment" });
+    }
+  }
 }

@@ -1032,4 +1032,102 @@ export class ParentService {
       }
     });
   }
+
+  static async findOrCreateUserForPublicBooking(phone: string, email: string, name: string) {
+    const { normalizePhone } = await import("../../common/utils/phone.js");
+    const normalizedPhone = normalizePhone(phone);
+
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: normalizedPhone },
+          { phone: phone }
+        ]
+      },
+      include: { profile: true }
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          phone: normalizedPhone,
+          email: email || null,
+          role: "TEEN",
+          accountStatus: "PENDING_SETUP",
+          profile: {
+            create: {
+              displayName: name || "Guest User"
+            }
+          }
+        },
+        include: { profile: true }
+      });
+    } else if (email && !user.email) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { email },
+        include: { profile: true }
+      });
+    }
+
+    return user;
+  }
+
+  static async bookPublicExpertSession(data: { expertId: string; scheduledAt: string; name: string; phone: string; email: string; }) {
+    if (!data.expertId || !data.scheduledAt || !data.name || !data.phone || !data.email) {
+      throw new Error("Missing required fields for booking (expertId, scheduledAt, name, phone, email)");
+    }
+    
+    const user = await this.findOrCreateUserForPublicBooking(data.phone, data.email, data.name);
+    
+    const expert = await prisma.user.findUnique({
+      where: { id: data.expertId },
+      include: { profile: true }
+    });
+    if (!expert) throw new Error("Expert not found");
+
+    const price = expert.profile?.consultationPrice || 500;
+    
+    const options = {
+      amount: Math.round(price * 100),
+      currency: "INR",
+      receipt: `rcpt_${Date.now()}_expert`,
+    };
+    
+    const order = await razorpay.orders.create(options);
+    
+    return {
+      razorpayOrderId: order.id,
+      amount: options.amount,
+      currency: options.currency,
+      expertId: data.expertId,
+      scheduledAt: data.scheduledAt,
+      userId: user.id
+    };
+  }
+
+  static async verifyPublicExpertSessionPayment(data: {
+    razorpayOrderId: string,
+    razorpayPaymentId: string,
+    razorpaySignature: string,
+    expertId: string,
+    scheduledAt: Date,
+    name: string,
+    phone: string,
+    email: string
+  }) {
+    if (!data.expertId || !data.scheduledAt || !data.name || !data.phone || !data.email) {
+      throw new Error("Missing required fields for verification (expertId, scheduledAt, name, phone, email)");
+    }
+
+    const user = await this.findOrCreateUserForPublicBooking(data.phone, data.email, data.name);
+
+    return this.verifyExpertSessionPayment(user.id, {
+      razorpayOrderId: data.razorpayOrderId,
+      razorpayPaymentId: data.razorpayPaymentId,
+      razorpaySignature: data.razorpaySignature,
+      expertId: data.expertId,
+      scheduledAt: data.scheduledAt
+    });
+  }
 }
