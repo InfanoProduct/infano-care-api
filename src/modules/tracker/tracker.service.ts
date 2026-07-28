@@ -27,7 +27,12 @@ export class TrackerService {
       noteIv = encrypted.iv;
     }
 
-    // 2. Upsert Daily Log
+    // 2. Upsert Daily Log — track whether this is a brand new record
+    const existingLog = await prisma.cycleLog.findUnique({
+      where: { userId_date: { userId, date: logDate } },
+    });
+    const isNewLog = !existingLog;
+
     const log = await prisma.cycleLog.upsert({
       where: { userId_date: { userId, date: logDate } },
       update: {
@@ -79,29 +84,25 @@ export class TrackerService {
       if (result.firstPeriod) milestone = "first_period";
     }
 
+    // 5. Award points ONLY for a brand-new log saved for TODAY
+    //    - Edits to existing logs → no points
+    //    - Logging past days → no points
+    //    - Points come exclusively from active quest rewards
+    //    - Once all quests are exhausted, no further points are given
     let totalPoints = 0;
-    // Evaluate Quests first to see if this task is linked to a quest
-    const questPoints = await QuestService.evaluateCompletion(userId, { type: "log_saved" });
+    const today = new Date();
+    const isToday = logDate.toISOString().split('T')[0] === today.toISOString().split('T')[0];
 
-    if (questPoints > 0) {
-      totalPoints = questPoints;
-    } else {
-      // Award default 75 points only if no quest was completed for this task
-      await GamificationService.awardPoints(
-        userId,
-        75,
-        "log",
-        log.id,
-        `Daily log for ${logDate.toISOString().split('T')[0]}`
-      );
-      totalPoints = 75;
+    if (isNewLog && isToday) {
+      const questPoints = await QuestService.evaluateCompletion(userId, { type: "log_saved" });
+      totalPoints = questPoints; // 0 if no active quest matches — intentional
     }
 
     if (milestone === "first_period") {
       totalPoints += 200;
     }
 
-    // 5. Update Profile with new Prediction (And always update streak/lastLogDate)
+    // 6. Update Profile with new Prediction (And always update streak/lastLogDate)
     const prediction = await PredictionEngine.predict(userId);
     await (prisma as any).cycleProfile.update({
       where: { userId },
@@ -367,38 +368,60 @@ export class TrackerService {
     
     const completedRecords = await (prisma as any).cycleRecord.findMany({
       where: { userId, isComplete: true },
+      orderBy: { startDate: 'desc' },
     });
 
     if (completedRecords.length === 0) return;
 
-    // Calculate Averages
-    const totalCycleLength = completedRecords.reduce((sum: number, r: any) => sum + (r.cycleLengthDays || 0), 0);
-    const validCycleCount = completedRecords.filter((r: any) => r.cycleLengthDays).length;
-    
-    const totalPeriodDuration = completedRecords.reduce((sum: number, r: any) => sum + (r.periodDurationDays || 0), 0);
-    const validPeriodCount = completedRecords.filter((r: any) => r.periodDurationDays).length;
+    // Filter to only include realistic cycle lengths (between 21 and 38 days)
+    const realisticCycleRecords = completedRecords.filter(
+      (r: any) => r.cycleLengthDays && r.cycleLengthDays >= 21 && r.cycleLengthDays <= 38
+    );
 
-    const avgCycleLength = validCycleCount > 0 ? totalCycleLength / validCycleCount : 28;
-    const avgPeriodDuration = validPeriodCount > 0 ? totalPeriodDuration / validPeriodCount : 5;
+    const validPeriodRecords = completedRecords.filter((r: any) => r.periodDurationDays);
 
-    // Standard Deviation for Irregularity Detection (Simple version)
-    let stdCycleLength = 0;
-    if (validCycleCount > 1) {
-      const variance = completedRecords
-        .filter((r: any) => r.cycleLengthDays)
-        .reduce((sum: number, r: any) => sum + Math.pow(r.cycleLengthDays - avgCycleLength, 2), 0) / validCycleCount;
-      stdCycleLength = Math.sqrt(variance);
+    const avgPeriodDuration = validPeriodRecords.length > 0
+      ? validPeriodRecords.reduce((sum: number, r: any) => sum + (r.periodDurationDays || 0), 0) / validPeriodRecords.length
+      : 5;
+
+    // Only update average cycle length if user has at least 3 completed realistic cycles
+    // AND they are consistent with each other (difference between max and min is <= 3 days)
+    if (realisticCycleRecords.length >= 3) {
+      const lastThreeLengths = realisticCycleRecords.slice(0, 3).map((r: any) => r.cycleLengthDays);
+      const maxLen = Math.max(...lastThreeLengths);
+      const minLen = Math.min(...lastThreeLengths);
+      const isConsistent = (maxLen - minLen) <= 3;
+
+      if (isConsistent) {
+        const avgCycleLength = lastThreeLengths.reduce((sum: number, len: number) => sum + len, 0) / 3;
+
+        // Standard Deviation for Irregularity Detection
+        let stdCycleLength = 0;
+        const variance = lastThreeLengths.reduce((sum: number, len: number) => sum + Math.pow(len - avgCycleLength, 2), 0) / 3;
+        stdCycleLength = Math.sqrt(variance);
+
+        await (prisma as any).cycleProfile.update({
+          where: { userId },
+          data: {
+            avgCycleLength,
+            avgPeriodDuration,
+            stdCycleLength,
+            coefficientOfVar: avgCycleLength > 0 ? (stdCycleLength / avgCycleLength) * 100 : 0,
+          },
+        });
+        console.log(`[Tracker] Updated avgCycleLength to consistent average: ${avgCycleLength}`);
+        return;
+      }
     }
 
+    // Otherwise, keep the onboarding average cycle length intact and only update period duration
     await (prisma as any).cycleProfile.update({
       where: { userId },
       data: {
-        avgCycleLength,
         avgPeriodDuration,
-        stdCycleLength,
-        coefficientOfVar: avgCycleLength > 0 ? (stdCycleLength / avgCycleLength) * 100 : 0,
       },
     });
+    console.log(`[Tracker] Retaining onboarding avgCycleLength. Updated period duration to: ${avgPeriodDuration}`);
   }
   static async getLogs(userId: string, from?: string, to?: string) {
     const logs = await prisma.cycleLog.findMany({
@@ -543,6 +566,9 @@ export class TrackerService {
         currentPhase: prediction.currentPhase,
         nextPhase: (prediction as any).nextPhase,
         daysUntilNextPhase: (prediction as any).daysUntilNextPhase,
+        predictedNextStart: prediction.predictedStart,
+        predictionWindowEarly: prediction.windowEarly,
+        predictionWindowLate: prediction.windowLate,
       } : {}),
       avgCycleLength: profile.avgCycleLength ? Math.round(profile.avgCycleLength) : 28,
       avgPeriodDuration: profile.avgPeriodDuration ? Math.round(profile.avgPeriodDuration) : 5,

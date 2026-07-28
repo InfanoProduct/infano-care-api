@@ -1,4 +1,5 @@
 import { prisma } from "../../db/client.js";
+import { PredictionEngine } from "./prediction.engine.js";
 
 export class InsightsService {
   /**
@@ -76,8 +77,12 @@ export class InsightsService {
    */
   static async getDailyInsights(userId: string) {
     const profile = await (prisma as any).cycleProfile.findUnique({ where: { userId } });
-    const phase: string = profile?.currentPhase || "waiting";
-    const cycleDay: number | null = profile?.currentCycleDay ?? null;
+    if (!profile) return { phase: "waiting", cycleDay: null, insights: [], articles: [] };
+
+    // Get current predicted phase dynamically instead of stale DB value
+    const prediction = await PredictionEngine.predict(userId);
+    const phase: string = prediction?.currentPhase || profile.currentPhase || "waiting";
+    const cycleDay: number | null = prediction?.cycleDay ?? profile.currentCycleDay ?? null;
 
     // ── Fetch Insights ───────────────────────────────────────────────────────
     const insights = await (prisma as any).trackerInsight.findMany({
