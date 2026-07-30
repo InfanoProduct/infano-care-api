@@ -9,8 +9,8 @@ export interface PredictionResult {
   fertilityEnd: Date;
   confidenceLevel: "none" | "getting_started" | "building" | "confident" | "high" | "irregular";
   daysUntilPrediction: number;
-  currentPhase: "menstrual" | "follicular" | "ovulation" | "luteal" | "waiting";
-  nextPhase: "menstrual" | "follicular" | "ovulation" | "luteal" | "waiting" | "period";
+  currentPhase: "menstrual" | "follicular" | "ovulation" | "luteal" | "waiting" | "delayed";
+  nextPhase: "menstrual" | "follicular" | "ovulation" | "luteal" | "waiting" | "delayed" | "period";
   daysUntilNextPhase: number;
   cycleDay: number;
   cyclesLogged: number;
@@ -32,23 +32,39 @@ export class PredictionEngine {
 
     if (cycles.length === 0) return null;
 
-    const lengths = cycles.map((c: any) => c.cycleLengthDays!).filter((l: number) => l > 0);
+    // Filter to only include realistic cycle lengths (between 21 and 38 days)
+    const lengths = cycles
+      .map((c: any) => c.cycleLengthDays!)
+      .filter((l: number) => l >= 21 && l <= 38);
+
     const durations = cycles.map((c: any) => c.periodDurationDays!).filter((d: number) => d > 0);
 
-    const avgCycleLength = lengths.reduce((a: number, b: number) => a + b, 0) / lengths.length;
-    const avgPeriodDuration = durations.reduce((a: number, b: number) => a + b, 0) / durations.length;
+    // Only apply historical prediction layer if user has at least 3 consistent realistic cycles
+    if (lengths.length >= 3) {
+      const lastThree = lengths.slice(0, 3);
+      const maxLen = Math.max(...lastThree);
+      const minLen = Math.min(...lastThree);
+      
+      if ((maxLen - minLen) <= 3) {
+        const avgCycleLength = lastThree.reduce((a: number, b: number) => a + b, 0) / 3;
+        const avgPeriodDuration = durations.length > 0
+          ? durations.reduce((a: number, b: number) => a + b, 0) / durations.length
+          : 5;
 
-    // Standard Deviation for L4
-    const mean = avgCycleLength;
-    const variance = lengths.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / lengths.length;
-    const stdDev = Math.sqrt(variance);
+        const mean = avgCycleLength;
+        const variance = lastThree.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / 3;
+        const stdDev = Math.sqrt(variance);
 
-    return {
-      avgCycleLength,
-      avgPeriodDuration,
-      stdDev,
-      count: lengths.length,
-    };
+        return {
+          avgCycleLength,
+          avgPeriodDuration,
+          stdDev,
+          count: lastThree.length,
+        };
+      }
+    }
+
+    return null; // Fallback to onboarding profile baseline
   }
 
   /**
@@ -156,8 +172,8 @@ export class PredictionEngine {
     const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     const daysSinceStart = Math.ceil((today.getTime() - profile.lastPeriodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const currentPhase = this.calculatePhase(daysSinceStart, avgLength);
-    const nextPhaseInfo = this.calculateNextPhase(daysSinceStart, avgLength);
+    const currentPhase = this.calculatePhase(daysSinceStart, avgLength, profile.lastPeriodEnd);
+    const nextPhaseInfo = this.calculateNextPhase(daysSinceStart, avgLength, profile.lastPeriodEnd);
 
     return {
       predictedStart,
@@ -178,19 +194,53 @@ export class PredictionEngine {
     };
   }
 
-  private static calculatePhase(day: number, avgLength: number): any {
+  private static calculatePhase(day: number, avgLength: number, lastPeriodEnd: Date | null): any {
+    if (lastPeriodEnd) {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const end = new Date(lastPeriodEnd);
+      end.setUTCHours(0, 0, 0, 0);
+      if (today >= end) {
+        // Period has completed. Move out of menstrual phase.
+        if (day <= avgLength * 0.45) return "follicular";
+        if (day <= avgLength * 0.55) return "ovulation";
+        if (day <= avgLength) return "luteal";
+        return "delayed";
+      }
+    }
+
     if (day <= 5) return "menstrual";
     if (day <= avgLength * 0.45) return "follicular";
     if (day <= avgLength * 0.55) return "ovulation";
     if (day <= avgLength) return "luteal";
-    return "waiting";
+    return "delayed";
   }
 
-  private static calculateNextPhase(day: number, avgLength: number): { name: any; daysLeft: number } {
+  private static calculateNextPhase(day: number, avgLength: number, lastPeriodEnd: Date | null): { name: any; daysLeft: number } {
     const follicularStart = 6;
     const ovulationStart = Math.floor(avgLength * 0.45) + 1;
     const lutealStart = Math.floor(avgLength * 0.55) + 1;
     const periodStart = Math.floor(avgLength) + 1;
+
+    if (lastPeriodEnd) {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const end = new Date(lastPeriodEnd);
+      end.setUTCHours(0, 0, 0, 0);
+      if (today >= end) {
+        // Already past menstrual phase. Follicular phase has started.
+        if (day < ovulationStart) {
+          return { name: "ovulation", daysLeft: ovulationStart - day };
+        }
+        if (day < lutealStart) {
+          return { name: "luteal", daysLeft: lutealStart - day };
+        }
+        if (day < periodStart) {
+          return { name: "period", daysLeft: periodStart - day };
+        }
+        return { name: "period", daysLeft: 0 };
+      }
+    }
 
     if (day < follicularStart) {
       return { name: "follicular", daysLeft: follicularStart - day };
