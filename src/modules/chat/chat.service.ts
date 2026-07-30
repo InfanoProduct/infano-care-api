@@ -996,6 +996,74 @@ ABSOLUTE RULES — NO EXCEPTIONS:
     });
   }
 
+  async getAggregatedChats(userId: string) {
+    const expertSessions = await prisma.expertChatSession.findMany({
+      where: { userId },
+      include: {
+        expert: { select: { profile: true } },
+        messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+      }
+    });
+
+    const expertUnreadCounts = await Promise.all(
+      expertSessions.map(async (s) => {
+        const count = await prisma.expertChatMessage.count({
+          where: { sessionId: s.id, isRead: false, NOT: { senderId: userId } }
+        });
+        return { id: s.id, count };
+      })
+    );
+
+    const peerSessions = await prisma.peerLineSession.findMany({
+      where: {
+        OR: [{ menteeId: userId }, { mentorId: userId }]
+      },
+      include: {
+        mentor: { select: { profile: true } },
+        mentee: { select: { profile: true } },
+        PeerLineMessage: { orderBy: { sentAt: 'desc' }, take: 1 }
+      }
+    });
+
+    const peerUnreadCounts = await Promise.all(
+      peerSessions.map(async (s) => {
+        const otherRole = s.menteeId === userId ? 'mentor' : 'mentee';
+        const count = await prisma.peerLineMessage.count({
+          where: { sessionId: s.id, isRead: false, senderRole: otherRole }
+        });
+        return { id: s.id, count };
+      })
+    );
+
+    const aggregated = [
+      ...expertSessions.map(s => ({
+        id: s.id,
+        type: 'expert',
+        name: s.expert?.profile?.displayName || 'Expert',
+        avatarUrl: s.expert?.profile?.avatarUrl,
+        lastMessage: s.messages[0]?.content || 'Session started',
+        timestamp: s.messages[0]?.createdAt || s.createdAt,
+        unreadCount: expertUnreadCounts.find(c => c.id === s.id)?.count || 0
+      })),
+      ...peerSessions.map(s => {
+        const otherUser = s.menteeId === userId ? s.mentor : s.mentee;
+        return {
+          id: s.id,
+          type: 'peer',
+          name: otherUser?.profile?.displayName || 'Peer',
+          avatarUrl: otherUser?.profile?.avatarUrl,
+          lastMessage: s.PeerLineMessage[0]?.content || 'Session started',
+          timestamp: s.PeerLineMessage[0]?.sentAt || s.createdAt,
+          unreadCount: peerUnreadCounts.find(c => c.id === s.id)?.count || 0
+        };
+      })
+    ];
+
+    aggregated.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return aggregated;
+  }
+
   async deleteSession(userId: string, sessionId: string) {
     // Ensure the session belongs to the user
     const session = await prisma.chatSession.findFirst({
