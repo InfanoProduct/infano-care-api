@@ -259,6 +259,66 @@ export class AdminController {
     }
   }
 
+  static async resendOrderEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const order = await AdminService.getOrderById(req.params.id as string);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+
+      if (order.items && order.items.length > 0) {
+        let webinarDateStr = "TBA";
+        let webinarTimeStr = "TBA";
+        let webinarZoomLink = "https://zoom.us";
+        let webinarTitle = "Decoding Her Silence Webinar";
+        let webinarPlatform = "Zoom";
+
+        const bookId = order.items[0]?.bookId;
+        if (!bookId) return res.status(400).json({ message: "Invalid order items" });
+        const { prisma } = await import("../../db/client.js");
+        
+        const webinar = await prisma.webinar.findUnique({
+          where: { id: bookId }
+        });
+        
+        if (webinar) {
+          if (webinar.date) {
+            const date = new Date(webinar.date);
+            const formatterDate = new Intl.DateTimeFormat('en-US', {
+              month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata'
+            });
+            const formatterTime = new Intl.DateTimeFormat('en-US', {
+              hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata'
+            });
+            webinarDateStr = formatterDate.format(date);
+            webinarTimeStr = `${formatterTime.format(date)} (IST)`;
+          }
+          webinarZoomLink = webinar.zoomLink || webinar.link || webinarZoomLink;
+          webinarTitle = webinar.title || webinarTitle;
+          webinarPlatform = webinar.mode === 'ONLINE' ? 'Zoom (Live Online Session)' : 'Offline Session';
+        }
+
+        const emailModule = await import("../../common/services/email.service.js");
+        const toEmail = order.guestEmail || (order.user as any)?.email;
+        if (toEmail) {
+          await emailModule.sendWebinarConfirmationEmail(toEmail, {
+            parent_name: order.guestName || (order.user as any)?.username || "Parent",
+            order_id: order.id.slice(-8).toUpperCase(),
+            webinar_date: webinarDateStr,
+            webinar_time: webinarTimeStr,
+            download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
+            whatsapp_group_url: "https://chat.whatsapp.com/mock-parent-community-group",
+            zoom_link: webinarZoomLink,
+            webinar_title: webinarTitle,
+            webinar_platform: webinarPlatform
+          });
+        }
+      }
+
+      res.status(200).json({ success: true, message: "Email sent" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const order = await AdminService.updateOrderStatus(req.params.id as string, req.body.status, req.body.awbNumber);

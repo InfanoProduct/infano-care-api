@@ -87,6 +87,18 @@ export class AuthController {
     } catch (e) { next(e); }
   }
 
+  static async resetAdminPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized access" });
+        return;
+      }
+      const result = await AuthService.resetAdminPassword(userId, req.body);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
   static async requestNewCredentials(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await AuthService.requestNewCredentials(req.body);
