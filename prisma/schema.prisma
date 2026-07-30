@@ -28,7 +28,7 @@ model User {
   parentEmail               String?
   phone                     String                   @unique
   privacyAcceptedAt         DateTime?
-  role                      UserRole                 @default(TEEN)
+  role                      UserRole?
   termsAcceptedAt           DateTime?
   timezone                  String?
   onboardingStep            Int                      @default(0)

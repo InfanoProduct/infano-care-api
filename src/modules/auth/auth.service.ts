@@ -135,7 +135,7 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string; userId: string; tempToken: string; peerApplicationStatus: string }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string }> {
     const finalPhone = normalizePhone(phone);
     
     // Select all potential fields to satisfy type requirements across logical paths
@@ -151,7 +151,8 @@ export class AuthService {
         otpSendOn: true,
         otpRetryCount: true,
         role: true,
-        peerApplication: { select: { status: true } }
+        peerApplication: { select: { status: true } },
+        profile: { select: { displayName: true, pronouns: true, birthMonth: true, birthYear: true, totalPoints: true, avatarUrl: true } }
       }
     });
 
@@ -269,7 +270,9 @@ export class AuthService {
       isOnboardingCompleted: finalUser.onboardingCompletedAt !== null,
       role: finalUser.role,
       userId: finalUser.id,
-      peerApplicationStatus: finalUser.peerApplication?.status || 'none'
+      peerApplicationStatus: finalUser.peerApplication?.status || 'none',
+      profile: finalUser.profile ?? null,
+      contentTier: finalUser.contentTier ?? null
     };
   }
 
