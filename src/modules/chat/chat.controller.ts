@@ -77,6 +77,24 @@ export class ChatController {
   }
 
   /**
+   * List all aggregated chat sessions (experts and peers) for the user
+   */
+  static async getAggregatedChats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+
+      const sessions = await chatService.getAggregatedChats(userId);
+
+      res.status(200).json({
+        success: true,
+        data: sessions
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Delete a specific chat session
    */
   static async deleteSession(req: Request, res: Response, next: NextFunction) {

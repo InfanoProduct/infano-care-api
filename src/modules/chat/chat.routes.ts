@@ -54,6 +54,21 @@ router.get('/sessions', authenticate, ChatController.getSessions);
 
 /**
  * @openapi
+ * /api/chat/my-chats:
+ *   get:
+ *     tags:
+ *       - Chat
+ *     summary: Get aggregated chats for user (experts and peers)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of aggregated chats fetched.
+ */
+router.get('/my-chats', authenticate, ChatController.getAggregatedChats);
+
+/**
+ * @openapi
  * /api/chat/history/{sessionId}:
  *   get:
  *     summary: Get session message history
