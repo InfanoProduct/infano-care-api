@@ -17,6 +17,7 @@ router.put("/calendar", ExpertController.updateCalendarSettings);
 
 
 router.get("/sessions", ExpertController.getSessions);
+router.get("/my-sessions", ExpertController.getSessions);
 router.post("/sessions", ExpertController.scheduleSession);
 router.patch("/sessions/:id/complete", ExpertController.completeSession);
 router.patch("/sessions/:id/status", ExpertController.updateSessionStatus);

@@ -151,8 +151,10 @@ export class AuthService {
         otpSendOn: true,
         otpRetryCount: true,
         role: true,
+        birthMonth: true,
+        birthYear: true,
         peerApplication: { select: { status: true } },
-        profile: { select: { displayName: true, pronouns: true, birthMonth: true, birthYear: true, totalPoints: true, avatarUrl: true } }
+        profile: { select: { displayName: true, pronouns: true, totalPoints: true, avatarUrl: true } }
       }
     });
 
