@@ -111,7 +111,8 @@ export class UserController {
   static async updateProfile(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId || (req as any).user?.id;
-      const { displayName, email } = req.body;
+      const userRole = (req as any).userRole;
+      const { displayName, email, specialisation, consultationPrice, bio } = req.body;
 
       // Update User email
       await prisma.user.update({
@@ -119,16 +120,27 @@ export class UserController {
         data: { email }
       });
 
-      // Update/Upsert Profile displayName
+      const isExpert = userRole === 'EXPERT';
+      const profileData: any = {
+        displayName: displayName || ""
+      };
+
+      if (isExpert) {
+        if (specialisation !== undefined) profileData.specialisation = specialisation;
+        if (consultationPrice !== undefined) {
+          profileData.consultationPrice = consultationPrice ? parseFloat(consultationPrice) : null;
+        }
+        if (bio !== undefined) profileData.bio = bio;
+      }
+
+      // Update/Upsert Profile details
       const updatedProfile = await prisma.profile.upsert({
         where: { userId },
         create: {
           userId,
-          displayName: displayName || ""
+          ...profileData
         },
-        update: {
-          displayName: displayName || ""
-        }
+        update: profileData
       });
 
       res.status(200).json({

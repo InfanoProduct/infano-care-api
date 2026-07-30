@@ -1775,19 +1775,21 @@ export class AdminService {
   }
 
   static async createExpert(data: any) {
-    const { email, phone, displayName, specialisation, consultationPrice, bio } = data;
+    const { email, phone, displayName, specialisation, consultationPrice, bio, isTestNumber } = data;
+    const finalPhone = normalizePhone(phone);
+    const emailVal = email && email.trim() !== '' ? email.trim() : null;
     
     // Generate default password and hash it
     const defaultPassword = "Expert@123";
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
     // Check for existing user
-    if (email) {
-      const existingEmail = await prisma.user.findFirst({ where: { email } });
+    if (emailVal) {
+      const existingEmail = await prisma.user.findFirst({ where: { email: emailVal } });
       if (existingEmail) throw new Error('An account with this email already exists.');
     }
-    if (phone) {
-      const existingPhone = await prisma.user.findFirst({ where: { phone } });
+    if (finalPhone) {
+      const existingPhone = await prisma.user.findFirst({ where: { phone: finalPhone } });
       if (existingPhone) throw new Error('An account with this phone number already exists.');
     }
     
@@ -1795,12 +1797,13 @@ export class AdminService {
     return prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          email,
-          phone: phone || `expert-${Date.now()}`,
+          email: emailVal,
+          phone: finalPhone || `expert-${Date.now()}`,
           password: hashedPassword,
           role: "EXPERT",
           accountStatus: "ACTIVE",
-          username: email
+          username: emailVal || finalPhone || `expert-${Date.now()}`,
+          isTestNumber: isTestNumber === true || isTestNumber === 'true'
         }
       });
       
@@ -1823,25 +1826,33 @@ export class AdminService {
   }
 
   static async updateExpert(id: string, data: any) {
-    const { email, phone, displayName, specialisation, consultationPrice, bio } = data;
+    const { email, phone, displayName, specialisation, consultationPrice, bio, isTestNumber } = data;
+    const finalPhone = phone ? normalizePhone(phone) : undefined;
+    const emailVal = email !== undefined ? (email && email.trim() !== '' ? email.trim() : null) : undefined;
 
     // Check for existing user
-    if (email) {
-      const existingEmail = await prisma.user.findFirst({ where: { email, id: { not: id } } });
+    if (emailVal) {
+      const existingEmail = await prisma.user.findFirst({ where: { email: emailVal, id: { not: id } } });
       if (existingEmail) throw new Error('An account with this email already exists.');
     }
-    if (phone) {
-      const existingPhone = await prisma.user.findFirst({ where: { phone, id: { not: id } } });
+    if (finalPhone) {
+      const existingPhone = await prisma.user.findFirst({ where: { phone: finalPhone, id: { not: id } } });
       if (existingPhone) throw new Error('An account with this phone number already exists.');
     }
     
     return prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({ where: { id } });
+      const currentPhone = finalPhone || existingUser?.phone;
+      const targetUsername = emailVal !== undefined ? (emailVal || currentPhone) : undefined;
+
       // Update User
       await tx.user.update({
         where: { id },
         data: {
-          ...(email && { email, username: email }),
-          ...(phone && { phone })
+          ...(emailVal !== undefined && { email: emailVal }),
+          ...(targetUsername !== undefined && { username: targetUsername }),
+          ...(finalPhone && { phone: finalPhone }),
+          ...(isTestNumber !== undefined && { isTestNumber: isTestNumber === true || isTestNumber === 'true' })
         }
       });
       

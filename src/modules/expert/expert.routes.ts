@@ -14,8 +14,7 @@ router.get("/enrollments/:id", ExpertController.getEnrollmentDetails);
 router.get("/calendar", ExpertController.getCalendarSettings);
 router.put("/calendar", ExpertController.updateCalendarSettings);
 
-router.post("/settings/password-reset/send-otp", ExpertController.sendEmailOtp);
-router.post("/settings/password-reset/verify-otp", ExpertController.verifyEmailOtpAndResetPassword);
+
 
 router.get("/sessions", ExpertController.getSessions);
 router.post("/sessions", ExpertController.scheduleSession);
