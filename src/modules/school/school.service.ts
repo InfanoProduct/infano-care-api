@@ -290,7 +290,7 @@ export class SchoolService {
   /**
    * Fetch specific school details with related records
    */
-  static async getSchoolById(id: string, userRole?: string, userId?: string) {
+  static async getSchoolById(id: string, userRole?: string | null, userId?: string) {
     const school = await prisma.school.findUnique({
       where: { id },
       include: {

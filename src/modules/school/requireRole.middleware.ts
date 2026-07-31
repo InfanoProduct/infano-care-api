@@ -24,7 +24,7 @@ export function requireRole(allowedRoles: string[]) {
         return next(new AppError("User account not found.", 401));
       }
 
-      if (!allowedRoles.includes(user.role)) {
+      if (!user.role || !allowedRoles.includes(user.role)) {
         return next(
           new AppError(
             `Forbidden: Access denied. Required role: ${allowedRoles.join(" or ")}. Your role is ${user.role}`,
