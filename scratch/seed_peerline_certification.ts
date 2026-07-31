@@ -8,18 +8,18 @@ async function main() {
   const journeySlug = 'peerline-mentor-certification';
 
   // Check if it already exists and delete it to re-seed with updated data
-  let existingJourney = await prisma.learningJourney.findUnique({
+  let existingJourney = await prisma.peerLineCertificationCourse.findUnique({
     where: { slug: journeySlug },
   });
 
   if (existingJourney) {
     console.log('Deleting existing journey to re-seed...');
-    await prisma.learningJourney.delete({
+    await prisma.peerLineCertificationCourse.delete({
       where: { slug: journeySlug }
     });
   }
 
-  const journey = await prisma.learningJourney.create({
+  const journey = await prisma.peerLineCertificationCourse.create({
     data: {
       title: 'PeerLine Mentor Training',
       slug: journeySlug,

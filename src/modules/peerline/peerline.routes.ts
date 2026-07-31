@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { PeerLineController } from './peerline.controller.js';
-import { authenticate } from '../../common/middleware/auth.js';
+import { authenticate, optionalAuthenticate } from '../../common/middleware/auth.js';
 import { upload } from '../../common/middleware/upload.js';
 
 
@@ -31,12 +31,15 @@ router.post('/mentor/sessions/:sessionId/accept', authenticate, PeerLineControll
 router.post('/mentor/media', authenticate, upload.single('file'), PeerLineController.uploadMedia);
 router.get('/mentor/search', authenticate, PeerLineController.getMentorsByTopics);
 router.post('/mentor/onboard', PeerLineController.onboardMentor);
-router.post('/mentor/apply', PeerLineController.applyToMentor);
+router.post('/mentor/apply', optionalAuthenticate, PeerLineController.applyToMentor);
 
 router.post('/training/progress', authenticate, PeerLineController.updateTrainingProgress);
 router.post('/training/assessment', authenticate, PeerLineController.submitAssessment);
 router.post('/training/conduct-agree', authenticate, PeerLineController.agreeToConduct);
 router.get('/training/status', authenticate, PeerLineController.getTrainingStatus);
+router.get('/training/course', PeerLineController.getTrainingCourse);
+router.get('/training/episodes/:episodeSlug', PeerLineController.getTrainingEpisode);
+
 
 router.patch('/mentor/expertise', authenticate, PeerLineController.updateExpertise);
 

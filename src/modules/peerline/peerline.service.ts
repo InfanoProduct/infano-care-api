@@ -878,7 +878,7 @@ export class PeerLineService {
     const existingApp = await prisma.peerApplication.findUnique({ 
       where: { userId: targetUserId } 
     });
-    if (existingApp && existingApp.status !== 'none') {
+    if (existingApp && ['submitted', 'certified'].includes(existingApp.certificationStatus)) {
       const error = new AppError('You have already submitted an application. Please wait for the review process.', 400);
       (error as any).details = {
         status: existingApp.status,
@@ -904,27 +904,41 @@ export class PeerLineService {
       });
     }
 
+    const appUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      include: { profile: true }
+    });
+
+    if (!appUser) throw new Error('User not found');
+
+    const appName = input.name || appUser.profile?.displayName || 'Peer Applicant';
+    const appEmail = input.email || appUser.email || appUser.username || '';
+    const appPhone = input.phone ? normalizePhone(input.phone) : (appUser.phone || '');
+    const appStatement = input.personalStatement || 'Applied via Dashboard';
+
     // Save application data
     await prisma.peerApplication.upsert({
       where: { userId: targetUserId },
       update: {
-        name: input.name,
-        email: input.email,
-        phone: normalizePhone(input.phone),
-        personalStatement: input.personalStatement,
+        name: appName,
+        email: appEmail,
+        phone: appPhone,
+        personalStatement: appStatement,
         scenarioResponses: input.scenarioResponses || [],
         eligibility: input.eligibility || {},
-        status: 'pending'
+        status: 'pending',
+        certificationStatus: 'submitted'
       },
       create: {
         userId: targetUserId,
-        name: input.name,
-        email: input.email,
-        phone: normalizePhone(input.phone),
-        personalStatement: input.personalStatement,
+        name: appName,
+        email: appEmail,
+        phone: appPhone,
+        personalStatement: appStatement,
         scenarioResponses: input.scenarioResponses || [],
         eligibility: input.eligibility || {},
-        status: 'pending'
+        status: 'pending',
+        certificationStatus: 'submitted'
       }
     });
 
@@ -1083,5 +1097,23 @@ export class PeerLineService {
     }
     return app;
   }
+
+  async getTrainingCourse() {
+    return prisma.peerLineCertificationCourse.findUnique({
+      where: { slug: 'peerline-mentor-certification' },
+      include: {
+        episodes: {
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+  }
+
+  async getTrainingEpisode(episodeSlug: string) {
+    return prisma.peerLineCertificationEpisode.findUnique({
+      where: { slug: episodeSlug }
+    });
+  }
 }
+
 
