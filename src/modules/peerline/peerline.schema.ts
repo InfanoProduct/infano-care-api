@@ -42,10 +42,10 @@ export const mentorOnboardSchema = z.object({
 
 export const mentorApplySchema = z.object({
   body: z.object({
-    name: z.string().trim().min(2),
-    email: z.string().trim().email(),
-    phone: z.string().trim().min(1),
-    personalStatement: z.string().trim().min(50),
+    name: z.string().trim().min(2).optional(),
+    email: z.string().trim().email().optional(),
+    phone: z.string().trim().min(1).optional(),
+    personalStatement: z.string().trim().min(50).optional(),
     scenarioResponses: z.array(z.string().trim()).length(2),
     eligibility: z.object({
       isOver18: z.boolean(),

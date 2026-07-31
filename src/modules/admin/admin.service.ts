@@ -1,7 +1,7 @@
 import { prisma } from "../../db/client.js";
 import { ShopService } from "../shop/shop.service.js";
 import bcrypt from "bcryptjs";
-import { UserRole } from "@prisma/client";
+import { UserRole, Prisma } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
 import crypto from "crypto";
 import Razorpay from "razorpay";
@@ -732,18 +732,28 @@ export class AdminService {
     // Update the application status
     await prisma.peerApplication.update({
       where: { userId },
-      data: { status: 'approved' }
+      data: { 
+        status: 'approved',
+        certificationStatus: 'certified',
+        certifiedAt: new Date()
+      }
     });
 
-    // Update profile status to training mode, but keep role as TEEN
+    // Update user role to PEER
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role: 'PEER' }
+    });
+
+    // Update profile status to certified mode
     if (user.profile) {
       await prisma.profile.update({
         where: { userId },
-        data: { mentorStatus: 'training', isAvailable: false }
+        data: { mentorStatus: 'certified', isAvailable: true }
       });
     }
 
-    return { success: true, message: 'Peer application approved successfully' };
+    return { success: true, message: 'Peer application approved and user certified successfully' };
   }
 
   static async approveCertification(userId: string) {
@@ -808,7 +818,11 @@ export class AdminService {
         assessmentAttempts: 0,
         lastAttemptAt: null,
         lockUntil: null,
-        completedEpisodes: []
+        completedEpisodes: [],
+        trainingScore: null,
+        trainingAnswers: Prisma.JsonNull,
+        episodeAnswers: Prisma.JsonNull,
+        scenarioResponses: []
       }
     });
 
@@ -874,7 +888,10 @@ export class AdminService {
   static async getJourneys() {
     const journeys = await prisma.learningJourney.findMany({
       where: {
-        category: { not: "Peer Support" }
+        OR: [
+          { category: { not: "Peer Support" } },
+          { category: null }
+        ]
       },
       include: {
         _count: {

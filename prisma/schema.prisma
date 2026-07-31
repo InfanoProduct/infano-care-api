@@ -1680,3 +1680,30 @@ model ExpertCalendarSettings {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model PeerLineCertificationCourse {
+  id             String      @id @default(uuid())
+  title          String
+  description    String
+  slug           String      @unique @default(uuid())
+  thumbnailUrl   String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  isActive       Boolean     @default(true)
+  episodes       PeerLineCertificationEpisode[]
+}
+
+model PeerLineCertificationEpisode {
+  id           String          @id @default(uuid())
+  courseId     String
+  order        Int             @default(0)
+  title        String
+  content      Json            @default("[]")
+  createdAt    DateTime        @default(now())
+  description  String?
+  isActive     Boolean         @default(true)
+  slug         String          @unique @default(uuid())
+  updatedAt    DateTime        @updatedAt
+  thumbnailUrl String?
+  course       PeerLineCertificationCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}

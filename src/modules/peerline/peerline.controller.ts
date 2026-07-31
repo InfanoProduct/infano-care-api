@@ -258,4 +258,29 @@ export class PeerLineController {
       next(error);
     }
   }
-}
+
+  static async getTrainingCourse(req: Request, res: Response, next: NextFunction) {
+    try {
+      const course = await peerLineService.getTrainingCourse();
+      if (!course) {
+        return res.status(404).json({ success: false, error: 'Course not found' });
+      }
+      res.status(200).json(course);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getTrainingEpisode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const episodeSlug = req.params.episodeSlug as string;
+      const episode = await peerLineService.getTrainingEpisode(episodeSlug);
+      if (!episode) {
+        return res.status(404).json({ success: false, error: 'Episode not found' });
+      }
+      res.status(200).json(episode);
+    } catch (error) {
+      next(error);
+    }
+  }
+}
