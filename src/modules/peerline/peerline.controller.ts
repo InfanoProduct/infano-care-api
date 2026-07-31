@@ -4,7 +4,7 @@ import { requestSessionSchema, sessionFeedbackSchema, mentorAvailabilitySchema, 
 import { StorageService } from '../../common/utils/storage.js';
 
 const peerLineService = new PeerLineService();
-// Force reload v3 - ensuring new service methods are picked up.
+// Force reload v6 - fixing pending_training certification status workflow.
 
 export class PeerLineController {
   static async getAvailability(req: Request, res: Response, next: NextFunction) {

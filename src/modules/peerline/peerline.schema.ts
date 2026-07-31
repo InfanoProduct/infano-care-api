@@ -45,17 +45,10 @@ export const mentorApplySchema = z.object({
     name: z.string().trim().min(2).optional(),
     email: z.string().trim().email().optional(),
     phone: z.string().trim().min(1).optional(),
-    personalStatement: z.string().trim().min(50).optional(),
-    scenarioResponses: z.array(z.string().trim()).length(2),
-    eligibility: z.object({
-      isOver18: z.boolean(),
-      hasLivedExperience: z.boolean(),
-      isFluent: z.boolean(),
-      isStable: z.boolean(),
-      isDigitallyLiterate: z.boolean(),
-      canCommit: z.boolean(),
-      agreesToVerification: z.boolean(),
-    }),
+    personalStatement: z.string().trim().optional(),
+    scenarioResponses: z.array(z.string().trim()).optional().default([]),
+    topicIds: z.array(z.string()).optional().default([]),
+    eligibility: z.record(z.string(), z.boolean()).optional().default({}),
   }),
 });
 

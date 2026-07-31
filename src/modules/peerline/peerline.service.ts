@@ -887,6 +887,12 @@ export class PeerLineService {
       throw error;
     }
 
+    const certifiedTopicIds = Array.isArray(input.topicIds)
+      ? input.topicIds
+      : Array.isArray(input.certifiedTopicIds)
+      ? input.certifiedTopicIds
+      : [];
+
     // Ensure profile exists
     let profile = await prisma.profile.findUnique({ where: { userId: targetUserId } });
     if (!profile) {
@@ -894,13 +900,17 @@ export class PeerLineService {
         data: {
           userId: targetUserId,
           displayName: input.name || 'Peer Applicant',
-          mentorStatus: 'applied'
+          mentorStatus: 'applied',
+          certifiedTopicIds: certifiedTopicIds
         }
       });
     } else {
       profile = await prisma.profile.update({
         where: { userId: targetUserId },
-        data: { mentorStatus: 'applied' }
+        data: {
+          mentorStatus: 'applied',
+          certifiedTopicIds: certifiedTopicIds.length > 0 ? certifiedTopicIds : profile.certifiedTopicIds
+        }
       });
     }
 
@@ -916,6 +926,10 @@ export class PeerLineService {
     const appPhone = input.phone ? normalizePhone(input.phone) : (appUser.phone || '');
     const appStatement = input.personalStatement || 'Applied via Dashboard';
 
+    const targetCertStatus = (existingApp?.certificationStatus && ['certified', 'pending_conduct'].includes(existingApp.certificationStatus))
+      ? existingApp.certificationStatus
+      : 'pending_training';
+
     // Save application data
     await prisma.peerApplication.upsert({
       where: { userId: targetUserId },
@@ -927,7 +941,7 @@ export class PeerLineService {
         scenarioResponses: input.scenarioResponses || [],
         eligibility: input.eligibility || {},
         status: 'pending',
-        certificationStatus: 'submitted'
+        certificationStatus: targetCertStatus
       },
       create: {
         userId: targetUserId,
@@ -938,7 +952,7 @@ export class PeerLineService {
         scenarioResponses: input.scenarioResponses || [],
         eligibility: input.eligibility || {},
         status: 'pending',
-        certificationStatus: 'submitted'
+        certificationStatus: 'pending_training'
       }
     });
 
@@ -1095,6 +1109,16 @@ export class PeerLineService {
         lockUntil: null
       };
     }
+
+    // Self-heal: If marked submitted before actually taking the assessment, revert to pending_training
+    if (app.certificationStatus === 'submitted' && app.trainingScore === null) {
+      await prisma.peerApplication.update({
+        where: { userId },
+        data: { certificationStatus: 'pending_training' }
+      });
+      app.certificationStatus = 'pending_training';
+    }
+
     return app;
   }
 
