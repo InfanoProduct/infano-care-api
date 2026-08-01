@@ -20,6 +20,7 @@ router.get('/topics', authenticate, PeerLineController.getTopics);
 router.post('/connections/request', authenticate, PeerLineController.requestConnection);
 router.post('/connections/:connectionId/accept', authenticate, PeerLineController.acceptConnection);
 router.post('/connections/:connectionId/decline', authenticate, PeerLineController.declineConnection);
+router.post('/connections/:connectionId/cancel', authenticate, PeerLineController.cancelConnection);
 
 // ─── Session/Connection history (kept for backward compat) ───────────────────
 router.get('/sessions', authenticate, PeerLineController.getSessions);

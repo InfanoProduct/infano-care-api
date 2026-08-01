@@ -769,6 +769,47 @@ export class PeerLineService {
     return declined;
   }
 
+  /**
+   * NEW: Teen cancels their own pending connection request.
+   */
+  async cancelConnection(teenId: string, connectionId: string) {
+    const connection = await prisma.peerLineSession.findUnique({
+      where: { id: connectionId },
+    });
+
+    if (!connection) {
+      throw new AppError('Connection request not found', 404);
+    }
+
+    if (connection.menteeId !== teenId) {
+      throw new AppError('Unauthorized: You did not create this request', 403);
+    }
+
+    if (connection.status !== PeerLineStatus.MATCHING) {
+      throw new AppError('Only pending requests can be cancelled', 400);
+    }
+
+    // Set to CANCELLED so the teen can request again
+    const cancelled = await prisma.peerLineSession.update({
+      where: { id: connectionId },
+      data: {
+        status: PeerLineStatus.CANCELLED,
+        endedAt: new Date(),
+        endReason: 'mentee_cancelled',
+      }
+    });
+
+    // Notify the mentor of the cancel so it disappears from their dashboard
+    try {
+      const socketModule = await import('./peerline.socket.js');
+      await socketModule.broadcastConnectionDeclined(connectionId, connection.mentorId || '');
+    } catch (e) {
+      console.error('[PeerLine] Failed to broadcast connection cancel:', e);
+    }
+
+    return cancelled;
+  }
+
   async getMentorsByTopics(userId: string, topicIds: string[]) {
     const where: any = {
       profile: {

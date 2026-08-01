@@ -81,6 +81,21 @@ export class PeerLineController {
     }
   }
 
+  /**
+   * POST /peerline/connections/:connectionId/cancel
+   * Teen cancels their own pending connection request.
+   */
+  static async cancelConnection(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const connectionId = req.params.connectionId as string;
+      const connection = await peerLineService.cancelConnection(userId, connectionId);
+      res.status(200).json({ success: true, connection });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // ─── Legacy Session Endpoints (kept for backward compat) ─────────────────────
 
   static async requestSession(req: Request, res: Response, next: NextFunction) {
