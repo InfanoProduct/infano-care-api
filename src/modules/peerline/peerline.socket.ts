@@ -3,7 +3,7 @@ import { logger } from '../../config/logger.js';
 import { PeerLineService } from './peerline.service.js';
 import { socketAuthMiddleware } from '../../common/middleware/socketAuth.js';
 
-let nsp: Namespace;
+export let nsp: Namespace;
 let peerLineService: PeerLineService;
 
 function getPeerLineService() {
@@ -20,10 +20,14 @@ export function setupPeerLineSocket(serverIo: Server) {
   nsp.on('connection', (socket: Socket) => {
     const userId = (socket as any).userId;
     logger.info({ userId, socketId: socket.id }, 'User connected to /peerline Socket Namespace');
+    if (userId) {
+      socket.join(`user_${userId}`);
+    }
 
     socket.on('error', (err) => {
       logger.error({ socketId: socket.id, err }, 'Socket encountered an error');
     });
+
     socket.on('subscribe_availability', () => {
       socket.join('availability_updates');
       logger.info({ socketId: socket.id }, 'Socket joined availability_updates channel');
@@ -39,37 +43,48 @@ export function setupPeerLineSocket(serverIo: Server) {
     socket.on('subscribe_mentor_updates', async () => {
       socket.join('mentor_updates');
       logger.info({ socketId: socket.id }, 'Socket joined mentor_updates channel');
-      // Send initial queue count
-      const stats = await getPeerLineService().getMentorStats((socket as any).userId);
-      socket.emit('queue_count_update', { count: stats.queueCount });
+      // Send initial pending requests count
+      const uid = (socket as any).userId;
+      try {
+        const stats = await getPeerLineService().getMentorStats(uid);
+        socket.emit('pending_requests_update', { count: stats.pendingRequests });
+      } catch (e) {
+        // silently fail if not a mentor
+      }
     });
 
     socket.on('unsubscribe_mentor_updates', () => {
       socket.leave('mentor_updates');
     });
 
-    socket.on('subscribe_session', (sessionId: string) => {
-      socket.join(`session_${sessionId}`);
-      logger.info({ socketId: socket.id, sessionId }, 'Socket joined session channel');
-      getPeerLineService().getQueuePosition((socket as any).userId, sessionId).then(queueInfo => {
-        socket.emit('queue_position_update', queueInfo);
-      }).catch(() => {
-        // Silently fail if not mentee or not found
-      });
+    // Subscribe to a chat connection room (teen-peer pair)
+    socket.on('subscribe_session', (connectionId: string) => {
+      socket.join(`session_${connectionId}`);
+      logger.info({ socketId: socket.id, connectionId }, 'Socket joined connection channel');
     });
 
-    socket.on('unsubscribe_session', (sessionId: string) => {
-      socket.leave(`session_${sessionId}`);
+    socket.on('unsubscribe_session', (connectionId: string) => {
+      socket.leave(`session_${connectionId}`);
     });
 
-    socket.on('send_message', async (data: { sessionId: string; content: string | null; senderRole: 'mentee' | 'mentor'; messageType?: 'TEXT' | 'VOICE' | 'IMAGE'; mediaUrl?: string; clientId?: string }) => {
+    // ─── Messaging ────────────────────────────────────────────────────────────
+
+    socket.on('send_message', async (data: {
+      sessionId: string;
+      content: string | null;
+      senderRole: 'mentee' | 'mentor';
+      messageType?: 'TEXT' | 'VOICE' | 'IMAGE';
+      mediaUrl?: string;
+      clientId?: string;
+    }) => {
       try {
         const uid = (socket as any).userId;
         logger.info({ uid, data }, 'Received send_message on socket');
-        const message = await getPeerLineService().createMessage(uid, data.sessionId, data.content, data.senderRole, data.messageType, data.mediaUrl);
+        const message = await getPeerLineService().createMessage(
+          uid, data.sessionId, data.content, data.senderRole, data.messageType, data.mediaUrl
+        );
 
-
-        logger.info({ sessionId: data.sessionId, messageId: message.id }, 'Message created, broadcasting to room');
+        logger.info({ connectionId: data.sessionId, messageId: message.id }, 'Message created, broadcasting to room');
         const { sessionId: _sId, ...msgRest } = message;
         nsp.to(`session_${data.sessionId}`).emit('message', {
           type: 'message',
@@ -87,53 +102,34 @@ export function setupPeerLineSocket(serverIo: Server) {
           socket.emit('error', { type: 'PII_BLOCKED', message: "For safety, let's keep our conversations here in PeerLine." });
         } else {
           logger.error({ error, data }, 'Failed to process message');
+          socket.emit('error', { type: 'MESSAGE_ERROR', message: error.message || 'Failed to send message' });
         }
       }
     });
 
     socket.on('typing_indicator', (data: { sessionId: string; isTyping: boolean; senderRole: string }) => {
-      socket.to(`session_${data.sessionId}`).emit('peer_typing', { isTyping: data.isTyping, senderRole: data.senderRole });
-    });
-
-    socket.on('typing_stop', (data: { sessionId: string; senderRole: string }) => {
-      socket.to(`session_${data.sessionId}`).emit('peer_typing', { isTyping: false, senderRole: data.senderRole });
+      socket.to(`session_${data.sessionId}`).emit('peer_typing', {
+        isTyping: data.isTyping,
+        senderRole: data.senderRole,
+      });
     });
 
     socket.on('delete_message', async (data: { sessionId: string; messageId: string }) => {
       try {
         const uid = (socket as any).userId;
         await getPeerLineService().deleteMessage(uid, data.messageId);
-        nsp.to(`session_${data.sessionId}`).emit('message_deleted', { messageId: data.messageId, sessionId: data.sessionId });
+        nsp.to(`session_${data.sessionId}`).emit('message_deleted', {
+          messageId: data.messageId,
+          sessionId: data.sessionId,
+        });
       } catch (error) {
         logger.error({ error, data }, 'Failed to delete message via socket');
       }
     });
-
-    socket.on('end_session', async (data: { sessionId: string; reason: string }) => {
-      try {
-        const uid = (socket as any).userId;
-        await getPeerLineService().endSession(uid, data.sessionId);
-        nsp.to(`session_${data.sessionId}`).emit('session_ended', { reason: data.reason });
-      } catch (error) {
-        logger.error({ error, data }, 'Failed to end session via socket');
-      }
-    });
-
-    socket.on('pause_session', (data: { sessionId: string }) => {
-      nsp.to(`session_${data.sessionId}`).emit('session_paused', { timestamp: new Date() });
-    });
   });
 }
 
-export async function broadcastSessionUpdate(sessionId: string, userId: string) {
-  if (!nsp) return;
-  try {
-    const queueInfo = await getPeerLineService().getQueuePosition(userId, sessionId);
-    nsp.to(`session_${sessionId}`).emit('queue_position_update', queueInfo);
-  } catch (error) {
-    logger.error({ sessionId, error }, 'Failed to broadcast session update');
-  }
-}
+// ─── Broadcast Helpers ────────────────────────────────────────────────────────
 
 export async function broadcastAvailabilityUpdate() {
   if (!nsp) return;
@@ -145,20 +141,46 @@ export async function broadcastAvailabilityUpdate() {
   }
 }
 
+/**
+ * Broadcast to the teen that their connection request was accepted.
+ * Navigates them directly into the chat.
+ */
+export async function broadcastConnectionAccepted(connectionId: string, teenId: string, mentorId: string) {
+  if (!nsp) return;
+  nsp.to(`session_${connectionId}`).emit('connection_accepted', { connectionId, mentorId });
+  nsp.to(`user_${teenId}`).emit('connection_accepted', { connectionId, mentorId });
+  logger.info({ connectionId, teenId, mentorId }, 'Broadcasted connection_accepted');
+}
+
+/**
+ * Broadcast to the teen that their connection request was declined.
+ */
+export async function broadcastConnectionDeclined(connectionId: string, teenId: string) {
+  if (!nsp) return;
+  nsp.to(`user_${teenId}`).emit('connection_declined', { connectionId });
+  logger.info({ connectionId, teenId }, 'Broadcasted connection_declined');
+}
+
+/**
+ * Notify a specific mentor of a new incoming connection request.
+ */
+export async function broadcastConnectionRequest(connectionId: string, mentorId: string) {
+  if (!nsp) return;
+  nsp.to(`user_${mentorId}`).emit('connection_request', { connectionId });
+  nsp.to('mentor_updates').emit('pending_requests_update', {});
+  logger.info({ connectionId, mentorId }, 'Broadcasted connection_request to mentor');
+}
+
+// Legacy — kept so import references in old code don't crash
 export async function broadcastSessionReady(sessionId: string, menteeId: string) {
   if (!nsp) return;
-  nsp.to(`session_${sessionId}`).emit('session_ready', { sessionId });
-  nsp.to(`user_${menteeId}`).emit('session_ready', { sessionId });
-  logger.info({ sessionId, menteeId }, 'Broadcasted session ready');
+  nsp.to(`user_${menteeId}`).emit('connection_accepted', { connectionId: sessionId });
 }
 
 export async function broadcastQueueUpdate() {
-  if (!nsp) return;
-  try {
-    // This is a simplified version. For true accuracy, we'd need to emit per topic.
-    // For now, we broadcast a general update alert, and mentors fetch their specific count.
-    nsp.to('mentor_updates').emit('queue_count_changed');
-  } catch (error) {
-    logger.error({ error }, 'Failed to broadcast queue update');
-  }
+  // No-op in new model (no queue)
+}
+
+export async function broadcastDirectRequest(sessionId: string, mentorId: string) {
+  return broadcastConnectionRequest(sessionId, mentorId);
 }

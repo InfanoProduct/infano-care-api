@@ -434,7 +434,15 @@ export class AdminService {
       accountStatus: { not: "DELETED" }
     };
     if (peerOnboarding !== undefined) {
-      whereClause.peerOnboarding = peerOnboarding;
+      if (peerOnboarding) {
+        whereClause.OR = [
+          { peerOnboarding: true },
+          { peerApplication: { isNot: null } },
+          { role: "PEER" }
+        ];
+      } else {
+        whereClause.peerOnboarding = false;
+      }
     }
     if (role) {
       whereClause.role = role;

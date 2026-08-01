@@ -1022,18 +1022,61 @@ ABSOLUTE RULES — NO EXCEPTIONS:
         mentor: { select: { profile: true } },
         mentee: { select: { profile: true } },
         PeerLineMessage: { orderBy: { sentAt: 'desc' }, take: 1 }
-      }
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
-    const peerUnreadCounts = await Promise.all(
-      peerSessions.map(async (s) => {
-        const otherRole = s.menteeId === userId ? 'mentor' : 'mentee';
-        const count = await prisma.peerLineMessage.count({
-          where: { sessionId: s.id, isRead: false, senderRole: otherRole }
-        });
-        return { id: s.id, count };
-      })
-    );
+    // Group peer sessions by partner (otherUserId) to prevent duplicate chat items
+    const peerGroupsMap = new Map<string, typeof peerSessions>();
+    for (const session of peerSessions) {
+      const partnerId = session.menteeId === userId ? session.mentorId : session.menteeId;
+      if (!partnerId) continue;
+      if (!peerGroupsMap.has(partnerId)) {
+        peerGroupsMap.set(partnerId, []);
+      }
+      peerGroupsMap.get(partnerId)!.push(session);
+    }
+
+    const peerAggregated: any[] = [];
+    for (const [partnerId, sessionsList] of peerGroupsMap.entries()) {
+      // Find active session if any, otherwise take the most recent session
+      const activeSession = sessionsList.find(s => s.status === 'ACTIVE' || s.status === 'MATCHING');
+      const primarySession = activeSession || sessionsList[0];
+      if (!primarySession) continue;
+      const otherUser = primarySession.menteeId === userId ? primarySession.mentor : primarySession.mentee;
+
+      // Sum unread messages across all sessions with this partner
+      const sessionIds = sessionsList.map(s => s.id);
+      const isMentee = primarySession.menteeId === userId;
+      const totalUnreadCount = await prisma.peerLineMessage.count({
+        where: {
+          sessionId: { in: sessionIds },
+          isRead: false,
+          senderRole: isMentee ? 'mentor' : 'mentee'
+        }
+      });
+
+      // Get most recent message across all sessions with this partner
+      const latestMessage = await prisma.peerLineMessage.findFirst({
+        where: { sessionId: { in: sessionIds } },
+        orderBy: { sentAt: 'desc' }
+      });
+
+      const isActive = Boolean(activeSession && (activeSession.status === 'ACTIVE' || activeSession.status === 'MATCHING'));
+
+      peerAggregated.push({
+        id: primarySession.id,
+        type: 'peer',
+        peerId: partnerId,
+        name: otherUser?.profile?.displayName || 'Peer',
+        avatarUrl: otherUser?.profile?.avatarUrl,
+        lastMessage: latestMessage?.content || 'Session started',
+        timestamp: latestMessage?.sentAt || primarySession.createdAt,
+        unreadCount: totalUnreadCount,
+        status: primarySession.status,
+        isActive
+      });
+    }
 
     const aggregated = [
       ...expertSessions.map(s => ({
@@ -1043,23 +1086,19 @@ ABSOLUTE RULES — NO EXCEPTIONS:
         avatarUrl: s.expert?.profile?.avatarUrl,
         lastMessage: s.messages[0]?.content || 'Session started',
         timestamp: s.messages[0]?.createdAt || s.createdAt,
-        unreadCount: expertUnreadCounts.find(c => c.id === s.id)?.count || 0
+        unreadCount: expertUnreadCounts.find(c => c.id === s.id)?.count || 0,
+        status: s.status,
+        isActive: s.status === 'ACTIVE' || s.status === 'IN_PROGRESS'
       })),
-      ...peerSessions.map(s => {
-        const otherUser = s.menteeId === userId ? s.mentor : s.mentee;
-        return {
-          id: s.id,
-          type: 'peer',
-          name: otherUser?.profile?.displayName || 'Peer',
-          avatarUrl: otherUser?.profile?.avatarUrl,
-          lastMessage: s.PeerLineMessage[0]?.content || 'Session started',
-          timestamp: s.PeerLineMessage[0]?.sentAt || s.createdAt,
-          unreadCount: peerUnreadCounts.find(c => c.id === s.id)?.count || 0
-        };
-      })
+      ...peerAggregated
     ];
 
-    aggregated.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // Sort: Active sessions first, then by timestamp descending
+    aggregated.sort((a, b) => {
+      if (a.isActive && !b.isActive) return -1;
+      if (!a.isActive && b.isActive) return 1;
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
 
     return aggregated;
   }

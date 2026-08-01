@@ -1,5 +1,5 @@
 import { prisma } from '../../db/client.js';
-import { RequestSessionInput, SessionFeedbackInput, MentorAvailabilityInput, MentorOnboardInput } from './peerline.schema.js';
+import { ConnectRequestInput, RequestSessionInput, SessionFeedbackInput, MentorAvailabilityInput, MentorOnboardInput } from './peerline.schema.js';
 import { PeerLineStatus } from '@prisma/client';
 // import { broadcastAvailabilityUpdate } from './peerline.socket.js'; // Dynamic import used below
 import { AppError } from '../../common/middleware/errorHandler.js';
@@ -43,13 +43,6 @@ export class PeerLineService {
       return { is_certified: false };
     }
 
-    const activeSession = await prisma.peerLineSession.findFirst({
-      where: {
-        mentorId: userId,
-        status: PeerLineStatus.ACTIVE
-      }
-    });
-
     const isAvailable = !profile.unavailableUntil || profile.unavailableUntil < new Date();
 
     // Check for safety check-in
@@ -59,81 +52,142 @@ export class PeerLineService {
         type: 'SAFETY_CHECKIN',
         message: "We wanted to check in. How are you doing? Resources are always here for you too."
       };
-      // We don't reset it here, usually the frontend will trigger a dismissal or we reset it when a session starts
     }
 
-    const completedSessions = await prisma.peerLineSession.findMany({
+    // Count pending connection requests directed to this mentor
+    const pendingRequestsCount = await prisma.peerLineSession.count({
       where: {
         mentorId: userId,
-        status: PeerLineStatus.COMPLETED
+        status: PeerLineStatus.MATCHING // MATCHING = pending connection request
       }
     });
 
-    const mentorRatingAvg = completedSessions.length > 0
-      ? completedSessions.reduce((acc, s) => acc + (s.menteeRating ?? 5), 0) / completedSessions.length
-      : 5.0;
-
-    const queueCount = await prisma.peerLineSession.count({
+    // Count active connections (open chats)
+    const activeConnectionsCount = await prisma.peerLineSession.count({
       where: {
-        status: { in: [PeerLineStatus.QUEUED, PeerLineStatus.MATCHING] },
-        mentorId: null,
-        topicIds: { hasSome: profile.certifiedTopicIds }
+        mentorId: userId,
+        status: PeerLineStatus.ACTIVE
       }
     });
 
     return {
       is_certified: true,
       is_available: isAvailable && profile.isAvailable,
-      queue_count: queueCount,
-      active_session_id: activeSession?.id,
-      mentor_rating_avg: parseFloat(mentorRatingAvg.toFixed(1)),
+      pending_requests_count: pendingRequestsCount,
+      active_connections_count: activeConnectionsCount,
       unavailable_until: profile.unavailableUntil,
       safety_nudge: pendingNudge
     };
   }
 
-  async requestSession(userId: string, input: RequestSessionInput) {
-    // 1a. If requesting a specific mentor, check for an existing request to that mentor
-    if (input.requestedMentorId) {
-      const existingDirectRequest = await prisma.peerLineSession.findFirst({
-        where: {
-          menteeId: userId,
-          mentorId: input.requestedMentorId,
-          status: { in: [PeerLineStatus.MATCHING, PeerLineStatus.QUEUED, PeerLineStatus.ACTIVE] }
-        }
-      });
-      if (existingDirectRequest) {
-        // Return existing session – do not create a duplicate
-        return existingDirectRequest;
+  /**
+   * NEW: Instagram-style connection request — teen to a specific mentor.
+   * Creates a single persistent connection record (status MATCHING = pending).
+   * Once accepted it becomes ACTIVE and stays open forever.
+   */
+  async requestConnection(teenId: string, input: ConnectRequestInput) {
+    const { mentorId, topicIds, message } = input;
+
+    // Verify the mentor is certified
+    const mentorProfile = await prisma.profile.findUnique({
+      where: { userId: mentorId }
+    });
+    if (!mentorProfile || mentorProfile.mentorStatus !== 'certified') {
+      throw new AppError('MENTOR_NOT_CERTIFIED', 400);
+    }
+
+    // Check if a connection already exists between this pair
+    const existingConnection = await prisma.peerLineSession.findFirst({
+      where: {
+        menteeId: teenId,
+        mentorId,
+        status: { in: [PeerLineStatus.MATCHING, PeerLineStatus.ACTIVE] }
+      }
+    });
+    if (existingConnection) {
+      // Return the existing connection — no duplicates
+      return existingConnection;
+    }
+
+    // Create the connection (starts as MATCHING = pending acceptance)
+    const connection = await prisma.peerLineSession.create({
+      data: {
+        menteeId: teenId,
+        mentorId,
+        topicIds: topicIds || [],
+        status: PeerLineStatus.MATCHING,
+        requestedVerified: false,
+      },
+    });
+
+    // If the teen included an intro message, save it
+    if (message && message.trim().length > 0) {
+      if (!this.scanForPII(message)) {
+        await prisma.peerLineMessage.create({
+          data: {
+            sessionId: connection.id,
+            senderRole: 'mentee',
+            content: message.trim(),
+            messageType: 'TEXT',
+          }
+        });
       }
     }
 
-    // 1b. Check if user already has any active/matching session (generic queue)
+    // Notify the mentor of the new connection request
+    try {
+      const socketModule = await import('./peerline.socket.js');
+      await socketModule.broadcastConnectionRequest(connection.id, mentorId);
+    } catch (e) {
+      console.error('[PeerLine] Socket broadcast failed after connection request:', e);
+    }
+
+    return connection;
+  }
+
+  /**
+   * LEGACY: kept for backward-compat with old clients. Routes to requestConnection if mentorId is specified.
+   */
+  async requestSession(userId: string, input: RequestSessionInput) {
+    // 1a. If requesting a specific mentor, check for an existing pending request to that mentor
+    if (input.requestedMentorId) {
+      const existingPendingDirectRequest = await prisma.peerLineSession.findFirst({
+        where: {
+          menteeId: userId,
+          mentorId: input.requestedMentorId,
+          status: { in: [PeerLineStatus.MATCHING, PeerLineStatus.QUEUED] }
+        }
+      });
+      if (existingPendingDirectRequest) {
+        // Return existing pending session – do not create a duplicate
+        return existingPendingDirectRequest;
+      }
+
+      // Auto-complete any old abandoned ACTIVE sessions between this pair so a new request can be created
+      await prisma.peerLineSession.updateMany({
+        where: {
+          menteeId: userId,
+          mentorId: input.requestedMentorId,
+          status: PeerLineStatus.ACTIVE
+        },
+        data: {
+          status: PeerLineStatus.COMPLETED,
+          endedAt: new Date(),
+          endReason: 'auto_closed_new_request'
+        }
+      });
+    }
+
+    // 1b. Check if user already has a pending generic queue session
     const existingSession = await prisma.peerLineSession.findFirst({
       where: {
         menteeId: userId,
-        mentorId: input.requestedMentorId ? undefined : null, // only block generic if no specific mentor
-        status: { in: [PeerLineStatus.MATCHING, PeerLineStatus.QUEUED, PeerLineStatus.ACTIVE] }
+        mentorId: null,
+        status: { in: [PeerLineStatus.MATCHING, PeerLineStatus.QUEUED] }
       }
     });
 
     if (existingSession && !input.requestedMentorId) {
-      if (existingSession.status === PeerLineStatus.ACTIVE && existingSession.mentorId) {
-        const mentorProfile = await prisma.profile.findUnique({
-          where: { userId: existingSession.mentorId }
-        });
-
-        // If mentor is no longer available, reset the session to QUEUED
-        const now = new Date();
-        const isOffline = !mentorProfile?.isAvailable || (mentorProfile?.unavailableUntil && mentorProfile.unavailableUntil > now);
-
-        if (isOffline) {
-          return await prisma.peerLineSession.update({
-            where: { id: existingSession.id },
-            data: { status: PeerLineStatus.QUEUED, mentorId: null }
-          });
-        }
-      }
       return existingSession;
     }
 
@@ -161,13 +215,15 @@ export class PeerLineService {
     try {
       const socketModule = await import('./peerline.socket.js');
       await socketModule.broadcastQueueUpdate();
+      if (input.requestedMentorId) {
+        await socketModule.broadcastDirectRequest(session.id, input.requestedMentorId);
+      }
     } catch (e) {
       console.error('[PeerLine] Socket broadcast failed after request:', e);
     }
 
     return session;
   }
-
 
   // Force reload
   async getSessions(userId: string, options: { role?: string; status?: string } = {}) {
@@ -251,6 +307,22 @@ export class PeerLineService {
     // 1. Verify access
     const session = await this.getSession(userId, sessionId);
 
+    // If both mentee and mentor are set, fetch messages from all sessions between this pair
+    if (session.menteeId && session.mentorId) {
+      const pairSessions = await prisma.peerLineSession.findMany({
+        where: {
+          menteeId: session.menteeId,
+          mentorId: session.mentorId
+        },
+        select: { id: true }
+      });
+      const sessionIds = pairSessions.map(s => s.id);
+      return prisma.peerLineMessage.findMany({
+        where: { sessionId: { in: sessionIds } },
+        orderBy: { sentAt: 'asc' }
+      });
+    }
+
     return prisma.peerLineMessage.findMany({
       where: { sessionId },
       orderBy: { sentAt: 'asc' }
@@ -258,14 +330,19 @@ export class PeerLineService {
   }
 
   async createMessage(userId: string, sessionId: string, content: string | null, senderRole: 'mentee' | 'mentor' | 'system', messageType: 'TEXT' | 'VOICE' | 'IMAGE' = 'TEXT', mediaUrl?: string) {
-    // 1. Verify access and status
+    // 1. Verify connection exists and user is a participant
     const session = await prisma.peerLineSession.findUnique({
       where: { id: sessionId }
     });
 
-    if (!session) throw new Error('Session not found');
-    if (session.status !== PeerLineStatus.ACTIVE && senderRole !== 'system') {
-      throw new Error('Can only send messages in an active session');
+    if (!session) throw new Error('Connection not found');
+
+    // Allow messaging in ACTIVE connections. MATCHING (pending) connections:
+    // only system messages or the initial intro message from the mentee are allowed.
+    if (session.status !== PeerLineStatus.ACTIVE && session.status !== PeerLineStatus.MATCHING) {
+      if (senderRole !== 'system') {
+        throw new Error('Can only send messages in an active or pending connection');
+      }
     }
 
     // 2. Scan for PII (Server side enforcement) - Only for text
@@ -282,14 +359,13 @@ export class PeerLineService {
         sessionId,
         senderRole,
         content: content || "",
-        messageType: messageType as any,
+        messageType: (messageType || 'TEXT') as any,
         mediaUrl,
         crisisFlag: crisisDetected,
       }
-
     });
 
-    // 5. Update session flag if crisis detected
+    // 5. Update connection flag if crisis detected
     if (crisisDetected) {
       await prisma.peerLineSession.update({
         where: { id: sessionId },
@@ -392,6 +468,10 @@ export class PeerLineService {
     }
   }
 
+  /**
+   * LEGACY: endSession kept for existing completed sessions. In the new model,
+   * connections don't end — they remain open. This is preserved for admin tools.
+   */
   async endSession(userId: string, sessionId: string) {
     const session = await prisma.peerLineSession.findUnique({
       where: { id: sessionId },
@@ -413,14 +493,6 @@ export class PeerLineService {
         endReason: session.menteeId === userId ? 'mentee_ended' : 'mentor_ended',
       },
     });
-
-    // Award points to mentor
-    if (session.mentorId) {
-      await prisma.profile.update({
-        where: { userId: session.mentorId },
-        data: { totalPoints: { increment: 40 } }
-      });
-    }
 
     return updatedSession;
   }
@@ -477,106 +549,88 @@ export class PeerLineService {
   }
 
   async getMentorStats(userId: string) {
-    const [sessions, profile] = await Promise.all([
-      prisma.peerLineSession.findMany({
-        where: {
-          mentorId: userId,
-          status: { notIn: [PeerLineStatus.COMPLETED, PeerLineStatus.CANCELLED] }
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.profile.findUnique({
-        where: { userId }
-      })
-    ]);
+    const profile = await prisma.profile.findUnique({
+      where: { userId }
+    });
 
-    const [sessionsTotal, sessionsThisWeek, completedSessionsRecords] = await Promise.all([
-      prisma.peerLineSession.count({
-        where: { mentorId: userId, status: PeerLineStatus.COMPLETED }
-      }),
-      prisma.peerLineSession.count({
-        where: {
-          mentorId: userId,
-          status: PeerLineStatus.COMPLETED,
-          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
-        }
-      }),
-      prisma.peerLineSession.findMany({
-        where: { mentorId: userId, status: PeerLineStatus.COMPLETED },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        include: {
-          mentee: { select: { profile: { select: { displayName: true } } } }
-        }
-      })
-    ]);
-
-    const queueCount = await prisma.peerLineSession.count({
+    // Active connections (accepted, open chats)
+    const activeConnections = await prisma.peerLineSession.findMany({
       where: {
-        status: { in: [PeerLineStatus.QUEUED, PeerLineStatus.MATCHING] },
-        mentorId: null,
-        topicIds: { hasSome: profile?.certifiedTopicIds || [] }
+        mentorId: userId,
+        status: PeerLineStatus.ACTIVE
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        mentee: { select: { profile: { select: { displayName: true } } } }
       }
     });
 
-    const avgScore = sessionsTotal > 0
-      ? (await prisma.peerLineSession.aggregate({
-        where: { mentorId: userId, status: PeerLineStatus.COMPLETED },
-        _avg: { menteeRating: true }
-      }))._avg.menteeRating || 5.0
-      : 5.0;
+    // Pending connection requests
+    const pendingConnections = await prisma.peerLineSession.findMany({
+      where: {
+        mentorId: userId,
+        status: PeerLineStatus.MATCHING
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        mentee: { select: { profile: { select: { displayName: true } } } }
+      }
+    });
 
-    // Tier threshold: Bronze (0-9), Silver (10-49), Gold (50+)
+    // Total connections (historical)
+    const totalConnections = await prisma.peerLineSession.count({
+      where: { mentorId: userId }
+    });
+
+    // Badge tier based on accepted connections
+    const acceptedTotal = await prisma.peerLineSession.count({
+      where: { mentorId: userId, status: { in: [PeerLineStatus.ACTIVE, PeerLineStatus.COMPLETED] } }
+    });
     let badgeTier = 'Bronze';
-    if (sessionsTotal >= 50) badgeTier = 'Gold';
-    else if (sessionsTotal >= 10) badgeTier = 'Silver';
+    if (acceptedTotal >= 50) badgeTier = 'Gold';
+    else if (acceptedTotal >= 10) badgeTier = 'Silver';
 
-    const activeSessions = await Promise.all(
-      sessions.map(async (s) => {
+    // Build active connections with unread counts
+    const activeConnectionsWithUnread = await Promise.all(
+      activeConnections.map(async (c) => {
         const unreadCount = await prisma.peerLineMessage.count({
-          where: {
-            sessionId: s.id,
-            isRead: false,
-            senderRole: 'mentee'
-          }
+          where: { sessionId: c.id, isRead: false, senderRole: 'mentee' }
         });
-
-        // Fetch mentee name
-        const sessionWithMentee = await prisma.peerLineSession.findUnique({
-          where: { id: s.id },
-          include: {
-            mentee: { select: { profile: { select: { displayName: true } } } }
-          }
+        const lastMessage = await prisma.peerLineMessage.findFirst({
+          where: { sessionId: c.id },
+          orderBy: { sentAt: 'desc' }
         });
-
         return {
-          id: s.id,
-          date: s.createdAt,
-          topicIds: s.topicIds,
-          status: s.status,
+          id: c.id,
+          menteeId: c.menteeId,
+          mentorId: c.mentorId,
+          createdAt: c.createdAt,
+          topicIds: c.topicIds,
+          status: c.status,
           unreadCount,
-          menteeName: sessionWithMentee?.mentee?.profile?.displayName || 'Mentee'
+          menteeName: c.mentee?.profile?.displayName || 'Teen',
+          lastMessage: lastMessage?.content || null,
+          lastMessageAt: lastMessage?.sentAt || c.createdAt,
         };
       })
     );
 
     return {
-      sessionsThisWeek,
-      sessionsTotal,
-      avgMenteeRating: avgScore.toFixed(1),
+      totalConnections,
+      acceptedTotal,
       badgeTier,
       certificationLevel: profile?.mentorStatus || 'none',
       certifiedTopicIds: profile?.certifiedTopicIds || [],
-      queueCount,
+      pendingRequests: pendingConnections.length,
       isAvailable: profile?.isAvailable ?? false,
-      completedSessions: completedSessionsRecords.map(s => ({
-        id: s.id,
-        createdAt: s.createdAt,
-        topicIds: s.topicIds,
-        menteeRating: s.menteeRating,
-        menteeName: s.mentee?.profile?.displayName || 'Mentee'
-      })),
-      activeSessions
+      activeConnections: activeConnectionsWithUnread,
+      pendingConnectionsList: pendingConnections.map(c => ({
+        id: c.id,
+        menteeId: c.menteeId,
+        createdAt: c.createdAt,
+        topicIds: c.topicIds,
+        menteeName: c.mentee?.profile?.displayName || 'Teen',
+      }))
     };
   }
 
@@ -599,112 +653,120 @@ export class PeerLineService {
     };
   }
 
-  async claimNextSession(mentorId: string) {
-    // 1. Get mentor profile for topics
-    const profile = await prisma.profile.findUnique({
-      where: { userId: mentorId },
-      include: { user: true }
-    });
-
-    if (!profile || profile.mentorStatus !== 'certified') {
-      throw new AppError('UNAUTHORIZED_NOT_CERTIFIED', 403);
-    }
-
-    if (!profile.isAvailable) {
-      throw new AppError('MENTOR_NOT_AVAILABLE', 400);
-    }
-
-    // 2. Find matching session with age gap and verified rules
-    const mentorAge = profile.user.birthYear ? (new Date().getFullYear() - profile.user.birthYear) : 20;
-
-    const sessions = await prisma.peerLineSession.findMany({
-      where: {
-        status: { in: [PeerLineStatus.QUEUED, PeerLineStatus.MATCHING] },
-        mentorId: null,
-        topicIds: {
-          hasSome: profile.certifiedTopicIds
-        },
-        // If mentor is not verified, they cannot claim sessions that requested a verified mentor
-        requestedVerified: profile.mentorStatus === 'certified' && (await this.getMentorSessionCount(mentorId)) >= 5 ? undefined : false
-      },
-      include: {
-        mentee: {
-          select: { birthYear: true }
-        }
-      },
-      orderBy: { createdAt: 'asc' }
-    });
-
-    // Filter by 4-year age gap
-    const bestSession = sessions.find(s => {
-      if (!s.mentee.birthYear || !profile.user.birthYear) return true; // Fallback if no DOB
-      const menteeAge = new Date().getFullYear() - s.mentee.birthYear;
-      return Math.abs(mentorAge - menteeAge) <= 4;
-    });
-
-    if (!bestSession) {
-      console.log(`[PeerLine] No matching sessions for mentor ${mentorId}. Queue size: ${sessions.length}`);
-      throw new AppError('NO_MATCHING_SESSIONS', 404);
-    }
-
-    // 3. Claim it
-    const claimedSession = await prisma.peerLineSession.update({
-      where: { id: bestSession.id },
-      data: {
-        mentorId,
-        status: PeerLineStatus.ACTIVE,
-        startedAt: new Date()
-      }
-    });
-
-    // 4. Trigger socket notification for mentee
-    try {
-      const socketModule = await import('./peerline.socket.js');
-      socketModule.broadcastSessionReady(claimedSession.id, claimedSession.menteeId);
-      socketModule.broadcastQueueUpdate(); // Notify other mentors that queue size changed
-    } catch (socketError) {
-      console.error('[PeerLine] Socket broadcast failed after successful claim:', socketError);
-    }
-
-    return claimedSession;
+  /**
+   * DEPRECATED: claimNextSession is no longer used in the connection model.
+   * Teens now send direct connection requests to specific mentors.
+   * Kept as stub so existing references don't break.
+   */
+  async claimNextSession(_mentorId: string) {
+    throw new AppError('FEATURE_DEPRECATED: Use connection requests instead', 410);
   }
 
-  async acceptSession(mentorId: string, sessionId: string) {
-    const session = await prisma.peerLineSession.findUnique({
-      where: { id: sessionId },
+  /**
+   * NEW: Peer mentor accepts a teen's connection request.
+   * Activates the connection permanently — the chat is now open forever.
+   */
+  async acceptConnection(mentorId: string, connectionId: string) {
+    const connection = await prisma.peerLineSession.findUnique({
+      where: { id: connectionId },
     });
 
-    if (!session) {
-      throw new AppError('Session not found', 404);
+    if (!connection) {
+      throw new AppError('Connection request not found', 404);
     }
 
-    // Must be assigned to this mentor, and in MATCHING or QUEUED state
-    if (session.mentorId !== mentorId) {
-      throw new AppError('Unauthorized: Session is not assigned to you', 403);
+    if (connection.mentorId !== mentorId) {
+      throw new AppError('Unauthorized: Connection is not assigned to you', 403);
     }
 
-    if (session.status !== PeerLineStatus.MATCHING && session.status !== PeerLineStatus.QUEUED) {
-      throw new AppError('Session cannot be accepted in its current state', 400);
+    if (connection.status !== PeerLineStatus.MATCHING) {
+      throw new AppError('Connection cannot be accepted in its current state', 400);
     }
 
-    const acceptedSession = await prisma.peerLineSession.update({
-      where: { id: sessionId },
+    const acceptedConnection = await prisma.peerLineSession.update({
+      where: { id: connectionId },
       data: {
         status: PeerLineStatus.ACTIVE,
         startedAt: new Date(),
       },
     });
 
-    // Trigger socket notification for mentee
+    // Send a default greeting from the peer mentor
     try {
+      const greetingContent = "Hey! I accepted your connection request. I'm here to chat anytime 💜";
+      const greetingMessage = await prisma.peerLineMessage.create({
+        data: {
+          sessionId: acceptedConnection.id,
+          senderRole: 'mentor',
+          content: greetingContent,
+          messageType: 'TEXT',
+        }
+      });
+
       const socketModule = await import('./peerline.socket.js');
-      socketModule.broadcastSessionReady(acceptedSession.id, acceptedSession.menteeId);
-      socketModule.broadcastQueueUpdate(); // Notify other mentors that queue size changed
-    } catch (socketError) {
-      console.error('[PeerLine] Socket broadcast failed after accepting session:', socketError);
+      // Emit the greeting message to both participants
+      setTimeout(() => {
+        socketModule.nsp?.to(`session_${acceptedConnection.id}`).emit('message', {
+          type: 'message',
+          ...greetingMessage
+        });
+      }, 400);
+
+      // Notify the teen that their request was accepted
+      await socketModule.broadcastConnectionAccepted(acceptedConnection.id, acceptedConnection.menteeId, mentorId);
+    } catch (e) {
+      console.error('[PeerLine] Failed to broadcast connection accepted:', e);
     }
 
-    return acceptedSession;
+    return acceptedConnection;
+  }
+
+  /**
+   * Backward-compat alias: some old clients call acceptSession
+   */
+  async acceptSession(mentorId: string, sessionId: string) {
+    return this.acceptConnection(mentorId, sessionId);
+  }
+
+  /**
+   * NEW: Peer mentor declines a teen's connection request.
+   */
+  async declineConnection(mentorId: string, connectionId: string) {
+    const connection = await prisma.peerLineSession.findUnique({
+      where: { id: connectionId },
+    });
+
+    if (!connection) {
+      throw new AppError('Connection request not found', 404);
+    }
+
+    if (connection.mentorId !== mentorId) {
+      throw new AppError('Unauthorized: Connection is not assigned to you', 403);
+    }
+
+    if (connection.status !== PeerLineStatus.MATCHING) {
+      throw new AppError('Only pending connections can be declined', 400);
+    }
+
+    // Mark as cancelled so the teen can request again
+    const declined = await prisma.peerLineSession.update({
+      where: { id: connectionId },
+      data: {
+        status: PeerLineStatus.CANCELLED,
+        endedAt: new Date(),
+        endReason: 'mentor_declined',
+      }
+    });
+
+    // Notify the teen of the decline
+    try {
+      const socketModule = await import('./peerline.socket.js');
+      await socketModule.broadcastConnectionDeclined(connectionId, connection.menteeId);
+    } catch (e) {
+      console.error('[PeerLine] Failed to broadcast connection declined:', e);
+    }
+
+    return declined;
   }
 
   async getMentorsByTopics(userId: string, topicIds: string[]) {
@@ -777,6 +839,7 @@ export class PeerLineService {
         unavailableUntil: m.profile?.unavailableUntil,
         rating: 5.0,
         topics: topicNames,
+        certifiedTopicIds: m.profile?.certifiedTopicIds || [],
         expertiseTags: [...new Set(expertiseTags)], // Unique tags
         bio: m.profile?.bio || 'Helping girls navigate their journey with empathy and care.',
         experienceCount: m.profile?.completedSessionsCount || 0,

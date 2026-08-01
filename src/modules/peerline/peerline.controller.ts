@@ -1,10 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { PeerLineService } from './peerline.service.js';
-import { requestSessionSchema, sessionFeedbackSchema, mentorAvailabilitySchema, mentorOnboardSchema, mentorApplySchema } from './peerline.schema.js';
+import { connectRequestSchema, requestSessionSchema, sessionFeedbackSchema, mentorAvailabilitySchema, mentorOnboardSchema, mentorApplySchema } from './peerline.schema.js';
 import { StorageService } from '../../common/utils/storage.js';
 
 const peerLineService = new PeerLineService();
-// Force reload v6 - fixing pending_training certification status workflow.
 
 export class PeerLineController {
   static async getAvailability(req: Request, res: Response, next: NextFunction) {
@@ -34,6 +33,55 @@ export class PeerLineController {
       next(error);
     }
   }
+
+  // ─── New Connection Endpoints ────────────────────────────────────────────────
+
+  /**
+   * POST /peerline/connections/request
+   * Teen sends a connection request to a specific peer mentor.
+   */
+  static async requestConnection(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validated = connectRequestSchema.parse(req).body;
+      const userId = (req as any).userId;
+      const connection = await peerLineService.requestConnection(userId, validated);
+      res.status(202).json(connection);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /peerline/connections/:connectionId/accept
+   * Peer mentor accepts a teen's connection request.
+   */
+  static async acceptConnection(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const connectionId = req.params.connectionId as string;
+      const connection = await peerLineService.acceptConnection(userId, connectionId);
+      res.status(200).json(connection);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /peerline/connections/:connectionId/decline
+   * Peer mentor declines a teen's connection request.
+   */
+  static async declineConnection(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const connectionId = req.params.connectionId as string;
+      const connection = await peerLineService.declineConnection(userId, connectionId);
+      res.status(200).json({ success: true, connection });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Legacy Session Endpoints (kept for backward compat) ─────────────────────
 
   static async requestSession(req: Request, res: Response, next: NextFunction) {
     try {
@@ -69,51 +117,18 @@ export class PeerLineController {
     }
   }
 
-
-  static async endSession(req: Request, res: Response, next: NextFunction) {
+  static async getMessages(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId;
       const sessionId = req.params.sessionId as string;
-      await peerLineService.endSession(userId, sessionId);
-      res.status(200).json({ success: true });
+      const messages = await peerLineService.getMessages(userId, sessionId);
+      res.status(200).json({ success: true, messages });
     } catch (error) {
       next(error);
     }
   }
 
-  static async cancelSession(req: Request, res: Response, next: NextFunction) {
-    try {
-      const userId = (req as any).userId;
-      const sessionId = req.params.sessionId as string;
-      await peerLineService.cancelSession(userId, sessionId);
-      res.status(200).json({ success: true });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async getQueuePosition(req: Request, res: Response, next: NextFunction) {
-    try {
-      const userId = (req as any).userId;
-      const sessionId = req.params.sessionId as string;
-      const result = await peerLineService.getQueuePosition(userId, sessionId);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async submitFeedback(req: Request, res: Response, next: NextFunction) {
-    try {
-      const validated = sessionFeedbackSchema.parse(req);
-      const userId = (req as any).userId;
-      const { sessionId } = validated.params;
-      await peerLineService.submitFeedback(userId, sessionId, validated.body);
-      res.status(200).json({ success: true });
-    } catch (error) {
-      next(error);
-    }
-  }
+  // ─── Mentor Endpoints ─────────────────────────────────────────────────────────
 
   static async getMentorStats(req: Request, res: Response, next: NextFunction) {
     try {
@@ -131,16 +146,6 @@ export class PeerLineController {
       const userId = (req as any).userId;
       const result = await peerLineService.updateMentorAvailability(userId, validated.isAvailable);
       res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async claimNextSession(req: Request, res: Response, next: NextFunction) {
-    try {
-      const userId = (req as any).userId;
-      const session = await peerLineService.claimNextSession(userId);
-      res.status(200).json(session);
     } catch (error) {
       next(error);
     }
@@ -169,7 +174,6 @@ export class PeerLineController {
   }
 
   static async getMentorsByTopics(req: Request, res: Response, next: NextFunction) {
-
     try {
       const userId = (req as any).userId;
       const rawTopics = req.query.topics as string;
@@ -193,6 +197,31 @@ export class PeerLineController {
       next(error);
     }
   }
+
+  static async updateExpertise(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const { expertise } = req.body;
+      const result = await peerLineService.updateMentorExpertise(userId, expertise);
+      res.status(200).json({ success: true, profile: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async uploadMedia(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        throw new Error('No file provided');
+      }
+      const { url } = await StorageService.uploadFile(req.file.path, 'peerline');
+      res.status(200).json({ success: true, url });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Training Endpoints ───────────────────────────────────────────────────────
 
   static async updateTrainingProgress(req: Request, res: Response, next: NextFunction) {
     try {
@@ -236,29 +265,6 @@ export class PeerLineController {
     }
   }
 
-  static async uploadMedia(req: Request, res: Response, next: NextFunction) {
-    try {
-      if (!req.file) {
-        throw new Error('No file provided');
-      }
-      const { url } = await StorageService.uploadFile(req.file.path, 'peerline');
-      res.status(200).json({ success: true, url });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async updateExpertise(req: Request, res: Response, next: NextFunction) {
-    try {
-      const userId = (req as any).userId;
-      const { expertise } = req.body;
-      const result = await peerLineService.updateMentorExpertise(userId, expertise);
-      res.status(200).json({ success: true, profile: result });
-    } catch (error) {
-      next(error);
-    }
-  }
-
   static async getTrainingCourse(req: Request, res: Response, next: NextFunction) {
     try {
       const course = await peerLineService.getTrainingCourse();
@@ -283,4 +289,4 @@ export class PeerLineController {
       next(error);
     }
   }
-}
+}
