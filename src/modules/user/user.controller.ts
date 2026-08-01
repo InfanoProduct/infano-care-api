@@ -112,12 +112,25 @@ export class UserController {
     try {
       const userId = (req as any).userId || (req as any).user?.id;
       const userRole = (req as any).userRole;
-      const { displayName, email, specialisation, consultationPrice, bio } = req.body;
+      const { displayName, email, specialisation, consultationPrice, bio, dateOfBirth } = req.body;
 
-      // Update User email
+      let birthMonth, birthYear;
+      if (dateOfBirth) {
+        const d = new Date(dateOfBirth);
+        if (!isNaN(d.getTime())) {
+          birthMonth = d.getMonth() + 1;
+          birthYear = d.getFullYear();
+        }
+      }
+
+      // Update User email and date of birth
       await prisma.user.update({
         where: { id: userId },
-        data: { email }
+        data: { 
+          email,
+          ...(birthMonth !== undefined && { birthMonth }),
+          ...(birthYear !== undefined && { birthYear })
+        }
       });
 
       const isExpert = userRole === 'EXPERT';
