@@ -48,6 +48,7 @@ export const mentorApplySchema = z.object({
     personalStatement: z.string().trim().optional(),
     scenarioResponses: z.array(z.string().trim()).optional().default([]),
     topicIds: z.array(z.string()).optional().default([]),
+    age: z.number().optional(),
     eligibility: z.record(z.string(), z.boolean()).optional().default({}),
   }),
 });

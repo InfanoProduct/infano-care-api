@@ -10,7 +10,7 @@ export class UserController {
       const userId = (req as any).userId || (req as any).user?.id;
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        include: { profile: true },
+        include: { profile: true, peerApplication: true },
       });
       if (!user) throw new AppError("User not found", 404);
 
