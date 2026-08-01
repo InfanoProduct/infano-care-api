@@ -303,6 +303,14 @@ export class PeerLineService {
     });
   }
 
+  async getPairSessions(menteeId: string, mentorId: string): Promise<string[]> {
+    const pairSessions = await prisma.peerLineSession.findMany({
+      where: { menteeId, mentorId },
+      select: { id: true }
+    });
+    return pairSessions.map(s => s.id);
+  }
+
   async getMessages(userId: string, sessionId: string) {
     // 1. Verify access
     const session = await this.getSession(userId, sessionId);

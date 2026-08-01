@@ -84,18 +84,30 @@ export function setupPeerLineSocket(serverIo: Server) {
           uid, data.sessionId, data.content, data.senderRole, data.messageType, data.mediaUrl
         );
 
-        logger.info({ connectionId: data.sessionId, messageId: message.id }, 'Message created, broadcasting to room');
+        const session = await getPeerLineService().getSession(uid, data.sessionId);
+        // Find all session/connection records between this mentee and mentor to broadcast to all active rooms they might be in
+        let targetRooms = [`session_${data.sessionId}`];
+        if (session.menteeId && session.mentorId) {
+          const pairSessions = await getPeerLineService().getPairSessions(session.menteeId, session.mentorId);
+          targetRooms = pairSessions.map(sId => `session_${sId}`);
+        }
+
+        logger.info({ connectionId: data.sessionId, messageId: message.id, rooms: targetRooms }, 'Message created, broadcasting to all pair rooms');
         const { sessionId: _sId, ...msgRest } = message;
-        nsp.to(`session_${data.sessionId}`).emit('message', {
-          type: 'message',
-          sessionId: data.sessionId,
-          clientId: data.clientId,
-          ...msgRest
-        });
+        for (const room of targetRooms) {
+          nsp.to(room).emit('message', {
+            type: 'message',
+            sessionId: data.sessionId,
+            clientId: data.clientId,
+            ...msgRest
+          });
+        }
 
         if (message.crisisFlag) {
           const resources = await new (await import('../safety/safety.service.js')).SafetyService().getCrisisResources('en-IN');
-          nsp.to(`session_${data.sessionId}`).emit('crisis_resource', { severity: 'HIGH', ...resources });
+          for (const room of targetRooms) {
+            nsp.to(room).emit('crisis_resource', { severity: 'HIGH', ...resources });
+          }
         }
       } catch (error: any) {
         if (error.message === 'PII_BLOCKED') {
