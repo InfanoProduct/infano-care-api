@@ -1038,9 +1038,16 @@ export class PeerLineService {
     const appPhone = input.phone ? normalizePhone(input.phone) : (appUser.phone || '');
     const appStatement = input.personalStatement || 'Applied via Dashboard';
 
-    const targetCertStatus = (existingApp?.certificationStatus && ['certified', 'pending_conduct'].includes(existingApp.certificationStatus))
-      ? existingApp.certificationStatus
-      : 'pending_training';
+    let targetCertStatus = 'pending_training';
+    if (existingApp?.certificationStatus) {
+      if (existingApp.certificationStatus === 'certified') {
+        targetCertStatus = 'certified';
+      } else if (existingApp.certificationStatus === 'pending_conduct') {
+        targetCertStatus = 'submitted'; // They just submitted the Code of Conduct
+      } else {
+        targetCertStatus = existingApp.certificationStatus;
+      }
+    }
 
     // Save application data
     await prisma.peerApplication.upsert({
@@ -1050,8 +1057,12 @@ export class PeerLineService {
         email: appEmail,
         phone: appPhone,
         personalStatement: appStatement,
-        scenarioResponses: input.scenarioResponses || [],
-        eligibility: input.eligibility || {},
+        scenarioResponses: input.scenarioResponses !== undefined ? input.scenarioResponses : (existingApp?.scenarioResponses || []),
+        eligibility: {
+          ...(input.eligibility || {}),
+          age: input.age,
+          topicIds: input.topicIds,
+        },
         status: 'pending',
         certificationStatus: targetCertStatus
       },
@@ -1062,7 +1073,11 @@ export class PeerLineService {
         phone: appPhone,
         personalStatement: appStatement,
         scenarioResponses: input.scenarioResponses || [],
-        eligibility: input.eligibility || {},
+        eligibility: {
+          ...(input.eligibility || {}),
+          age: input.age,
+          topicIds: input.topicIds,
+        },
         status: 'pending',
         certificationStatus: 'pending_training'
       }
@@ -1142,9 +1157,8 @@ export class PeerLineService {
     let status = app.certificationStatus;
 
     if (isPassed) {
-      // If they were previously unapproved, they already signed the conduct, so go straight to submitted
-      // Otherwise, new applicants must still sign the Code of Conduct
-      status = app.certificationStatus === 'unapproved' ? 'submitted' : 'pending_conduct';
+      // Everyone must sign the Code of Conduct upon passing the assessment
+      status = 'pending_conduct';
     } else if (newAttempts >= 2) {
       // Failed 2 attempts, lock for 14 days
       lockUntil = new Date();
