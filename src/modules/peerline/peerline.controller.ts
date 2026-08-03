@@ -125,7 +125,7 @@ export class PeerLineController {
       const userId = (req as any).userId;
       const sessionId = req.params.sessionId as string;
       const session = await peerLineService.getSession(userId, sessionId);
-      const messages = await peerLineService.getMessages(userId, sessionId);
+      const messages = await peerLineService.getMessages(userId, sessionId, { limit: 50 }); // Fetch latest 50 messages by default
       res.status(200).json({ ...session, messages });
     } catch (error) {
       next(error);
@@ -136,7 +136,9 @@ export class PeerLineController {
     try {
       const userId = (req as any).userId;
       const sessionId = req.params.sessionId as string;
-      const messages = await peerLineService.getMessages(userId, sessionId);
+      const { limit, before } = req.query as { limit?: string; before?: string };
+      const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+      const messages = await peerLineService.getMessages(userId, sessionId, { limit: parsedLimit, before });
       res.status(200).json({ success: true, messages });
     } catch (error) {
       next(error);

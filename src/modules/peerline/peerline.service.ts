@@ -4,6 +4,8 @@ import { PeerLineStatus } from '@prisma/client';
 // import { broadcastAvailabilityUpdate } from './peerline.socket.js'; // Dynamic import used below
 import { AppError } from '../../common/middleware/errorHandler.js';
 import { normalizePhone } from '../../common/utils/phone.js';
+import { FirebaseService } from '../../common/services/firebase.service.js';
+import { logger } from '../../config/logger.js';
 
 export class PeerLineService {
   async getAvailability() {
@@ -311,11 +313,17 @@ export class PeerLineService {
     return pairSessions.map(s => s.id);
   }
 
-  async getMessages(userId: string, sessionId: string) {
+  async getMessages(userId: string, sessionId: string, options: { limit?: number; before?: string } = {}) {
     // 1. Verify access
     const session = await this.getSession(userId, sessionId);
 
-    // If both mentee and mentor are set, fetch messages from all sessions between this pair
+    const limit = options.limit ? Math.min(options.limit, 100) : undefined;
+    let beforeDate: Date | undefined;
+    if (options.before) {
+      beforeDate = new Date(options.before);
+    }
+
+    const whereClause: any = {};
     if (session.menteeId && session.mentorId) {
       const pairSessions = await prisma.peerLineSession.findMany({
         where: {
@@ -325,22 +333,40 @@ export class PeerLineService {
         select: { id: true }
       });
       const sessionIds = pairSessions.map(s => s.id);
-      return prisma.peerLineMessage.findMany({
-        where: { sessionId: { in: sessionIds } },
-        orderBy: { sentAt: 'asc' }
-      });
+      whereClause.sessionId = { in: sessionIds };
+    } else {
+      whereClause.sessionId = sessionId;
+    }
+
+    if (beforeDate && !isNaN(beforeDate.getTime())) {
+      whereClause.sentAt = { lt: beforeDate };
     }
 
     return prisma.peerLineMessage.findMany({
-      where: { sessionId },
-      orderBy: { sentAt: 'asc' }
-    });
+      where: whereClause,
+      orderBy: { sentAt: 'desc' }, // Latest first for pagination
+      take: limit,
+    }).then(messages => messages.reverse()); // Reverse to keep chronological order
   }
 
   async createMessage(userId: string, sessionId: string, content: string | null, senderRole: 'mentee' | 'mentor' | 'system', messageType: 'TEXT' | 'VOICE' | 'IMAGE' = 'TEXT', mediaUrl?: string) {
     // 1. Verify connection exists and user is a participant
     const session = await prisma.peerLineSession.findUnique({
-      where: { id: sessionId }
+      where: { id: sessionId },
+      include: {
+        mentee: {
+          select: {
+            fcmToken: true,
+            profile: { select: { displayName: true } }
+          }
+        },
+        mentor: {
+          select: {
+            fcmToken: true,
+            profile: { select: { displayName: true } }
+          }
+        }
+      }
     });
 
     if (!session) throw new Error('Connection not found');
@@ -379,6 +405,28 @@ export class PeerLineService {
         where: { id: sessionId },
         data: { hadCrisisFlag: true }
       });
+    }
+
+    // 6. Send push notification to the other participant
+    if (senderRole === 'mentee' || senderRole === 'mentor') {
+      const recipient = senderRole === 'mentee' ? session.mentor : session.mentee;
+      const sender = senderRole === 'mentee' ? session.mentee : session.mentor;
+      const senderName = sender?.profile?.displayName || 'Peer';
+
+      if (recipient && recipient.fcmToken) {
+        const payload = {
+          title: `Message from ${senderName}`,
+          body: messageType === 'TEXT' ? (content || '') : (messageType === 'VOICE' ? '🎤 Voice note' : '📷 Image'),
+          deepLink: `infano://peerline/chat/${sessionId}`,
+          data: {
+            type: 'PEERLINE_CHAT',
+            sessionId,
+          }
+        };
+        FirebaseService.sendPushNotification(recipient.fcmToken, payload).catch(err => {
+          logger.error({ err }, 'Failed to send PeerLine chat push notification');
+        });
+      }
     }
 
     return message;

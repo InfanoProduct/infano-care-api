@@ -99,7 +99,17 @@ export class FirebaseService {
       // Handle the case where the token is no longer valid
       if (error.code === "messaging/registration-token-not-registered" || 
           error.code === "messaging/invalid-registration-token") {
-        logger.warn(`FCM Token is invalid or expired. Consider removing it from the user profile.`);
+        logger.warn(`FCM Token is invalid or expired. Cleaning up in database...`);
+        try {
+          const { prisma } = await import('../../db/client.js');
+          await prisma.user.updateMany({
+            where: { fcmToken },
+            data: { fcmToken: null }
+          });
+          logger.info(`Successfully nullified invalid FCM token in database.`);
+        } catch (dbErr) {
+          logger.error({ err: dbErr }, "Failed to clean up invalid FCM token in database");
+        }
       } else {
         logger.error({ err: error }, "Failed to send push notification");
       }
