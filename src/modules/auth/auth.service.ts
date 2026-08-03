@@ -135,7 +135,7 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string; profile: any; contentTier: string | null }> {
     const finalPhone = normalizePhone(phone);
     
     // Select all potential fields to satisfy type requirements across logical paths
