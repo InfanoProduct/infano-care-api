@@ -938,6 +938,7 @@ model FriendMessage {
   senderId  String
   content   String
   isRead    Boolean     @default(false)
+  isEdited  Boolean     @default(false)
   createdAt DateTime    @default(now())
   match     FriendMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
 

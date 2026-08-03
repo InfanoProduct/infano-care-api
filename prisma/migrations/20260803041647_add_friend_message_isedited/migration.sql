@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "FriendMessage" ADD COLUMN     "isEdited" BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "role" DROP NOT NULL,
+ALTER COLUMN "role" DROP DEFAULT;
