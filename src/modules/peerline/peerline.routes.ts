@@ -26,6 +26,7 @@ router.post('/connections/:connectionId/cancel', authenticate, PeerLineControlle
 router.get('/sessions', authenticate, PeerLineController.getSessions);
 router.get('/sessions/:sessionId', authenticate, PeerLineController.getSession);
 router.get('/sessions/:sessionId/messages', authenticate, PeerLineController.getMessages);
+router.post('/sessions/:sessionId/feedback', authenticate, PeerLineController.submitFeedback);
 
 // Legacy session endpoints (non-destructive, kept for existing data) 
 router.post('/sessions/request', authenticate, PeerLineController.requestSession);

@@ -304,4 +304,16 @@ export class PeerLineController {
       next(error);
     }
   }
+
+  static async submitFeedback(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validated = sessionFeedbackSchema.parse(req);
+      const userId = (req as any).userId;
+      const sessionId = validated.params.sessionId;
+      const feedback = await peerLineService.submitFeedback(userId, sessionId, validated.body);
+      res.status(200).json({ success: true, feedback });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
