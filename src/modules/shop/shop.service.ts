@@ -6,6 +6,7 @@ import { logger } from "../../config/logger.js";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
 import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail, sendWebinarConfirmationEmail } from "../../common/services/email.service.js";
+import { sendOrderConfirmationWhatsApp, sendOrderShippedWhatsApp, sendOrderDeliveredWhatsApp } from "../../common/services/whatsapp.service.js";
 import { v4 as uuidv4 } from "uuid";
 
 const razorpay = new Razorpay({
@@ -256,6 +257,7 @@ export class ShopService {
       let subtotal = 0;
       const orderItems = [];
       const bookTitles: Record<string, string> = {};
+      const bookImageUrls: Record<string, string> = {};
 
       for (const item of data.items) {
         const book = await tx.book.findUnique({ where: { id: item.bookId } });
@@ -263,6 +265,7 @@ export class ShopService {
         if (book.stock < item.quantity) throw new Error(`Out of stock: ${book.title}`);
 
         bookTitles[item.bookId] = book.title;
+        bookImageUrls[item.bookId] = book.imageUrl || "";
 
         // Apply country-specific pricing from DB; fall back to conversion if not set
         let bookPrice = book.price;
@@ -346,13 +349,15 @@ export class ShopService {
 
             const firstItemId = data.items[0]?.bookId || "";
             const firstItemTitle = firstItemId ? (bookTitles[firstItemId] || "Gigi Book") : "Gigi Book";
+            const firstItemImageUrl = firstItemId ? (bookImageUrls[firstItemId] || "") : "";
 
             // Construct success URL with all parameters for receipt display
             const successUrl = `${frontendUrl}/purchase-success?transaction_id=${orderId}&session_id={CHECKOUT_SESSION_ID}`
               + `&value=${totalAmount}&quantity=${data.items[0]?.quantity || 1}&item_id=${firstItemId}`
               + `&item_name=${encodeURIComponent(firstItemTitle)}`
               + `&price=${orderItems[0]?.price || 0}&discount=${discountAmount}&delivery=${deliveryCharge}`
-              + `&subtotal=${subtotal}&payment_method=ONLINE`;
+              + `&subtotal=${subtotal}&payment_method=ONLINE`
+              + `&image_url=${encodeURIComponent(firstItemImageUrl)}`;
 
             const params = new URLSearchParams();
             params.append("payment_method_types[0]", "card");
@@ -1008,6 +1013,21 @@ export class ShopService {
     } catch (err: any) {
       logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Placed email");
     }
+
+    try {
+      if (order.guestPhone) {
+        const bookTitle = order.items.map((i: any) => i.book?.title || "Gigi Book").join(", ");
+        const fullAddress = `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`;
+        await sendOrderConfirmationWhatsApp(order.guestPhone, {
+          customerName: order.guestName || "Parent",
+          orderId: order.id.slice(-8).toUpperCase(),
+          bookTitle,
+          address: fullAddress,
+        });
+      }
+    } catch (wErr: any) {
+      logger.error({ err: wErr, orderId: order.id }, "[WHATSAPP] Failed to send Order Confirmation WhatsApp notification");
+    }
   }
 
   private static async _sendShippedEmail(order: any) {
@@ -1053,6 +1073,24 @@ export class ShopService {
     } catch (err: any) {
       logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Shipped email");
     }
+
+    try {
+      if (order.guestPhone) {
+        const awb = order.awbNumber?.trim();
+        const trackingUrl = awb
+          ? `https://www.delhivery.com/track-v2/package/${awb}`
+          : "https://infano.care/login";
+        const estDeliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        await sendOrderShippedWhatsApp(order.guestPhone, {
+          customerName: order.guestName || "Parent",
+          orderId: order.id.slice(-8).toUpperCase(),
+          trackUrl: trackingUrl,
+          deliveryDate: estDeliveryDate,
+        });
+      }
+    } catch (wErr: any) {
+      logger.error({ err: wErr, orderId: order.id }, "[WHATSAPP] Failed to send Shipped WhatsApp notification");
+    }
   }
 
   private static async _sendDeliveredEmail(order: any) {
@@ -1078,6 +1116,18 @@ export class ShopService {
       logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Delivered email sent successfully");
     } catch (err: any) {
       logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send Delivered email");
+    }
+
+    try {
+      if (order.guestPhone) {
+        await sendOrderDeliveredWhatsApp(order.guestPhone, {
+          customerName: order.guestName || "Parent",
+          orderId: order.id.slice(-8).toUpperCase(),
+          feedbackUrl: "https://infano.care/store/track",
+        });
+      }
+    } catch (wErr: any) {
+      logger.error({ err: wErr, orderId: order.id }, "[WHATSAPP] Failed to send Delivered WhatsApp notification");
     }
   }
 

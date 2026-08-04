@@ -1,7 +1,7 @@
 import { prisma } from "../../db/client.js";
 import { ShopService } from "../shop/shop.service.js";
 import bcrypt from "bcryptjs";
-import { UserRole } from "@prisma/client";
+import { UserRole, Prisma } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
 import crypto from "crypto";
 import Razorpay from "razorpay";
@@ -434,7 +434,15 @@ export class AdminService {
       accountStatus: { not: "DELETED" }
     };
     if (peerOnboarding !== undefined) {
-      whereClause.peerOnboarding = peerOnboarding;
+      if (peerOnboarding) {
+        whereClause.OR = [
+          { peerOnboarding: true },
+          { peerApplication: { isNot: null } },
+          { role: "PEER" }
+        ];
+      } else {
+        whereClause.peerOnboarding = false;
+      }
     }
     if (role) {
       whereClause.role = role;
@@ -732,18 +740,28 @@ export class AdminService {
     // Update the application status
     await prisma.peerApplication.update({
       where: { userId },
-      data: { status: 'approved' }
+      data: { 
+        status: 'approved',
+        certificationStatus: 'certified',
+        certifiedAt: new Date()
+      }
     });
 
-    // Update profile status to training mode, but keep role as TEEN
+    // Update user role to PEER
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role: 'PEER' }
+    });
+
+    // Update profile status to certified mode
     if (user.profile) {
       await prisma.profile.update({
         where: { userId },
-        data: { mentorStatus: 'training', isAvailable: false }
+        data: { mentorStatus: 'certified', isAvailable: true }
       });
     }
 
-    return { success: true, message: 'Peer application approved successfully' };
+    return { success: true, message: 'Peer application approved and user certified successfully' };
   }
 
   static async approveCertification(userId: string) {
@@ -808,7 +826,11 @@ export class AdminService {
         assessmentAttempts: 0,
         lastAttemptAt: null,
         lockUntil: null,
-        completedEpisodes: []
+        completedEpisodes: [],
+        trainingScore: null,
+        trainingAnswers: Prisma.JsonNull,
+        episodeAnswers: Prisma.JsonNull,
+        scenarioResponses: []
       }
     });
 
@@ -874,7 +896,10 @@ export class AdminService {
   static async getJourneys() {
     const journeys = await prisma.learningJourney.findMany({
       where: {
-        category: { not: "Peer Support" }
+        OR: [
+          { category: { not: "Peer Support" } },
+          { category: null }
+        ]
       },
       include: {
         _count: {
@@ -1775,19 +1800,21 @@ export class AdminService {
   }
 
   static async createExpert(data: any) {
-    const { email, phone, displayName, specialisation, consultationPrice, bio } = data;
+    const { email, phone, displayName, specialisation, consultationPrice, bio, isTestNumber } = data;
+    const finalPhone = normalizePhone(phone);
+    const emailVal = email && email.trim() !== '' ? email.trim() : null;
     
     // Generate default password and hash it
     const defaultPassword = "Expert@123";
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
     // Check for existing user
-    if (email) {
-      const existingEmail = await prisma.user.findFirst({ where: { email } });
+    if (emailVal) {
+      const existingEmail = await prisma.user.findFirst({ where: { email: emailVal } });
       if (existingEmail) throw new Error('An account with this email already exists.');
     }
-    if (phone) {
-      const existingPhone = await prisma.user.findFirst({ where: { phone } });
+    if (finalPhone) {
+      const existingPhone = await prisma.user.findFirst({ where: { phone: finalPhone } });
       if (existingPhone) throw new Error('An account with this phone number already exists.');
     }
     
@@ -1795,12 +1822,13 @@ export class AdminService {
     return prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          email,
-          phone: phone || `expert-${Date.now()}`,
+          email: emailVal,
+          phone: finalPhone || `expert-${Date.now()}`,
           password: hashedPassword,
           role: "EXPERT",
           accountStatus: "ACTIVE",
-          username: email
+          username: emailVal || finalPhone || `expert-${Date.now()}`,
+          isTestNumber: isTestNumber === true || isTestNumber === 'true'
         }
       });
       
@@ -1823,25 +1851,33 @@ export class AdminService {
   }
 
   static async updateExpert(id: string, data: any) {
-    const { email, phone, displayName, specialisation, consultationPrice, bio } = data;
+    const { email, phone, displayName, specialisation, consultationPrice, bio, isTestNumber } = data;
+    const finalPhone = phone ? normalizePhone(phone) : undefined;
+    const emailVal = email !== undefined ? (email && email.trim() !== '' ? email.trim() : null) : undefined;
 
     // Check for existing user
-    if (email) {
-      const existingEmail = await prisma.user.findFirst({ where: { email, id: { not: id } } });
+    if (emailVal) {
+      const existingEmail = await prisma.user.findFirst({ where: { email: emailVal, id: { not: id } } });
       if (existingEmail) throw new Error('An account with this email already exists.');
     }
-    if (phone) {
-      const existingPhone = await prisma.user.findFirst({ where: { phone, id: { not: id } } });
+    if (finalPhone) {
+      const existingPhone = await prisma.user.findFirst({ where: { phone: finalPhone, id: { not: id } } });
       if (existingPhone) throw new Error('An account with this phone number already exists.');
     }
     
     return prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({ where: { id } });
+      const currentPhone = finalPhone || existingUser?.phone;
+      const targetUsername = emailVal !== undefined ? (emailVal || currentPhone) : undefined;
+
       // Update User
       await tx.user.update({
         where: { id },
         data: {
-          ...(email && { email, username: email }),
-          ...(phone && { phone })
+          ...(emailVal !== undefined && { email: emailVal }),
+          ...(targetUsername !== undefined && { username: targetUsername }),
+          ...(finalPhone && { phone: finalPhone }),
+          ...(isTestNumber !== undefined && { isTestNumber: isTestNumber === true || isTestNumber === 'true' })
         }
       });
       

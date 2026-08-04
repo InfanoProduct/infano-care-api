@@ -135,7 +135,7 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string; userId: string; tempToken: string; peerApplicationStatus: string }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string; profile?: any; contentTier?: string | null }> {
     const finalPhone = normalizePhone(phone);
     
     // Select all potential fields to satisfy type requirements across logical paths
@@ -151,7 +151,10 @@ export class AuthService {
         otpSendOn: true,
         otpRetryCount: true,
         role: true,
-        peerApplication: { select: { status: true } }
+        birthMonth: true,
+        birthYear: true,
+        peerApplication: { select: { status: true } },
+        profile: { select: { displayName: true, pronouns: true, totalPoints: true, avatarUrl: true } }
       }
     });
 
@@ -269,7 +272,9 @@ export class AuthService {
       isOnboardingCompleted: finalUser.onboardingCompletedAt !== null,
       role: finalUser.role,
       userId: finalUser.id,
-      peerApplicationStatus: finalUser.peerApplication?.status || 'none'
+      peerApplicationStatus: finalUser.peerApplication?.status || 'none',
+      profile: finalUser.profile ?? null,
+      contentTier: finalUser.contentTier ?? null
     };
   }
 
@@ -375,7 +380,7 @@ export class AuthService {
     });
 
     const allowedRoles = ["ADMIN", "EXPERT", "OPS_MANAGER", "SCHOOL_COORDINATOR"];
-    if (!user || !allowedRoles.includes(user.role) || !user.password) {
+    if (!user || !user.role || !allowedRoles.includes(user.role) || !user.password) {
       logger.warn({ username, role: user?.role }, "[AUTH] Login failed: Invalid credentials or insufficient role");
       throw new AppError("Invalid username or password.", 401);
     }
@@ -419,7 +424,7 @@ export class AuthService {
       userId: user.id,
       username: user.username,
       role: user.role,
-      requiresPasswordReset: user.role === "SCHOOL_COORDINATOR" && user.accountStatus === "PENDING_SETUP",
+      requiresPasswordReset: (user.role === "SCHOOL_COORDINATOR" && user.accountStatus === "PENDING_SETUP") || (user.role === "EXPERT" && password === "Expert@123"),
       peerApplicationStatus: userWithApp?.peerApplication?.status || 'none'
     };
   }
@@ -432,8 +437,12 @@ export class AuthService {
     return { success: true, onboardingStep: step };
   }
 
-  // ── 6. Reset Coordinator Password ──────────────────────────────────────────
+  // ── 6. Reset Coordinator / Admin Password ──────────────────────────────────────────
   static async resetCoordinatorPassword(userId: string, data: any) {
+    return this.resetAdminPassword(userId, data);
+  }
+
+  static async resetAdminPassword(userId: string, data: any) {
     const { newPassword } = data;
     if (!newPassword || newPassword.length < 6) {
       throw new AppError("Password must be at least 6 characters.", 400);
@@ -443,7 +452,7 @@ export class AuthService {
       where: { id: userId },
     });
 
-    if (!user || user.role !== "SCHOOL_COORDINATOR") {
+    if (!user || (user.role !== "SCHOOL_COORDINATOR" && user.role !== "EXPERT")) {
       throw new AppError("Invalid user or unauthorized operation.", 403);
     }
 
@@ -458,7 +467,7 @@ export class AuthService {
       },
     });
 
-    return { success: true, message: "Password updated successfully. Account is now active." };
+    return { success: true, message: "Password updated successfully." };
   }
 
   // ── 7. Request New Credentials (if expired) ──────────────────────────────────

@@ -188,4 +188,81 @@ export class FriendsChatService {
 
     return { blocked: true, match_removed: true };
   }
+
+  async editMessage(userId: string, matchId: string, messageId: string, content: string): Promise<{ message: any, gpdStatus: 'OK' | 'WARNING' | 'SUSPENDED' }> {
+    const match = await prisma.friendMatch.findUnique({
+      where: { id: matchId },
+      include: { user: true, target: true },
+    });
+
+    if (!match || (match.user.userId !== userId && match.target.userId !== userId)) {
+      throw new AppError('Unauthorized', 403);
+    }
+
+    if (match.status !== MatchStatus.MATCHED) {
+      throw new AppError('Chat is only available for matched friends', 400);
+    }
+
+    const existingMessage = await prisma.friendMessage.findUnique({
+      where: { id: messageId },
+    });
+
+    if (!existingMessage || existingMessage.matchId !== matchId) {
+      throw new AppError('Message not found', 404);
+    }
+
+    if (existingMessage.senderId !== userId) {
+      throw new AppError('Unauthorized to edit this message', 403);
+    }
+
+    const piiError = this.scanForPII(content);
+    if (piiError) {
+      throw new AppError(piiError, 422);
+    }
+
+    const gpdStatus = await this.runGPD(matchId, content);
+    if (gpdStatus === 'SUSPENDED') {
+      throw new AppError('This chat has been suspended for safety review.', 403);
+    }
+
+    const message = await prisma.friendMessage.update({
+      where: { id: messageId },
+      data: {
+        content,
+        isEdited: true,
+      },
+    });
+
+    return {
+      message,
+      gpdStatus,
+    };
+  }
+
+  async unsendMessage(userId: string, matchId: string, messageId: string): Promise<void> {
+    const match = await prisma.friendMatch.findUnique({
+      where: { id: matchId },
+      include: { user: true, target: true },
+    });
+
+    if (!match || (match.user.userId !== userId && match.target.userId !== userId)) {
+      throw new AppError('Unauthorized', 403);
+    }
+
+    const existingMessage = await prisma.friendMessage.findUnique({
+      where: { id: messageId },
+    });
+
+    if (!existingMessage || existingMessage.matchId !== matchId) {
+      throw new AppError('Message not found', 404);
+    }
+
+    if (existingMessage.senderId !== userId) {
+      throw new AppError('Unauthorized to unsend this message', 403);
+    }
+
+    await prisma.friendMessage.delete({
+      where: { id: messageId },
+    });
+  }
 }

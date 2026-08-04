@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
 import { ExpertService } from "./expert.service.js";
+import { prisma } from "../../db/client.js";
+import { redis } from "../../db/redis.js";
+import { sendEmail } from "../../common/services/email.service.js";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 export class ExpertController {
   static async getEnrollments(req: Request, res: Response) {
@@ -8,6 +13,28 @@ export class ExpertController {
       res.json(enrollments);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async getCalendarSettings(req: Request, res: Response) {
+    try {
+      const expertId = (req as any).user?.id;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+      const settings = await ExpertService.getCalendarSettings(expertId);
+      res.json(settings || {});
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async updateCalendarSettings(req: Request, res: Response) {
+    try {
+      const expertId = (req as any).user?.id;
+      if (!expertId) return res.status(401).json({ error: "Unauthorized" });
+      const settings = await ExpertService.updateCalendarSettings(expertId, req.body);
+      res.json(settings);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   }
 
@@ -106,4 +133,6 @@ export class ExpertController {
       res.status(400).json({ error: error.message });
     }
   }
+
+
 }

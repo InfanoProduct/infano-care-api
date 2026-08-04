@@ -28,7 +28,7 @@ model User {
   parentEmail               String?
   phone                     String                   @unique
   privacyAcceptedAt         DateTime?
-  role                      UserRole                 @default(TEEN)
+  role                      UserRole?
   termsAcceptedAt           DateTime?
   timezone                  String?
   onboardingStep            Int                      @default(0)
@@ -78,7 +78,7 @@ model User {
   school                    School?                  @relation("SchoolCoordinator", fields: [schoolId], references: [id])
   avatar                    UserAvatar?
   userBadges                UserBadge[]
-  badgeProgress             UserBadgeProgress[]
+  userBadgeProgress         UserBadgeProgress[]
   userDailyQuests           UserDailyQuest[]
   userLevel                 UserLevel?
   mindfulCompletions        UserMindfulActivity[]
@@ -87,6 +87,7 @@ model User {
   joinedCircles             CommunityCircle[]        @relation("CircleMembers")
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
   webinarRegistrations      WebinarRegistration[]
+  calendarSettings          ExpertCalendarSettings?
 }
 
 model Profile {
@@ -378,22 +379,7 @@ model Badge {
   slug            String?         @unique
   rewardForQuests QuestTemplate[] @relation("BadgeReward")
   userBadges      UserBadge[]
-  userProgress    UserBadgeProgress[]
-}
-
-model UserBadgeProgress {
-  id          String   @id @default(uuid())
-  userId      String
-  badgeId     String
-  progress    Float    @default(0)
-  currentStep Int      @default(0)
-  totalSteps  Int      @default(0)
-  metadata    Json     @default("{}")
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, badgeId])
+  userBadgeProgress UserBadgeProgress[]
 }
 
 model UserBadge {
@@ -405,6 +391,22 @@ model UserBadge {
   sourceQuestId String?
   badge         Badge    @relation(fields: [badgeId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, badgeId])
+}
+
+model UserBadgeProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  badgeId     String
+  progress    Int      @default(0)
+  currentStep Int      @default(0)
+  totalSteps  Int      @default(0)
+  metadata    Json     @default("{}")
+  updatedAt   DateTime @updatedAt
+  
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, badgeId])
 }
@@ -510,22 +512,22 @@ model ExpertChatMessage {
 }
 
 model ExpertSessionSchedule {
-  id            String   @id @default(uuid())
-  userId        String
-  expertId      String
-  meetLink      String?
-  scheduledAt   DateTime
-  status        String   @default("SCHEDULED")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  programId     String?
-  sessionNumber Int?
+  id                String   @id @default(uuid())
+  userId            String
+  expertId          String
+  meetLink          String?
+  scheduledAt       DateTime
+  status            String   @default("SCHEDULED")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  programId         String?
+  sessionNumber     Int?
   razorpayPaymentId String?
   razorpayOrderId   String?
   amount            Float?
-  expert        User     @relation("ExpertScheduledSessions", fields: [expertId], references: [id], onDelete: Cascade)
-  program       Program? @relation(fields: [programId], references: [id])
-  user          User     @relation("UserScheduledSessions", fields: [userId], references: [id], onDelete: Cascade)
+  expert            User     @relation("ExpertScheduledSessions", fields: [expertId], references: [id], onDelete: Cascade)
+  program           Program? @relation(fields: [programId], references: [id])
+  user              User     @relation("UserScheduledSessions", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
 }
@@ -936,6 +938,7 @@ model FriendMessage {
   senderId  String
   content   String
   isRead    Boolean     @default(false)
+  isEdited  Boolean     @default(false)
   createdAt DateTime    @default(now())
   match     FriendMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
@@ -943,22 +946,22 @@ model FriendMessage {
 }
 
 model Book {
-  id               String      @id @default(uuid())
-  title            String
-  description      String
-  price            Float                    // India unit price (INR)
-  priceUS          Float?                   // USA unit price (USD); if null falls back to conversion
-  priceUK          Float?                   // UK unit price (GBP); if null falls back to conversion
-  shippingIN       Float       @default(0)  // India shipping for both payment methods (INR)
-  shippingUS       Float       @default(0)  // USA shipping (USD) - ONLINE only
-  shippingUK       Float       @default(0)  // UK shipping (GBP) - ONLINE only
-  codChargeIN      Float       @default(40) // India COD Surcharge (INR)
-  imageUrl         String?
-  stock            Int         @default(0)
-  isActive         Boolean     @default(true)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  orderItems       OrderItem[]
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  imageUrl    String?
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  priceUK     Float?
+  priceUS     Float?
+  shippingUK  Float       @default(0)
+  shippingUS  Float       @default(0)
+  shippingIN  Float       @default(0)
+  codChargeIN Float       @default(40)
+  orderItems  OrderItem[]
 }
 
 model Order {
@@ -983,18 +986,18 @@ model Order {
   razorpaySignature String?
   couponId          String?
   gstNumber         String?
-  awbNumber         String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   cgstAmount        Float           @default(0)
   deliveryCharge    Float           @default(0)
   sgstAmount        Float           @default(0)
   taxableAmount     Float           @default(0)
+  comments          Json?           @default("[]")
+  isActive          Boolean         @default(true)
+  awbNumber         String?
   coupon            DiscountCoupon? @relation(fields: [couponId], references: [id])
   user              User?           @relation(fields: [userId], references: [id])
   items             OrderItem[]
-  comments          Json?           @default("[]")
-  isActive          Boolean         @default(true)
 }
 
 model DiscountCoupon {
@@ -1193,7 +1196,6 @@ model Program {
   maxClass       Int
   duration       String
   topics         String[]
-  price          Float                   @default(0)
   isActive       Boolean                 @default(true)
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
@@ -1202,6 +1204,7 @@ model Program {
   thumbnailUrl   String?
   enrolledCount  Int                     @default(1200)
   features       String[]                @default([])
+  price          Float                   @default(0)
   expertSessions ExpertSessionSchedule[]
   enrollments    ProgramEnrollment[]
 }
@@ -1567,10 +1570,10 @@ enum PaymentStatus {
 enum OrderStatus {
   PLACED
   PROCESSING
-  ON_HOLD
   SHIPPED
   DELIVERED
   CANCELLED
+  ON_HOLD
 }
 
 enum SchoolTier {
@@ -1664,4 +1667,45 @@ model WebinarRegistration {
 enum WebinarMode {
   ONLINE
   OFFLINE
+}
+
+model ExpertCalendarSettings {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  timezone            String   @default("Asia/Kolkata")
+  reschedulePolicy    String   @default("24 hours prior")
+  bookingPeriodMonths Int      @default(2)
+  defaultAvailability Json     @default("{}")
+  blockDates          Json     @default("[]")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PeerLineCertificationCourse {
+  id             String      @id @default(uuid())
+  title          String
+  description    String
+  slug           String      @unique @default(uuid())
+  thumbnailUrl   String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  isActive       Boolean     @default(true)
+  episodes       PeerLineCertificationEpisode[]
+}
+
+model PeerLineCertificationEpisode {
+  id           String          @id @default(uuid())
+  courseId     String
+  order        Int             @default(0)
+  title        String
+  content      Json            @default("[]")
+  createdAt    DateTime        @default(now())
+  description  String?
+  isActive     Boolean         @default(true)
+  slug         String          @unique @default(uuid())
+  updatedAt    DateTime        @updatedAt
+  thumbnailUrl String?
+  course       PeerLineCertificationCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }

@@ -10,7 +10,14 @@ router.use(authenticate);
 
 router.get("/enrollments", ExpertController.getEnrollments);
 router.get("/enrollments/:id", ExpertController.getEnrollmentDetails);
+
+router.get("/calendar", ExpertController.getCalendarSettings);
+router.put("/calendar", ExpertController.updateCalendarSettings);
+
+
+
 router.get("/sessions", ExpertController.getSessions);
+router.get("/my-sessions", ExpertController.getSessions);
 router.post("/sessions", ExpertController.scheduleSession);
 router.patch("/sessions/:id/complete", ExpertController.completeSession);
 router.patch("/sessions/:id/status", ExpertController.updateSessionStatus);

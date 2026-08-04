@@ -3,6 +3,49 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+const badges = [
+  {
+    id: '1d809215-1a62-4237-b1eb-8b85a5a38f36',
+    name: 'Period Pioneer',
+    description: 'Log your cycle and symptoms to analyze your rhythm.',
+    rarity: 'rare',
+    collection: 'Cycle Master',
+    isAnimated: false,
+    illustrationUrl: '',
+    slug: 'period-pioneer',
+  },
+  {
+    id: '5d9aa7e4-017b-419f-845c-64573b3dfc81',
+    name: 'Community Pillar',
+    description: 'Contribute actively to the community by connecting and encouraging peers.',
+    rarity: 'epic',
+    collection: 'Social Star',
+    isAnimated: false,
+    illustrationUrl: '',
+    slug: 'community-pillar',
+  },
+  {
+    id: '13995d30-a5c2-4504-8375-1a47029fe71d',
+    name: 'Streak Champion',
+    description: 'Keep your daily check-in streak alive.',
+    rarity: 'legendary',
+    collection: 'Dedication',
+    isAnimated: false,
+    illustrationUrl: '',
+    slug: 'streak-champion',
+  },
+  {
+    id: 'badge_knowledge_seeker',
+    name: 'Knowledge Seeker',
+    description: 'Read and complete educational episodes to expand your knowledge.',
+    rarity: 'common',
+    collection: 'Adventures',
+    isAnimated: false,
+    illustrationUrl: '',
+    slug: 'knowledge-seeker',
+  },
+];
+
 const questTemplates = [
   // ── TRACKER (2 slots per day) ──────────────────────────────────────────
   {
@@ -265,25 +308,39 @@ const questTemplates = [
 ];
 
 async function seed() {
-  console.log('🌱 Seeding quest templates...');
+  console.log('🌱 Seeding badges and quest templates...');
 
-  // Clear existing templates
+  // Clear existing templates and badges
   await prisma.userDailyQuest.deleteMany({});
-  const deleted = await prisma.questTemplate.deleteMany({});
-  console.log(`Cleared ${deleted.count} existing templates.`);
+  await prisma.userBadgeProgress.deleteMany({});
+  await prisma.userBadge.deleteMany({});
+  await prisma.questTemplate.deleteMany({});
+  await prisma.badge.deleteMany({});
+  console.log('Cleared existing Quest, Badge, and Progress data.');
 
-  // Seed new templates
-  let created = 0;
+  // Seed Badges
+  let createdBadges = 0;
+  for (const badge of badges) {
+    try {
+      await prisma.badge.create({ data: badge });
+      createdBadges++;
+    } catch (e) {
+      console.error(`Failed to create badge "${badge.name}":`, e.message);
+    }
+  }
+  console.log(`✅ Created ${createdBadges} badges.`);
+
+  // Seed Quest Templates
+  let createdQuests = 0;
   for (const template of questTemplates) {
     try {
       await prisma.questTemplate.create({ data: template });
-      created++;
+      createdQuests++;
     } catch (e) {
       console.error(`Failed to create template "${template.title}":`, e.message);
     }
   }
-
-  console.log(`✅ Created ${created} quest templates.`);
+  console.log(`✅ Created ${createdQuests} quest templates.`);
 
   // Summary
   const counts = await prisma.questTemplate.groupBy({

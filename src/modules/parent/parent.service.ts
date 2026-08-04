@@ -374,6 +374,78 @@ export class ParentService {
 
   // --- Expert Session Methods ---
 
+  static async getExpertSlots(expertId: string) {
+    const expert = await prisma.user.findUnique({
+      where: { id: expertId },
+      include: { calendarSettings: true }
+    });
+    
+    if (!expert || expert.role !== 'EXPERT') {
+      throw new Error("Expert not found");
+    }
+
+    const settings = expert.calendarSettings || {
+      timezone: "Asia/Kolkata",
+      reschedulePolicy: "24 hours prior",
+      bookingPeriodMonths: 2,
+      defaultAvailability: {},
+      blockDates: []
+    };
+
+    const slots: string[] = [];
+    const now = new Date();
+    // Generate up to bookingPeriodMonths
+    const maxDays = (settings.bookingPeriodMonths || 2) * 30;
+    
+    for (let i = 1; i <= maxDays; i++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() + i);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const dateString = date.toISOString().split('T')[0] || "";
+      
+      const blockDates = (settings.blockDates as string[]) || [];
+      if (blockDates.includes(dateString)) {
+        continue;
+      }
+
+      const defaultAvailability = (settings.defaultAvailability as Record<string, {start: string, end: string}[]>) || {};
+      const daySlots = defaultAvailability[dayName];
+      if (daySlots && Array.isArray(daySlots)) {
+        for (const slot of daySlots) {
+           const startParts = (slot.start || "00:00").split(':');
+           const endParts = (slot.end || "00:00").split(':');
+           let currentHour = parseInt(startParts[0] || "0");
+           let endHour = parseInt(endParts[0] || "0");
+           
+           while (currentHour < endHour) {
+             const slotTime = new Date(date);
+             slotTime.setHours(currentHour, parseInt(startParts[1] || "0"), 0, 0);
+             slots.push(slotTime.toISOString());
+             currentHour++;
+           }
+        }
+      }
+    }
+
+    const bookedSessions = await prisma.expertSessionSchedule.findMany({
+      where: {
+        expertId: expertId,
+        scheduledAt: { gte: now }
+      },
+      select: { scheduledAt: true }
+    });
+    const bookedTimes = bookedSessions.map(s => s.scheduledAt.toISOString());
+    const availableSlots = slots.filter(slot => !bookedTimes.includes(slot));
+    
+    return {
+      settings: {
+        timezone: settings.timezone,
+        reschedulePolicy: settings.reschedulePolicy,
+        bookingPeriodMonths: settings.bookingPeriodMonths
+      },
+      availableSlots
+    };
+  }
   static async getExperts(specialisation?: string) {
     const whereClause: any = { role: "EXPERT" };
     if (specialisation) {
@@ -1030,6 +1102,104 @@ export class ParentService {
       data: {
         openedAt: new Date()
       }
+    });
+  }
+
+  static async findOrCreateUserForPublicBooking(phone: string, email: string, name: string) {
+    const { normalizePhone } = await import("../../common/utils/phone.js");
+    const normalizedPhone = normalizePhone(phone);
+
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: normalizedPhone },
+          { phone: phone }
+        ]
+      },
+      include: { profile: true }
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          phone: normalizedPhone,
+          email: email || null,
+          role: "TEEN",
+          accountStatus: "PENDING_SETUP",
+          profile: {
+            create: {
+              displayName: name || "Guest User"
+            }
+          }
+        },
+        include: { profile: true }
+      });
+    } else if (email && !user.email) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { email },
+        include: { profile: true }
+      });
+    }
+
+    return user;
+  }
+
+  static async bookPublicExpertSession(data: { expertId: string; scheduledAt: string; name: string; phone: string; email: string; }) {
+    if (!data.expertId || !data.scheduledAt || !data.name || !data.phone || !data.email) {
+      throw new Error("Missing required fields for booking (expertId, scheduledAt, name, phone, email)");
+    }
+    
+    const user = await this.findOrCreateUserForPublicBooking(data.phone, data.email, data.name);
+    
+    const expert = await prisma.user.findUnique({
+      where: { id: data.expertId },
+      include: { profile: true }
+    });
+    if (!expert) throw new Error("Expert not found");
+
+    const price = expert.profile?.consultationPrice || 500;
+    
+    const options = {
+      amount: Math.round(price * 100),
+      currency: "INR",
+      receipt: `rcpt_${Date.now()}_expert`,
+    };
+    
+    const order = await razorpay.orders.create(options);
+    
+    return {
+      razorpayOrderId: order.id,
+      amount: options.amount,
+      currency: options.currency,
+      expertId: data.expertId,
+      scheduledAt: data.scheduledAt,
+      userId: user.id
+    };
+  }
+
+  static async verifyPublicExpertSessionPayment(data: {
+    razorpayOrderId: string,
+    razorpayPaymentId: string,
+    razorpaySignature: string,
+    expertId: string,
+    scheduledAt: Date,
+    name: string,
+    phone: string,
+    email: string
+  }) {
+    if (!data.expertId || !data.scheduledAt || !data.name || !data.phone || !data.email) {
+      throw new Error("Missing required fields for verification (expertId, scheduledAt, name, phone, email)");
+    }
+
+    const user = await this.findOrCreateUserForPublicBooking(data.phone, data.email, data.name);
+
+    return this.verifyExpertSessionPayment(user.id, {
+      razorpayOrderId: data.razorpayOrderId,
+      razorpayPaymentId: data.razorpayPaymentId,
+      razorpaySignature: data.razorpaySignature,
+      expertId: data.expertId,
+      scheduledAt: data.scheduledAt
     });
   }
 }

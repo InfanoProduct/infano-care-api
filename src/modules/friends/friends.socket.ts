@@ -68,6 +68,52 @@ export function setupFriendsSocket(io: Server) {
       }
     });
 
+    socket.on('edit_message', async (data: { matchId: string; messageId: string; content: string }) => {
+      try {
+        const uid = (socket as any).userId;
+        const result = await getChatService().editMessage(uid, data.matchId, data.messageId, data.content);
+
+        const { matchId: _mId, ...msgRest } = result.message;
+        friendsNsp?.to(`match_${data.matchId}`).emit('message_edited', {
+          matchId: data.matchId,
+          ...msgRest
+        });
+
+        if (result.gpdStatus === 'WARNING') {
+          socket.emit('grooming_check', { 
+            text: "Friendly reminder: We recommend keeping all chats within the app for your safety. 💜" 
+          });
+        } else if (result.gpdStatus === 'SUSPENDED') {
+          friendsNsp?.to(`match_${data.matchId}`).emit('safety_alert', {
+            severity: 'suspended',
+            message: 'This chat has been temporarily suspended for a safety review. Please stay safe!'
+          });
+        }
+      } catch (error: any) {
+        if (error.statusCode === 422 || error.statusCode === 403) {
+          socket.emit('safety_alert', { severity: 'warning', message: error.message });
+        } else {
+          logger.error({ error, data }, 'Failed to edit message');
+          socket.emit('error', { message: 'Failed to edit message' });
+        }
+      }
+    });
+
+    socket.on('unsend_message', async (data: { matchId: string; messageId: string }) => {
+      try {
+        const uid = (socket as any).userId;
+        await getChatService().unsendMessage(uid, data.matchId, data.messageId);
+
+        friendsNsp?.to(`match_${data.matchId}`).emit('message_unsent', {
+          matchId: data.matchId,
+          messageId: data.messageId
+        });
+      } catch (error: any) {
+        logger.error({ error, data }, 'Failed to unsend message');
+        socket.emit('error', { message: 'Failed to unsend message' });
+      }
+    });
+
     socket.on('typing_indicator', (data: { matchId: string; isTyping: boolean }) => {
       socket.to(`match_${data.matchId}`).emit('peer_typing', { 
         matchId: data.matchId, 
