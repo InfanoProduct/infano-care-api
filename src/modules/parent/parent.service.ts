@@ -491,7 +491,8 @@ export class ParentService {
       amount: options.amount,
       currency: options.currency,
       expertId,
-      scheduledAt
+      scheduledAt,
+      razorpayKeyId: env.RAZORPAY_KEY_ID || ""
     };
   }
 
@@ -1174,7 +1175,8 @@ export class ParentService {
       currency: options.currency,
       expertId: data.expertId,
       scheduledAt: data.scheduledAt,
-      userId: user.id
+      userId: user.id,
+      razorpayKeyId: env.RAZORPAY_KEY_ID || ""
     };
   }
 

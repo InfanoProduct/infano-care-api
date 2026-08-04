@@ -483,7 +483,7 @@ export class ShopService {
         }
       }
 
-      return { ...order, stripeSessionUrl };
+      return { ...order, stripeSessionUrl, razorpayKeyId: env.RAZORPAY_KEY_ID || "" };
     }, {
       timeout: 20000
     });
