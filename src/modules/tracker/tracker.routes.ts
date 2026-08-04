@@ -46,6 +46,7 @@ router.get("/prediction",   TrackerController.getPrediction);
 router.get("/insights",     TrackerController.getInsights);
 router.get("/daily-insights", TrackerController.getDailyInsights);
 router.get("/doctor-summary", TrackerController.getDoctorSummary);
+router.get("/articles",       TrackerController.getAllArticles);
 
 
 /**

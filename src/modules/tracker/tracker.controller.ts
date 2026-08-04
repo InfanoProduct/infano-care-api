@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { TrackerService } from "./tracker.service.js";
 import { dailyLogSchema, trackerSetupSchema, updatePeriodRangeSchema } from "./tracker.schema.js";
 import { InsightsService } from "./insights.service.js";
+import { prisma } from "../../db/client.js";
 
 export class TrackerController {
   static async setup(req: Request, res: Response, next: NextFunction) {
@@ -131,5 +132,15 @@ export class TrackerController {
       await TrackerService.deleteAllData(userId);
       res.status(200).json({ message: "All tracker data permanently deleted" });
     } catch (error) { next(error); }
+  }
+
+  static async getAllArticles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const articles = await (prisma as any).trackerArticle.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" }
+      });
+      res.status(200).json(articles);
+    } catch (e) { next(e); }
   }
 }
