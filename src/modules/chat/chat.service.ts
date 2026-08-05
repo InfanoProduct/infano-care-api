@@ -1120,7 +1120,7 @@ ABSOLUTE RULES — NO EXCEPTIONS:
         isActive: s.status === 'ACTIVE' || s.status === 'IN_PROGRESS',
         isOnline: Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${s.expertId}`)?.size)
       })),
-      ...peerAggregated
+      ...(peerAggregated as any[])
     ];
 
     // Sort: Active sessions first, then by timestamp descending
