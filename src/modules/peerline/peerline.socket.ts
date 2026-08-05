@@ -63,6 +63,20 @@ export function setupPeerLineSocket(serverIo: Server) {
       logger.info({ socketId: socket.id, connectionId }, 'Socket joined connection channel');
     });
 
+    socket.on('read_messages', async (data: { sessionId: string }) => {
+      try {
+        const uid = (socket as any).userId;
+        await getPeerLineService().markAsRead(uid, data.sessionId);
+        nsp.to(`session_${data.sessionId}`).emit('messages_read', {
+          type: 'messages_read',
+          sessionId: data.sessionId,
+          readerId: uid,
+        });
+      } catch (err) {
+        logger.error({ err, data }, 'Failed to mark peerline messages as read via socket');
+      }
+    });
+
     socket.on('unsubscribe_session', (connectionId: string) => {
       socket.leave(`session_${connectionId}`);
     });
