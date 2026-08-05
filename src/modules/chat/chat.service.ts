@@ -1029,7 +1029,10 @@ ABSOLUTE RULES — NO EXCEPTIONS:
 
     const peerSessions = await prisma.peerLineSession.findMany({
       where: {
-        OR: [{ menteeId: userId }, { mentorId: userId }]
+        OR: [{ menteeId: userId }, { mentorId: userId }],
+        NOT: {
+          AND: [{ menteeId: userId }, { mentorId: userId }]
+        }
       },
       include: {
         mentor: { select: { profile: true } },
@@ -1039,59 +1042,39 @@ ABSOLUTE RULES — NO EXCEPTIONS:
       orderBy: { createdAt: 'desc' }
     });
 
-    // Group peer sessions by partner (otherUserId) to prevent duplicate chat items
-    const peerGroupsMap = new Map<string, typeof peerSessions>();
-    for (const session of peerSessions) {
-      const partnerId = session.menteeId === userId ? session.mentorId : session.menteeId;
-      if (!partnerId) continue;
-      if (!peerGroupsMap.has(partnerId)) {
-        peerGroupsMap.set(partnerId, []);
-      }
-      peerGroupsMap.get(partnerId)!.push(session);
-    }
+    const peerAggregated = await Promise.all(
+      peerSessions.map(async (session) => {
+        const otherUser = session.menteeId === userId ? session.mentor : session.mentee;
+        const partnerId = session.menteeId === userId ? session.mentorId : session.menteeId;
+        if (!partnerId) return null;
 
-    const peerAggregated: any[] = [];
-    for (const [partnerId, sessionsList] of peerGroupsMap.entries()) {
-      // Find active session if any, otherwise take the most recent session
-      const activeSession = sessionsList.find(s => s.status === 'ACTIVE' || s.status === 'MATCHING');
-      const primarySession = activeSession || sessionsList[0];
-      if (!primarySession) continue;
-      const otherUser = primarySession.menteeId === userId ? primarySession.mentor : primarySession.mentee;
+        const totalUnreadCount = await prisma.peerLineMessage.count({
+          where: {
+            sessionId: session.id,
+            isRead: false,
+            senderRole: session.menteeId === userId ? 'mentor' : 'mentee'
+          }
+        });
 
-      // Sum unread messages across all sessions with this partner
-      const sessionIds = sessionsList.map(s => s.id);
-      const isMentee = primarySession.menteeId === userId;
-      const totalUnreadCount = await prisma.peerLineMessage.count({
-        where: {
-          sessionId: { in: sessionIds },
-          isRead: false,
-          senderRole: isMentee ? 'mentor' : 'mentee'
-        }
-      });
+        const latestMessage = session.PeerLineMessage[0];
+        const isActive = session.status === 'ACTIVE' || session.status === 'MATCHING';
+        const isOnline = Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${partnerId}`)?.size);
 
-      // Get most recent message across all sessions with this partner
-      const latestMessage = await prisma.peerLineMessage.findFirst({
-        where: { sessionId: { in: sessionIds } },
-        orderBy: { sentAt: 'desc' }
-      });
-
-      const isActive = Boolean(activeSession && (activeSession.status === 'ACTIVE' || activeSession.status === 'MATCHING'));
-      const isOnline = Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${partnerId}`)?.size);
-
-      peerAggregated.push({
-        id: primarySession.id,
-        type: 'peer',
-        peerId: partnerId,
-        name: otherUser?.profile?.displayName || 'Peer',
-        avatarUrl: otherUser?.profile?.avatarUrl,
-        lastMessage: latestMessage?.content || 'Session started',
-        timestamp: latestMessage?.sentAt || primarySession.createdAt,
-        unreadCount: totalUnreadCount,
-        status: primarySession.status,
-        isActive,
-        isOnline
-      });
-    }
+        return {
+          id: session.id,
+          type: 'peer',
+          peerId: partnerId,
+          name: otherUser?.profile?.displayName || 'Peer',
+          avatarUrl: otherUser?.profile?.avatarUrl,
+          lastMessage: latestMessage?.content || 'Session started',
+          timestamp: latestMessage?.sentAt || session.createdAt,
+          unreadCount: totalUnreadCount,
+          status: session.status,
+          isActive,
+          isOnline
+        };
+      })
+    ).then(results => results.filter(Boolean));
 
     // Ensure at least one Gigi session exists for the user
     let gigiSession = await prisma.chatSession.findFirst({

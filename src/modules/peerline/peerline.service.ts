@@ -433,7 +433,7 @@ export class PeerLineService {
       if (recipient && recipient.fcmToken) {
         const payload = {
           title: `Message from ${senderName}`,
-          body: messageType === 'TEXT' ? (content || '') : (messageType === 'VOICE' ? '🎤 Voice note' : '📷 Image'),
+          body: message.messageType === 'TEXT' ? (content || '') : (message.messageType === 'VOICE' ? '🎤 Voice note' : '📷 Image'),
           deepLink: `infano://peerline/chat/${sessionId}`,
           data: {
             type: 'PEERLINE_CHAT',
@@ -946,6 +946,8 @@ export class PeerLineService {
         }
       });
 
+      const activeSession = activeSessions.find(s => s.mentorId === m.id);
+
       return {
         id: m.id,
         name: m.profile?.displayName || 'Peer Mentor',
@@ -957,7 +959,8 @@ export class PeerLineService {
         expertiseTags: [...new Set(expertiseTags)], // Unique tags
         bio: m.profile?.bio || 'Helping girls navigate their journey with empathy and care.',
         experienceCount: m.profile?.completedSessionsCount || 0,
-        hasPendingRequest: sessionMentorIds.has(m.id),
+        hasPendingRequest: activeSession ? (activeSession.status === PeerLineStatus.MATCHING) : false,
+        sessionId: activeSession ? activeSession.id : null,
       };
     });
 

@@ -103,6 +103,16 @@ export function setupPeerLineSocket(serverIo: Server) {
           });
         }
 
+        const recipientId = data.senderRole === 'mentee' ? session.mentorId : session.menteeId;
+        if (recipientId) {
+          nsp.to(`user_${recipientId}`).emit('message', {
+            type: 'message',
+            sessionId: data.sessionId,
+            clientId: data.clientId,
+            ...msgRest
+          });
+        }
+
         if (message.crisisFlag) {
           const resources = await new (await import('../safety/safety.service.js')).SafetyService().getCrisisResources('en-IN');
           for (const room of targetRooms) {
