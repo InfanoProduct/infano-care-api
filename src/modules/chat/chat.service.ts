@@ -1,6 +1,7 @@
 import { PrismaClient, ChatSender, EscalationLevel } from '@prisma/client';
 import { logger } from '../../config/logger.js';
 import { AppError } from '../../common/middleware/errorHandler.js';
+import { nsp as peerlineNsp } from '../peerline/peerline.socket.js';
 
 const prisma = new PrismaClient();
 
@@ -1075,6 +1076,7 @@ ABSOLUTE RULES — NO EXCEPTIONS:
       });
 
       const isActive = Boolean(activeSession && (activeSession.status === 'ACTIVE' || activeSession.status === 'MATCHING'));
+      const isOnline = Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${partnerId}`)?.size);
 
       peerAggregated.push({
         id: primarySession.id,
@@ -1086,7 +1088,8 @@ ABSOLUTE RULES — NO EXCEPTIONS:
         timestamp: latestMessage?.sentAt || primarySession.createdAt,
         unreadCount: totalUnreadCount,
         status: primarySession.status,
-        isActive
+        isActive,
+        isOnline
       });
     }
 
@@ -1116,7 +1119,8 @@ ABSOLUTE RULES — NO EXCEPTIONS:
       timestamp: gigiSession.messages[0]?.createdAt || gigiSession.createdAt,
       unreadCount: 0,
       status: 'ACTIVE',
-      isActive: true
+      isActive: true,
+      isOnline: true
     };
 
     const aggregated = [
@@ -1130,7 +1134,8 @@ ABSOLUTE RULES — NO EXCEPTIONS:
         timestamp: s.messages[0]?.createdAt || s.createdAt,
         unreadCount: expertUnreadCounts.find(c => c.id === s.id)?.count || 0,
         status: s.status,
-        isActive: s.status === 'ACTIVE' || s.status === 'IN_PROGRESS'
+        isActive: s.status === 'ACTIVE' || s.status === 'IN_PROGRESS',
+        isOnline: Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${s.expertId}`)?.size)
       })),
       ...peerAggregated
     ];
