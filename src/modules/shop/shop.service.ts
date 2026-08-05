@@ -1005,6 +1005,7 @@ export class ShopService {
         order_items: items,
         subtotal: `₹${order.subtotal}`,
         discount: order.discountAmount > 0 ? `₹${order.discountAmount}` : "₹0",
+        delivery_charge: `₹${order.deliveryCharge}`,
         total: `₹${order.totalAmount}`,
         track_order_url: "https://infano.care/store/track"
       });
