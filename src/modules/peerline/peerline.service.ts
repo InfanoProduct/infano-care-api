@@ -263,8 +263,17 @@ export class PeerLineService {
       where: { id: sessionId },
       include: {
         mentor: {
-          select: { profile: { select: { displayName: true } } },
+          select: {
+            fcmToken: true,
+            profile: { select: { displayName: true } }
+          }
         },
+        mentee: {
+          select: {
+            fcmToken: true,
+            profile: { select: { displayName: true } }
+          }
+        }
       },
     });
 
