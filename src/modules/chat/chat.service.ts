@@ -1042,34 +1042,51 @@ ABSOLUTE RULES — NO EXCEPTIONS:
       orderBy: { createdAt: 'desc' }
     });
 
+    const peerGroupsMap = new Map<string, typeof peerSessions>();
+    for (const session of peerSessions) {
+      const partnerId = session.menteeId === userId ? session.mentorId : session.menteeId;
+      if (!partnerId) continue;
+      if (!peerGroupsMap.has(partnerId)) {
+        peerGroupsMap.set(partnerId, []);
+      }
+      peerGroupsMap.get(partnerId)!.push(session);
+    }
+
     const peerAggregated = await Promise.all(
-      peerSessions.map(async (session) => {
-        const otherUser = session.menteeId === userId ? session.mentor : session.mentee;
-        const partnerId = session.menteeId === userId ? session.mentorId : session.menteeId;
-        if (!partnerId) return null;
+      Array.from(peerGroupsMap.entries()).map(async ([partnerId, sessionsList]) => {
+        const activeSession = sessionsList.find(s => s.status === 'ACTIVE' || s.status === 'MATCHING');
+        const primarySession = activeSession || sessionsList[0];
+        if (!primarySession) return null;
+
+        const otherUser = primarySession.menteeId === userId ? primarySession.mentor : primarySession.mentee;
+        const sessionIds = sessionsList.map(s => s.id);
 
         const totalUnreadCount = await prisma.peerLineMessage.count({
           where: {
-            sessionId: session.id,
+            sessionId: { in: sessionIds },
             isRead: false,
-            senderRole: session.menteeId === userId ? 'mentor' : 'mentee'
+            senderRole: primarySession.menteeId === userId ? 'mentor' : 'mentee'
           }
         });
 
-        const latestMessage = session.PeerLineMessage[0];
-        const isActive = session.status === 'ACTIVE' || session.status === 'MATCHING';
+        const latestMessage = await prisma.peerLineMessage.findFirst({
+          where: { sessionId: { in: sessionIds } },
+          orderBy: { sentAt: 'desc' }
+        });
+
+        const isActive = Boolean(activeSession && (activeSession.status === 'ACTIVE' || activeSession.status === 'MATCHING'));
         const isOnline = Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${partnerId}`)?.size);
 
         return {
-          id: session.id,
+          id: primarySession.id,
           type: 'peer',
           peerId: partnerId,
           name: otherUser?.profile?.displayName || 'Peer',
           avatarUrl: otherUser?.profile?.avatarUrl,
           lastMessage: latestMessage?.content || 'Session started',
-          timestamp: latestMessage?.sentAt || session.createdAt,
+          timestamp: latestMessage?.sentAt || primarySession.createdAt,
           unreadCount: totalUnreadCount,
-          status: session.status,
+          status: primarySession.status,
           isActive,
           isOnline
         };
