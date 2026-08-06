@@ -45,6 +45,7 @@ router.get("/history",      TrackerController.getHistory);
 router.get("/prediction",   TrackerController.getPrediction);
 router.get("/insights",     TrackerController.getInsights);
 router.get("/daily-insights", TrackerController.getDailyInsights);
+router.post("/daily-insights/:insightId/read", TrackerController.readDailyInsight);
 router.get("/doctor-summary", TrackerController.getDoctorSummary);
 
 

@@ -81,6 +81,18 @@ export class TrackerController {
     } catch (e) { next(e); }
   }
 
+  static async readDailyInsight(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId;
+      const { insightId } = req.params;
+      if (!insightId || typeof insightId !== 'string') {
+        throw new Error("Insight ID is required");
+      }
+      const result = await InsightsService.readDailyInsight(userId, insightId);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
 
   static async getHistory(req: Request, res: Response, next: NextFunction) {
     try {

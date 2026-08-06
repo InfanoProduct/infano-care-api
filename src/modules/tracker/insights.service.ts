@@ -153,4 +153,18 @@ export class InsightsService {
       })),
     };
   }
+
+  static async readDailyInsight(userId: string, insightId: string) {
+    try {
+      const { QuestService } = await import("../quest/quest.service.js");
+      const points = await QuestService.evaluateCompletion(userId, {
+        type: "insight_read",
+        detail: insightId,
+      });
+      return { success: true, pointsAwarded: points };
+    } catch (e) {
+      console.error("[TRACKER] Failed to log read daily insight quest completion:", e);
+      return { success: true, pointsAwarded: 0 };
+    }
+  }
 }
