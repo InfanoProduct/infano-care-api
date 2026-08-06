@@ -370,7 +370,7 @@ export class ExpertService {
 
         if (recipient && recipient.fcmToken) {
           const payload = {
-            title: `Message from ${senderName}`,
+            title: senderName,
             body: content,
             deepLink: `infano://expert/chat/${sessionId}`,
             data: {

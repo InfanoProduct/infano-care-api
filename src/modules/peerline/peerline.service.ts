@@ -441,7 +441,7 @@ export class PeerLineService {
 
       if (recipient && recipient.fcmToken) {
         const payload = {
-          title: `Message from ${senderName}`,
+          title: senderName,
           body: message.messageType === 'TEXT' ? (content || '') : (message.messageType === 'VOICE' ? '🎤 Voice note' : '📷 Image'),
           deepLink: `infano://peerline/chat/${sessionId}`,
           data: {
