@@ -301,7 +301,7 @@ export class AdminController {
         if (toEmail) {
           await emailModule.sendWebinarConfirmationEmail(toEmail, {
             parent_name: order.guestName || (order.user as any)?.username || "Parent",
-            order_id: order.id.slice(-8).toUpperCase(),
+            order_id: order.id.slice(0, 8).toUpperCase(),
             webinar_date: webinarDateStr,
             webinar_time: webinarTimeStr,
             download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",

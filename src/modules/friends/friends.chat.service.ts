@@ -26,14 +26,7 @@ export class FriendsChatService {
     });
 
     // Mark as read for the recipient
-    await prisma.friendMessage.updateMany({
-      where: {
-        matchId,
-        senderId: { not: userId },
-        isRead: false,
-      },
-      data: { isRead: true },
-    });
+    await this.markAsRead(userId, matchId);
 
     // Get the other person's profile
     const otherProfile = match.user.userId === userId ? match.target : match.user;
@@ -48,6 +41,17 @@ export class FriendsChatService {
         vibeTags: otherProfile.vibeTags,
       },
     };
+  }
+
+  async markAsRead(userId: string, matchId: string) {
+    return prisma.friendMessage.updateMany({
+      where: {
+        matchId,
+        senderId: { not: userId },
+        isRead: false,
+      },
+      data: { isRead: true },
+    });
   }
 
   async createMessage(userId: string, matchId: string, content: string): Promise<{ message: any, gpdStatus: 'OK' | 'WARNING' | 'SUSPENDED' }> {
@@ -84,6 +88,40 @@ export class FriendsChatService {
         content,
       },
     });
+
+    // 4. Send push notification to the recipient
+    try {
+      const recipient = match.user.userId === userId ? match.target : match.user;
+      if (recipient && recipient.userId) {
+        const recipientUser = await prisma.user.findUnique({
+          where: { id: recipient.userId },
+          select: { fcmToken: true }
+        });
+        const senderUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { profile: { select: { displayName: true } } }
+        });
+        const senderName = senderUser?.profile?.displayName || 'Friend';
+        
+        if (recipientUser && recipientUser.fcmToken) {
+          const payload = {
+            title: `Message from ${senderName}`,
+            body: content,
+            deepLink: `infano://friends/chat/${matchId}`,
+            data: {
+              type: 'FRIENDS_CHAT',
+              matchId,
+            }
+          };
+          const { FirebaseService } = await import('../../common/services/firebase.service.js');
+          FirebaseService.sendPushNotification(recipientUser.fcmToken, payload).catch(err => {
+            logger.error({ err }, 'Failed to send Friends chat push notification');
+          });
+        }
+      }
+    } catch (pushErr) {
+      logger.error({ pushErr }, 'Error triggering friends chat push notification');
+    }
 
     return {
       message,

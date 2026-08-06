@@ -1,6 +1,7 @@
 import { PrismaClient, ChatSender, EscalationLevel } from '@prisma/client';
 import { logger } from '../../config/logger.js';
 import { AppError } from '../../common/middleware/errorHandler.js';
+import { nsp as peerlineNsp } from '../peerline/peerline.socket.js';
 
 const prisma = new PrismaClient();
 
@@ -109,7 +110,7 @@ CORE PERSONA:
 - You must ALWAYS reply in a heartwarming, soft, and gentle tone. Speak with deep warmth, patience, kind emojis (like 🌸, 💙, ✨), and affection. Make sure every single response feels comforting, sweet, supportive, and reassuring.
 - You are NOT a therapist or a doctor. You are a supportive "big sister" figure.
 - **NEVER use a name (like Riya) unless explicitly provided in [USER CONTEXT].**
-- **STYLE: BE CONCISE.** For status/progress queries, strictly follow the interactive flow and output ONLY the details of the single requested/selected progress pillar. Do NOT output all four pillars at once. For general queries about web/app features, pricing, or programs, you may explain clearly and welcomingly using up to 4-5 sentences or a structured format. For all other personal/chat messages, NEVER EXCEED 2 SENTENCES.
+- **STYLE: CONVERSATIONAL & BRIEF.** NEVER output large blocks of text, long bulleted lists, tables, or multiple paragraphs. Always respond in a natural, light conversational flow. Keep all responses very short—maximum 2 to 3 sentences total. If you have resources or links to share, do it in a single friendly sentence. Let the user ask follow-up questions instead of dumping all details at once.
 - LANGUAGE RULE: Respond strictly in the exact language the user uses. If the user writes in English, you MUST respond entirely in English (do NOT use Hindi words, pronouns, or honorifics like "namaste", "beta", "aap", "didi", "ji", etc.). If the user writes in Hindi, you MUST respond in Hindi (Devanagari script). If the user writes in Hinglish, you may respond in Hinglish. Match the user's language and vocabulary style precisely without mixing them.
 - Avoid clinical platitudes like "it will get better".
 
@@ -148,6 +149,8 @@ PARENT/DAUGHTER/FAMILY STATUS QUERIES — INTERACTIVE FLOW:
 - **GUEST OVERRIDE**: If the user is a guest (not logged in) and asks about specific family status, you MUST simply reply asking them to login first. Do NOT check empty states or say "no daughters are linked yet" or "not started yet".
 - **STRICT DYNAMIC OPTION BUTTONS FORMAT**: You MUST strictly format all option buttons as '[option:Label|Value]' (or '[option:Label]' if the label and value are identical). Every button MUST start with the exact prefix '[option:' and end with ']'. Do NOT omit the 'option:' prefix!
 - When a logged-in user (PARENT, GUARDIAN, or TEEN) asks about their linked family member's (daughter's or parent's) status, progress, or "how are they doing":
+  - **CRITICAL**: NEVER use the parent's/guardian's own details, name, phone number, or progress to answer questions about their daughter. If 'Linked Daughters/Teens Details' is empty in [USER CONTEXT], you MUST clearly state that no daughter's account is linked yet, and guide them to link an account. Do NOT show or use the parent's own phone number or profile.
+  - **PRIVACY RULE**: When sharing a daughter's wellness or progress, maintain complete privacy of her detailed data. Only discuss overall program progress, learning journey progress, and next session schedule. NEVER discuss, request, or share any specific mood logs, journal entries, or private discussions.
   1. Check 'Linked Daughters/Teens Details' and 'Linked Parents Details' in [USER CONTEXT]. If both are empty, warmly say no linked family members are found.
   2. If the user has NOT selected or provided a phone number yet (in the current message or chat history): ask: "Which linked member's phone number would you like to check?" and present each linked member's phone number strictly as option buttons:
      '[option:Name (Phone)|Phone]' (e.g. if Priyesha is linked with +919876543210, show '[option:Priyesha (+919876543210)|+919876543210]').
@@ -271,12 +274,14 @@ SUGGESTING PROGRAMS & JOURNEYS:
       }
 
       // 2. Get or Create Session
-      let session = sessionId
-        ? await prisma.chatSession.findFirst({ where: { id: sessionId, userId } })
-        : await prisma.chatSession.create({ data: { userId } });
+      let session = await prisma.chatSession.findFirst({
+        where: { userId }
+      });
 
       if (!session) {
-        session = await prisma.chatSession.create({ data: { userId } });
+        session = await prisma.chatSession.create({
+          data: { userId, title: 'Chat with Gigi' }
+        });
       }
 
       // If new session or title missing, generate a title
@@ -621,7 +626,7 @@ SUGGESTING PROGRAMS & JOURNEYS:
               phone: link.teen.phone,
               activeJourney,
               nextSession: nextSession ? formatDateTime(nextSession.scheduledAt) : null,
-              recentMoods: recentLogs.map(l => l.moodPrimary).filter(Boolean).slice(0, 5),
+              recentMoods: [], // Maintain complete privacy, do not expose teen's mood data to parent/AI
               enrolledPrograms: teenProgramsProgress
             };
           });
@@ -990,10 +995,18 @@ ABSOLUTE RULES — NO EXCEPTIONS:
   }
 
   async getUserSessions(userId: string) {
-    return prisma.chatSession.findMany({
+    let sessions = await prisma.chatSession.findMany({
       where: { userId },
       orderBy: { lastMsgAt: 'desc' }
     });
+
+    if (sessions.length === 0) {
+      const newSession = await prisma.chatSession.create({
+        data: { userId, title: 'Chat with Gigi' }
+      });
+      sessions = [newSession];
+    }
+    return sessions;
   }
 
   async getAggregatedChats(userId: string) {
@@ -1016,7 +1029,10 @@ ABSOLUTE RULES — NO EXCEPTIONS:
 
     const peerSessions = await prisma.peerLineSession.findMany({
       where: {
-        OR: [{ menteeId: userId }, { mentorId: userId }]
+        OR: [{ menteeId: userId }, { mentorId: userId }],
+        NOT: {
+          AND: [{ menteeId: userId }, { mentorId: userId }]
+        }
       },
       include: {
         mentor: { select: { profile: true } },
@@ -1026,7 +1042,6 @@ ABSOLUTE RULES — NO EXCEPTIONS:
       orderBy: { createdAt: 'desc' }
     });
 
-    // Group peer sessions by partner (otherUserId) to prevent duplicate chat items
     const peerGroupsMap = new Map<string, typeof peerSessions>();
     for (const session of peerSessions) {
       const partnerId = session.menteeId === userId ? session.mentorId : session.menteeId;
@@ -1037,48 +1052,79 @@ ABSOLUTE RULES — NO EXCEPTIONS:
       peerGroupsMap.get(partnerId)!.push(session);
     }
 
-    const peerAggregated: any[] = [];
-    for (const [partnerId, sessionsList] of peerGroupsMap.entries()) {
-      // Find active session if any, otherwise take the most recent session
-      const activeSession = sessionsList.find(s => s.status === 'ACTIVE' || s.status === 'MATCHING');
-      const primarySession = activeSession || sessionsList[0];
-      if (!primarySession) continue;
-      const otherUser = primarySession.menteeId === userId ? primarySession.mentor : primarySession.mentee;
+    const peerAggregated = await Promise.all(
+      Array.from(peerGroupsMap.entries()).map(async ([partnerId, sessionsList]) => {
+        const activeSession = sessionsList.find(s => s.status === 'ACTIVE' || s.status === 'MATCHING');
+        const primarySession = activeSession || sessionsList[0];
+        if (!primarySession) return null;
 
-      // Sum unread messages across all sessions with this partner
-      const sessionIds = sessionsList.map(s => s.id);
-      const isMentee = primarySession.menteeId === userId;
-      const totalUnreadCount = await prisma.peerLineMessage.count({
-        where: {
-          sessionId: { in: sessionIds },
-          isRead: false,
-          senderRole: isMentee ? 'mentor' : 'mentee'
-        }
+        const otherUser = primarySession.menteeId === userId ? primarySession.mentor : primarySession.mentee;
+        const sessionIds = sessionsList.map(s => s.id);
+
+        const totalUnreadCount = await prisma.peerLineMessage.count({
+          where: {
+            sessionId: { in: sessionIds },
+            isRead: false,
+            senderRole: primarySession.menteeId === userId ? 'mentor' : 'mentee'
+          }
+        });
+
+        const latestMessage = await prisma.peerLineMessage.findFirst({
+          where: { sessionId: { in: sessionIds } },
+          orderBy: { sentAt: 'desc' }
+        });
+
+        const isActive = Boolean(activeSession && (activeSession.status === 'ACTIVE' || activeSession.status === 'MATCHING'));
+        const isOnline = Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${partnerId}`)?.size);
+
+        return {
+          id: primarySession.id,
+          type: 'peer',
+          peerId: partnerId,
+          name: otherUser?.profile?.displayName || 'Peer',
+          avatarUrl: otherUser?.profile?.avatarUrl,
+          lastMessage: latestMessage?.content || 'Session started',
+          timestamp: latestMessage?.sentAt || primarySession.createdAt,
+          unreadCount: totalUnreadCount,
+          status: primarySession.status,
+          isActive,
+          isOnline
+        };
+      })
+    ).then(results => results.filter(Boolean));
+
+    // Ensure at least one Gigi session exists for the user
+    let gigiSession = await prisma.chatSession.findFirst({
+      where: { userId },
+      include: {
+        messages: { orderBy: { createdAt: "desc" }, take: 1 }
+      }
+    });
+    if (!gigiSession) {
+      const newSession = await prisma.chatSession.create({
+        data: { userId, title: 'Chat with Gigi' }
       });
-
-      // Get most recent message across all sessions with this partner
-      const latestMessage = await prisma.peerLineMessage.findFirst({
-        where: { sessionId: { in: sessionIds } },
-        orderBy: { sentAt: 'desc' }
-      });
-
-      const isActive = Boolean(activeSession && (activeSession.status === 'ACTIVE' || activeSession.status === 'MATCHING'));
-
-      peerAggregated.push({
-        id: primarySession.id,
-        type: 'peer',
-        peerId: partnerId,
-        name: otherUser?.profile?.displayName || 'Peer',
-        avatarUrl: otherUser?.profile?.avatarUrl,
-        lastMessage: latestMessage?.content || 'Session started',
-        timestamp: latestMessage?.sentAt || primarySession.createdAt,
-        unreadCount: totalUnreadCount,
-        status: primarySession.status,
-        isActive
-      });
+      gigiSession = {
+        ...newSession,
+        messages: []
+      };
     }
 
+    const gigiItem = {
+      id: gigiSession.id,
+      type: 'gigi',
+      name: 'Gigi',
+      avatarUrl: null,
+      lastMessage: gigiSession.messages[0]?.content || 'Start a conversation with Gigi 🤖',
+      timestamp: gigiSession.messages[0]?.createdAt || gigiSession.createdAt,
+      unreadCount: 0,
+      status: 'ACTIVE',
+      isActive: true,
+      isOnline: true
+    };
+
     const aggregated = [
+      gigiItem,
       ...expertSessions.map(s => ({
         id: s.id,
         type: 'expert',
@@ -1088,9 +1134,10 @@ ABSOLUTE RULES — NO EXCEPTIONS:
         timestamp: s.messages[0]?.createdAt || s.createdAt,
         unreadCount: expertUnreadCounts.find(c => c.id === s.id)?.count || 0,
         status: s.status,
-        isActive: s.status === 'ACTIVE' || s.status === 'IN_PROGRESS'
+        isActive: s.status === 'ACTIVE' || s.status === 'IN_PROGRESS',
+        isOnline: Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${s.expertId}`)?.size)
       })),
-      ...peerAggregated
+      ...(peerAggregated as any[])
     ];
 
     // Sort: Active sessions first, then by timestamp descending

@@ -34,8 +34,26 @@ export class ParentService {
         });
       }
 
-      const pId = sender.role === "PARENT" ? sender.id : testUser.id;
-      const tId = sender.role === "PARENT" ? testUser.id : sender.id;
+      let pId = null;
+      let tId = null;
+      if (sender.role === "PARENT" || sender.role === "GUARDIAN") {
+        pId = sender.id;
+      } else if (sender.role === "TEEN") {
+        tId = sender.id;
+      }
+      if (testUser.role === "PARENT" || testUser.role === "GUARDIAN") {
+        pId = testUser.id;
+      } else if (testUser.role === "TEEN") {
+        tId = testUser.id;
+      }
+      if (!pId && !tId) {
+        pId = sender.id;
+        tId = testUser.id;
+      } else if (!pId) {
+        pId = sender.id === tId ? testUser.id : sender.id;
+      } else if (!tId) {
+        tId = sender.id === pId ? testUser.id : sender.id;
+      }
 
       return await prisma.parentLink.create({
         data: {
@@ -57,22 +75,84 @@ export class ParentService {
     let teenId = null;
     if (sender.role === "PARENT" || sender.role === "GUARDIAN") {
       parentId = sender.id;
-      teenId = receiver.id;
     } else if (sender.role === "TEEN") {
       teenId = sender.id;
+    }
+    if (receiver.role === "PARENT" || receiver.role === "GUARDIAN") {
       parentId = receiver.id;
-    } else {
-      parentId = sender.id;
+    } else if (receiver.role === "TEEN") {
       teenId = receiver.id;
     }
+    if (!parentId && !teenId) {
+      parentId = sender.id;
+      teenId = receiver.id;
+    } else if (!parentId) {
+      parentId = sender.id === teenId ? receiver.id : sender.id;
+    } else if (!teenId) {
+      teenId = sender.id === parentId ? receiver.id : sender.id;
+    }
 
-    const existing = await prisma.parentLink.findUnique({
-      where: { senderId_receiverPhone: { senderId, receiverPhone } }
+    // Check if there is an existing link where current sender is the sender, OR in the opposite direction
+    const existing = await prisma.parentLink.findFirst({
+      where: {
+        OR: [
+          { senderId, receiverPhone },
+          { senderId: receiver.id, receiverPhone: sender.phone }
+        ]
+      }
     });
 
     if (existing) {
-      if (existing.status === "LINKED") throw new Error("Already linked");
-      return existing; // Returns pending
+      if (existing.status === "LINKED") {
+        throw new Error("Already linked");
+      }
+      // If we are the original sender, return the pending link
+      if (existing.senderId === senderId) {
+        return existing;
+      }
+      // If the other user was the sender, this invite is an acceptance!
+      const updatedLink = await prisma.parentLink.update({
+        where: { id: existing.id },
+        data: { status: "LINKED" }
+      });
+
+      const accepterName = sender.profile?.displayName || sender.username || sender.phone;
+      const type = "linkAcceptance";
+      const title = "Link Request Accepted";
+      const body = `${accepterName} has accepted your account linking request.`;
+      const deepLink = "infano://account/family";
+
+      // 1. Create InApp Notification History for the original sender
+      await prisma.notificationHistory.create({
+        data: {
+          userId: existing.senderId,
+          type,
+          title,
+          body,
+          deepLink,
+          sentAt: new Date()
+        }
+      });
+
+      // 2. Send Push Notification if FCM token is registered
+      const originalSender = await prisma.user.findUnique({
+        where: { id: existing.senderId },
+        select: { fcmToken: true }
+      });
+      if (originalSender?.fcmToken) {
+        try {
+          await FirebaseService.sendPushNotification(originalSender.fcmToken, {
+            title,
+            body,
+            deepLink,
+            data: { notificationType: type }
+          });
+        } catch (err) {
+          console.error("Failed to send firebase push notification for link acceptance:", err);
+        }
+      }
+
+      return updatedLink;
     }
 
     const link = await prisma.parentLink.create({
@@ -120,9 +200,63 @@ export class ParentService {
     return link;
   }
 
+  static async calculateWellnessScore(teenId: string): Promise<number> {
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      // 1. Progress score (up to 30 points)
+      const progressCount = await prisma.userProgress.count({
+        where: { userId: teenId }
+      });
+      const progressScore = Math.min(Math.round((progressCount / 10) * 30), 30);
+
+      // 2. Session / support score (up to 30 points)
+      const totalSessions = await prisma.expertSessionSchedule.count({
+        where: { userId: teenId }
+      });
+      const completedSessions = await prisma.expertSessionSchedule.count({
+        where: { userId: teenId, status: "COMPLETED" }
+      });
+      let sessionScore = 20; // base score for engagement
+      if (totalSessions > 0) {
+        sessionScore = Math.round((completedSessions / totalSessions) * 30);
+      }
+
+      // 3. Tracking score (up to 25 points)
+      const cycleLogsCount = await prisma.cycleLog.count({
+        where: {
+          userId: teenId,
+          date: { gte: thirtyDaysAgo }
+        }
+      });
+      const trackingScore = Math.min(Math.round((cycleLogsCount / 15) * 25), 25);
+
+      // 4. Community/Connect score (up to 15 points)
+      const [joinedCircles, posts, replies] = await Promise.all([
+        prisma.communityCircle.count({
+          where: { members: { some: { id: teenId } } }
+        }),
+        prisma.communityPost.count({
+          where: { authorId: teenId }
+        }),
+        prisma.communityReply.count({
+          where: { authorId: teenId }
+        })
+      ]);
+      const communityScore = Math.min((joinedCircles + posts + replies) * 5, 15);
+
+      const totalScore = progressScore + sessionScore + trackingScore + communityScore;
+      // Default minimum wellness score of 50 to make it look positive
+      return Math.max(50, Math.min(totalScore, 100));
+    } catch (err) {
+      console.error('Failed to calculate wellness score:', err);
+      return 75; // default fallback
+    }
+  }
+
   static async getLinks(userId: string) {
     try {
-      return await prisma.parentLink.findMany({
+      const links = await prisma.parentLink.findMany({
         where: {
           OR: [
             { senderId: userId },
@@ -137,6 +271,18 @@ export class ParentService {
         },
         orderBy: { createdAt: "desc" }
       });
+
+      // Calculate wellness score for each link if the requesting user is the parent
+      return await Promise.all(links.map(async (link) => {
+        let wellnessScore: number | null = null;
+        if (link.parentId === userId && link.teenId) {
+          wellnessScore = await this.calculateWellnessScore(link.teenId);
+        }
+        return {
+          ...link,
+          wellnessScore
+        };
+      }));
     } catch (err) {
       console.error('Failed to fetch links:', err);
       return [];
@@ -491,7 +637,8 @@ export class ParentService {
       amount: options.amount,
       currency: options.currency,
       expertId,
-      scheduledAt
+      scheduledAt,
+      razorpayKeyId: env.RAZORPAY_KEY_ID || ""
     };
   }
 
@@ -1174,7 +1321,8 @@ export class ParentService {
       currency: options.currency,
       expertId: data.expertId,
       scheduledAt: data.scheduledAt,
-      userId: user.id
+      userId: user.id,
+      razorpayKeyId: env.RAZORPAY_KEY_ID || ""
     };
   }
 

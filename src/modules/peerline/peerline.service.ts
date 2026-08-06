@@ -263,8 +263,17 @@ export class PeerLineService {
       where: { id: sessionId },
       include: {
         mentor: {
-          select: { profile: { select: { displayName: true } } },
+          select: {
+            fcmToken: true,
+            profile: { select: { displayName: true } }
+          }
         },
+        mentee: {
+          select: {
+            fcmToken: true,
+            profile: { select: { displayName: true } }
+          }
+        }
       },
     });
 
@@ -295,9 +304,21 @@ export class PeerLineService {
 
     const otherRole = session.menteeId === userId ? 'mentor' : 'mentee';
 
+    let sessionIds = [sessionId];
+    if (session.menteeId && session.mentorId) {
+      const pairSessions = await prisma.peerLineSession.findMany({
+        where: {
+          menteeId: session.menteeId,
+          mentorId: session.mentorId
+        },
+        select: { id: true }
+      });
+      sessionIds = pairSessions.map(s => s.id);
+    }
+
     return prisma.peerLineMessage.updateMany({
       where: {
-        sessionId,
+        sessionId: { in: sessionIds },
         senderRole: otherRole,
         isRead: false
       },
@@ -317,7 +338,12 @@ export class PeerLineService {
     // 1. Verify access
     const session = await this.getSession(userId, sessionId);
 
-    const limit = options.limit ? Math.min(options.limit, 100) : undefined;
+    // Automatically mark incoming messages as read when fetched
+    await this.markAsRead(userId, sessionId).catch(err => {
+      logger.error(err, 'Failed to mark peerline messages as read in getMessages');
+    });
+
+    const limit = options.limit ? Math.min(options.limit, 100) : options.limit;
     let beforeDate: Date | undefined;
     if (options.before) {
       beforeDate = new Date(options.before);
@@ -416,7 +442,7 @@ export class PeerLineService {
       if (recipient && recipient.fcmToken) {
         const payload = {
           title: `Message from ${senderName}`,
-          body: messageType === 'TEXT' ? (content || '') : (messageType === 'VOICE' ? '🎤 Voice note' : '📷 Image'),
+          body: message.messageType === 'TEXT' ? (content || '') : (message.messageType === 'VOICE' ? '🎤 Voice note' : '📷 Image'),
           deepLink: `infano://peerline/chat/${sessionId}`,
           data: {
             type: 'PEERLINE_CHAT',
@@ -929,6 +955,8 @@ export class PeerLineService {
         }
       });
 
+      const activeSession = activeSessions.find(s => s.mentorId === m.id);
+
       return {
         id: m.id,
         name: m.profile?.displayName || 'Peer Mentor',
@@ -940,7 +968,8 @@ export class PeerLineService {
         expertiseTags: [...new Set(expertiseTags)], // Unique tags
         bio: m.profile?.bio || 'Helping girls navigate their journey with empathy and care.',
         experienceCount: m.profile?.completedSessionsCount || 0,
-        hasPendingRequest: sessionMentorIds.has(m.id),
+        hasPendingRequest: activeSession ? (activeSession.status === PeerLineStatus.MATCHING) : false,
+        sessionId: activeSession ? activeSession.id : null,
       };
     });
 

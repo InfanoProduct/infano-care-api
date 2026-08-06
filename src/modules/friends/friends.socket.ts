@@ -29,6 +29,20 @@ export function setupFriendsSocket(io: Server) {
       logger.info({ userId, matchId }, 'Joined friend chat room');
     });
 
+    socket.on('read_messages', async (data: { matchId: string }) => {
+      try {
+        const uid = (socket as any).userId;
+        await getChatService().markAsRead(uid, data.matchId);
+        friendsNsp?.to(`match_${data.matchId}`).emit('messages_read', {
+          type: 'messages_read',
+          matchId: data.matchId,
+          readerId: uid,
+        });
+      } catch (error) {
+        logger.error({ error, data }, 'Failed to mark friend messages as read via socket');
+      }
+    });
+
     socket.on('unsubscribe_chat', (matchId: string) => {
       socket.leave(`match_${matchId}`);
     });

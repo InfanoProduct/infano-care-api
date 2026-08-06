@@ -79,7 +79,7 @@ export class FirebaseService {
         android: {
           notification: {
             clickAction: "FLUTTER_NOTIFICATION_CLICK",
-            channelId: "high_priority",
+            channelId: "high_priority_channel",
           },
         },
         apns: {

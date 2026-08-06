@@ -483,7 +483,7 @@ export class ShopService {
         }
       }
 
-      return { ...order, stripeSessionUrl };
+      return { ...order, stripeSessionUrl, razorpayKeyId: env.RAZORPAY_KEY_ID || "" };
     }, {
       timeout: 20000
     });
@@ -574,7 +574,7 @@ export class ShopService {
 
         sendWebinarConfirmationEmail(updatedRegistration.guestEmail, {
           parent_name: updatedRegistration.guestName || "Parent",
-          order_id: updatedRegistration.id.slice(-8).toUpperCase(),
+          order_id: updatedRegistration.id.slice(0, 8).toUpperCase(),
           webinar_date,
           webinar_time,
           download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
@@ -685,7 +685,7 @@ export class ShopService {
 
             await sendWebinarConfirmationEmail(order.guestEmail!, {
               parent_name: order.guestName || "Parent",
-              order_id: order.id.slice(-8).toUpperCase(),
+              order_id: order.id.slice(0, 8).toUpperCase(),
               webinar_date: webinarDateStr,
               webinar_time: webinarTimeStr,
               download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
@@ -998,13 +998,14 @@ export class ShopService {
 
       const res = await sendGigiBookOrderPlacedEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
-        order_id: order.id.slice(-8).toUpperCase(),
+        order_id: order.id.slice(0, 8).toUpperCase(),
         order_date: orderDate,
         shipping_address: address,
         payment_method: order.paymentMethod,
         order_items: items,
         subtotal: `₹${order.subtotal}`,
         discount: order.discountAmount > 0 ? `₹${order.discountAmount}` : "₹0",
+        delivery_charge: `₹${order.deliveryCharge}`,
         total: `₹${order.totalAmount}`,
         track_order_url: "https://infano.care/store/track"
       });
@@ -1020,7 +1021,7 @@ export class ShopService {
         const fullAddress = `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`;
         await sendOrderConfirmationWhatsApp(order.guestPhone, {
           customerName: order.guestName || "Parent",
-          orderId: order.id.slice(-8).toUpperCase(),
+          orderId: order.id.slice(0, 8).toUpperCase(),
           bookTitle,
           address: fullAddress,
         });
@@ -1049,7 +1050,7 @@ export class ShopService {
 
       // Use real AWB if available; otherwise fall back to order number display
       const awb = order.awbNumber?.trim();
-      const displayTrackingId = awb || order.id.slice(-8).toUpperCase();
+      const displayTrackingId = awb || order.id.slice(0, 8).toUpperCase();
       const trackingUrl = awb
         ? `https://www.delhivery.com/track-v2/package/${awb}`
         : "https://infano.care/login";
@@ -1059,7 +1060,7 @@ export class ShopService {
 
       const res = await sendGigiBookOrderShippedEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
-        order_id: order.id.slice(-8).toUpperCase(),
+        order_id: order.id.slice(0, 8).toUpperCase(),
         courier_name: courierName,
         tracking_id: displayTrackingId,
         delivery_date: deliveryDate,
@@ -1083,7 +1084,7 @@ export class ShopService {
         const estDeliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
         await sendOrderShippedWhatsApp(order.guestPhone, {
           customerName: order.guestName || "Parent",
-          orderId: order.id.slice(-8).toUpperCase(),
+          orderId: order.id.slice(0, 8).toUpperCase(),
           trackUrl: trackingUrl,
           deliveryDate: estDeliveryDate,
         });
@@ -1106,7 +1107,7 @@ export class ShopService {
 
       const res = await sendGigiBookOrderDeliveredEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
-        order_id: order.id.slice(-8).toUpperCase(),
+        order_id: order.id.slice(0, 8).toUpperCase(),
         delivery_date: deliveryDate,
         order_items: items,
         view_order_url: "https://infano.care/store/track",
@@ -1122,7 +1123,7 @@ export class ShopService {
       if (order.guestPhone) {
         await sendOrderDeliveredWhatsApp(order.guestPhone, {
           customerName: order.guestName || "Parent",
-          orderId: order.id.slice(-8).toUpperCase(),
+          orderId: order.id.slice(0, 8).toUpperCase(),
           feedbackUrl: "https://infano.care/store/track",
         });
       }

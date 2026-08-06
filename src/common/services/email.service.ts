@@ -78,19 +78,14 @@ export const sendGigiBookOrderPlacedEmail = async (to: string, data: {
   subtotal: string;
   discount: string;
   total: string;
+  delivery_charge: string;
   track_order_url: string;
 }) => {
   const subject = `Order #${data.order_id} - Your Gigi-Book is on its way to making a difference! 🌸`;
   const preheaderText = "Order confirmed. Here's what happens next.";
 
   const isCOD = data.payment_method === 'COD';
-  let total = data.total;
-  if (isCOD) {
-    const subtotalVal = parseFloat(data.subtotal.replace(/[^\d.]/g, ''));
-    if (!isNaN(subtotalVal)) {
-      total = `₹${subtotalVal + 40}`;
-    }
-  }
+  const total = data.total;
 
   const html = await compileEmailTemplate('order-placed', { 
     ...data, 

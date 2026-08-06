@@ -60,7 +60,7 @@ export class AuthService {
   // ── 1. Send OTP ─────────────────────────────────────────────────────────────
   static async sendOtp(phone: string, appHash?: string): Promise<{ autoLogin?: any } | void> {
     logger.info({ phone, appHash }, "[AUTH] sendOtp request received");
-    
+
     // 1. Validation and Normalization
     const finalPhone = normalizePhone(phone);
     const pattern = /^\+(91\d{10}|1\d{10}|44\d{10,11}|65\d{8}|971\d{9}|61\d{9})$/;
@@ -106,7 +106,7 @@ export class AuthService {
             data: { otpSendOn: now, otpRetryCount: 1 }
           });
         } else {
-           throw new AppError("Too many OTP requests. Please try again after 24 hours.", 429);
+          throw new AppError("Too many OTP requests. Please try again after 24 hours.", 429);
         }
       } else {
         // First attempt ever
@@ -137,16 +137,16 @@ export class AuthService {
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
   static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string; profile?: any; contentTier?: string | null }> {
     const finalPhone = normalizePhone(phone);
-    
+
     // Select all potential fields to satisfy type requirements across logical paths
     const user = await prisma.user.findUnique({
       where: { phone: finalPhone },
-      select: { 
-        id: true, 
-        isTestNumber: true, 
-        accountStatus: true, 
-        onboardingStep: true, 
-        contentTier: true, 
+      select: {
+        id: true,
+        isTestNumber: true,
+        accountStatus: true,
+        onboardingStep: true,
+        contentTier: true,
         onboardingCompletedAt: true,
         otpSendOn: true,
         otpRetryCount: true,
@@ -207,12 +207,12 @@ export class AuthService {
             }
           }
         },
-        select: { 
-          id: true, 
-          isTestNumber: true, 
-          accountStatus: true, 
-          onboardingStep: true, 
-          contentTier: true, 
+        select: {
+          id: true,
+          isTestNumber: true,
+          accountStatus: true,
+          onboardingStep: true,
+          contentTier: true,
           onboardingCompletedAt: true,
           otpSendOn: true,
           otpRetryCount: true,
@@ -248,12 +248,12 @@ export class AuthService {
     }
 
     const jti = crypto.randomUUID();
-    const tokenPayloadBase = { 
-      sub: finalUser.id, 
+    const tokenPayloadBase = {
+      sub: finalUser.id,
       role: finalUser.role,
-      contentTier: finalUser.contentTier, 
-      accountStatus: finalUser.accountStatus, 
-      obStep: finalUser.onboardingStep 
+      contentTier: finalUser.contentTier,
+      accountStatus: finalUser.accountStatus,
+      obStep: finalUser.onboardingStep
     };
 
     const accessToken = signAccessToken(tokenPayloadBase);
@@ -323,34 +323,34 @@ export class AuthService {
 
     await redis.del(`rt:${jti}`);
 
-    const user = await prisma.user.findUnique({ 
-      where: { id: sub }, 
-      select: { 
-        id: true, 
+    const user = await prisma.user.findUnique({
+      where: { id: sub },
+      select: {
+        id: true,
         role: true,
-        contentTier: true, 
-        accountStatus: true, 
+        contentTier: true,
+        accountStatus: true,
         onboardingStep: true,
         peerApplication: { select: { status: true } }
-      } 
+      }
     });
     if (!user) throw new AppError("User not found.", 404);
 
     const newJti = crypto.randomUUID();
-    const tokenPayloadBase = { 
-      sub: user.id, 
+    const tokenPayloadBase = {
+      sub: user.id,
       role: user.role,
-      contentTier: user.contentTier, 
-      accountStatus: user.accountStatus, 
-      obStep: user.onboardingStep 
+      contentTier: user.contentTier,
+      accountStatus: user.accountStatus,
+      obStep: user.onboardingStep
     };
     const newAccess = signAccessToken(tokenPayloadBase);
     const newRefresh = signRefreshToken(tokenPayloadBase, newJti);
 
     await redis.setex(`rt:${newJti}`, 30 * 24 * 60 * 60, user.id);
 
-    return { 
-      accessToken: newAccess, 
+    return {
+      accessToken: newAccess,
       refreshToken: newRefresh,
       role: user.role,
       peerApplicationStatus: user.peerApplication?.status || 'none'
@@ -400,14 +400,14 @@ export class AuthService {
     }
 
     const jti = crypto.randomUUID();
-    const tokenPayloadBase = { 
-      sub: user.id, 
+    const tokenPayloadBase = {
+      sub: user.id,
       role: user.role,
-      contentTier: user.contentTier, 
-      accountStatus: user.accountStatus, 
-      obStep: user.onboardingStep 
+      contentTier: user.contentTier,
+      accountStatus: user.accountStatus,
+      obStep: user.onboardingStep
     };
-    
+
     const accessToken = signAccessToken(tokenPayloadBase);
     const refreshToken = signRefreshToken(tokenPayloadBase, jti);
 
