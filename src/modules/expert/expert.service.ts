@@ -352,10 +352,41 @@ export class ExpertService {
         }
       });
 
-      await prisma.expertChatSession.update({
+      const session = await prisma.expertChatSession.update({
         where: { id: sessionId },
-        data: { lastMsgAt: new Date() }
+        data: { lastMsgAt: new Date() },
+        include: {
+          user: { select: { id: true, fcmToken: true, profile: { select: { displayName: true } } } },
+          expert: { select: { id: true, fcmToken: true, profile: { select: { displayName: true } } } }
+        }
       });
+
+      // Send push notification to the recipient
+      try {
+        const isUserSender = session.userId === senderId;
+        const recipient = isUserSender ? session.expert : session.user;
+        const sender = isUserSender ? session.user : session.expert;
+        const senderName = sender.profile?.displayName || (isUserSender ? 'User' : 'Expert');
+
+        if (recipient && recipient.fcmToken) {
+          const payload = {
+            title: `Message from ${senderName}`,
+            body: content,
+            deepLink: `infano://expert/chat/${sessionId}`,
+            data: {
+              type: 'EXPERT_CHAT',
+              sessionId,
+            }
+          };
+          const { FirebaseService } = await import('../../common/services/firebase.service.js');
+          FirebaseService.sendPushNotification(recipient.fcmToken, payload).catch(err => {
+            logger.error({ err }, 'Failed to send Expert chat push notification');
+          });
+        }
+      } catch (pushErr) {
+        logger.error({ pushErr }, 'Error triggering expert chat push notification');
+      }
+
       return message;
     } catch (error) {
       logger.error(error as any, 'Error in ExpertService.saveMessage:');
