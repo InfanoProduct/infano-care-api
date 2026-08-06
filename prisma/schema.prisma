@@ -88,6 +88,9 @@ model User {
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
   webinarRegistrations      WebinarRegistration[]
   calendarSettings          ExpertCalendarSettings?
+  userWeeklyChallenges      UserWeeklyChallenge[]
+  journalEntries            JournalEntry[]
+  journalStreak             JournalStreak?
 }
 
 model Profile {
@@ -440,6 +443,36 @@ model SeasonalEvent {
   quests         QuestTemplate[]
 }
 
+model QuestWeeklyChallenge {
+  id                    String                @id @default(uuid())
+  title                 String
+  description           String
+  targetTotal           Int
+  rewardPoints          Int
+  startsAt              DateTime
+  endsAt              DateTime
+  category              String                @default("wellbeing")
+  completionCondition   Json
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  userWeeklyChallenges  UserWeeklyChallenge[]
+}
+
+model UserWeeklyChallenge {
+  id                String               @id @default(uuid())
+  userId            String
+  weeklyChallengeId String
+  progress          Int                  @default(0)
+  isCompleted       Boolean              @default(false)
+  completedAt       DateTime?
+  weeklyChallenge   QuestWeeklyChallenge @relation(fields: [weeklyChallengeId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weeklyChallengeId])
+  @@index([userId])
+}
+
 model Subscription {
   id        String    @id @default(uuid())
   userId    String    @unique
@@ -656,6 +689,8 @@ model CommunityPost {
   isChallengeResponse Boolean             @default(false)
   challengeId         String?
   isFeatured          Boolean             @default(false)
+  journalEntryId      String?
+  journalData         Json?
   aiDecision          ModerationDecision?
   aiConfidence        Float?
   aiFlags             Json                @default("{}")
@@ -677,6 +712,7 @@ model CommunityPost {
   author              User                @relation("UserPosts", fields: [authorId], references: [id])
   challenge           WeeklyChallenge?    @relation(fields: [challengeId], references: [id])
   circle              CommunityCircle     @relation(fields: [circleId], references: [id])
+  journalEntry        JournalEntry?       @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
   CommunityReply      CommunityReply[]
 
   @@index([circleId, publishedAt(sort: Desc)])
@@ -1708,4 +1744,76 @@ model PeerLineCertificationEpisode {
   updatedAt    DateTime        @updatedAt
   thumbnailUrl String?
   course       PeerLineCertificationCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JOURNAL MODULE
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum JournalMode {
+  free_write
+  guided_prompt
+  doodle
+  voice_note
+  mood_color
+  photo_board
+  letter_mode
+  video_diary
+  blackout_poetry
+  comic_strip
+  sticker_decorate
+  list_journal
+}
+
+enum JournalVisibility {
+  private
+  shared_to_connect
+}
+
+model JournalEntry {
+  id                      String            @id @default(uuid())
+  userId                  String
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  mode                    JournalMode
+  promptId                String?
+  moodTag                 String?
+  moodColor               String?
+  content                 Json
+  isSealedTimeCapsule     Boolean           @default(false)
+  capsuleRevealDate       DateTime?
+  visibility              JournalVisibility @default(private)
+  pointsAwarded           Int               @default(0)
+  linkedLearningEpisodeId String?
+  title                   String?
+  isDeleted               Boolean           @default(false)
+  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt                  JournalPrompt?    @relation(fields: [promptId], references: [id])
+  sharedCommunityPosts    CommunityPost[]
+
+  @@index([userId, createdAt])
+  @@index([userId, mode])
+}
+
+model JournalPrompt {
+  id        String        @id @default(uuid())
+  category  String
+  text      String
+  bestModes JournalMode[]
+  options   String[]      @default([])
+  isActive  Boolean       @default(true)
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  entries   JournalEntry[]
+}
+
+model JournalStreak {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  currentStreak Int       @default(0)
+  longestStreak Int       @default(0)
+  lastEntryDate DateTime?
+  totalEntries  Int       @default(0)
+  modesUsed     String[]  @default([])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

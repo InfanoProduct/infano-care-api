@@ -14,6 +14,7 @@ router.use(authenticate);
  */
 
 router.get("/daily", QuestController.getDailyQuests);
+router.get("/weekly", QuestController.getWeeklyChallenges);
 router.post("/:id/accept", QuestController.acceptQuest);
 router.get("/progress", QuestController.getProgress);
 router.get("/badges", QuestController.getBadges);

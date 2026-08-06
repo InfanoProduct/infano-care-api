@@ -147,6 +147,7 @@ export class CommunityService {
             }
           },
           challenge: true,
+          journalEntry: true,
           bookmarks: { where: { userId } },
         },
         orderBy: { createdAt: 'desc' },
@@ -175,13 +176,28 @@ export class CommunityService {
 
     const reactionMap = new Map(userReactions.map(r => [r.contentId, r.reaction]));
 
-    return {
-      posts: posts.map(p => ({
+    const formatPost = (p: any) => {
+      const journalData = p.journalData || (p.journalEntry ? {
+        id: p.journalEntry.id,
+        mode: p.journalEntry.mode,
+        moodColor: p.journalEntry.moodColor,
+        moodTag: p.journalEntry.moodTag,
+        content: p.journalEntry.content,
+        title: p.journalEntry.title,
+        createdAt: p.journalEntry.createdAt,
+      } : null);
+      return {
         ...p,
-        isBookmarked: (p as any).bookmarks?.length > 0,
+        journalData,
+        journalEntry: undefined,
+        isBookmarked: (p.bookmarks as any[])?.length > 0,
         myReaction: reactionMap.get(p.id) || null,
         bookmarks: undefined,
-      })),
+      };
+    };
+
+    return {
+      posts: posts.map(formatPost),
       pagination: {
         page,
         perPage,
@@ -219,6 +235,7 @@ export class CommunityService {
             },
           },
           challenge: true,
+          journalEntry: true,
           bookmarks: userId ? { where: { userId } } : undefined,
         },
         orderBy: { createdAt: 'desc' },
@@ -255,6 +272,7 @@ export class CommunityService {
           },
         },
         challenge: true,
+        journalEntry: true,
         bookmarks: userId ? { where: { userId } } : undefined,
       },
     });
@@ -271,19 +289,28 @@ export class CommunityService {
 
     const reactionMap = new Map(userReactions.map(r => [r.contentId, r.reaction]));
 
-    const mappedPosts = posts.map(p => ({
-      ...p,
-      isBookmarked: (p.bookmarks as any[])?.length > 0,
-      myReaction: reactionMap.get(p.id) || null,
-      bookmarks: undefined,
-    }));
+    const formatPost = (p: any) => {
+      const journalData = p.journalData || (p.journalEntry ? {
+        id: p.journalEntry.id,
+        mode: p.journalEntry.mode,
+        moodColor: p.journalEntry.moodColor,
+        moodTag: p.journalEntry.moodTag,
+        content: p.journalEntry.content,
+        title: p.journalEntry.title,
+        createdAt: p.journalEntry.createdAt,
+      } : null);
+      return {
+        ...p,
+        journalData,
+        journalEntry: undefined,
+        isBookmarked: (p.bookmarks as any[])?.length > 0,
+        myReaction: reactionMap.get(p.id) || null,
+        bookmarks: undefined,
+      };
+    };
 
-    const mappedPinned = pinned.map(p => ({
-      ...p,
-      isBookmarked: (p.bookmarks as any[])?.length > 0,
-      myReaction: reactionMap.get(p.id) || null,
-      bookmarks: undefined,
-    }));
+    const mappedPosts = posts.map(formatPost);
+    const mappedPinned = pinned.map(formatPost);
 
     return {
       posts: mappedPosts,

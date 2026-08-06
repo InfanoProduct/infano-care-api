@@ -159,7 +159,7 @@ export class TrackerService {
     if (start > end) throw new AppError('Start date must be before end date', 400);
 
     const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-    if (start >= today) throw new AppError('Period start date cannot be today or in the future', 400);
+    if (start > today) throw new AppError('Period start date cannot be in the future', 400);
 
     const allExistingRecords = await (prisma as any).cycleRecord.findMany({
       where:   { userId },
@@ -282,6 +282,24 @@ export class TrackerService {
           currentCycleDay:       prediction.cycleDay,
         },
       });
+    }
+
+    if (latestRecord) {
+      try {
+        const { QuestService } = await import("../quest/quest.service.js");
+        await QuestService.evaluateCompletion(userId, { type: "period_start_marked" });
+      } catch (e) {
+        console.error("[TRACKER] Failed to trigger quest completion for period start:", e);
+      }
+    }
+
+    if (latestRecord && latestRecord.periodEndDate) {
+      try {
+        const { QuestService } = await import("../quest/quest.service.js");
+        await QuestService.evaluateCompletion(userId, { type: "period_end_marked" });
+      } catch (e) {
+        console.error("[TRACKER] Failed to trigger quest completion for period end:", e);
+      }
     }
 
     return { success: true, isNewCycle: !nearestRecord, prediction };
@@ -513,6 +531,13 @@ export class TrackerService {
       undefined,
       "Setup completion"
     );
+    // Evaluate quest completion for cycle setup
+    try {
+      const { QuestService } = await import("../quest/quest.service.js");
+      await QuestService.evaluateCompletion(userId, { type: "cycle_setup_completed" });
+    } catch (e) {
+      console.error("[TRACKER] Failed to trigger quest completion for setup:", e);
+    }
 
     return profile;
   }

@@ -26,6 +26,18 @@ export class QuestController {
     }
   }
 
+  static async getWeeklyChallenges(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    console.log(`[QUEST] Fetching weekly challenges for user: ${userId}`);
+    try {
+      const challenges = await QuestService.getWeeklyChallenges(userId);
+      res.json({ success: true, data: challenges });
+    } catch (error: any) {
+      console.error(`[QUEST] Failed to get weekly challenges: ${error.message}`);
+      throw error;
+    }
+  }
+
   static async getProgress(req: Request, res: Response) {
     const userId = (req as any).user.id;
     const progress = await GamificationService.getUserProgress(userId);
