@@ -429,10 +429,11 @@ export class JournalService {
       let color = e.moodColor;
       let tag = e.moodTag;
 
-      if (!color && e.mode === 'mood_color' && e.content && typeof e.content === 'object') {
-        const colors = e.content.colors as string[] | undefined;
-        if (colors && colors.length > 0) color = colors[0];
-        if (!tag && e.content.label) tag = e.content.label as string;
+      if (!color && e.mode === 'mood_color' && e.content && typeof e.content === 'object' && !Array.isArray(e.content)) {
+        const contentObj = e.content as any;
+        const colors = contentObj.colors as string[] | undefined;
+        if (colors && colors.length > 0) color = colors[0] || null;
+        if (!tag && contentObj.label) tag = contentObj.label as string;
       }
 
       color = color || modeColorMap[e.mode] || '#7C3AED';
