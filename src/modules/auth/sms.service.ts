@@ -3,12 +3,17 @@ import { logger } from "../../config/logger.js";
 
 export interface SmsProvider {
   send(phone: string, otp: string, appHash?: string): Promise<void>;
+  sendAlert(phone: string, message: string): Promise<void>;
 }
 
 // ─── Mock Provider (dev) ──────────────────────────────────────────────────────
 class MockSmsProvider implements SmsProvider {
   async send(phone: string, otp: string, appHash?: string): Promise<void> {
     logger.info({ phone, otp, appHash }, `[SMS MOCK] OTP Generated: ${otp}. This code would be sent via SMS in production.`);
+  }
+
+  async sendAlert(phone: string, message: string): Promise<void> {
+    logger.info({ phone, message }, `[SMS MOCK] Alert Generated: ${message}. This message would be sent via SMS in production.`);
   }
 }
 
@@ -41,6 +46,18 @@ class Msg91SmsProvider implements SmsProvider {
     if (!res.ok) {
       const body = await res.text();
       throw new Error(`MSG91 OTP send failed: ${body}`);
+    }
+  }
+
+  async sendAlert(phone: string, message: string): Promise<void> {
+    const mobile = phone.replace("+", "");
+    // Note: For MSG91, a different template or transactional route is usually needed for alerts.
+    // For MVP/Demo we will assume a generic alert template exists or just log it if not configured.
+    let url = `https://api.msg91.com/api/v5/flow?authkey=${this.authKey}&recipients=[{"mobiles":"${mobile}","message":"${encodeURIComponent(message)}"}]`;
+    const res = await fetch(url, { method: "POST" });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`MSG91 Alert send failed: ${body}`);
     }
   }
 }
@@ -77,6 +94,27 @@ class TwilioSmsProvider implements SmsProvider {
     if (!res.ok) {
       const errBody = await res.text();
       throw new Error(`Twilio OTP send failed: ${errBody}`);
+    }
+  }
+
+  async sendAlert(phone: string, message: string): Promise<void> {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`;
+    const body = new URLSearchParams({
+      From: this.from,
+      To:   phone,
+      Body: message,
+    });
+    const res = await fetch(url, {
+      method:  "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${this.accountSid}:${this.authToken}`).toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error(`Twilio Alert send failed: ${errBody}`);
     }
   }
 }
@@ -119,6 +157,33 @@ class TwoFactorSmsProvider implements SmsProvider {
       logger.info({ phone: encodedPhone, sessionId: data.Details }, `[SMS 2FACTOR] OTP sent successfully via 2Factor.in`);
     } catch (error: any) {
       logger.error({ phone: encodedPhone, error: error.message }, `[SMS 2FACTOR] Exception while sending OTP`);
+      throw error;
+    }
+  }
+
+  async sendAlert(phone: string, message: string): Promise<void> {
+    const mobile = phone.replace("+", "");
+    const url = `https://2factor.in/API/V1/${this.apiKey}/ADDON_SERVICES/SEND/TSMS`;
+    
+    const body = new URLSearchParams({
+      From: "INFANO",
+      To: mobile,
+      Msg: message,
+      TemplateName: "InfanoSOSAlert"
+    });
+    
+    try {
+      const res = await fetch(url, { method: 'POST', body });
+      const data = await res.json() as any;
+      
+      if (!res.ok || data.Status !== "Success") {
+        logger.error({ phone: mobile, response: data }, `[SMS 2FACTOR] Failed to send Alert`);
+        throw new Error(`2Factor Alert send failed: ${data.Details || res.statusText}`);
+      }
+      
+      logger.info({ phone: mobile }, `[SMS 2FACTOR] Alert sent successfully via 2Factor.in`);
+    } catch (error: any) {
+      logger.error({ phone: mobile, error: error.message }, `[SMS 2FACTOR] Exception while sending Alert`);
       throw error;
     }
   }

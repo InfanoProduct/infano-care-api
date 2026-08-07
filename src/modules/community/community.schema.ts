@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const createPostSchema = z.object({
   body: z.object({
     content: z.string().min(1, 'Post cannot be empty').max(500, 'Post too long (max 500 characters)'),
+    imageUrl: z.string().optional(),
     isChallengeResponse: z.boolean().optional(),
     challengeId: z.string().uuid().optional(),
   }),
