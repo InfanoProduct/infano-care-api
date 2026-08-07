@@ -88,6 +88,8 @@ model User {
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
   webinarRegistrations      WebinarRegistration[]
   calendarSettings          ExpertCalendarSettings?
+  trustedContacts           TrustedContact[]         @relation("UserTrustedContacts")
+  sosIncidents              SosIncident[]
 }
 
 model Profile {
@@ -651,6 +653,7 @@ model CommunityPost {
   circleId            String
   authorId            String
   content             String
+  imageUrl            String?
   status              PostStatus          @default(PENDING_AI)
   isPinned            Boolean             @default(false)
   isChallengeResponse Boolean             @default(false)
@@ -1708,4 +1711,50 @@ model PeerLineCertificationEpisode {
   updatedAt    DateTime        @updatedAt
   thumbnailUrl String?
   course       PeerLineCertificationCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model TrustedContact {
+  id            String   @id @default(uuid())
+  userId        String
+  name          String
+  phone         String
+  relation      String?
+  isVerified    Boolean  @default(false)
+  consentStatus String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation("UserTrustedContacts", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, phone])
+}
+
+model SosIncident {
+  id          String   @id @default(uuid())
+  userId      String
+  status      SosStatus @default(ACTIVE) // ACTIVE, CANCELLED, RESOLVED
+  startedAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+  lat         Float?
+  lng         Float?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events      SosIncidentEvent[]
+}
+
+model SosIncidentEvent {
+  id          String   @id @default(uuid())
+  incidentId  String
+  type        String   // e.g., 'TRIGGERED', 'LOCATION_UPDATE', 'CANCELLED', 'RESOLVED'
+  lat         Float?
+  lng         Float?
+  batteryInfo String?
+  createdAt   DateTime @default(now())
+  incident    SosIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+}
+
+enum SosStatus {
+  ACTIVE
+  CANCELLED
+  RESOLVED
 }

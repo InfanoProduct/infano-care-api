@@ -13,4 +13,81 @@ export class SafetyController {
       next(error);
     }
   }
+
+  static async getTrustedContacts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const contacts = await safetyService.getTrustedContacts(userId);
+      res.status(200).json(contacts);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async addTrustedContact(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const { name, phone, relation } = req.body;
+      const contact = await safetyService.addTrustedContact(userId, { name, phone, relation });
+      res.status(201).json(contact);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteTrustedContact(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const contactId = req.params.id as string;
+      await safetyService.deleteTrustedContact(userId, contactId);
+      res.status(200).json({ message: 'Deleted' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async triggerSos(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const { lat, lng } = req.body;
+      const incident = await safetyService.triggerSos(userId, lat, lng);
+      res.status(201).json(incident);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async cancelSos(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const incidentId = req.params.id as string;
+      const incident = await safetyService.cancelSos(userId, incidentId);
+      res.status(200).json(incident);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async resolveSos(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const incidentId = req.params.id as string;
+      const incident = await safetyService.resolveSos(userId, incidentId);
+      res.status(200).json(incident);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateLocation(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const incidentId = req.params.id as string;
+      const { lat, lng } = req.body;
+      const incident = await safetyService.updateSosLocation(userId, incidentId, lat, lng);
+      res.status(200).json(incident);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { CommunityController } from './community.controller.js';
 import { authenticate } from '../../common/middleware/auth.js';
+import { upload } from '../../common/middleware/upload.js';
 
 const router = Router();
 
@@ -14,6 +15,7 @@ const router = Router();
 router.get('/circles', authenticate, CommunityController.getCircles);
 router.post('/circles/join', authenticate, CommunityController.joinCircles);
 router.get('/feed', authenticate, CommunityController.getMyFeed);
+router.post('/upload-image', authenticate, upload.single('image'), CommunityController.uploadImage);
 router.get('/circles/:circleId/posts', authenticate, CommunityController.getPosts);
 router.post('/circles/:circleId/posts', authenticate, CommunityController.createPost);
 
