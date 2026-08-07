@@ -46,11 +46,23 @@ export class SafetyController {
     }
   }
 
+  static async updateContactEmergencies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const contactId = req.params.id as string;
+      const { emergencyTypes } = req.body;
+      await safetyService.updateContactEmergencies(userId, contactId, emergencyTypes);
+      res.status(200).json({ message: 'Updated emergencies' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async triggerSos(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user.id;
-      const { lat, lng } = req.body;
-      const incident = await safetyService.triggerSos(userId, lat, lng);
+      const { lat, lng, emergencyType } = req.body;
+      const incident = await safetyService.triggerSos(userId, lat, lng, emergencyType);
       res.status(201).json(incident);
     } catch (error) {
       next(error);

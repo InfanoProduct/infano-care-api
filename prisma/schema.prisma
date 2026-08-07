@@ -50,6 +50,8 @@ model User {
   cycleProfile              CycleProfile?
   cycleRecords              CycleRecord[]
   escalations               EscalationEvent[]
+  CreativeAskGigiEntry      CreativeAskGigiEntry[]
+  CreativeNodeProgress      CreativeNodeProgress[]
   expertChats               ExpertChatSession[]      @relation("ExpertSessions")
   expertSessions            ExpertChatSession[]      @relation("UserSessions")
   expertScheduledSessions   ExpertSessionSchedule[]  @relation("ExpertScheduledSessions")
@@ -1822,16 +1824,17 @@ model JournalStreak {
 }
 
 model TrustedContact {
-  id            String   @id @default(uuid())
-  userId        String
-  name          String
-  phone         String
-  relation      String?
-  isVerified    Boolean  @default(false)
-  consentStatus String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation("UserTrustedContacts", fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid())
+  userId         String
+  name           String
+  phone          String
+  relation       String?
+  isVerified     Boolean  @default(false)
+  consentStatus  String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  emergencyTypes String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation("UserTrustedContacts", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, phone])
 }
@@ -1865,4 +1868,65 @@ enum SosStatus {
   ACTIVE
   CANCELLED
   RESOLVED
+}
+
+model CreativeAskGigiEntry {
+  id              String          @id
+  userId          String
+  episodeId       String
+  nodeId          String
+  entryText       String
+  createdAt       DateTime        @default(now())
+  CreativeEpisode CreativeEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  User            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, episodeId])
+  @@index([userId])
+}
+
+model CreativeEpisode {
+  id                   String                 @id
+  journeyId            String
+  title                String
+  description          String?
+  episodeIcon          String?
+  order                Int                    @default(0)
+  nodes                Json                   @default("[]")
+  totalXP              Int                    @default(145)
+  unlockCondition      Json                   @default("{}")
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  CreativeAskGigiEntry CreativeAskGigiEntry[]
+  CreativeJourney      CreativeJourney        @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  CreativeNodeProgress CreativeNodeProgress[]
+}
+
+model CreativeJourney {
+  id              String            @id
+  title           String
+  description     String
+  ageBand         String?
+  icon            String?
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  CreativeEpisode CreativeEpisode[]
+}
+
+model CreativeNodeProgress {
+  id              String          @id
+  userId          String
+  episodeId       String
+  nodeId          String
+  status          String          @default("LOCKED")
+  xpEarned        Int             @default(0)
+  lastScreen      String?
+  nodeOrder       Json?
+  updatedAt       DateTime
+  CreativeEpisode CreativeEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  User            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, episodeId, nodeId])
+  @@index([userId, episodeId])
 }

@@ -11,6 +11,7 @@ router.get('/crisis-resources', authenticate, SafetyController.getCrisisResource
 router.get('/trusted-contacts', authenticate, SafetyController.getTrustedContacts);
 router.post('/trusted-contacts', authenticate, SafetyController.addTrustedContact);
 router.delete('/trusted-contacts/:id', authenticate, SafetyController.deleteTrustedContact);
+router.put('/trusted-contacts/:id/emergencies', authenticate, SafetyController.updateContactEmergencies);
 
 // SOS Routes
 router.post('/sos/trigger', authenticate, SafetyController.triggerSos);

@@ -64,7 +64,18 @@ export class SafetyService {
     });
   }
 
-  async triggerSos(userId: string, lat?: number, lng?: number) {
+  async updateContactEmergencies(userId: string, contactId: string, emergencyTypes: string[]) {
+    return prisma.trustedContact.update({
+      where: {
+        id: contactId,
+      },
+      data: {
+        emergencyTypes,
+      }
+    });
+  }
+
+  async triggerSos(userId: string, lat?: number, lng?: number, emergencyType?: string) {
     // 1. Create Incident
     const incident = await prisma.sosIncident.create({
       data: {
@@ -76,7 +87,8 @@ export class SafetyService {
           create: {
             type: 'TRIGGERED',
             lat,
-            lng
+            lng,
+            batteryInfo: emergencyType
           }
         }
       }
@@ -84,12 +96,28 @@ export class SafetyService {
 
     // 2. Fetch User and Trusted Contacts
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });
-    const contacts = await prisma.trustedContact.findMany({ where: { userId } });
+    
+    // Filter contacts based on emergencyType if provided
+    let contacts = await prisma.trustedContact.findMany({
+      where: {
+        userId,
+        ...(emergencyType ? {
+          emergencyTypes: {
+            has: emergencyType
+          }
+        } : {})
+      }
+    });
+
+    if (emergencyType && contacts.length === 0) {
+      contacts = await prisma.trustedContact.findMany({ where: { userId } });
+    }
     const userName = user?.profile?.displayName || 'A user';
 
-    // 3. Send SMS to all trusted contacts
+    // 3. Send SMS to selected trusted contacts
     const locationStr = (lat && lng) ? `https://maps.google.com/?q=${lat},${lng}` : 'Unknown';
-    const message = `SOS from ${userName}. They may need help. Last location: ${locationStr}. Alert time: ${new Date().toLocaleTimeString()}. Please contact them or local emergency services.`;
+    const emergencyStr = emergencyType ? ` [Type: ${emergencyType}]` : '';
+    const message = `SOS Alert${emergencyStr} from ${userName}. They may need help. Last location: ${locationStr}. Alert time: ${new Date().toLocaleTimeString()}. Please contact them or local emergency services.`;
 
     for (const contact of contacts) {
       try {
@@ -118,7 +146,7 @@ export class SafetyService {
               title: `🚨 SOS Alert: ${userName} needs help`,
               body: message,
               deepLink: "infano://safety/sos",
-              payload: { incidentId: incident.id, lat, lng }
+              payload: { incidentId: incident.id, lat, lng, emergencyType }
             }
           });
         }
