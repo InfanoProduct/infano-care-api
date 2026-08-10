@@ -95,6 +95,7 @@ model User {
   journalStreak             JournalStreak?
   trustedContacts           TrustedContact[]         @relation("UserTrustedContacts")
   sosIncidents              SosIncident[]
+  sosPreference             UserSosPreference?
 }
 
 model Profile {
@@ -1824,33 +1825,36 @@ model JournalStreak {
 }
 
 model TrustedContact {
-  id             String   @id @default(uuid())
-  userId         String
-  name           String
-  phone          String
-  relation       String?
-  isVerified     Boolean  @default(false)
-  consentStatus  String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
-  emergencyTypes String[] @default([])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User     @relation("UserTrustedContacts", fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(uuid())
+  userId          String
+  name            String
+  phone           String
+  relation        String?
+  isVerified      Boolean   @default(false)
+  consentStatus   String    @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  consentSentAt   DateTime?
+  emergencyTypes  String[]  @default([])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation("UserTrustedContacts", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, phone])
 }
 
 model SosIncident {
-  id          String   @id @default(uuid())
-  userId      String
-  status      SosStatus @default(ACTIVE) // ACTIVE, CANCELLED, RESOLVED
-  startedAt   DateTime  @default(now())
-  resolvedAt  DateTime?
-  lat         Float?
-  lng         Float?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  events      SosIncidentEvent[]
+  id             String             @id @default(uuid())
+  userId         String
+  status         SosStatus          @default(ACTIVE) // ACTIVE, CANCELLED, RESOLVED
+  emergencyType  String?            // physical_threat, medical_emergency, mental_distress, safe_walk
+  isTest         Boolean            @default(false)
+  startedAt      DateTime           @default(now())
+  resolvedAt     DateTime?
+  lat            Float?
+  lng            Float?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events         SosIncidentEvent[]
 }
 
 model SosIncidentEvent {
@@ -1868,6 +1872,17 @@ enum SosStatus {
   ACTIVE
   CANCELLED
   RESOLVED
+}
+
+model UserSosPreference {
+  userId               String    @id
+  defaultEmergencyType String    @default("physical_threat")
+  locationEnabled      Boolean   @default(false)
+  setupCompleted       Boolean   @default(false)
+  setupCompletedAt     DateTime?
+  lastTestedAt         DateTime?
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model CreativeAskGigiEntry {
