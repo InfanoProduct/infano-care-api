@@ -21,6 +21,7 @@ router.put('/preferences', authenticate, SafetyController.savePreferences);
 router.get('/sos/active', authenticate, SafetyController.getActiveIncident);
 router.post('/sos/trigger', authenticate, SafetyController.triggerSos);
 router.post('/sos/test', authenticate, SafetyController.testSos);
+router.post('/sos/test-push', authenticate, SafetyController.testPushNotification);
 router.post('/sos/:id/cancel', authenticate, SafetyController.cancelSos);
 router.post('/sos/:id/resolve', authenticate, SafetyController.resolveSos);
 router.post('/sos/:id/location', authenticate, SafetyController.updateLocation);

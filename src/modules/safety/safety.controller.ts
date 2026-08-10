@@ -128,4 +128,26 @@ export class SafetyController {
       res.status(200).json(incident);
     } catch (error) { next(error); }
   }
+
+  static async testPushNotification(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.id;
+      const { title, body, deepLink } = req.body;
+      const { prisma } = await import('../../db/client.js');
+      const { FirebaseService } = await import('../../common/services/firebase.service.js');
+      
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user?.fcmToken) {
+        return res.status(400).json({ error: "No FCM token registered for this user on the server." });
+      }
+
+      await FirebaseService.sendPushNotification(user.fcmToken, {
+        title: title || "Test Notification 🔔",
+        body: body || "This is a custom test push notification sent to your device!",
+        deepLink: deepLink || "infano://dashboard",
+      });
+
+      res.status(200).json({ success: true, message: "Push notification sent successfully to your device!" });
+    } catch (error) { next(error); }
+  }
 }
