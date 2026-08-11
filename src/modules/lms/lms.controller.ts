@@ -74,7 +74,7 @@ export class LmsController {
 
   static async updateCourse(req: Request, res: Response) {
     try {
-      const id = req.params.id;
+      const id = req.params.id as string;
       const { title, description, timeDuration, thumbnailUrl, price, isFree, isActive, highlights, category } = req.body;
       const course = await prisma.lmsCourse.update({
         where: { id },
@@ -89,7 +89,7 @@ export class LmsController {
 
   static async deleteCourse(req: Request, res: Response) {
     try {
-      const id = req.params.id;
+      const id = req.params.id as string;
       await prisma.lmsCourse.delete({ where: { id } });
       res.json({ success: true });
     } catch (error) {
@@ -100,7 +100,7 @@ export class LmsController {
 
   static async updateModule(req: Request, res: Response) {
     try {
-      const id = req.params.moduleId;
+      const id = req.params.moduleId as string;
       const { title, description, timeDuration, order } = req.body;
       const moduleData = await prisma.lmsModule.update({
         where: { id },
@@ -115,7 +115,7 @@ export class LmsController {
 
   static async deleteModule(req: Request, res: Response) {
     try {
-      const id = req.params.moduleId;
+      const id = req.params.moduleId as string;
       await prisma.lmsModule.delete({ where: { id } });
       res.json({ success: true });
     } catch (error) {
@@ -126,7 +126,7 @@ export class LmsController {
 
   static async updateChapter(req: Request, res: Response) {
     try {
-      const id = req.params.chapterId;
+      const id = req.params.chapterId as string;
       const { title, description, type, order, videoUrl, videoDuration, assessmentQuestions, passingScore, goodToKnowPoints, faqs } = req.body;
 
       const chapter = await prisma.lmsChapter.update({
@@ -157,7 +157,7 @@ export class LmsController {
 
   static async deleteChapter(req: Request, res: Response) {
     try {
-      const id = req.params.chapterId;
+      const id = req.params.chapterId as string;
       await prisma.lmsChapter.delete({ where: { id } });
       res.json({ success: true });
     } catch (error) {
@@ -354,7 +354,7 @@ export class LmsController {
 
   static async getCourseProgress(req: Request, res: Response) {
     try {
-      const courseId = req.params.courseId;
+      const courseId = req.params.courseId as string;
       const userId = ((req as any).user?.id || (req as any).userId) as string;
       
       if (!userId) {
@@ -372,7 +372,7 @@ export class LmsController {
         return;
       }
 
-      res.json({ progress: enrollment.progress });
+      res.json({ progress: (enrollment as any).progress });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Failed to fetch progress" });
@@ -381,8 +381,8 @@ export class LmsController {
 
   static async markChapterComplete(req: Request, res: Response) {
     try {
-      const courseId = req.params.courseId;
-      const chapterId = req.params.chapterId;
+      const courseId = req.params.courseId as string;
+      const chapterId = req.params.chapterId as string;
       const userId = ((req as any).user?.id || (req as any).userId) as string;
       const { score, watchTime, answers } = req.body;
 
