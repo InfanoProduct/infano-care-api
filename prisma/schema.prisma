@@ -95,6 +95,7 @@ model User {
   journalStreak             JournalStreak?
   trustedContacts           TrustedContact[]         @relation("UserTrustedContacts")
   sosIncidents              SosIncident[]
+  lmsEnrollments            LmsEnrollment[]
 }
 
 model Profile {
@@ -1831,6 +1832,7 @@ model TrustedContact {
   relation       String?
   isVerified     Boolean  @default(false)
   consentStatus  String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  consentSentAt  DateTime?
   emergencyTypes String[] @default([])
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -1843,6 +1845,7 @@ model SosIncident {
   id          String   @id @default(uuid())
   userId      String
   status      SosStatus @default(ACTIVE) // ACTIVE, CANCELLED, RESOLVED
+  isTest      Boolean   @default(false)
   startedAt   DateTime  @default(now())
   resolvedAt  DateTime?
   lat         Float?
@@ -1929,4 +1932,116 @@ model CreativeNodeProgress {
 
   @@unique([userId, episodeId, nodeId])
   @@index([userId, episodeId])
+}
+
+enum LmsChapterType {
+  VIDEO
+  ASSESSMENT
+}
+
+model LmsCourse {
+  id           String          @id @default(uuid())
+  title        String
+  description  String
+  timeDuration Int             // in minutes
+  thumbnailUrl String?
+  price        Float           @default(0)
+  isFree       Boolean         @default(true)
+  isActive     Boolean         @default(true)
+  category     String?
+  highlights   String[]        @default([])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  modules      LmsModule[]
+  enrollments  LmsEnrollment[]
+}
+
+model LmsModule {
+  id           String       @id @default(uuid())
+  courseId     String
+  title        String
+  description  String?
+  timeDuration Int?         // in minutes
+  thumbnailUrl String?
+  order        Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  course       LmsCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapters     LmsChapter[]
+
+  @@index([courseId])
+}
+
+model LmsChapter {
+  id               String          @id @default(uuid())
+  moduleId         String
+  title            String
+  description      String?
+  thumbnailUrl     String?
+  type             LmsChapterType
+  order            Int             @default(0)
+  goodToKnowPoints String[]        @default([])
+  faqs             Json            @default("[]")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  module           LmsModule       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  video            LmsVideo?
+  assessment       LmsAssessment?
+  progress         LmsProgress[]
+
+  @@index([moduleId])
+}
+
+model LmsVideo {
+  id        String     @id @default(uuid())
+  chapterId String     @unique
+  videoUrl  String
+  duration  Int        // in seconds
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  chapter   LmsChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+}
+
+model LmsAssessment {
+  id           String     @id @default(uuid())
+  chapterId    String     @unique
+  questions    Json       @default("[]") // Array of { question, options, correctAnswerIndex }
+  passingScore Int        @default(80)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  chapter      LmsChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+}
+
+model LmsEnrollment {
+  id                String        @id @default(uuid())
+  userId            String
+  courseId          String
+  status            String        @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  pricePaid         Float         @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  course            LmsCourse     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress          LmsProgress[]
+
+  @@unique([userId, courseId])
+  @@index([userId])
+}
+
+model LmsProgress {
+  id            String        @id @default(uuid())
+  enrollmentId  String
+  chapterId     String
+  isCompleted   Boolean       @default(false)
+  score         Int?          // for assessments
+  answers       Json?         // stores user's answers for assessments
+  watchTime     Int?          // for videos (seconds)
+  completedAt   DateTime?
+  updatedAt     DateTime      @updatedAt
+  enrollment    LmsEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  chapter       LmsChapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, chapterId])
 }

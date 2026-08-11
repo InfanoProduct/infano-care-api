@@ -31,15 +31,9 @@ const storage = multer.diskStorage({
       .replace(/^-+|-+$/g, '');
     
     const base = sanitized || 'file';
-    const filename = `${base}${ext}`;
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = `${base}-${uniqueSuffix}${ext}`;
     
-    const folder = (req.query.folder as string) || '';
-    const targetPath = path.join(uploadDir, folder, filename);
-
-    if (fs.existsSync(targetPath)) {
-      return cb(new AppError(`A file named "${filename}" already exists.`, 400), "");
-    }
-
     cb(null, filename);
   },
 });
