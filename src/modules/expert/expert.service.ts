@@ -67,7 +67,7 @@ export class ExpertService {
       where: { id: enrollmentId },
       include: {
         program: {
-          select: { id: true, title: true, consultations: true, curriculum: true, classRange: true }
+          select: { id: true, title: true, consultations: true, curriculum: true }
         },
         user: {
           select: { id: true, profile: { select: { displayName: true } }, username: true }

@@ -127,6 +127,19 @@ export class ProgramsController {
     }
   }
 
+  static async bookedSlots(req: Request, res: Response, next: NextFunction) {
+    try {
+      const date = req.query.date as string;
+      if (!date) {
+        return res.status(400).json({ success: false, message: "Date query parameter is required" });
+      }
+      const bookedSlots = await ProgramsService.getBookedSlots(date);
+      res.status(200).json({ success: true, data: bookedSlots });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async bookDemo(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId;

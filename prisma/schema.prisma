@@ -1234,9 +1234,6 @@ model Program {
   title          String                  @unique
   tagline        String
   description    String?                 @default("")
-  classRange     String
-  minClass       Int
-  maxClass       Int
   duration       String
   topics         String[]
   isActive       Boolean                 @default(true)

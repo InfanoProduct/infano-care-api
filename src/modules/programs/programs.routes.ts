@@ -8,6 +8,7 @@ const router = Router();
 router.get("/", optionalAuthenticate, ProgramsController.list);
 router.get("/me", authenticate, ProgramsController.me);
 router.get("/me/demos", authenticate, ProgramsController.userDemos);
+router.get("/demo/booked-slots", ProgramsController.bookedSlots);
 router.get("/:id", optionalAuthenticate, ProgramsController.get);
 
 router.post("/:id/enroll", authenticate, ProgramsController.enroll);
