@@ -229,6 +229,14 @@ export class ProgramsService {
     return sessionsMap[uppercaseTitle] || [];
   }
 
+  private static slugifyTitle(title: string): string {
+    return (title || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  }
+
   /**
    * List all active programs, optionally showing user eligibility
    */
@@ -240,6 +248,7 @@ export class ProgramsService {
 
     return programs.map(p => ({
       ...p,
+      slug: this.slugifyTitle(p.title),
       isEligible: true,
       sessionsList: p.curriculum && Array.isArray(p.curriculum) && p.curriculum.length > 0
         ? (p.curriculum as any[])
@@ -259,14 +268,21 @@ export class ProgramsService {
         where: { id: idOrTitle },
       });
     } else {
+      const decoded = decodeURIComponent(idOrTitle).trim();
       program = await prisma.program.findFirst({
         where: {
           title: {
-            equals: idOrTitle,
+            equals: decoded,
             mode: "insensitive"
           }
         }
       });
+
+      if (!program) {
+        const targetSlug = this.slugifyTitle(decoded);
+        const allPrograms = await prisma.program.findMany();
+        program = allPrograms.find(p => this.slugifyTitle(p.title) === targetSlug || p.id === idOrTitle);
+      }
     }
 
     if (!program) {
@@ -275,6 +291,7 @@ export class ProgramsService {
 
     return {
       ...program,
+      slug: this.slugifyTitle(program.title),
       sessionsList: program.curriculum && Array.isArray(program.curriculum) && program.curriculum.length > 0
         ? (program.curriculum as any[])
         : this.getMockSessionsForProgram(program.title)
@@ -647,8 +664,8 @@ export class ProgramsService {
   }
 
   static async bookDemoSession(data: any, loggedInUserId?: string) {
-    if (!data.parentName || !data.phone || !data.classRange || !data.slotDate || !data.slotTime) {
-      throw new AppError("Missing required fields for booking a demo session (parentName, phone, classRange, slotDate, slotTime)", 400);
+    if (!data.parentName || !data.phone || !data.slotDate || !data.slotTime) {
+      throw new AppError("Missing required fields for booking a demo session (parentName, phone, slotDate, slotTime)", 400);
     }
 
     const bookingCount = await prisma.demoSession.count({
@@ -701,7 +718,7 @@ export class ProgramsService {
         parentName: data.parentName,
         phone: normalizedPhone,
         email: emailToSend,
-        classRange: data.classRange,
+        classRange: data.classRange || null,
         confidence: data.confidence || "",
         interests: Array.isArray(data.interests) ? data.interests : [],
         hasMentor: data.hasMentor || "",
@@ -735,15 +752,42 @@ export class ProgramsService {
           parent_name: data.parentName,
           phone: normalizedPhone,
           email: emailToSend,
-          class_range: data.classRange,
           slot_date: data.slotDate,
           slot_time: data.slotTime,
           comment: data.comment || data.confidence || "",
-          programs: programsList.map(p => ({
-            title: p.title,
-            classRange: p.classRange,
-            duration: p.duration,
-            thumbnailUrl: p.thumbnailUrl || undefined
+          programs: await Promise.all(programsList.map(async p => {
+            let imgUrl = p.thumbnailUrl || "";
+            if (imgUrl && !imgUrl.startsWith("http")) {
+              const baseUrl = process.env.APP_URL || process.env.IMAGE_BASE_URL || "https://api.infano.care";
+              imgUrl = `${baseUrl.replace(/\/$/, '')}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`;
+            }
+            if (imgUrl.includes("api-dev.infano.care")) {
+              try {
+                const res = await fetch(imgUrl, { method: "HEAD" });
+                if (!res.ok) {
+                  const altUrl = imgUrl.replace("api-dev.infano.care", "api.infano.care");
+                  const res2 = await fetch(altUrl, { method: "HEAD" });
+                  if (res2.ok) imgUrl = altUrl;
+                }
+              } catch (e) {}
+            } else if (imgUrl.includes("api.infano.care")) {
+              try {
+                const res = await fetch(imgUrl, { method: "HEAD" });
+                if (!res.ok) {
+                  const altUrl = imgUrl.replace("api.infano.care", "api-dev.infano.care");
+                  const res2 = await fetch(altUrl, { method: "HEAD" });
+                  if (res2.ok) imgUrl = altUrl;
+                }
+              } catch (e) {}
+            }
+            if (!imgUrl) {
+              imgUrl = "https://api.infano.care/uploads/assets/Page-1.png";
+            }
+            return {
+              title: p.title,
+              duration: p.duration,
+              thumbnailUrl: imgUrl
+            };
           }))
         });
       } catch (emailErr) {

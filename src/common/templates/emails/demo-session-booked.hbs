@@ -1,62 +1,86 @@
 <div class="content">
 
-  <!-- Success Header Block matching order placement style -->
-  <div style="text-align: center; margin-bottom: 30px;">
-    <h1 style="font-family: 'Poppins', sans-serif; font-size: 26px; color: #1F2937; margin: 0 0 10px 0; font-weight: 700; letter-spacing: -0.5px;">
-      Demo Session Scheduled! 🌟
+  <!-- Hero Confirmation Header -->
+  <div style="text-align: center; margin-bottom: 32px; padding-top: 10px;">
+    <div style="display: inline-block; width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #F3E8FF 0%, #FCE7F3 100%); margin-bottom: 16px; line-height: 64px; text-align: center; box-shadow: 0 4px 12px rgba(156, 39, 176, 0.12);">
+      <span style="font-size: 30px; vertical-align: middle;">🌟</span>
+    </div>
+    <h1 style="font-family: 'Poppins', 'Inter', sans-serif; font-size: 26px; color: #111827; margin: 0 0 8px 0; font-weight: 700; letter-spacing: -0.5px; line-height: 1.3;">
+      Demo Session Confirmed!
     </h1>
-    <p style="font-size: 15px; color: #4B5563; margin: 0; line-height: 1.5;">
+    <p style="font-size: 15px; color: #4B5563; margin: 0 auto; max-width: 480px; line-height: 1.5;">
       Thank you for choosing Infano Care. We are excited to guide your child towards a brighter learning journey!
     </p>
   </div>
 
-  <p style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 12px; font-family: 'Poppins', sans-serif;">
+  <!-- Greeting & Introduction -->
+  <p style="font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 8px; font-family: 'Poppins', 'Inter', sans-serif;">
     Hi {{parent_name}},
   </p>
-  <p style="font-size: 15px; color: #4B5563; line-height: 1.6; margin-top: 0; margin-bottom: 30px;">
-    Your request for an interactive demo session is confirmed. Here are your booking details. Our expert education mentor will contact you soon on your registered mobile number to coordinate the session.
+  <p style="font-size: 15px; color: #4B5563; line-height: 1.6; margin-top: 0; margin-bottom: 28px;">
+    Your request for an interactive demo session is successfully confirmed. Here are your booking details. Our expert education mentor will contact you soon on your registered mobile number to coordinate the live session.
   </p>
 
-  <!-- Summary Info Box matching orders style -->
-  <div style="background-color: #FAF8FD; border: 1px solid #F3E8FF; border-radius: 12px; padding: 18px 24px; margin-bottom: 30px;">
-    <table style="width: 100%;">
+  <!-- Summary Info Box Card -->
+  <div style="background: linear-gradient(180deg, #FAF8FD 0%, #F8F5FB 100%); border: 1px solid #F3E8FF; border-radius: 16px; padding: 20px 24px; margin-bottom: 32px; box-shadow: 0 2px 8px rgba(156, 39, 176, 0.04);">
+    <table style="width: 100%; border-collapse: collapse;">
       <tr>
-        <td class="mobile-block mobile-pr-0" style="width: 50%; vertical-align: top; padding-bottom: 10px;">
-          <p style="margin: 0; color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">
-            Preferred Date
+        <td class="mobile-block mobile-pr-0" style="width: 50%; vertical-align: top; padding-bottom: 12px;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            📅 Preferred Date
           </p>
-          <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: 700; color: #7B1FA2;">
+          <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #7B1FA2; font-family: 'Poppins', sans-serif;">
             {{slot_date}}
           </p>
         </td>
-        <td class="mobile-block mobile-pl-0" style="width: 50%; vertical-align: top;">
-          <p style="margin: 0; color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">
-            Preferred Time Slot
+        <td class="mobile-block mobile-pl-0" style="width: 50%; vertical-align: top; padding-bottom: 12px;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            ⏰ Preferred Time Slot
           </p>
-          <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: 700; color: #374151;">
+          <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827; font-family: 'Poppins', sans-serif;">
             {{slot_time}}
           </p>
         </td>
       </tr>
+      {{#if phone}}
+      <tr>
+        <td colspan="2" style="border-top: 1px dashed #EAE3EC; padding-top: 12px; margin-top: 4px;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            📱 Registered Contact Number
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: 600; color: #374151;">
+            {{phone}}
+          </p>
+        </td>
+      </tr>
+      {{/if}}
     </table>
   </div>
 
-  <!-- Suggested Programs Card Block matching items ordered card -->
+  <!-- Learning Programs Section -->
   {{#if programs}}
-  <div style="border: 1px solid #E5E7EB; border-radius: 12px; padding: 0 24px; margin-bottom: 35px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-    <h3 style="margin: 0; padding: 20px 0 12px 0; border-bottom: 1px solid #F3F4F6; font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 600; color: #1F2937;">
-      Learning Programs
+  <div style="border: 1px solid #EAE3EC; border-radius: 16px; padding: 0 24px; margin-bottom: 32px; background-color: #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+    <h3 style="margin: 0; padding: 18px 0 14px 0; border-bottom: 1px solid #F3F4F6; font-family: 'Poppins', 'Inter', sans-serif; font-size: 15px; font-weight: 700; color: #111827; letter-spacing: -0.2px;">
+      🎓 Selected Learning Program
     </h3>
     <table style="width: 100%; border-collapse: collapse;">
       {{#each programs}}
       <tr>
-        <td style="padding: 16px 0; border-bottom: 1px solid #F3F4F6; width: 64px;">
-          <img src="{{#if this.thumbnailUrl}}{{this.thumbnailUrl}}{{else}}https://api.infano.care/uploads/assets/Page-1.png{{/if}}" alt="{{this.title}}"
-            style="width: 48px; height: auto; border-radius: 6px; border: 1px solid #E5E7EB; display: block;">
+        <td style="padding: 16px 0; border-bottom: 1px solid #F8F9FA; width: 76px; vertical-align: middle;">
+          <img src="{{#if this.thumbnailUrl}}{{this.thumbnailUrl}}{{else}}https://api.infano.care/uploads/assets/Page-1.png{{/if}}" alt="{{this.title}}" width="64" height="64" border="0" align="top"
+            style="width: 64px; height: 64px; max-width: 64px; min-width: 64px; object-fit: cover; border-radius: 12px; border: 1px solid #EAE3EC; display: block; background-color: #F8F6FC;">
         </td>
-        <td style="padding: 16px 12px; border-bottom: 1px solid #F3F4F6; vertical-align: middle;">
-          <p style="margin: 0; font-weight: 600; color: #1F2937; font-size: 14px; line-height: 1.4;">{{this.title}}</p>
-          <p style="margin: 4px 0 0 0; font-size: 12px; color: #6B7280; font-weight: 500;">{{this.duration}} • Class {{this.classRange}}</p>
+        <td style="padding: 16px 12px; border-bottom: 1px solid #F8F9FA; vertical-align: middle;">
+          <p style="margin: 0; font-weight: 700; color: #1F2937; font-size: 15px; line-height: 1.4; font-family: 'Poppins', sans-serif;">
+            {{this.title}}
+          </p>
+          {{#if this.duration}}
+          <div style="margin-top: 6px;">
+            <span style="display: inline-block; background-color: #F3E8FF; color: #7B1FA2; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px;">
+              ⏱ {{this.duration}}
+            </span>
+          </div>
+          {{/if}}
         </td>
       </tr>
       {{/each}}
@@ -64,30 +88,19 @@
   </div>
   {{/if}}
 
-  <!-- Interactive Dashboard Call-to-Action button matching orders style -->
-  <div style="margin: 20px 0 35px; text-align: center;">
-    <a href="https://infano.care/login" class="button">Explore Dashboard</a>
-  </div>
 
-  <!-- Booking details Block matching orders style -->
-  <div style="border-top: 1px solid #E5E7EB; padding-top: 30px;">
-    <div style="background-color: #FAF9FB; border: 1px solid #F3E8FF; border-radius: 8px; padding: 16px; min-height: 80px;">
-      <h4 style="margin: 0 0 10px 0; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9C27B0; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-        🎓 Session Target
-      </h4>
-      <p style="margin: 0; color: #374151; font-size: 13.5px; line-height: 1.5; font-weight: 600;">
-        Class {{class_range}}
-      </p>
-      <p style="margin: 4px 0 0 0; color: #6B7280; font-size: 13px; line-height: 1.5;">
-        Personalized Consultation
-      </p>
-    </div>
+
+  <!-- Call to Action Button -->
+  <div style="margin: 28px 0 36px; text-align: center;">
+    <a href="https://infano.care/login" class="button" style="display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: 700; font-size: 15px; border-radius: 9999px; box-shadow: 0 4px 14px rgba(156, 39, 176, 0.28);">
+      Explore Parent Dashboard
+    </a>
   </div>
 
   <!-- Help Section Footer -->
   <div class="help-section">
-    <p style="margin: 0;">
-      Need any assistance? Reply to this email or visit our <a href="https://infano.care/contact">Support Center</a>.
+    <p style="margin: 0; font-size: 14px; color: #6B7280; line-height: 1.5;">
+      Need any assistance or wish to reschedule? Reply directly to this email or visit our <a href="https://infano.care/contact" style="color: #9C27B0; font-weight: 600; text-decoration: none;">Support Center</a>.
     </p>
   </div>
 
