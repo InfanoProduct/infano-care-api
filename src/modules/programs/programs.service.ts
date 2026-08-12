@@ -229,6 +229,14 @@ export class ProgramsService {
     return sessionsMap[uppercaseTitle] || [];
   }
 
+  private static slugifyTitle(title: string): string {
+    return (title || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  }
+
   /**
    * List all active programs, optionally showing user eligibility
    */
@@ -240,6 +248,7 @@ export class ProgramsService {
 
     return programs.map(p => ({
       ...p,
+      slug: this.slugifyTitle(p.title),
       isEligible: true,
       sessionsList: p.curriculum && Array.isArray(p.curriculum) && p.curriculum.length > 0
         ? (p.curriculum as any[])
@@ -259,14 +268,21 @@ export class ProgramsService {
         where: { id: idOrTitle },
       });
     } else {
+      const decoded = decodeURIComponent(idOrTitle).trim();
       program = await prisma.program.findFirst({
         where: {
           title: {
-            equals: idOrTitle,
+            equals: decoded,
             mode: "insensitive"
           }
         }
       });
+
+      if (!program) {
+        const targetSlug = this.slugifyTitle(decoded);
+        const allPrograms = await prisma.program.findMany();
+        program = allPrograms.find(p => this.slugifyTitle(p.title) === targetSlug || p.id === idOrTitle);
+      }
     }
 
     if (!program) {
@@ -275,6 +291,7 @@ export class ProgramsService {
 
     return {
       ...program,
+      slug: this.slugifyTitle(program.title),
       sessionsList: program.curriculum && Array.isArray(program.curriculum) && program.curriculum.length > 0
         ? (program.curriculum as any[])
         : this.getMockSessionsForProgram(program.title)
