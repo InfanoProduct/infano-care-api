@@ -351,7 +351,6 @@ export class AdminService {
         id: p.id,
         title: p.title,
         tagline: p.tagline,
-        classRange: p.classRange,
         duration: p.duration,
         price: p.price,
         enrolledCount,

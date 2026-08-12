@@ -18,6 +18,18 @@ export class CommunityController {
     }
   }
 
+  static async uploadImage(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No image uploaded' });
+      }
+      const imageUrl = `/uploads/${req.file.filename}`;
+      res.status(200).json({ success: true, imageUrl });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getPosts(req: Request, res: Response, next: NextFunction) {
     try {
       const { circleId } = req.params;

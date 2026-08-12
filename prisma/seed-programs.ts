@@ -10,9 +10,6 @@ async function main() {
       title: 'SPARK',
       tagline: 'Discovering the New Me.',
       description: 'A gentle introduction to puberty designed specifically for 5th graders. This program focuses on understanding early physical changes, maintaining daily hygiene, and building foundational self-confidence before major changes begin.',
-      classRange: 'Class 5',
-      minClass: 5,
-      maxClass: 5,
       duration: '4 Weeks',
       price: 2500,
       isActive: true,
@@ -44,9 +41,6 @@ async function main() {
       title: 'RISE',
       tagline: 'Owning the Changes.',
       description: 'Built for 6th graders who are actively navigating physical changes. Focuses heavily on menstrual education, managing early periods, and understanding the science behind the bodily shifts.',
-      classRange: 'Class 6',
-      minClass: 6,
-      maxClass: 6,
       duration: '6 Weeks',
       price: 3500,
       isActive: true,
@@ -80,9 +74,6 @@ async function main() {
       title: 'BLOOM',
       tagline: 'Finding Emotional Balance.',
       description: 'Targeted for 7th graders experiencing intense emotional fluctuations and social dynamics. This program shifts the focus to mental well-being, body image, and peer relationships.',
-      classRange: 'Class 7',
-      minClass: 7,
-      maxClass: 7,
       duration: '6 Weeks',
       price: 3500,
       isActive: true,
@@ -117,9 +108,6 @@ async function main() {
       title: 'IGNITE',
       tagline: 'Fueling Independence.',
       description: 'Designed for 8th graders to foster independence, critical thinking, and advanced self-care. Focuses on nutrition, fitness, sleep hygiene, and long-term holistic wellness.',
-      classRange: 'Class 8',
-      minClass: 8,
-      maxClass: 8,
       duration: '8 Weeks',
       price: 4500,
       isActive: true,
@@ -156,9 +144,6 @@ async function main() {
       title: 'UNSTOPPABLE',
       tagline: 'Stepping into Womanhood.',
       description: 'The culminating program for 9th graders. This covers advanced interpersonal skills, future readiness, comprehensive sexual health awareness, and solidifying lifelong habits.',
-      classRange: 'Class 9',
-      minClass: 9,
-      maxClass: 9,
       duration: '8 Weeks',
       price: 5000,
       isActive: true,
@@ -199,9 +184,6 @@ async function main() {
       update: {
         tagline: prog.tagline,
         description: prog.description,
-        classRange: prog.classRange,
-        minClass: prog.minClass,
-        maxClass: prog.maxClass,
         duration: prog.duration,
         price: prog.price,
         topics: prog.topics,
@@ -211,7 +193,7 @@ async function main() {
       },
       create: prog,
     });
-    console.log(`Seeded program: ${created.title} (${created.classRange})`);
+    console.log(`Seeded program: ${created.title}`);
   }
 
   // Optionally delete the old generic program if it exists

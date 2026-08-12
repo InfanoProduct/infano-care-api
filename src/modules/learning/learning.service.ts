@@ -64,6 +64,15 @@ export class LearningService {
         history
       },
     });
+
+    if (history && history.quiz) {
+      try {
+        await QuestService.evaluateCompletion(userId, { type: "quiz_completed" });
+      } catch (e) {
+        console.error("[LEARNING] Failed to trigger quest completion for quiz:", e);
+      }
+    }
+
     return progress;
   }
 
@@ -110,6 +119,12 @@ export class LearningService {
           isPrivate: data.reflectionMode === 'private',
         }
       });
+
+      try {
+        await QuestService.evaluateCompletion(userId, { type: "reflection_added" });
+      } catch (e) {
+        console.error("[LEARNING] Failed to trigger quest completion for reflection:", e);
+      }
     }
 
     // Evaluate Quests first to see if this task is linked to a quest

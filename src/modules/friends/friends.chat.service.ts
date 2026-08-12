@@ -105,7 +105,7 @@ export class FriendsChatService {
         
         if (recipientUser && recipientUser.fcmToken) {
           const payload = {
-            title: `Message from ${senderName}`,
+            title: senderName,
             body: content,
             deepLink: `infano://friends/chat/${matchId}`,
             data: {

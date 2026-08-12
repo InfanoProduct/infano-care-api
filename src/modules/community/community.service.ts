@@ -15,8 +15,8 @@ export class CommunityService {
         isActive: true,
         ...(contentTier ? {
           OR: [
-             { minContentTier: null },
-             { minContentTier: { in: getAllowedMinTiers(contentTier) as any[] } }
+            { minContentTier: null },
+            { minContentTier: { in: getAllowedMinTiers(contentTier) as any[] } }
           ],
           AND: [
             { OR: [{ maxContentTier: null }, { maxContentTier: { in: getAllowedMaxTiers(contentTier) as any[] } }] }
@@ -31,7 +31,8 @@ export class CommunityService {
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    return Promise.all(circles.map(async (circle) => {
+    const results: any[] = [];
+    for (const circle of circles) {
       let unreadCount = 0;
       try {
         if (userId) {
@@ -78,7 +79,7 @@ export class CommunityService {
         }).then(p => !!p) : Promise.resolve(false)
       ]);
 
-      return {
+      results.push({
         id: circle.id,
         slug: circle.slug,
         name: circle.name,
@@ -92,8 +93,10 @@ export class CommunityService {
         user_has_posted: userHasPosted,
         is_joined: userId ? circle.members.some(m => m.id === userId) : false,
         is_private: circle.isPrivate
-      };
-    }));
+      });
+    }
+
+    return results;
   }
 
   async joinCircles(userId: string, circleIds: string[]) {
@@ -147,6 +150,7 @@ export class CommunityService {
             }
           },
           challenge: true,
+          journalEntry: true,
           bookmarks: { where: { userId } },
         },
         orderBy: { createdAt: 'desc' },
@@ -175,13 +179,28 @@ export class CommunityService {
 
     const reactionMap = new Map(userReactions.map(r => [r.contentId, r.reaction]));
 
-    return {
-      posts: posts.map(p => ({
+    const formatPost = (p: any) => {
+      const journalData = p.journalData || (p.journalEntry ? {
+        id: p.journalEntry.id,
+        mode: p.journalEntry.mode,
+        moodColor: p.journalEntry.moodColor,
+        moodTag: p.journalEntry.moodTag,
+        content: p.journalEntry.content,
+        title: p.journalEntry.title,
+        createdAt: p.journalEntry.createdAt,
+      } : null);
+      return {
         ...p,
-        isBookmarked: (p as any).bookmarks?.length > 0,
+        journalData,
+        journalEntry: undefined,
+        isBookmarked: (p.bookmarks as any[])?.length > 0,
         myReaction: reactionMap.get(p.id) || null,
         bookmarks: undefined,
-      })),
+      };
+    };
+
+    return {
+      posts: posts.map(formatPost),
       pagination: {
         page,
         perPage,
@@ -195,7 +214,7 @@ export class CommunityService {
   // Posts
   async getPosts(circleId: string, page: number = 1, perPage: number = 20, userId: string | null = null) {
     const skip = (page - 1) * perPage;
-    
+
     const [posts, total] = await Promise.all([
       prisma.communityPost.findMany({
         where: {
@@ -219,6 +238,7 @@ export class CommunityService {
             },
           },
           challenge: true,
+          journalEntry: true,
           bookmarks: userId ? { where: { userId } } : undefined,
         },
         orderBy: { createdAt: 'desc' },
@@ -255,6 +275,7 @@ export class CommunityService {
           },
         },
         challenge: true,
+        journalEntry: true,
         bookmarks: userId ? { where: { userId } } : undefined,
       },
     });
@@ -271,19 +292,28 @@ export class CommunityService {
 
     const reactionMap = new Map(userReactions.map(r => [r.contentId, r.reaction]));
 
-    const mappedPosts = posts.map(p => ({
-      ...p,
-      isBookmarked: (p.bookmarks as any[])?.length > 0,
-      myReaction: reactionMap.get(p.id) || null,
-      bookmarks: undefined,
-    }));
+    const formatPost = (p: any) => {
+      const journalData = p.journalData || (p.journalEntry ? {
+        id: p.journalEntry.id,
+        mode: p.journalEntry.mode,
+        moodColor: p.journalEntry.moodColor,
+        moodTag: p.journalEntry.moodTag,
+        content: p.journalEntry.content,
+        title: p.journalEntry.title,
+        createdAt: p.journalEntry.createdAt,
+      } : null);
+      return {
+        ...p,
+        journalData,
+        journalEntry: undefined,
+        isBookmarked: (p.bookmarks as any[])?.length > 0,
+        myReaction: reactionMap.get(p.id) || null,
+        bookmarks: undefined,
+      };
+    };
 
-    const mappedPinned = pinned.map(p => ({
-      ...p,
-      isBookmarked: (p.bookmarks as any[])?.length > 0,
-      myReaction: reactionMap.get(p.id) || null,
-      bookmarks: undefined,
-    }));
+    const mappedPosts = posts.map(formatPost);
+    const mappedPinned = pinned.map(formatPost);
 
     return {
       posts: mappedPosts,
@@ -301,10 +331,19 @@ export class CommunityService {
   async createPost(userId: string, circleId: string, input: CreatePostInput) {
     console.log(`[CommunityService] createPost input:`, JSON.stringify(input, null, 2));
     // 1. Placeholder for AI Moderation
-    const moderation = await this.placeholderModeration(input.content);
-    
-    const status = moderation.decision === ModerationDecision.APPROVE 
-      ? PostStatus.APPROVED 
+    const textModeration = await this.placeholderModeration(input.content);
+    let finalModeration = textModeration;
+
+    // Image Moderation Check
+    if (input.imageUrl) {
+      const imageModeration = await this.placeholderImageModeration(input.imageUrl);
+      if (imageModeration.decision !== ModerationDecision.APPROVE) {
+        finalModeration = imageModeration; // Override with image failure
+      }
+    }
+
+    const status = finalModeration.decision === ModerationDecision.APPROVE
+      ? PostStatus.APPROVED
       : PostStatus.PENDING_HUMAN;
 
     const post = await prisma.communityPost.create({
@@ -312,11 +351,12 @@ export class CommunityService {
         circleId,
         authorId: userId,
         content: input.content,
+        imageUrl: input.imageUrl,
         isChallengeResponse: input.isChallengeResponse ?? false,
         challengeId: input.challengeId,
         status,
-        aiDecision: moderation.decision,
-        crisisSeverity: moderation.crisisSeverity,
+        aiDecision: finalModeration.decision,
+        crisisSeverity: finalModeration.crisisSeverity,
         publishedAt: status === PostStatus.APPROVED ? new Date() : null,
       },
       include: {
@@ -383,9 +423,9 @@ export class CommunityService {
 
   async createReply(userId: string, postId: string, input: CreateReplyInput) {
     const moderation = await this.placeholderModeration(input.content);
-    
-    const status = moderation.decision === ModerationDecision.APPROVE 
-      ? PostStatus.APPROVED 
+
+    const status = moderation.decision === ModerationDecision.APPROVE
+      ? PostStatus.APPROVED
       : PostStatus.PENDING_HUMAN;
 
     // Check depth
@@ -434,10 +474,10 @@ export class CommunityService {
 
     if (existing) {
       const oldField = `reaction${existing.reaction.charAt(0).toUpperCase() + existing.reaction.slice(1)}`;
-      
+
       // Remove old reaction
       await prisma.postReaction.delete({ where: { id: existing.id } });
-      
+
       // Decrement old count
       if (contentType === 'post') {
         await prisma.communityPost.update({
@@ -539,7 +579,7 @@ export class CommunityService {
 
   // Bookmarks
   async toggleBookmark(userId: string, contentId: string, contentType: string) {
-    const whereClause = contentType === 'post' 
+    const whereClause = contentType === 'post'
       ? { userId_postId: { userId, postId: contentId } }
       : { userId_replyId: { userId, replyId: contentId } };
 
@@ -553,7 +593,7 @@ export class CommunityService {
       });
       return { bookmarked: false };
     } else {
-      const createData = contentType === 'post' 
+      const createData = contentType === 'post'
         ? { userId, postId: contentId }
         : { userId, replyId: contentId };
       await (prisma.communityBookmark as any).create({
@@ -596,10 +636,22 @@ export class CommunityService {
     });
   }
 
+  // Simulated image moderation placeholder
+  private async placeholderImageModeration(imageUrl: string) {
+    // In a real application, you would pass the imageUrl to an API like Google Cloud Vision
+    // or AWS Rekognition to check for NSFW, violent, or inappropriate content.
+    // For now, we simulate an approval.
+
+    return {
+      decision: ModerationDecision.APPROVE,
+      crisisSeverity: CrisisSeverity.NONE,
+    };
+  }
+
   // Simple placeholder moderation logic
   private async placeholderModeration(text: string) {
     const lowerText = text.toLowerCase();
-    
+
     // Safety check for crisis language
     const crisisKeywords = ['hurt myself', 'suicide', 'kill myself', 'end it all', 'die'];
     if (crisisKeywords.some(word => lowerText.includes(word))) {

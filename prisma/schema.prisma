@@ -50,6 +50,8 @@ model User {
   cycleProfile              CycleProfile?
   cycleRecords              CycleRecord[]
   escalations               EscalationEvent[]
+  CreativeAskGigiEntry      CreativeAskGigiEntry[]
+  CreativeNodeProgress      CreativeNodeProgress[]
   expertChats               ExpertChatSession[]      @relation("ExpertSessions")
   expertSessions            ExpertChatSession[]      @relation("UserSessions")
   expertScheduledSessions   ExpertSessionSchedule[]  @relation("ExpertScheduledSessions")
@@ -88,6 +90,13 @@ model User {
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
   webinarRegistrations      WebinarRegistration[]
   calendarSettings          ExpertCalendarSettings?
+  userWeeklyChallenges      UserWeeklyChallenge[]
+  journalEntries            JournalEntry[]
+  journalStreak             JournalStreak?
+  trustedContacts           TrustedContact[]         @relation("UserTrustedContacts")
+  sosIncidents              SosIncident[]
+  sosPreference             UserSosPreference?
+  lmsEnrollments            LmsEnrollment[]
 }
 
 model Profile {
@@ -440,6 +449,36 @@ model SeasonalEvent {
   quests         QuestTemplate[]
 }
 
+model QuestWeeklyChallenge {
+  id                    String                @id @default(uuid())
+  title                 String
+  description           String
+  targetTotal           Int
+  rewardPoints          Int
+  startsAt              DateTime
+  endsAt              DateTime
+  category              String                @default("wellbeing")
+  completionCondition   Json
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  userWeeklyChallenges  UserWeeklyChallenge[]
+}
+
+model UserWeeklyChallenge {
+  id                String               @id @default(uuid())
+  userId            String
+  weeklyChallengeId String
+  progress          Int                  @default(0)
+  isCompleted       Boolean              @default(false)
+  completedAt       DateTime?
+  weeklyChallenge   QuestWeeklyChallenge @relation(fields: [weeklyChallengeId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weeklyChallengeId])
+  @@index([userId])
+}
+
 model Subscription {
   id        String    @id @default(uuid())
   userId    String    @unique
@@ -651,11 +690,14 @@ model CommunityPost {
   circleId            String
   authorId            String
   content             String
+  imageUrl            String?
   status              PostStatus          @default(PENDING_AI)
   isPinned            Boolean             @default(false)
   isChallengeResponse Boolean             @default(false)
   challengeId         String?
   isFeatured          Boolean             @default(false)
+  journalEntryId      String?
+  journalData         Json?
   aiDecision          ModerationDecision?
   aiConfidence        Float?
   aiFlags             Json                @default("{}")
@@ -677,6 +719,7 @@ model CommunityPost {
   author              User                @relation("UserPosts", fields: [authorId], references: [id])
   challenge           WeeklyChallenge?    @relation(fields: [challengeId], references: [id])
   circle              CommunityCircle     @relation(fields: [circleId], references: [id])
+  journalEntry        JournalEntry?       @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
   CommunityReply      CommunityReply[]
 
   @@index([circleId, publishedAt(sort: Desc)])
@@ -1191,9 +1234,6 @@ model Program {
   title          String                  @unique
   tagline        String
   description    String?                 @default("")
-  classRange     String
-  minClass       Int
-  maxClass       Int
   duration       String
   topics         String[]
   isActive       Boolean                 @default(true)
@@ -1708,4 +1748,310 @@ model PeerLineCertificationEpisode {
   updatedAt    DateTime        @updatedAt
   thumbnailUrl String?
   course       PeerLineCertificationCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JOURNAL MODULE
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum JournalMode {
+  free_write
+  guided_prompt
+  doodle
+  voice_note
+  mood_color
+  photo_board
+  letter_mode
+  video_diary
+  blackout_poetry
+  comic_strip
+  sticker_decorate
+  list_journal
+}
+
+enum JournalVisibility {
+  private
+  shared_to_connect
+}
+
+model JournalEntry {
+  id                      String            @id @default(uuid())
+  userId                  String
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  mode                    JournalMode
+  promptId                String?
+  moodTag                 String?
+  moodColor               String?
+  content                 Json
+  isSealedTimeCapsule     Boolean           @default(false)
+  capsuleRevealDate       DateTime?
+  visibility              JournalVisibility @default(private)
+  pointsAwarded           Int               @default(0)
+  linkedLearningEpisodeId String?
+  title                   String?
+  isDeleted               Boolean           @default(false)
+  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt                  JournalPrompt?    @relation(fields: [promptId], references: [id])
+  sharedCommunityPosts    CommunityPost[]
+
+  @@index([userId, createdAt])
+  @@index([userId, mode])
+}
+
+model JournalPrompt {
+  id        String        @id @default(uuid())
+  category  String
+  text      String
+  bestModes JournalMode[]
+  options   String[]      @default([])
+  isActive  Boolean       @default(true)
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  entries   JournalEntry[]
+}
+
+model JournalStreak {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  currentStreak Int       @default(0)
+  longestStreak Int       @default(0)
+  lastEntryDate DateTime?
+  totalEntries  Int       @default(0)
+  modesUsed     String[]  @default([])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TrustedContact {
+  id              String    @id @default(uuid())
+  userId          String
+  name            String
+  phone           String
+  relation        String?
+  isVerified      Boolean   @default(false)
+  consentStatus   String    @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  consentSentAt   DateTime?
+  emergencyTypes  String[]  @default([])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation("UserTrustedContacts", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, phone])
+}
+
+model SosIncident {
+  id             String             @id @default(uuid())
+  userId         String
+  status         SosStatus          @default(ACTIVE) // ACTIVE, CANCELLED, RESOLVED
+  emergencyType  String?            // physical_threat, medical_emergency, mental_distress, safe_walk
+  isTest         Boolean            @default(false)
+  startedAt      DateTime           @default(now())
+  resolvedAt     DateTime?
+  lat            Float?
+  lng            Float?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events         SosIncidentEvent[]
+}
+
+model SosIncidentEvent {
+  id          String   @id @default(uuid())
+  incidentId  String
+  type        String   // e.g., 'TRIGGERED', 'LOCATION_UPDATE', 'CANCELLED', 'RESOLVED'
+  lat         Float?
+  lng         Float?
+  batteryInfo String?
+  createdAt   DateTime @default(now())
+  incident    SosIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+}
+
+enum SosStatus {
+  ACTIVE
+  CANCELLED
+  RESOLVED
+}
+
+model UserSosPreference {
+  userId               String    @id
+  defaultEmergencyType String    @default("physical_threat")
+  locationEnabled      Boolean   @default(false)
+  setupCompleted       Boolean   @default(false)
+  setupCompletedAt     DateTime?
+  lastTestedAt         DateTime?
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreativeAskGigiEntry {
+  id              String          @id
+  userId          String
+  episodeId       String
+  nodeId          String
+  entryText       String
+  createdAt       DateTime        @default(now())
+  CreativeEpisode CreativeEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  User            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, episodeId])
+  @@index([userId])
+}
+
+model CreativeEpisode {
+  id                   String                 @id
+  journeyId            String
+  title                String
+  description          String?
+  episodeIcon          String?
+  order                Int                    @default(0)
+  nodes                Json                   @default("[]")
+  totalXP              Int                    @default(145)
+  unlockCondition      Json                   @default("{}")
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  CreativeAskGigiEntry CreativeAskGigiEntry[]
+  CreativeJourney      CreativeJourney        @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  CreativeNodeProgress CreativeNodeProgress[]
+}
+
+model CreativeJourney {
+  id              String            @id
+  title           String
+  description     String
+  ageBand         String?
+  icon            String?
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  CreativeEpisode CreativeEpisode[]
+}
+
+model CreativeNodeProgress {
+  id              String          @id
+  userId          String
+  episodeId       String
+  nodeId          String
+  status          String          @default("LOCKED")
+  xpEarned        Int             @default(0)
+  lastScreen      String?
+  nodeOrder       Json?
+  updatedAt       DateTime
+  CreativeEpisode CreativeEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  User            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, episodeId, nodeId])
+  @@index([userId, episodeId])
+}
+
+enum LmsChapterType {
+  VIDEO
+  ASSESSMENT
+}
+
+model LmsCourse {
+  id           String          @id @default(uuid())
+  title        String
+  description  String
+  timeDuration Int             // in minutes
+  thumbnailUrl String?
+  price        Float           @default(0)
+  isFree       Boolean         @default(true)
+  isActive     Boolean         @default(true)
+  category     String?
+  highlights   String[]        @default([])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  modules      LmsModule[]
+  enrollments  LmsEnrollment[]
+}
+
+model LmsModule {
+  id           String       @id @default(uuid())
+  courseId     String
+  title        String
+  description  String?
+  timeDuration Int?         // in minutes
+  thumbnailUrl String?
+  order        Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  course       LmsCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapters     LmsChapter[]
+
+  @@index([courseId])
+}
+
+model LmsChapter {
+  id               String          @id @default(uuid())
+  moduleId         String
+  title            String
+  description      String?
+  thumbnailUrl     String?
+  type             LmsChapterType
+  order            Int             @default(0)
+  goodToKnowPoints String[]        @default([])
+  faqs             Json            @default("[]")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  module           LmsModule       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  video            LmsVideo?
+  assessment       LmsAssessment?
+  progress         LmsProgress[]
+
+  @@index([moduleId])
+}
+
+model LmsVideo {
+  id        String     @id @default(uuid())
+  chapterId String     @unique
+  videoUrl  String
+  duration  Int        // in seconds
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  chapter   LmsChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+}
+
+model LmsAssessment {
+  id           String     @id @default(uuid())
+  chapterId    String     @unique
+  questions    Json       @default("[]") // Array of { question, options, correctAnswerIndex }
+  passingScore Int        @default(80)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  chapter      LmsChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+}
+
+model LmsEnrollment {
+  id                String        @id @default(uuid())
+  userId            String
+  courseId          String
+  status            String        @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  pricePaid         Float         @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  course            LmsCourse     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress          LmsProgress[]
+
+  @@unique([userId, courseId])
+  @@index([userId])
+}
+
+model LmsProgress {
+  id            String        @id @default(uuid())
+  enrollmentId  String
+  chapterId     String
+  isCompleted   Boolean       @default(false)
+  score         Int?          // for assessments
+  answers       Json?         // stores user's answers for assessments
+  watchTime     Int?          // for videos (seconds)
+  completedAt   DateTime?
+  updatedAt     DateTime      @updatedAt
+  enrollment    LmsEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  chapter       LmsChapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, chapterId])
 }

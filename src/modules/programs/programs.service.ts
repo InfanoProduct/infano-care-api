@@ -235,57 +235,16 @@ export class ProgramsService {
   static async listActive(userId?: string) {
     const programs = await prisma.program.findMany({
       where: { isActive: true },
-      orderBy: { minClass: "asc" },
+      orderBy: { title: "asc" },
     });
 
-    if (!userId) {
-      return programs.map(p => ({
-        ...p,
-        isEligible: true,
-        sessionsList: p.curriculum && Array.isArray(p.curriculum) && p.curriculum.length > 0
-          ? (p.curriculum as any[])
-          : this.getMockSessionsForProgram(p.title)
-      }));
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { birthYear: true, ageAtSignup: true }
-    });
-
-    if (!user) {
-      return programs.map(p => ({
-        ...p,
-        isEligible: true,
-        sessionsList: p.curriculum && Array.isArray(p.curriculum) && p.curriculum.length > 0
-          ? (p.curriculum as any[])
-          : this.getMockSessionsForProgram(p.title)
-      }));
-    }
-
-    // Determine user's estimated class
-    let age = user.ageAtSignup || null;
-    if (user.birthYear) {
-      age = new Date().getFullYear() - user.birthYear;
-    }
-
-    const estimatedClass = age ? age - 5 : null;
-
-    return programs.map(program => {
-      let isEligible = true;
-      if (estimatedClass !== null) {
-        isEligible = estimatedClass >= program.minClass && estimatedClass <= program.maxClass;
-      }
-      return {
-        ...program,
-        isEligible,
-        userAge: age,
-        userEstimatedClass: estimatedClass,
-        sessionsList: program.curriculum && Array.isArray(program.curriculum) && program.curriculum.length > 0
-          ? (program.curriculum as any[])
-          : this.getMockSessionsForProgram(program.title)
-      };
-    });
+    return programs.map(p => ({
+      ...p,
+      isEligible: true,
+      sessionsList: p.curriculum && Array.isArray(p.curriculum) && p.curriculum.length > 0
+        ? (p.curriculum as any[])
+        : this.getMockSessionsForProgram(p.title)
+    }));
   }
 
   /**
@@ -337,35 +296,11 @@ export class ProgramsService {
       throw new AppError("This program is currently not active", 400);
     }
 
-    // 2. Fetch user to check class/age eligibility
+    // 2. Fetch user
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { birthYear: true, ageAtSignup: true, role: true }
+      select: { role: true }
     });
-
-    // Parents & guardians purchase programs for their daughters — skip eligibility check for them
-    const isParentRole = user?.role === "PARENT" || user?.role === "GUARDIAN";
-
-    if (user && !isParentRole) {
-      let age = user.ageAtSignup || null;
-      if (user.birthYear) {
-        age = new Date().getFullYear() - user.birthYear;
-      }
-      const estimatedClass = age ? age - 5 : null;
-
-      if (estimatedClass !== null) {
-        const isEligible = estimatedClass >= program.minClass && estimatedClass <= program.maxClass;
-        if (!isEligible) {
-          const targetStr = program.minClass === program.maxClass
-            ? `${program.classRange} (Age ${program.minClass + 5})`
-            : `${program.classRange} (Ages ${program.minClass + 5}-${program.maxClass + 5})`;
-          throw new AppError(
-            `You are not eligible for this program. It is designed for ${targetStr}, but your class is estimated as Class ${estimatedClass}.`,
-            400
-          );
-        }
-      }
-    }
 
     // 3. Determine price
     const pricePaid = program.price;
@@ -470,7 +405,7 @@ export class ProgramsService {
 
   static async adminList() {
     const programs = await prisma.program.findMany({
-      orderBy: { minClass: "asc" }
+      orderBy: { title: "asc" }
     });
     return programs.map(p => ({
       ...p,
@@ -482,7 +417,7 @@ export class ProgramsService {
 
   static async adminCreate(data: any) {
     // Validate required fields
-    if (!data.title || !data.classRange || !data.duration) {
+    if (!data.title || !data.duration) {
       throw new AppError("Missing required fields for creating a program", 400);
     }
 
@@ -492,9 +427,6 @@ export class ProgramsService {
         tagline: data.tagline || "",
         description: data.description || "",
         thumbnailUrl: data.thumbnailUrl || null,
-        classRange: data.classRange,
-        minClass: parseInt(data.minClass) || 5,
-        maxClass: parseInt(data.maxClass) || 6,
         duration: data.duration,
         topics: Array.isArray(data.topics) ? data.topics : [],
         price: parseFloat(data.price) || 0,
@@ -520,9 +452,6 @@ export class ProgramsService {
         tagline: data.tagline,
         description: data.description,
         thumbnailUrl: data.thumbnailUrl !== undefined ? data.thumbnailUrl : undefined,
-        classRange: data.classRange,
-        minClass: data.minClass !== undefined ? parseInt(data.minClass) : undefined,
-        maxClass: data.maxClass !== undefined ? parseInt(data.maxClass) : undefined,
         duration: data.duration,
         topics: Array.isArray(data.topics) ? data.topics : undefined,
         price: data.price !== undefined ? parseFloat(data.price) : undefined,
@@ -550,8 +479,7 @@ export class ProgramsService {
       include: {
         program: {
           select: {
-            title: true,
-            classRange: true
+            title: true
           }
         },
         user: {
@@ -667,8 +595,7 @@ export class ProgramsService {
         include: {
           program: {
             select: {
-              title: true,
-              classRange: true
+              title: true
             }
           },
           user: {
@@ -701,10 +628,33 @@ export class ProgramsService {
    * Demo Sessions Methods
    * ========================================= */
 
+  static async getBookedSlots(date: string) {
+    const bookedDemos = await prisma.demoSession.findMany({
+      where: {
+        slotDate: date,
+      },
+      select: {
+        slotTime: true,
+      },
+    });
+    return bookedDemos.map((d) => d.slotTime);
+  }
+
   static async bookDemoSession(data: any, loggedInUserId?: string) {
     if (!data.parentName || !data.phone || !data.classRange || !data.slotDate || !data.slotTime) {
       throw new AppError("Missing required fields for booking a demo session (parentName, phone, classRange, slotDate, slotTime)", 400);
     }
+
+    const bookingCount = await prisma.demoSession.count({
+      where: {
+        slotDate: data.slotDate,
+        slotTime: data.slotTime,
+      }
+    });
+    if (bookingCount >= 2) {
+      throw new AppError("This slot is already fully booked. Please choose a different date or time.", 400);
+    }
+
     const { normalizePhone } = await import("../../common/utils/phone.js");
     const normalizedPhone = normalizePhone(data.phone);
 
