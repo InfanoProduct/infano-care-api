@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Program" ALTER COLUMN "classRange" DROP NOT NULL;
+ALTER TABLE "Program" ALTER COLUMN "minClass" DROP NOT NULL;
+ALTER TABLE "Program" ALTER COLUMN "maxClass" DROP NOT NULL;
