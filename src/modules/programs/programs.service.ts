@@ -647,8 +647,8 @@ export class ProgramsService {
   }
 
   static async bookDemoSession(data: any, loggedInUserId?: string) {
-    if (!data.parentName || !data.phone || !data.classRange || !data.slotDate || !data.slotTime) {
-      throw new AppError("Missing required fields for booking a demo session (parentName, phone, classRange, slotDate, slotTime)", 400);
+    if (!data.parentName || !data.phone || !data.slotDate || !data.slotTime) {
+      throw new AppError("Missing required fields for booking a demo session (parentName, phone, slotDate, slotTime)", 400);
     }
 
     const bookingCount = await prisma.demoSession.count({
@@ -701,7 +701,7 @@ export class ProgramsService {
         parentName: data.parentName,
         phone: normalizedPhone,
         email: emailToSend,
-        classRange: data.classRange,
+        classRange: data.classRange || null,
         confidence: data.confidence || "",
         interests: Array.isArray(data.interests) ? data.interests : [],
         hasMentor: data.hasMentor || "",
@@ -735,16 +735,24 @@ export class ProgramsService {
           parent_name: data.parentName,
           phone: normalizedPhone,
           email: emailToSend,
-          class_range: data.classRange,
           slot_date: data.slotDate,
           slot_time: data.slotTime,
           comment: data.comment || data.confidence || "",
-          programs: programsList.map(p => ({
-            title: p.title,
-            classRange: p.classRange,
-            duration: p.duration,
-            thumbnailUrl: p.thumbnailUrl || undefined
-          }))
+          programs: programsList.map(p => {
+            let imgUrl = p.thumbnailUrl || "";
+            if (imgUrl && !imgUrl.startsWith("http")) {
+              const baseUrl = process.env.APP_URL || process.env.IMAGE_BASE_URL || "https://api.infano.care";
+              imgUrl = `${baseUrl.replace(/\/$/, '')}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`;
+            }
+            if (!imgUrl) {
+              imgUrl = "https://api.infano.care/uploads/assets/Page-1.png";
+            }
+            return {
+              title: p.title,
+              duration: p.duration,
+              thumbnailUrl: imgUrl
+            };
+          })
         });
       } catch (emailErr) {
         console.error("Failed to send demo booking email confirmation:", emailErr);

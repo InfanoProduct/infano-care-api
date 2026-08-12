@@ -1,4 +1,241 @@
-<div class="content">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Demo Session at Infano Care is Confirmed! 🌟</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;850&display=swap');
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8F6FC; /* Extremely soft lavender-tinted background */
+      color: #374151; /* Tailored charcoal color for better readability */
+      -webkit-font-smoothing: antialiased;
+    }
+    table {
+      border-spacing: 0;
+      border-collapse: collapse;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #F8F6FC;
+      padding: 40px 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #FFFFFF;
+      border: 1px solid #EAE3EC;
+      border-radius: 16px; /* Smooth rounded corners */
+      box-shadow: 0 10px 25px -5px rgba(156, 39, 176, 0.05), 0 8px 10px -6px rgba(156, 39, 176, 0.03);
+      overflow: hidden;
+    }
+    /* Brand Gradient Accent Line */
+    .brand-accent {
+      height: 6px;
+      background: linear-gradient(90deg, #9C27B0 0%, #E91E63 50%, #FF2E93 100%);
+      width: 100%;
+    }
+    .header {
+      text-align: center; /* Centered logo for a balanced, premium feel */
+      padding: 35px 40px 25px;
+      background-color: #FFFFFF;
+    }
+    .header img {
+      height: 40px;
+      width: auto;
+      display: inline-block;
+    }
+    .preheader {
+      display: none;
+      max-height: 0px;
+      overflow: hidden;
+    }
+    .content {
+      padding: 0 40px 40px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #4B5563;
+    }
+    .button {
+      display: inline-block;
+      padding: 14px 30px;
+      background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); /* Interactive gradient purple */
+      color: #FFFFFF !important;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      text-align: center;
+      border-radius: 9999px; /* Pill-shaped button for modern app styling */
+      box-shadow: 0 4px 10px rgba(156, 39, 176, 0.25);
+      transition: all 0.2s ease;
+    }
+    .button:hover {
+      box-shadow: 0 6px 15px rgba(156, 39, 176, 0.35);
+    }
+    .tracker {
+      display: block;
+      width: 100%;
+      margin: 20px 0 35px;
+      font-size: 0;
+      text-align: center;
+    }
+    .tracker-cell {
+      display: inline-block;
+      width: 33.33%;
+      text-align: center;
+      vertical-align: top;
+      position: relative;
+      box-sizing: border-box;
+    }
+    .tracker-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #F3E8FF; /* Very soft violet background */
+      color: #A855F7;
+      display: inline-block;
+      vertical-align: top;
+      line-height: 40px;
+      position: relative;
+      z-index: 2;
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .tracker-circle img {
+      width: 18px;
+      height: 18px;
+      display: block;
+      margin: 11px auto 0;
+    }
+    .tracker-circle.completed {
+      background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+      color: #FFFFFF;
+      box-shadow: 0 2px 8px rgba(156, 39, 176, 0.2);
+    }
+    .tracker-circle.current {
+      background: linear-gradient(135deg, #E91E63 0%, #D81B60 100%); /* Rose-pink highlight for active state */
+      color: #FFFFFF;
+      box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.2);
+    }
+    .tracker-line {
+      height: 3px;
+      background-color: #E9D5FF;
+      border-radius: 2px;
+      line-height: 3px;
+      font-size: 0;
+      display: block;
+    }
+    .tracker-line.completed {
+      background: linear-gradient(90deg, #9C27B0 0%, #E91E63 100%);
+    }
+    .tracker-label {
+      font-size: 13px;
+      color: #6B7280;
+      margin-top: 10px;
+      display: block;
+      font-weight: 500;
+    }
+    .tracker-label.completed {
+      color: #7B1FA2;
+      font-weight: 600;
+    }
+    .tracker-label.current {
+      color: #E91E63;
+      font-weight: 600;
+    }
+    .footer {
+      text-align: center; /* Centered footer for standard layout balance */
+      padding: 35px 40px;
+      font-size: 13px;
+      color: #6B7280;
+      background-color: #FAF9FB;
+      border-top: 1px solid #F3E8FF;
+      line-height: 1.6;
+    }
+    .footer a {
+      color: #9C27B0;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    .help-section {
+      margin-top: 35px;
+      padding-top: 20px;
+      border-top: 1px dashed #E5E7EB;
+      font-size: 14px;
+      color: #6B7280;
+      text-align: center;
+    }
+    .help-section a {
+      color: #9C27B0;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .help-section a:hover {
+      text-decoration: underline;
+    }
+    @media only screen and (max-width: 600px) {
+      .container {
+        width: 100% !important;
+        border-radius: 0 !important;
+        border-left: 0 !important;
+        border-right: 0 !important;
+      }
+      .header {
+        padding: 25px 20px 15px !important;
+      }
+      .content, .footer {
+        padding: 20px !important;
+      }
+      .mobile-block {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .mobile-pt-15 {
+        padding-top: 15px !important;
+      }
+      .mobile-pl-0 {
+        padding-left: 0 !important;
+      }
+      .mobile-pr-0 {
+        padding-right: 0 !important;
+      }
+      .tracker-label {
+        font-size: 11px !important;
+      }
+      .tracker-circle {
+        width: 32px !important;
+        height: 32px !important;
+        line-height: 32px !important;
+      }
+      .tracker-circle img {
+        width: 14px !important;
+        height: 14px !important;
+        margin: 9px auto 0 !important;
+      }
+      /* no mobile overrides needed for table-based line */
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="brand-accent"></div>
+      <div class="header">
+        <img src="https://api.infano.care/uploads/assets/infano-logo-for-light-bg.png" alt="Infano Care Logo">
+      </div>
+      <div class="preheader">
+        Confirmation details for your upcoming interactive demo.
+      </div>
+      
+      <div class="content">
 
   <!-- Hero Confirmation Header -->
   <div style="text-align: center; margin-bottom: 32px; padding-top: 10px;">
@@ -15,7 +252,7 @@
 
   <!-- Greeting & Introduction -->
   <p style="font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 8px; font-family: 'Poppins', 'Inter', sans-serif;">
-    Hi {{parent_name}},
+    Hi Priya Sharma,
   </p>
   <p style="font-size: 15px; color: #4B5563; line-height: 1.6; margin-top: 0; margin-bottom: 28px;">
     Your request for an interactive demo session is successfully confirmed. Here are your booking details. Our expert education mentor will contact you soon on your registered mobile number to coordinate the live session.
@@ -30,7 +267,7 @@
             📅 Preferred Date
           </p>
           <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #7B1FA2; font-family: 'Poppins', sans-serif;">
-            {{slot_date}}
+            August 18, 2026
           </p>
         </td>
         <td class="mobile-block mobile-pl-0" style="width: 50%; vertical-align: top; padding-bottom: 12px;">
@@ -38,55 +275,47 @@
             ⏰ Preferred Time Slot
           </p>
           <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827; font-family: 'Poppins', sans-serif;">
-            {{slot_time}}
+            04:00 PM
           </p>
         </td>
       </tr>
-      {{#if phone}}
       <tr>
         <td colspan="2" style="border-top: 1px dashed #EAE3EC; padding-top: 12px; margin-top: 4px;">
           <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
             📱 Registered Contact Number
           </p>
           <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: 600; color: #374151;">
-            {{phone}}
+            +91 9876543210
           </p>
         </td>
       </tr>
-      {{/if}}
     </table>
   </div>
 
   <!-- Learning Programs Section -->
-  {{#if programs}}
   <div style="border: 1px solid #EAE3EC; border-radius: 16px; padding: 0 24px; margin-bottom: 32px; background-color: #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
     <h3 style="margin: 0; padding: 18px 0 14px 0; border-bottom: 1px solid #F3F4F6; font-family: 'Poppins', 'Inter', sans-serif; font-size: 15px; font-weight: 700; color: #111827; letter-spacing: -0.2px;">
       🎓 Selected Learning Program
     </h3>
     <table style="width: 100%; border-collapse: collapse;">
-      {{#each programs}}
       <tr>
         <td style="padding: 16px 0; border-bottom: 1px solid #F8F9FA; width: 76px; vertical-align: middle;">
-          <img src="{{#if this.thumbnailUrl}}{{this.thumbnailUrl}}{{else}}https://api.infano.care/uploads/assets/Page-1.png{{/if}}" alt="{{this.title}}" width="64" height="64" border="0" align="top"
+          <img src="https://api-dev.infano.care/uploads/programs/ParentsImg1-od.png" alt="The Unfiltered Journey" width="64" height="64" border="0" align="top"
             style="width: 64px; height: 64px; max-width: 64px; min-width: 64px; object-fit: cover; border-radius: 12px; border: 1px solid #EAE3EC; display: block; background-color: #F8F6FC;">
         </td>
         <td style="padding: 16px 12px; border-bottom: 1px solid #F8F9FA; vertical-align: middle;">
           <p style="margin: 0; font-weight: 700; color: #1F2937; font-size: 15px; line-height: 1.4; font-family: 'Poppins', sans-serif;">
-            {{this.title}}
+            The Unfiltered Journey
           </p>
-          {{#if this.duration}}
           <div style="margin-top: 6px;">
             <span style="display: inline-block; background-color: #F3E8FF; color: #7B1FA2; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px;">
-              ⏱ {{this.duration}}
+              ⏱ 4 Weeks
             </span>
           </div>
-          {{/if}}
         </td>
       </tr>
-      {{/each}}
     </table>
   </div>
-  {{/if}}
 
   <!-- What Happens Next Guide -->
   <div style="background-color: #FAF9FB; border: 1px solid #F3E8FF; border-radius: 16px; padding: 24px; margin-bottom: 32px;">
@@ -145,3 +374,20 @@
   </div>
 
 </div>
+
+      
+      <div class="footer">
+        <img src="https://api.infano.care/uploads/assets/infano-logo-for-light-bg.png" alt="Infano Care Logo" style="height: 24px; margin-bottom: 12px; opacity: 0.6; display: inline-block;">
+        <p style="margin: 0 0 6px 0; font-weight: 600; color: #4B5563;">Infano.Care</p>
+        <p style="margin: 0 0 15px 0; font-size: 12px; color: #9CA3AF;">Empowering adolescent girls, one family at a time.</p>
+        <p style="margin: 0; font-size: 12px;">
+          <a href="https://infano.care/about">About Us</a> &nbsp;&bull;&nbsp; 
+          <a href="https://infano.care/contact">Contact</a> &nbsp;&bull;&nbsp; 
+          <a href="https://infano.care/legal#privacy">Privacy Policy</a>
+        </p>
+        <p style="margin: 15px 0 0 0; font-size: 11px; color: #9CA3AF;">&copy; 2026 Infano Care. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
