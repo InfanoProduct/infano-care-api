@@ -738,11 +738,30 @@ export class ProgramsService {
           slot_date: data.slotDate,
           slot_time: data.slotTime,
           comment: data.comment || data.confidence || "",
-          programs: programsList.map(p => {
+          programs: await Promise.all(programsList.map(async p => {
             let imgUrl = p.thumbnailUrl || "";
             if (imgUrl && !imgUrl.startsWith("http")) {
               const baseUrl = process.env.APP_URL || process.env.IMAGE_BASE_URL || "https://api.infano.care";
               imgUrl = `${baseUrl.replace(/\/$/, '')}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`;
+            }
+            if (imgUrl.includes("api-dev.infano.care")) {
+              try {
+                const res = await fetch(imgUrl, { method: "HEAD" });
+                if (!res.ok) {
+                  const altUrl = imgUrl.replace("api-dev.infano.care", "api.infano.care");
+                  const res2 = await fetch(altUrl, { method: "HEAD" });
+                  if (res2.ok) imgUrl = altUrl;
+                }
+              } catch (e) {}
+            } else if (imgUrl.includes("api.infano.care")) {
+              try {
+                const res = await fetch(imgUrl, { method: "HEAD" });
+                if (!res.ok) {
+                  const altUrl = imgUrl.replace("api.infano.care", "api-dev.infano.care");
+                  const res2 = await fetch(altUrl, { method: "HEAD" });
+                  if (res2.ok) imgUrl = altUrl;
+                }
+              } catch (e) {}
             }
             if (!imgUrl) {
               imgUrl = "https://api.infano.care/uploads/assets/Page-1.png";
@@ -752,7 +771,7 @@ export class ProgramsService {
               duration: p.duration,
               thumbnailUrl: imgUrl
             };
-          })
+          }))
         });
       } catch (emailErr) {
         console.error("Failed to send demo booking email confirmation:", emailErr);
