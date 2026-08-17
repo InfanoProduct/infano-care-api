@@ -1,0 +1,1 @@
+-- Dummy placeholder migration for already-applied remote migration
