@@ -829,7 +829,7 @@ export class ParentService {
     const validUserIds = [userId];
     if (link && link.teenId) validUserIds.push(link.teenId);
 
-    if (!validUserIds.includes(session.userId)) {
+    if (!session.userId || !validUserIds.includes(session.userId)) {
       throw new Error("Unauthorized to cancel this session");
     }
 
@@ -852,6 +852,10 @@ export class ParentService {
   static async rescheduleExpertSession(userId: string, sessionId: string, newScheduledAt: Date) {
     const session = await prisma.expertSessionSchedule.findUnique({ where: { id: sessionId } });
     if (!session) throw new Error("Session not found");
+
+    if (!session.userId) {
+      throw new Error("Cannot reschedule batch session individually");
+    }
 
     const link = await prisma.parentLink.findFirst({
       where: {
@@ -888,30 +892,32 @@ export class ParentService {
       const expertName = expert?.profile?.displayName || expert?.username || "Expert";
 
       // Fetch user details
-      const targetUser = await prisma.user.findUnique({
+      const targetUser = session.userId ? await prisma.user.findUnique({
         where: { id: session.userId },
         include: { profile: true }
-      });
+      }) : null;
       const userName = targetUser?.profile?.displayName || targetUser?.username || "User";
 
       // Formatted date-time
       const formattedDate = new Date(newScheduledAt).toLocaleString();
 
-      // 1. Notify User/Teen
       const userTitle = "Expert Session Rescheduled";
       const userBody = `Your session with ${expertName} has been rescheduled to ${formattedDate}.`;
       const deepLink = `infano://expert/chat/${sessionId}`;
 
-      await prisma.notificationHistory.create({
-        data: {
-          userId: session.userId,
-          type: "sessionRescheduled",
-          title: userTitle,
-          body: userBody,
-          deepLink,
-          sentAt: new Date()
-        }
-      });
+      // 1. Notify User/Teen
+      if (session.userId) {
+        await prisma.notificationHistory.create({
+          data: {
+            userId: session.userId,
+            type: "sessionRescheduled",
+            title: userTitle,
+            body: userBody,
+            deepLink,
+            sentAt: new Date()
+          }
+        });
+      }
 
       if (targetUser?.fcmToken) {
         try {
@@ -1152,13 +1158,15 @@ export class ParentService {
         let alertBody = "";
         if (session.userId === userId) {
           alertBody = `reminder: expert session for program '${programTitle}' starts in ${hoursLeft} hours.`;
-        } else {
+        } else if (session.userId) {
           const targetUser = await prisma.user.findUnique({
             where: { id: session.userId },
             include: { profile: true }
           });
           const targetUserName = targetUser?.profile?.displayName || targetUser?.username || "your family member";
           alertBody = `reminder: expert session for ${targetUserName} of program '${programTitle}' starts in ${hoursLeft} hours.`;
+        } else {
+          alertBody = `reminder: expert session for program '${programTitle}' starts in ${hoursLeft} hours.`;
         }
         
         const existing = await prisma.notificationHistory.findFirst({

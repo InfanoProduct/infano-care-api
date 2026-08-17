@@ -376,6 +376,16 @@ export class ProgramsService {
       },
       include: {
         program: true,
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            maxCapacity: true
+          }
+        },
         user: {
           select: {
             id: true,
@@ -393,15 +403,22 @@ export class ProgramsService {
       orderBy: { createdAt: "desc" }
     });
 
+    const batchIds = enrollments.map(e => e.batchId).filter((id): id is string => Boolean(id));
+
     const allSessions = await prisma.expertSessionSchedule.findMany({
       where: {
-        userId: { in: uniqueIds },
+        OR: [
+          { userId: { in: uniqueIds } },
+          ...(batchIds.length > 0 ? [{ batchId: { in: batchIds } }] : [])
+        ],
         status: { in: ["SCHEDULED", "COMPLETED"] }
       }
     });
 
     return enrollments.map(enr => {
-      const programSessions = allSessions.filter(s => s.programId === enr.programId);
+      const programSessions = allSessions.filter(s =>
+        s.programId === enr.programId && (s.userId === enr.userId || (enr.batchId && s.batchId === enr.batchId))
+      );
       return {
         ...enr,
         program: {
@@ -505,6 +522,14 @@ export class ProgramsService {
             title: true
           }
         },
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            maxCapacity: true
+          }
+        },
         user: {
           select: {
             role: true,
@@ -536,7 +561,7 @@ export class ProgramsService {
   }
 
   static async adminCreateEnrollment(data: any) {
-    const { studentName, phone, email, role, programId, pricePaid } = data;
+    const { studentName, phone, email, role, programId, batchId, pricePaid } = data;
 
     if (!studentName || !phone || !programId) {
       throw new AppError("Missing required fields: studentName, phone, programId", 400);
@@ -548,6 +573,16 @@ export class ProgramsService {
     });
     if (!program) {
       throw new AppError("Program not found", 404);
+    }
+
+    // Optional batch validation
+    if (batchId) {
+      const batch = await prisma.programBatch.findUnique({
+        where: { id: batchId }
+      });
+      if (!batch || batch.programId !== programId) {
+        throw new AppError("Selected batch does not belong to this program", 400);
+      }
     }
 
     // Normalize phone
@@ -610,6 +645,7 @@ export class ProgramsService {
         data: {
           userId: user.id,
           programId,
+          batchId: batchId || null,
           pricePaid: finalPrice,
           status: "ACTIVE",
           guestName: studentName,
@@ -619,6 +655,12 @@ export class ProgramsService {
           program: {
             select: {
               title: true
+            }
+          },
+          batch: {
+            select: {
+              id: true,
+              name: true
             }
           },
           user: {

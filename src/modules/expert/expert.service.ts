@@ -69,6 +69,9 @@ export class ExpertService {
         program: {
           select: { id: true, title: true, consultations: true, curriculum: true }
         },
+        batch: {
+          select: { id: true, name: true, status: true, maxCapacity: true }
+        },
         user: {
           select: { id: true, profile: { select: { displayName: true } }, username: true }
         }
@@ -79,11 +82,14 @@ export class ExpertService {
       throw new Error("Enrollment not found");
     }
 
-    // Fetch all expert sessions for this specific user and program
+    // Fetch all expert sessions for this specific user or batch and program
     const sessions = await prisma.expertSessionSchedule.findMany({
       where: {
-        userId: enrollment.userId,
-        programId: enrollment.programId
+        programId: enrollment.programId,
+        OR: [
+          { userId: enrollment.userId },
+          ...(enrollment.batchId ? [{ batchId: enrollment.batchId }] : [])
+        ]
       },
       orderBy: { sessionNumber: "asc" },
       include: {
@@ -129,14 +135,24 @@ export class ExpertService {
     });
   }
 
-  static async scheduleSession(expertId: string, data: { userId: string, programId: string, sessionNumber: number, meetLink: string, scheduledAt: string }) {
+  static async scheduleSession(expertId: string, data: { userId?: string, batchId?: string, programId: string, sessionNumber: number, meetLink: string, scheduledAt: string }) {
+    if (!data.userId && !data.batchId) {
+      throw new Error("Either userId or batchId must be provided to schedule a session");
+    }
+
+    const whereClause: any = {
+      programId: data.programId,
+      sessionNumber: data.sessionNumber
+    };
+    if (data.batchId) {
+      whereClause.batchId = data.batchId;
+    } else {
+      whereClause.userId = data.userId;
+    }
+
     // Check if this session number is already scheduled
     const existing = await prisma.expertSessionSchedule.findFirst({
-      where: {
-        userId: data.userId,
-        programId: data.programId,
-        sessionNumber: data.sessionNumber
-      }
+      where: whereClause
     });
 
     if (existing) {
@@ -156,7 +172,8 @@ export class ExpertService {
 
     const created = await prisma.expertSessionSchedule.create({
       data: {
-        userId: data.userId,
+        userId: data.userId || null,
+        batchId: data.batchId || null,
         expertId,
         programId: data.programId,
         sessionNumber: data.sessionNumber,
@@ -422,7 +439,7 @@ export async function notifyProgramSessionEvent(sessionId: string, eventType: "s
       }
     });
 
-    if (!session) return;
+    if (!session || !session.userId || !session.user) return;
 
     const expertName = session.expert.profile?.displayName || session.expert.username || "Expert";
     const userName = session.user.profile?.displayName || session.user.username || "User";

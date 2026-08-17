@@ -56,6 +56,8 @@ export function initParentJobs() {
       });
 
       for (const session of sessions) {
+        if (!session.userId || !session.user) continue;
+
         // 1. Notify user if not already notified
         const userAlreadyNotified = await prisma.notificationHistory.findFirst({
           where: {

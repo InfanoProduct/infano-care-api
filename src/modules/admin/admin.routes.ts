@@ -5,6 +5,7 @@ import { requireAdmin } from "../../common/middleware/requireAdmin.js";
 import { upload } from "../../common/middleware/upload.js";
 import { TrackerContentController } from "../tracker/tracker_content.controller.js";
 import { ProgramsController } from "../programs/programs.controller.js";
+import { BatchController } from "../programs/batch.controller.js";
 import { requireRole } from "../school/requireRole.middleware.js";
 
 const router = Router();
@@ -109,6 +110,14 @@ router.get("/programs", ProgramsController.adminList);
 router.post("/programs", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminCreate);
 router.patch("/programs/:id", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminUpdate);
 router.delete("/programs/:id", requireRole(["ADMIN", "OPS_MANAGER"]), ProgramsController.adminDelete);
+
+// Learning Programs Batches Management
+router.get("/programs/batches/all", BatchController.listAll);
+router.get("/programs/:programId/batches", BatchController.listByProgram);
+router.get("/programs/batches/:id", BatchController.getById);
+router.post("/programs/:programId/batches", requireRole(["ADMIN", "OPS_MANAGER"]), BatchController.create);
+router.patch("/programs/batches/:id", requireRole(["ADMIN", "OPS_MANAGER"]), BatchController.update);
+router.delete("/programs/batches/:id", requireRole(["ADMIN", "OPS_MANAGER"]), BatchController.delete);
 
 // Learning Programs Enrollments
 router.get("/programs/check-user", ProgramsController.checkUserByPhone);
