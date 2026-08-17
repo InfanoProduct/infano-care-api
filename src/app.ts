@@ -32,6 +32,7 @@ import teenRouter from "./modules/teen/teen.routes.js";
 import schoolRoutes from "./modules/school/school.routes.js";
 import journalRoutes from "./modules/journal/journal.routes.js";
 import lmsRoutes from "./modules/lms/lms.routes.js";
+import creativeJourneyRoutes from "./modules/creative-journey/creative-journey.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -70,6 +71,7 @@ app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/tracker", trackerRoutes);
 app.use("/api/learning", learningRoutes);
+app.use("/api/creative-journey", creativeJourneyRoutes);
 app.use("/api/quest", questRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/expert", expertRoutes);
