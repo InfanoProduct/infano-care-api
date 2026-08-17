@@ -10,14 +10,32 @@ import { setupPeerLineSocket } from "./modules/peerline/peerline.socket.js";
 import { setupEventsSocket } from "./modules/events/events.socket.js";
 import { setupFriendsSocket } from "./modules/friends/friends.socket.js";
 
-async function bootstrap() {
+const MAX_DB_RETRIES = 10;
+const BASE_RETRY_DELAY_MS = 2000; // 2 seconds, doubles each attempt, capped at 30s
+
+async function connectWithRetry(attempt = 1): Promise<void> {
   try {
-    // Test database connection
     await prisma.$connect();
     const dbUrl = new URL(env.DATABASE_URL);
     logger.info(
       `Database connection established: ${dbUrl.hostname}${dbUrl.port ? ":" + dbUrl.port : ""}${dbUrl.pathname}`,
     );
+  } catch (error) {
+    if (attempt >= MAX_DB_RETRIES) {
+      logger.error({ err: error }, `Database connection failed after ${MAX_DB_RETRIES} attempts. Giving up.`);
+      process.exit(1);
+    }
+    const delayMs = Math.min(BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1), 30_000);
+    logger.warn(`Database unreachable (attempt ${attempt}/${MAX_DB_RETRIES}). Retrying in ${delayMs / 1000}s...`);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return connectWithRetry(attempt + 1);
+  }
+}
+
+async function bootstrap() {
+  try {
+    // Test database connection with retry
+    await connectWithRetry();
 
     // Initialize background jobs
     initTrackerJobs();
@@ -55,7 +73,6 @@ async function bootstrap() {
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
     console.log("[HEARTBEAT] Server bootstrap completed successfully.");
-    // Force restart
   } catch (error) {
     logger.error({ err: error }, "Failed to start server:");
     process.exit(1);

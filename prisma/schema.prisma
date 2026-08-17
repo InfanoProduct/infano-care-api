@@ -1869,7 +1869,7 @@ model LmsProgress {
 }
 
 model LmsChapterLike {
-  id        String   @id
+  id        String   @id @default(uuid())
   chapterId String
   userId    String
   createdAt DateTime @default(now())
@@ -1880,7 +1880,7 @@ model LmsChapterLike {
 }
 
 model LmsComment {
-  id             String   @id
+  id             String   @id @default(uuid())
   chapterId      String
   authorId       String
   authorName     String
@@ -1889,11 +1889,12 @@ model LmsComment {
   likes          Int      @default(0)
   likedUsers     String[] @default([])
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   User           User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([chapterId])
 }
+
 
 enum MessageType {
   TEXT

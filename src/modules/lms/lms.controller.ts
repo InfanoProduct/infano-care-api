@@ -32,6 +32,22 @@ export class LmsController {
     }
   }
 
+  static async getAdminEnrollments(req: Request, res: Response) {
+    try {
+      const enrollments = await prisma.lmsEnrollment.findMany({
+        include: {
+          user: true,
+          course: true,
+        },
+        orderBy: { createdAt: "desc" }
+      });
+      res.json(enrollments);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch enrollments" });
+    }
+  }
+
   static async addModule(req: Request, res: Response) {
     try {
       const courseId = req.params.courseId as string;
@@ -185,8 +201,8 @@ export class LmsController {
     try {
       const userId = ((req as any).user?.id || (req as any).userId) as string;
       if (!userId) {
-         res.status(401).json({ error: "Unauthorized" });
-         return;
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
 
       const enrollments = await prisma.lmsEnrollment.findMany({
@@ -213,8 +229,8 @@ export class LmsController {
         },
       });
       if (!course) {
-         res.status(404).json({ error: "Course not found" });
-         return;
+        res.status(404).json({ error: "Course not found" });
+        return;
       }
       res.json(course);
     } catch (error) {
@@ -228,8 +244,8 @@ export class LmsController {
       const id = req.params.id as string;
       const userId = ((req as any).user?.id || (req as any).userId) as string;
       if (!userId) {
-         res.status(401).json({ error: "Unauthorized" });
-         return;
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
 
       const course = await prisma.lmsCourse.findUnique({ where: { id } });
@@ -272,15 +288,15 @@ export class LmsController {
       }
 
       let enrollment = null;
-      
+
       if (existing) {
-         enrollment = await prisma.lmsEnrollment.update({
-           where: { id: existing.id },
-           data: {
-             status: finalStatus,
-             razorpayOrderId,
-           }
-         });
+        enrollment = await prisma.lmsEnrollment.update({
+          where: { id: existing.id },
+          data: {
+            status: finalStatus,
+            razorpayOrderId,
+          }
+        });
       } else {
         enrollment = await prisma.lmsEnrollment.create({
           data: {
@@ -305,10 +321,10 @@ export class LmsController {
       const id = req.params.id as string;
       const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
       const userId = ((req as any).user?.id || (req as any).userId) as string;
-      
+
       if (!userId) {
-         res.status(401).json({ error: "Unauthorized" });
-         return;
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
 
       if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
@@ -352,11 +368,206 @@ export class LmsController {
     }
   }
 
+  static async publicCheckEnrollment(req: Request, res: Response) {
+    try {
+      const { email, phone, courseId } = req.body;
+      if (!email && !phone) {
+        res.status(400).json({ error: "Email or phone number is required" });
+        return;
+      }
+
+      const conditions: any[] = [];
+      if (email) conditions.push({ email: email.trim().toLowerCase() });
+      if (phone) conditions.push({ phone: phone.trim() });
+
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: conditions
+        }
+      });
+
+      if (!user) {
+        res.json({ enrolled: false, exists: false });
+        return;
+      }
+
+      const enrollment = await prisma.lmsEnrollment.findUnique({
+        where: {
+          userId_courseId: {
+            userId: user.id,
+            courseId
+          }
+        }
+      });
+
+      if (enrollment && enrollment.status === "ACTIVE") {
+        res.json({
+          enrolled: true,
+          exists: true,
+          message: "An account with this email/phone is already enrolled in this course. Please login to start learning."
+        });
+      } else {
+        res.json({ enrolled: false, exists: true });
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to check enrollment" });
+    }
+  }
+
+  static async publicPurchaseCourse(req: Request, res: Response) {
+    try {
+      const { name, email, phone, courseId } = req.body;
+      if (!name || !email || !phone || !courseId) {
+        res.status(400).json({ error: "Name, email, phone, and courseId are required" });
+        return;
+      }
+
+      const finalPhone = phone.trim();
+
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: email.trim().toLowerCase() },
+            { phone: finalPhone }
+          ]
+        }
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            phone: finalPhone,
+            email: email.trim().toLowerCase(),
+            accountStatus: "PENDING_SETUP",
+            onboardingStep: 1,
+            profile: {
+              create: {
+                displayName: name.trim(),
+                totalPoints: 0,
+              }
+            }
+          }
+        });
+      }
+
+      const course = await prisma.lmsCourse.findUnique({ where: { id: courseId } });
+      if (!course) {
+        res.status(404).json({ error: "Course not found" });
+        return;
+      }
+
+      const existing = await prisma.lmsEnrollment.findUnique({
+        where: { userId_courseId: { userId: user.id, courseId } }
+      });
+
+      if (existing && existing.status === "ACTIVE") {
+        res.status(400).json({ error: "Already enrolled in this course. Please login." });
+        return;
+      }
+
+      let razorpayOrderId = null;
+      let finalStatus = course.isFree ? "ACTIVE" : "PENDING";
+      let rzpOrderDetails = null;
+
+      if (!course.isFree) {
+        const razorpay = new Razorpay({
+          key_id: env.RAZORPAY_KEY_ID || "",
+          key_secret: env.RAZORPAY_KEY_SECRET || "",
+        });
+
+        const options = {
+          amount: Math.round(course.price * 100),
+          currency: "INR",
+          receipt: `rcpt_lms_pub_${Date.now()}`,
+        };
+        const rpOrder = await razorpay.orders.create(options);
+        razorpayOrderId = rpOrder.id;
+        rzpOrderDetails = {
+          orderId: razorpayOrderId,
+          keyId: env.RAZORPAY_KEY_ID || "",
+          amount: course.price
+        };
+      }
+
+      let enrollment = null;
+      if (existing) {
+        enrollment = await prisma.lmsEnrollment.update({
+          where: { id: existing.id },
+          data: {
+            status: finalStatus,
+            razorpayOrderId,
+          }
+        });
+      } else {
+        enrollment = await prisma.lmsEnrollment.create({
+          data: {
+            userId: user.id,
+            courseId,
+            pricePaid: course.price,
+            status: finalStatus,
+            razorpayOrderId,
+          },
+        });
+      }
+
+      res.status(201).json({ enrollment, message: "Purchase initiated", razorpay: rzpOrderDetails });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to initiate purchase" });
+    }
+  }
+
+  static async publicVerifyPurchase(req: Request, res: Response) {
+    try {
+      const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        res.status(400).json({ error: "Missing Razorpay verification data" });
+        return;
+      }
+
+      const body = razorpayOrderId + "|" + razorpayPaymentId;
+      const expectedSignature = crypto
+        .createHmac("sha256", env.RAZORPAY_KEY_SECRET || "")
+        .update(body.toString())
+        .digest("hex");
+
+      if (expectedSignature !== razorpaySignature) {
+        res.status(400).json({ error: "Invalid payment signature" });
+        return;
+      }
+
+      const enrollment = await prisma.lmsEnrollment.findFirst({
+        where: { razorpayOrderId }
+      });
+
+      if (!enrollment) {
+        res.status(404).json({ error: "Enrollment not found for this order" });
+        return;
+      }
+
+      await prisma.lmsEnrollment.update({
+        where: { id: enrollment.id },
+        data: {
+          status: "ACTIVE",
+          razorpayPaymentId
+        }
+      });
+
+      res.json({ success: true, message: "Payment verified and course activated" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to verify purchase" });
+    }
+  }
+
+
   static async getCourseProgress(req: Request, res: Response) {
     try {
       const courseId = req.params.courseId as string;
       const userId = ((req as any).user?.id || (req as any).userId) as string;
-      
+
       if (!userId) {
         res.status(401).json({ error: "Unauthorized" });
         return;
@@ -406,9 +617,9 @@ export class LmsController {
           enrollmentId: enrollment.id,
           chapterId,
           isCompleted: true,
-          score: score ? Number(score) : null,
+          score: score !== undefined && score !== null ? Number(score) : null,
           answers: answers || null,
-          watchTime: watchTime ? Number(watchTime) : null,
+          watchTime: watchTime !== undefined && watchTime !== null ? Number(watchTime) : null,
           completedAt: new Date()
         },
         update: {
@@ -425,6 +636,196 @@ export class LmsController {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Failed to mark chapter complete" });
+    }
+  }
+
+  static async getChapterComments(req: Request, res: Response) {
+    try {
+      const chapterId = req.params.chapterId as string;
+      const userId = ((req as any).user?.id || (req as any).userId) as string;
+
+      const comments = await prisma.lmsComment.findMany({
+        where: { chapterId },
+        orderBy: { createdAt: "desc" }
+      });
+
+      const formattedComments = comments.map(c => ({
+        id: c.id,
+        chapterId: c.chapterId,
+        authorName: c.authorName,
+        authorInitials: c.authorInitials,
+        text: c.text,
+        timestamp: c.createdAt,
+        likes: c.likes,
+        liked: userId ? c.likedUsers.includes(userId) : false
+      }));
+
+      res.json(formattedComments);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  }
+
+  static async postChapterComment(req: Request, res: Response) {
+    try {
+      const chapterId = req.params.chapterId as string;
+      const userId = ((req as any).user?.id || (req as any).userId) as string;
+      const { text } = req.body;
+
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      if (!text || !text.trim()) {
+        res.status(400).json({ error: "Comment text is required" });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { profile: true }
+      });
+
+      const authorName = (user as any)?.profile?.displayName || (user as any)?.username || "User";
+      const authorInitials = authorName.slice(0, 2).toUpperCase();
+
+      const comment = await prisma.lmsComment.create({
+        data: {
+          chapterId,
+          authorId: userId,
+          authorName,
+          authorInitials,
+          text: text.trim(),
+        }
+      });
+
+      res.status(201).json({
+        id: comment.id,
+        chapterId: comment.chapterId,
+        authorName: comment.authorName,
+        authorInitials: comment.authorInitials,
+        text: comment.text,
+        timestamp: comment.createdAt,
+        likes: 0,
+        liked: false
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to post comment" });
+    }
+  }
+
+  static async toggleCommentLike(req: Request, res: Response) {
+    try {
+      const commentId = req.params.commentId as string;
+      const userId = ((req as any).user?.id || (req as any).userId) as string;
+
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const comment = await prisma.lmsComment.findUnique({
+        where: { id: commentId }
+      });
+
+      if (!comment) {
+        res.status(404).json({ error: "Comment not found" });
+        return;
+      }
+
+      const likedUsers = comment.likedUsers || [];
+      const index = likedUsers.indexOf(userId);
+      let updatedLikedUsers = [...likedUsers];
+      let likes = comment.likes;
+
+      if (index >= 0) {
+        updatedLikedUsers.splice(index, 1);
+        likes = Math.max(0, likes - 1);
+      } else {
+        updatedLikedUsers.push(userId);
+        likes += 1;
+      }
+
+      const updated = await prisma.lmsComment.update({
+        where: { id: commentId },
+        data: {
+          likedUsers: updatedLikedUsers,
+          likes
+        }
+      });
+
+      res.json({
+        id: updated.id,
+        likes: updated.likes,
+        liked: updatedLikedUsers.includes(userId)
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to toggle like" });
+    }
+  }
+
+  static async getChapterLikes(req: Request, res: Response) {
+    try {
+      const chapterId = req.params.chapterId as string;
+      const userId = ((req as any).user?.id || (req as any).userId) as string;
+
+      const realLikesCount = await prisma.lmsChapterLike.count({
+        where: { chapterId }
+      });
+
+      let liked = false;
+      if (userId) {
+        const like = await prisma.lmsChapterLike.findUnique({
+          where: { chapterId_userId: { chapterId, userId } }
+        });
+        liked = !!like;
+      }
+
+      res.json({ likesCount: 128 + realLikesCount, liked });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch chapter likes" });
+    }
+  }
+
+  static async toggleChapterLike(req: Request, res: Response) {
+    try {
+      const chapterId = req.params.chapterId as string;
+      const userId = ((req as any).user?.id || (req as any).userId) as string;
+
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const existingLike = await prisma.lmsChapterLike.findUnique({
+        where: { chapterId_userId: { chapterId, userId } }
+      });
+
+      let liked = false;
+      if (existingLike) {
+        await prisma.lmsChapterLike.delete({
+          where: { id: existingLike.id }
+        });
+      } else {
+        await prisma.lmsChapterLike.create({
+          data: { chapterId, userId }
+        });
+        liked = true;
+      }
+
+      const realLikesCount = await prisma.lmsChapterLike.count({
+        where: { chapterId }
+      });
+
+      res.json({ likesCount: 128 + realLikesCount, liked });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to toggle chapter like" });
     }
   }
 }
