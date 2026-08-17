@@ -611,20 +611,50 @@ export class LmsController {
         return;
       }
 
+      const chapter = await prisma.lmsChapter.findUnique({
+        where: { id: chapterId },
+        include: { assessment: true }
+      });
+
+      if (!chapter) {
+        res.status(404).json({ error: "Chapter not found" });
+        return;
+      }
+
+      let calculatedScore = score !== undefined && score !== null ? Number(score) : null;
+
+      if (chapter.type === "ASSESSMENT" && chapter.assessment?.questions) {
+        const questions = chapter.assessment.questions as any[];
+        if (Array.isArray(questions) && questions.length > 0) {
+          if (!Array.isArray(answers) || answers.length < questions.length) {
+            res.status(400).json({ error: "All quiz questions must be answered to complete this assessment." });
+            return;
+          }
+
+          let correctCount = 0;
+          for (let i = 0; i < questions.length; i++) {
+            if (Number(answers[i]) === Number(questions[i]?.correctAnswerIndex)) {
+              correctCount++;
+            }
+          }
+          calculatedScore = correctCount;
+        }
+      }
+
       const progress = await prisma.lmsProgress.upsert({
         where: { enrollmentId_chapterId: { enrollmentId: enrollment.id, chapterId } },
         create: {
           enrollmentId: enrollment.id,
           chapterId,
           isCompleted: true,
-          score: score !== undefined && score !== null ? Number(score) : null,
+          score: calculatedScore,
           answers: answers || null,
           watchTime: watchTime !== undefined && watchTime !== null ? Number(watchTime) : null,
           completedAt: new Date()
         },
         update: {
           isCompleted: true,
-          score: score !== undefined ? Number(score) : undefined,
+          score: calculatedScore !== null ? calculatedScore : undefined,
           answers: answers !== undefined ? answers : undefined,
           watchTime: watchTime !== undefined ? Number(watchTime) : undefined,
           completedAt: new Date()
