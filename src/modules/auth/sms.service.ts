@@ -128,22 +128,14 @@ class TwoFactorSmsProvider implements SmsProvider {
   }
 
   async send(phone: string, otp: string, appHash?: string): Promise<void> {
-    // 2Factor.in expects the phone number with prefix (e.g. 919876543210), usually without the '+' for the SMS URL
-    const mobile = phone.replace("+", "");
-    const encodedPhone = encodeURIComponent(mobile);
+    // 2Factor.in expects the phone number with prefix (e.g. +91), encoded for URL
+    const encodedPhone = encodeURIComponent(phone);
     
     // URL format: https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}/{template}
-    // DLT Approved Template: OTP-LOGIN
-    const templateName = process.env.TWOFACTOR_OTP_TEMPLATE || "OTP-LOGIN";
-    let url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/${templateName}`;
+    const templateName = process.env.TWOFACTOR_OTP_TEMPLATE || "InfanoOTPMessage";
+    const url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/${templateName}`;
     
-    if (appHash) {
-      // Pass the hash as an extra variable if the DLT template supports it
-      url += `?var1=${encodeURIComponent(appHash)}`;
-      logger.info({ phone: encodedPhone, appHash, templateName }, `[SMS 2FACTOR] Sending OTP via 2Factor.in (${templateName})...`);
-    } else {
-      logger.info({ phone: encodedPhone, templateName }, `[SMS 2FACTOR] Sending OTP via 2Factor.in (${templateName})...`);
-    }
+    logger.info({ phone: encodedPhone, templateName }, `[SMS 2FACTOR] Sending OTP via 2Factor.in (${templateName})...`);
     
     try {
       const res = await fetch(url);
