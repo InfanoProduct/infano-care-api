@@ -133,16 +133,16 @@ class TwoFactorSmsProvider implements SmsProvider {
     const encodedPhone = encodeURIComponent(mobile);
     
     // URL format: https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}/{template}
-    // Note: To include the hash and <#> prefix, the dashboard template 'InfanoOTPMessage' must be updated.
-    // Recommended Template: "<#> Your OTP is {otp}. {hash}"
-    let url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/InfanoOTPMessage`;
+    // DLT Approved Template: OTP-LOGIN
+    const templateName = process.env.TWOFACTOR_OTP_TEMPLATE || "OTP-LOGIN";
+    let url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/${templateName}`;
     
     if (appHash) {
-      // Pass the hash as an extra variable (template dependent)
+      // Pass the hash as an extra variable if the DLT template supports it
       url += `?var1=${encodeURIComponent(appHash)}`;
-      logger.info({ phone: encodedPhone, appHash }, `[SMS 2FACTOR] Sending OTP with appHash (and expected <#> prefix in template) via 2Factor.in...`);
+      logger.info({ phone: encodedPhone, appHash, templateName }, `[SMS 2FACTOR] Sending OTP via 2Factor.in (${templateName})...`);
     } else {
-      logger.info({ phone: encodedPhone }, `[SMS 2FACTOR] Sending OTP via 2Factor.in...`);
+      logger.info({ phone: encodedPhone, templateName }, `[SMS 2FACTOR] Sending OTP via 2Factor.in (${templateName})...`);
     }
     
     try {
