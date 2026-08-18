@@ -107,11 +107,11 @@ export class ProgramsController {
 
   static async adminUpdateEnrollmentStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status } = req.body;
-      if (!status) {
-        return res.status(400).json({ message: "Status is required" });
+      const { status, batchId } = req.body;
+      if (status === undefined && batchId === undefined) {
+        return res.status(400).json({ message: "Status or batchId is required" });
       }
-      const enrollment = await ProgramsService.adminUpdateEnrollmentStatus(req.params.id as string, status);
+      const enrollment = await ProgramsService.adminUpdateEnrollment(req.params.id as string, { status, batchId });
       res.status(200).json(enrollment);
     } catch (error) {
       next(error);

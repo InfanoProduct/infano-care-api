@@ -519,6 +519,7 @@ export class ProgramsService {
       include: {
         program: {
           select: {
+            id: true,
             title: true
           }
         },
@@ -527,7 +528,18 @@ export class ProgramsService {
             id: true,
             name: true,
             status: true,
-            maxCapacity: true
+            maxCapacity: true,
+            expert: {
+              select: {
+                id: true,
+                username: true,
+                profile: {
+                  select: {
+                    displayName: true
+                  }
+                }
+              }
+            }
           }
         },
         user: {
@@ -549,14 +561,76 @@ export class ProgramsService {
     });
   }
 
-  static async adminUpdateEnrollmentStatus(id: string, status: string) {
+  static async adminUpdateEnrollment(id: string, data: { status?: string; batchId?: string | null }) {
     const existing = await prisma.programEnrollment.findUnique({ where: { id } });
     if (!existing) {
       throw new AppError("Enrollment record not found", 404);
     }
+
+    const updateData: any = {};
+    if (data.status !== undefined && data.status !== null) {
+      updateData.status = data.status;
+    }
+
+    if (data.batchId !== undefined) {
+      if (data.batchId && data.batchId !== "" && data.batchId !== "unassigned") {
+        const batch = await prisma.programBatch.findUnique({ where: { id: data.batchId } });
+        if (!batch) {
+          throw new AppError("Batch not found", 404);
+        }
+        if (batch.programId !== existing.programId) {
+          throw new AppError("Selected batch does not belong to this enrollment's program", 400);
+        }
+        updateData.batchId = data.batchId;
+      } else {
+        updateData.batchId = null;
+      }
+    }
+
     return prisma.programEnrollment.update({
       where: { id },
-      data: { status }
+      data: updateData,
+      include: {
+        program: {
+          select: {
+            id: true,
+            title: true
+          }
+        },
+        batch: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            maxCapacity: true,
+            expert: {
+              select: {
+                id: true,
+                username: true,
+                profile: {
+                  select: {
+                    displayName: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        user: {
+          select: {
+            role: true,
+            username: true,
+            phone: true,
+            parentEmail: true,
+            profile: {
+              select: {
+                displayName: true,
+                avatarUrl: true
+              }
+            }
+          }
+        }
+      }
     });
   }
 
