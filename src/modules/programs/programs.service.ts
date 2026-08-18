@@ -226,7 +226,12 @@ export class ProgramsService {
       ]
     };
 
-    return sessionsMap[uppercaseTitle] || [];
+    const foundKey = Object.keys(sessionsMap).find(k => uppercaseTitle.includes(k));
+    if (foundKey) {
+      return sessionsMap[foundKey];
+    }
+
+    return sessionsMap[uppercaseTitle] || sessionsMap['SPARK'] || [];
   }
 
   private static slugifyTitle(title: string): string {

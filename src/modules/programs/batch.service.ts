@@ -1,5 +1,6 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import { ProgramsService } from "./programs.service.js";
 
 export class BatchService {
   /**
@@ -180,7 +181,17 @@ export class BatchService {
       throw new AppError("Batch not found", 404);
     }
 
-    return batch;
+    const curriculum = (batch.program.curriculum && Array.isArray(batch.program.curriculum) && batch.program.curriculum.length > 0)
+      ? (batch.program.curriculum as any[])
+      : ProgramsService.getMockSessionsForProgram(batch.program.title);
+
+    return {
+      ...batch,
+      program: {
+        ...batch.program,
+        curriculum
+      }
+    };
   }
 
   /**
