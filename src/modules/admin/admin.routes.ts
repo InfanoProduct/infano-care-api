@@ -119,6 +119,11 @@ router.post("/programs/:programId/batches", requireRole(["ADMIN", "OPS_MANAGER"]
 router.patch("/programs/batches/:id", requireRole(["ADMIN", "OPS_MANAGER"]), BatchController.update);
 router.delete("/programs/batches/:id", requireRole(["ADMIN", "OPS_MANAGER"]), BatchController.delete);
 
+// Batch Sessions Management
+router.post("/programs/batches/:id/sessions", requireRole(["ADMIN", "OPS_MANAGER"]), BatchController.scheduleSession);
+router.patch("/programs/batches/:id/sessions/:sessionId", requireRole(["ADMIN", "OPS_MANAGER"]), BatchController.updateSession);
+router.delete("/programs/batches/:id/sessions/:sessionId", requireRole(["ADMIN", "OPS_MANAGER"]), BatchController.deleteSession);
+
 // Learning Programs Enrollments
 router.get("/programs/check-user", ProgramsController.checkUserByPhone);
 router.get("/programs/enrollments", ProgramsController.adminListEnrollments);

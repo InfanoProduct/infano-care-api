@@ -104,7 +104,13 @@ export class BatchService {
           select: {
             id: true,
             title: true,
-            curriculum: true
+            tagline: true,
+            description: true,
+            duration: true,
+            topics: true,
+            curriculum: true,
+            price: true,
+            isActive: true
           }
         },
         expert: {
@@ -112,10 +118,14 @@ export class BatchService {
             id: true,
             username: true,
             email: true,
+            phone: true,
             profile: {
               select: {
                 displayName: true,
-                avatarUrl: true
+                avatarUrl: true,
+                specialisation: true,
+                bio: true,
+                consultationPrice: true
               }
             }
           }
@@ -128,16 +138,34 @@ export class BatchService {
                 username: true,
                 email: true,
                 phone: true,
+                role: true,
+                parentEmail: true,
                 profile: {
                   select: {
-                    displayName: true
+                    displayName: true,
+                    avatarUrl: true
                   }
                 }
               }
             }
-          }
+          },
+          orderBy: { createdAt: "desc" }
         },
         expertSessions: {
+          include: {
+            expert: {
+              select: {
+                id: true,
+                username: true,
+                profile: {
+                  select: {
+                    displayName: true,
+                    avatarUrl: true
+                  }
+                }
+              }
+            }
+          },
           orderBy: { scheduledAt: "asc" }
         },
         _count: {
@@ -153,6 +181,105 @@ export class BatchService {
     }
 
     return batch;
+  }
+
+  /**
+   * Schedule a new live/curriculum session for this batch
+   */
+  static async scheduleBatchSession(batchId: string, data: {
+    scheduledAt: string;
+    sessionNumber?: number;
+    meetLink?: string;
+    expertId?: string;
+  }) {
+    const batch = await prisma.programBatch.findUnique({ where: { id: batchId } });
+    if (!batch) throw new AppError("Batch not found", 404);
+
+    const expertId = data.expertId || batch.expertId;
+    if (!expertId) {
+      throw new AppError("An expert mentor is required to schedule a session", 400);
+    }
+
+    const session = await prisma.expertSessionSchedule.create({
+      data: {
+        batchId,
+        programId: batch.programId,
+        expertId,
+        scheduledAt: new Date(data.scheduledAt),
+        sessionNumber: data.sessionNumber !== undefined ? Number(data.sessionNumber) : null,
+        meetLink: data.meetLink ? data.meetLink.trim() : null,
+        status: "SCHEDULED"
+      },
+      include: {
+        expert: {
+          select: {
+            id: true,
+            username: true,
+            profile: {
+              select: {
+                displayName: true,
+                avatarUrl: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return session;
+  }
+
+  /**
+   * Update a batch session's schedule, status, or meet link
+   */
+  static async updateBatchSession(batchId: string, sessionId: string, data: {
+    scheduledAt?: string;
+    meetLink?: string;
+    status?: string;
+    sessionNumber?: number;
+  }) {
+    const session = await prisma.expertSessionSchedule.findFirst({
+      where: { id: sessionId, batchId }
+    });
+    if (!session) throw new AppError("Session not found for this batch", 404);
+
+    const updateData: any = {};
+    if (data.scheduledAt) updateData.scheduledAt = new Date(data.scheduledAt);
+    if (data.meetLink !== undefined) updateData.meetLink = data.meetLink;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.sessionNumber !== undefined) updateData.sessionNumber = Number(data.sessionNumber);
+
+    return prisma.expertSessionSchedule.update({
+      where: { id: sessionId },
+      data: updateData,
+      include: {
+        expert: {
+          select: {
+            id: true,
+            username: true,
+            profile: {
+              select: {
+                displayName: true,
+                avatarUrl: true
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Delete a batch session
+   */
+  static async deleteBatchSession(batchId: string, sessionId: string) {
+    const session = await prisma.expertSessionSchedule.findFirst({
+      where: { id: sessionId, batchId }
+    });
+    if (!session) throw new AppError("Session not found for this batch", 404);
+
+    await prisma.expertSessionSchedule.delete({ where: { id: sessionId } });
+    return { success: true, message: "Batch session removed successfully" };
   }
 
   /**

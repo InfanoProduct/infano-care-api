@@ -78,4 +78,43 @@ export class BatchController {
       next(error);
     }
   }
+
+  /**
+   * Schedule a session for a batch (Admin)
+   */
+  static async scheduleSession(req: Request, res: Response, next: NextFunction) {
+    try {
+      const batchId = req.params.id as string;
+      const session = await BatchService.scheduleBatchSession(batchId, req.body);
+      res.status(201).json({ success: true, message: "Session scheduled successfully", data: session });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update a batch session (Admin)
+   */
+  static async updateSession(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id: batchId, sessionId } = req.params;
+      const session = await BatchService.updateBatchSession(batchId as string, sessionId as string, req.body);
+      res.status(200).json({ success: true, message: "Session updated successfully", data: session });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Delete a batch session (Admin)
+   */
+  static async deleteSession(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id: batchId, sessionId } = req.params;
+      const result = await BatchService.deleteBatchSession(batchId as string, sessionId as string);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
