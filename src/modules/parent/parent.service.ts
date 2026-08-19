@@ -205,7 +205,7 @@ export class ParentService {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
       // 1. Progress score (up to 30 points)
-      const progressCount = await prisma.userProgress.count({
+      const progressCount = await prisma.creativeNodeProgress.count({
         where: { userId: teenId }
       });
       const progressScore = Math.min(Math.round((progressCount / 10) * 30), 30);
