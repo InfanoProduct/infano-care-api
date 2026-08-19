@@ -45,7 +45,7 @@ export class ChatService {
     try {
       const [allPrograms, allJourneys] = await Promise.all([
         prisma.program.findMany({ where: { isActive: true }, select: { title: true, tagline: true, description: true, duration: true } }),
-        prisma.learningJourney.findMany({ where: { isActive: true }, select: { title: true, description: true } })
+        prisma.creativeJourney.findMany({ where: { isActive: true }, select: { title: true, description: true } })
       ]);
 
       ChatService.cachedPrograms = allPrograms;
@@ -332,13 +332,8 @@ SUGGESTING PROGRAMS & JOURNEYS:
             where: { userId, status: "ACTIVE", program: { isActive: true } },
             include: { program: true }
           }),
-          prisma.userProgress.findFirst({
-            where: {
-              userId: userId,
-              episode: {
-                journey: { slug: { not: "peerline-mentor-certification" } }
-              }
-            },
+          prisma.creativeNodeProgress.findFirst({
+            where: { userId: userId },
             orderBy: { updatedAt: "desc" },
             include: {
               episode: { include: { journey: true } }
@@ -359,13 +354,13 @@ SUGGESTING PROGRAMS & JOURNEYS:
         // Resolve own learning journey completion %
         if (userActiveProgress?.episode?.journey) {
           const journeyId = userActiveProgress.episode.journeyId;
-          const [totalEpisodes, completedEpisodes] = await Promise.all([
-            prisma.episode.count({ where: { journeyId } }),
-            prisma.userProgress.count({
-              where: { userId, episode: { journeyId }, completed: true }
+          const [totalEpisodes, completedCount] = await Promise.all([
+            prisma.creativeEpisode.count({ where: { journeyId } }),
+            prisma.creativeNodeProgress.count({
+              where: { userId, episode: { journeyId }, status: "COMPLETED" }
             })
           ]);
-          const percentComplete = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
+          const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
           userActiveJourney = {
             name: userActiveProgress.episode.journey.title,
             percentComplete
@@ -460,11 +455,8 @@ SUGGESTING PROGRAMS & JOURNEYS:
               const parentId = p.id;
 
               const [parentActiveProgress, parentNextSession, parentEnrollments] = await Promise.all([
-                prisma.userProgress.findFirst({
-                  where: {
-                    userId: parentId,
-                    episode: { journey: { slug: { not: 'peerline-mentor-certification' } } }
-                  },
+                prisma.creativeNodeProgress.findFirst({
+                  where: { userId: parentId },
                   orderBy: { updatedAt: 'desc' },
                   include: { episode: { include: { journey: true } } }
                 }),
@@ -478,11 +470,11 @@ SUGGESTING PROGRAMS & JOURNEYS:
               let activeJourney = null;
               if (parentActiveProgress?.episode?.journey) {
                 const journeyId = parentActiveProgress.episode.journeyId;
-                const [totalEpisodes, completedEpisodes] = await Promise.all([
-                  prisma.episode.count({ where: { journeyId } }),
-                  prisma.userProgress.count({ where: { userId: parentId, episode: { journeyId }, completed: true } })
+                const [totalEpisodes, completedCount] = await Promise.all([
+                  prisma.creativeEpisode.count({ where: { journeyId } }),
+                  prisma.creativeNodeProgress.count({ where: { userId: parentId, episode: { journeyId }, status: "COMPLETED" } })
                 ]);
-                const percentComplete = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
+                const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
                 activeJourney = { name: parentActiveProgress.episode.journey.title, percentComplete };
               }
 
@@ -538,13 +530,8 @@ SUGGESTING PROGRAMS & JOURNEYS:
             const teenId = link.teen.id;
 
             const [activeProgress, nextSession, recentLogs, teenEnrollments] = await Promise.all([
-              prisma.userProgress.findFirst({
-                where: {
-                  userId: teenId,
-                  episode: {
-                    journey: { slug: { not: "peerline-mentor-certification" } }
-                  }
-                },
+              prisma.creativeNodeProgress.findFirst({
+                where: { userId: teenId },
                 orderBy: { updatedAt: "desc" },
                 include: {
                   episode: { include: { journey: true } }
@@ -575,13 +562,13 @@ SUGGESTING PROGRAMS & JOURNEYS:
             let activeJourney = null;
             if (activeProgress?.episode?.journey) {
               const journeyId = activeProgress.episode.journeyId;
-              const [totalEpisodes, completedEpisodes] = await Promise.all([
-                prisma.episode.count({ where: { journeyId } }),
-                prisma.userProgress.count({
-                  where: { userId: teenId, episode: { journeyId }, completed: true }
+              const [totalEpisodes, completedCount] = await Promise.all([
+                prisma.creativeEpisode.count({ where: { journeyId } }),
+                prisma.creativeNodeProgress.count({
+                  where: { userId: teenId, episode: { journeyId }, status: "COMPLETED" }
                 })
               ]);
-              const percentComplete = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
+              const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
               activeJourney = {
                 name: activeProgress.episode.journey.title,
                 percentComplete

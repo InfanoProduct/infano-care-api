@@ -13,7 +13,7 @@ const BODY_TIMELINE_NODES = [
     position: "fixed_start",
     title: "Mira's Mystery Letter",
     estMinutes: 4,
-    xpReward: 20,
+    xpReward: 5,
     content: {
       pages: [
         {
@@ -87,7 +87,7 @@ const BODY_TIMELINE_NODES = [
     position: "random_pool",
     title: "What's in the Growth Box?",
     energyTag: "active",
-    xpReward: 15,
+    xpReward: 10,
     content: {
       flaps: [
         {
@@ -138,7 +138,7 @@ const BODY_TIMELINE_NODES = [
     position: "random_pool",
     title: "Timeline Trivia",
     energyTag: "reflective",
-    xpReward: 15,
+    xpReward: 10,
     passThreshold: 0.6,
     content: {
       questions: [
@@ -188,7 +188,7 @@ const BODY_TIMELINE_NODES = [
     position: "random_pool",
     title: "60 Seconds on Growth Spurts",
     energyTag: "reflective",
-    xpReward: 10,
+    xpReward: 5,
     content: {
       youtubeVideoId: "PLACEHOLDER_VIDEO_ID",
       thumbnailEmoji: "🎬",
@@ -209,7 +209,7 @@ const BODY_TIMELINE_NODES = [
     position: "random_pool",
     title: "Spot What's True",
     energyTag: "active",
-    xpReward: 10,
+    xpReward: 7,
     content: {
       instruction: "Tap ALL the icons that show a normal part of the Body Timeline.",
       icons: [
@@ -231,7 +231,7 @@ const BODY_TIMELINE_NODES = [
     position: "random_pool",
     title: "True or Myth?",
     energyTag: "reflective",
-    xpReward: 15,
+    xpReward: 8,
     content: {
       instruction: "Swipe RIGHT for TRUE → swipe LEFT for MYTH",
       cards: [
@@ -276,7 +276,7 @@ const BODY_TIMELINE_NODES = [
     position: "random_pool",
     title: "Build Your Own Timeline",
     energyTag: "active",
-    xpReward: 15,
+    xpReward: 8,
     content: {
       instruction: "Drag and drop the changes into the order you think they happen.",
       cards: [
@@ -298,7 +298,7 @@ const BODY_TIMELINE_NODES = [
     position: "random_pool",
     title: "Growth Detective",
     energyTag: "active",
-    xpReward: 10,
+    xpReward: 7,
     content: {
       instruction: "Tap the 5 differences you can spot between Riya at age 9 and age 13.",
       character: "Riya",
@@ -313,44 +313,47 @@ const BODY_TIMELINE_NODES = [
     },
   },
 
-  // ── NODE 9 — Ask Gigi ──────────────────────────────────────────────────────
+  // ── NODE 9 — Emoji Decoder Wheel ──────────────────────────────────────────
   {
-    nodeId: "bt_askGigi",
-    type: "anonymous_question_box",
+    nodeId: "bt_emoji_decoder",
+    type: "emoji_decoder",
     position: "random_pool",
-    title: "Ask Gigi",
-    energyTag: "reflective",
-    xpReward: 10,
+    title: "Timeline Decoder Wheel 🎭",
+    energyTag: "active",
+    xpReward: 8,
     content: {
-      prompt: "Got a question about your own timeline? Type it here — Gigi won't judge, and no one else sees it.",
-      placeholder: "What's on your mind? 💭",
-      privacyNote: "Your words are private. Only you (and a trusted parent/guardian) can see what you write here.",
-      keywordResponses: [
+      title: "Timeline Emotion Decoder 🎭",
+      instruction: "Spin and tap the emoji that best captures the feeling in each timeline scene!",
+      scenarios: [
         {
-          keywords: ["period", "periods", "menstrual", "bleeding", "flow"],
-          response: "Periods are totally natural — they're just your body's way of resetting each month. If you have specific questions about timing, amount, or pain, a parent, school nurse, or doctor is the best person to ask. 💛",
+          character: "Meera",
+          scene: "Meera noticed her favorite pair of jeans from last summer didn't reach her ankles anymore.",
+          sceneEmoji: "👖",
+          options: ["😯", "😡", "😭", "😌"],
+          correctEmoji: "😯",
+          gigiResponse: "Spot on! Growth spurts happen fast during puberty — your legs grow before your wardrobe catches up!",
+          wrongResponse: "Growth spurts can feel surprising at first, but it means your long bones are lengthening normally!"
         },
         {
-          keywords: ["pain", "hurt", "ache", "cramp", "cramps"],
-          response: "Some pain or cramping during puberty is normal (like growing pains!), but if something hurts a lot or feels wrong, please talk to a trusted adult or doctor. You deserve to feel comfortable in your body. 💜",
+          character: "Mira",
+          scene: "Mira's friend started growing taller before her, while Mira hadn't noticed any height change yet.",
+          sceneEmoji: "⏱️",
+          options: ["😟", "🤔", "👑", "💖"],
+          correctEmoji: "🤔",
+          gigiResponse: "Exactly! Everyone's body timeline runs on its own unique inner clock — there is no race to finish first!",
+          wrongResponse: "Curiosity is great! Remember, your timing is programmed by your unique genetics."
         },
         {
-          keywords: ["scared", "afraid", "worried", "nervous", "fear", "anxious"],
-          response: "It's completely okay to feel nervous about changes — almost everyone does! These feelings often get smaller when we talk about them. Is there a parent, aunt, teacher, or school nurse you could share this with? 🌸",
-        },
-        {
-          keywords: ["normal", "weird", "strange", "different", "wrong"],
-          response: "If something feels 'different' about your body, the best thing is to check with a trusted adult or doctor — they've heard it all before and won't judge you at all. 💛",
-        },
-      ],
-      defaultResponse: "That's a great question! Gigi's got some thoughts, but a grown-up you trust — a parent, aunt, teacher, or school nurse — can give you real answers made just for you. 🌟",
-      conversationStarterOffer: "Want a few gentle words to help start that chat with a trusted adult?",
-      conversationStarters: [
-        "\"Hey [name], can I talk to you about something I've been wondering about?\"",
-        "\"I was learning something in an app and had a question — could you help me understand it?\"",
-        "\"I wanted to ask you something about growing up, if that's okay.\"",
-      ],
-    },
+          character: "Gigi's Note",
+          scene: "When you realize that your body's changes aren't a mistake, but proof that your growth masterplan is working.",
+          sceneEmoji: "✨",
+          options: ["💖", "🌟", "😌", "🥳"],
+          correctEmoji: "💖",
+          gigiResponse: "Yes! Your body is working hard every day to build your healthy adult self with total pride!",
+          wrongResponse: "Embracing your body's timing gives you total peace of mind!"
+        }
+      ]
+    }
   },
 
   // ── NODE 10 — FIXED END: Reflection & Reward ──────────────────────────────
@@ -359,7 +362,7 @@ const BODY_TIMELINE_NODES = [
     type: "reflection_reward",
     position: "fixed_end",
     title: "Your Timeline, Your Pace",
-    xpReward: 25,
+    xpReward: 15,
     unlocksBadge: "timeline_explorer",
     content: {
       moodQuestion: {
@@ -456,7 +459,8 @@ async function seed() {
       episodeIcon: "🗺️",
       order: 1,
       nodes: BODY_TIMELINE_NODES,
-      totalXP: 145,
+      totalXP: 83,
+      totalCoins: 83,
       isActive: true,
     },
     {
@@ -919,36 +923,19 @@ async function seed() {
       id: "ce_body_image",
       journeyId: journey1.id,
       title: "6. Body Image Unlocked",
-      description: "Loving your unique shape and busting social media comparison traps.",
+      description: "Loving your unique shape, building self-confidence, and busting social media comparison traps.",
       episodeIcon: "🪞",
       order: 6,
       nodes: [],
       totalXP: 130,
       isActive: true,
     },
-    {
-      id: "ce_hygiene_hero",
-      journeyId: journey1.id,
-      title: "7. Hygiene Hero",
-      description: "Sweat, deodorants, daily fresh routines, and feeling unstoppable.",
-      episodeIcon: "✨",
-      order: 7,
-      nodes: [],
-      totalXP: 115,
-      isActive: true,
-    },
-    {
-      id: "ce_masterclass",
-      journeyId: journey1.id,
-      title: "8. Masterclass & Graduation",
-      description: "Put all your detective skills together, take the final quiz, and claim your Master badge!",
-      episodeIcon: "🎓",
-      order: 8,
-      nodes: [],
-      totalXP: 200,
-      isActive: true,
-    },
   ];
+
+  // Clean up obsolete episodes 7 & 8 if present
+  await prisma.creativeEpisode.deleteMany({
+    where: { id: { in: ["ce_hygiene_hero", "ce_masterclass"] } },
+  });
 
   for (const ep of episodesList) {
     const created = await prisma.creativeEpisode.upsert({
@@ -960,6 +947,7 @@ async function seed() {
         order: ep.order,
         nodes: ep.nodes as any,
         totalXP: ep.totalXP,
+        totalCoins: (ep as any).totalCoins ?? 83,
       },
       create: {
         id: ep.id,
@@ -970,6 +958,7 @@ async function seed() {
         order: ep.order,
         nodes: ep.nodes as any,
         totalXP: ep.totalXP,
+        totalCoins: (ep as any).totalCoins ?? 83,
         unlockCondition: { type: ep.order === 1 ? "first_in_journey" : "previous_episode_completed" },
         isActive: true,
       },

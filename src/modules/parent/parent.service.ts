@@ -277,18 +277,9 @@ export class ParentService {
 
     const teenId = link.teenId;
 
-    // 2. Active Journey (latest UserProgress)
-    const activeProgress = await prisma.userProgress.findFirst({
-      where: { 
-        userId: teenId,
-        episode: {
-          journey: {
-            slug: {
-              not: "peerline-mentor-certification"
-            }
-          }
-        }
-      },
+    // 2. Active Journey (latest CreativeNodeProgress)
+    const activeProgress = await prisma.creativeNodeProgress.findFirst({
+      where: { userId: teenId },
       orderBy: { updatedAt: "desc" },
       include: {
         episode: {
@@ -302,21 +293,21 @@ export class ParentService {
     let activeJourney = null;
     if (activeProgress && activeProgress.episode && activeProgress.episode.journey) {
       const journeyId = activeProgress.episode.journeyId;
-      // Calculate completion based on completed episodes
-      const totalEpisodes = await prisma.episode.count({ where: { journeyId } });
-      const completedEpisodes = await prisma.userProgress.count({
+      // Calculate completion based on completed nodes
+      const totalEpisodes = await prisma.creativeEpisode.count({ where: { journeyId } });
+      const completedCount = await prisma.creativeNodeProgress.count({
         where: {
           userId: teenId,
           episode: { journeyId },
-          completed: true
+          status: "COMPLETED"
         }
       });
-      const percentComplete = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
+      const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
       
       activeJourney = {
         name: activeProgress.episode.journey.title,
         percentComplete,
-        thumbnailUrl: activeProgress.episode.journey.thumbnailUrl || activeProgress.episode.journey.bannerImage
+        thumbnailUrl: null
       };
     }
 

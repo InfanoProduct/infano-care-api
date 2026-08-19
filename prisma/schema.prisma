@@ -71,7 +71,6 @@ model User {
   PostReaction              PostReaction[]
   profile                   Profile?
   programEnrollments        ProgramEnrollment[]
-  reflections               Reflection[]
   managedSchools            School[]                 @relation("SchoolOpsManager")
   facilitatedSchoolSessions SchoolSession[]          @relation("FacilitatorSchoolSessions")
   subscription              Subscription?
@@ -82,7 +81,6 @@ model User {
   userDailyQuests           UserDailyQuest[]
   userLevel                 UserLevel?
   mindfulCompletions        UserMindfulActivity[]
-  progress                  UserProgress[]
   userStreak                UserStreak?
   joinedCircles             CommunityCircle[]        @relation("CircleMembers")
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
@@ -102,6 +100,7 @@ model Profile {
   pronouns               String?
   journeyName            String?
   totalPoints            Int       @default(0)
+  totalCoins             Int       @default(0)
   bloomLevel             Int       @default(1)
   bio                    String?   @default("Helping girls navigate their journey with empathy and care.")
   certifiedTopicIds      String[]  @default([])
@@ -243,77 +242,7 @@ model CycleRecord {
   @@index([userId, cycleNumber])
 }
 
-model LearningJourney {
-  id             String      @id @default(uuid())
-  title          String
-  description    String
-  ageBand        String?
-  topics         String[]    @default([])
-  goals          String[]    @default([])
-  tags           String[]    @default([])
-  contentTone    String      @default("moderate")
-  minContentTier ContentTier @default(TEEN_EARLY)
-  bannerImage    String?
-  category       String?
-  createdAt      DateTime    @default(now())
-  isActive       Boolean     @default(true)
-  slug           String      @unique @default(uuid())
-  thumbnailUrl   String?
-  totalXP        Int         @default(0)
-  updatedAt      DateTime    @updatedAt
-  isPremium      Boolean     @default(false)
-  episodes       Episode[]
-}
 
-model Episode {
-  id           String          @id @default(uuid())
-  journeyId    String
-  order        Int             @default(0)
-  title        String
-  content      Json            @default("[]")
-  points       Int             @default(50)
-  createdAt    DateTime        @default(now())
-  description  String?
-  isActive     Boolean         @default(true)
-  slug         String          @unique @default(uuid())
-  updatedAt    DateTime        @updatedAt
-  isPremium    Boolean         @default(false)
-  thumbnailUrl String?
-  journey      LearningJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
-  reflections  Reflection[]
-  userProgress UserProgress[]
-}
-
-model UserProgress {
-  id               String   @id @default(uuid())
-  userId           String
-  episodeId        String
-  completed        Boolean  @default(false)
-  updatedAt        DateTime @updatedAt
-  completedItems   Json     @default("[]")
-  lastViewedItemId String?
-  history          Json?
-  episode          Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, episodeId])
-}
-
-model Reflection {
-  id        String   @id @default(uuid())
-  userId    String
-  episodeId String
-  content   String?
-  voiceUrl  String?
-  isPrivate Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([episodeId])
-}
 
 // ── Creative Learning Journey v2 ─────────────────────────────────────────────
 
@@ -338,6 +267,7 @@ model CreativeEpisode {
   order           Int                    @default(0)
   nodes           Json                   @default("[]")
   totalXP         Int                    @default(145)
+  totalCoins      Int                    @default(83)
   unlockCondition Json                   @default("{}")
   isActive        Boolean                @default(true)
   createdAt       DateTime               @default(now())
@@ -354,6 +284,7 @@ model CreativeNodeProgress {
   nodeId     String
   status     String          @default("LOCKED")
   xpEarned   Int             @default(0)
+  coinsEarned Int             @default(0)
   lastScreen String?
   nodeOrder  Json?
   updatedAt  DateTime        @updatedAt
@@ -494,6 +425,7 @@ model UserLevel {
   userId        String    @id
   currentLevel  Int       @default(1)
   pointsTotal   Int       @default(0)
+  coinsTotal    Int       @default(0)
   lastLevelUpAt DateTime?
   updatedAt     DateTime  @updatedAt
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -611,7 +543,7 @@ model ExpertChatMessage {
 
 model ExpertSessionSchedule {
   id                String   @id @default(uuid())
-  userId            String
+  userId            String?
   expertId          String
   meetLink          String?
   scheduledAt       DateTime
@@ -625,7 +557,7 @@ model ExpertSessionSchedule {
   amount            Float?
   expert            User     @relation("ExpertScheduledSessions", fields: [expertId], references: [id], onDelete: Cascade)
   program           Program? @relation(fields: [programId], references: [id])
-  user              User     @relation("UserScheduledSessions", fields: [userId], references: [id], onDelete: Cascade)
+  user              User?    @relation("UserScheduledSessions", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
 }
