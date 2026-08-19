@@ -658,7 +658,7 @@ export class QuestService {
     let activeEpisodeTitle = "the current episode";
     let sequenceState: "read" | "quiz" | "reflection" = "read";
 
-    const latestProgress = await prisma.userProgress.findFirst({
+    const latestProgress = await prisma.creativeNodeProgress.findFirst({
       where: { userId },
       orderBy: { updatedAt: "desc" },
       include: { episode: { include: { journey: true } } },
@@ -671,12 +671,12 @@ export class QuestService {
       activeJourneyId = latestProgress.episode.journeyId;
       activeJourneyTitle = latestProgress.episode.journey.title;
 
-      const incompleteEpisode = await prisma.episode.findFirst({
+      const incompleteEpisode = await prisma.creativeEpisode.findFirst({
         where: {
           journeyId: activeJourneyId,
           isActive: true,
-          userProgress: {
-            none: { userId, completed: true }
+          nodeProgresses: {
+            none: { userId, status: "COMPLETED" }
           }
         },
         orderBy: { order: "asc" }
@@ -685,7 +685,7 @@ export class QuestService {
       if (incompleteEpisode) {
         activeEpisode = incompleteEpisode;
       } else {
-        const nextJourney = await prisma.learningJourney.findFirst({
+        const nextJourney = await prisma.creativeJourney.findFirst({
           where: {
             isActive: true,
             id: { not: activeJourneyId }
@@ -695,21 +695,21 @@ export class QuestService {
         if (nextJourney) {
           activeJourneyId = nextJourney.id;
           activeJourneyTitle = nextJourney.title;
-          activeEpisode = await prisma.episode.findFirst({
+          activeEpisode = await prisma.creativeEpisode.findFirst({
             where: { journeyId: activeJourneyId, isActive: true },
             orderBy: { order: "asc" }
           });
         }
       }
     } else {
-      const firstJourney = await prisma.learningJourney.findFirst({
+      const firstJourney = await prisma.creativeJourney.findFirst({
         where: { isActive: true },
         orderBy: { createdAt: "asc" }
       });
       if (firstJourney) {
         activeJourneyId = firstJourney.id;
         activeJourneyTitle = firstJourney.title;
-        activeEpisode = await prisma.episode.findFirst({
+        activeEpisode = await prisma.creativeEpisode.findFirst({
           where: { journeyId: activeJourneyId, isActive: true },
           orderBy: { order: "asc" }
         });
@@ -718,23 +718,14 @@ export class QuestService {
 
     if (activeEpisode) {
       activeEpisodeTitle = activeEpisode.title;
-
-      const epProgress = await prisma.userProgress.findUnique({
-        where: { userId_episodeId: { userId, episodeId: activeEpisode.id } }
+      const completedNodeCount = await prisma.creativeNodeProgress.count({
+        where: { userId, episodeId: activeEpisode.id, status: "COMPLETED" }
       });
 
-      const reflection = await prisma.reflection.findFirst({
-        where: { userId, episodeId: activeEpisode.id }
-      });
-
-      const hasCompletedQuiz = epProgress?.history ? (epProgress.history as any).quiz !== undefined : false;
-
-      if (!epProgress || !epProgress.completed) {
-        sequenceState = "read";
-      } else if (!hasCompletedQuiz) {
-        sequenceState = "quiz";
-      } else if (!reflection) {
+      if (completedNodeCount >= 4) {
         sequenceState = "reflection";
+      } else if (completedNodeCount >= 2) {
+        sequenceState = "quiz";
       } else {
         sequenceState = "read";
       }

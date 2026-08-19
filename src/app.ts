@@ -12,7 +12,6 @@ import consentRoutes from "./modules/consent/consent.routes.js";
 import onboardingRoutes from "./modules/onboarding/onboarding.routes.js";
 import userRoutes from "./modules/user/user.routes.js";
 import trackerRoutes from "./modules/tracker/tracker.routes.js";
-import learningRoutes from "./modules/learning/learning.routes.js";
 import questRoutes from "./modules/quest/quest.routes.js";
 import chatRoutes from "./modules/chat/chat.routes.js";
 import expertRoutes from "./modules/expert/expert.routes.js";
@@ -70,8 +69,6 @@ app.use("/api/auth/consent", consentRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/tracker", trackerRoutes);
-app.use("/api/learning", learningRoutes);
-app.use("/api/creative-journey", creativeJourneyRoutes);
 app.use("/api/quest", questRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/expert", expertRoutes);
@@ -91,6 +88,7 @@ app.use("/api/teen", teenRouter);
 app.use("/api/school", schoolRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/lms", lmsRoutes);
+app.use("/api/creative-journey", creativeJourneyRoutes);
 app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
 

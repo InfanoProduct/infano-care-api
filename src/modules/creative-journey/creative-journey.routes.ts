@@ -4,16 +4,42 @@ import { authenticate } from "../../common/middleware/auth.js";
 
 const router = Router();
 
-// Guest & Public endpoints
+// ── Public (guest-accessible) ─────────────────────────────────────────────────
 router.get("/journeys", CreativeJourneyController.listJourneys);
 router.get("/journeys/:id", CreativeJourneyController.getJourney);
 router.get("/episodes/:episodeId", CreativeJourneyController.getEpisode);
-router.get("/episodes/:episodeId/node-order", CreativeJourneyController.getOrCreateNodeOrder);
 
-// Authenticated endpoints
-router.get("/episodes/:episodeId/progress", authenticate, CreativeJourneyController.getEpisodeProgress);
-router.post("/episodes/:episodeId/nodes/:nodeId/progress", authenticate, CreativeJourneyController.updateNodeProgress);
-router.get("/my-progress", authenticate, CreativeJourneyController.getMyProgress);
-router.post("/episodes/:episodeId/nodes/:nodeId/gigi-entry", authenticate, CreativeJourneyController.saveGigiEntry);
+// ── Authenticated ─────────────────────────────────────────────────────────────
+router.use(authenticate);
+
+// Node order (seeded shuffle — computed once, persisted)
+router.get("/episodes/:episodeId/node-order", CreativeJourneyController.getNodeOrder);
+
+// Episode progress (all nodes)
+router.get("/episodes/:episodeId/progress", CreativeJourneyController.getEpisodeProgress);
+
+// Update a single node's progress
+router.post(
+  "/episodes/:episodeId/nodes/:nodeId/progress",
+  CreativeJourneyController.updateNodeProgress
+);
+
+// Ask Gigi entries (private journalling)
+router.post(
+  "/episodes/:episodeId/nodes/:nodeId/gigi-entry",
+  CreativeJourneyController.saveGigiEntry
+);
+
+// Parent/guardian access to a linked user's Gigi entries
+router.get(
+  "/gigi-entries/user/:targetUserId",
+  CreativeJourneyController.getGigiEntriesForUser
+);
+
+// Aggregate progress for the current user
+router.get("/my-progress", CreativeJourneyController.getMyProgress);
+
+// Reset episode progress for testing
+router.post("/episodes/:episodeId/reset", CreativeJourneyController.resetEpisodeProgress);
 
 export default router;
