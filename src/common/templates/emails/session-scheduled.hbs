@@ -1,0 +1,141 @@
+<div class="content">
+
+  <!-- Hero Icon Header -->
+  <div style="text-align: center; margin-bottom: 28px; padding-top: 10px;">
+    <div style="display: inline-block; width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #F3E8FF 0%, #FCE7F3 100%); margin-bottom: 16px; line-height: 64px; text-align: center; box-shadow: 0 4px 12px rgba(156, 39, 176, 0.12);">
+      <span style="font-size: 30px; vertical-align: middle;">{{#if is_rescheduled}}⏰{{else}}🎓{{/if}}</span>
+    </div>
+    <h1 style="font-family: 'Poppins', 'Inter', sans-serif; font-size: 24px; color: #111827; margin: 0 0 8px 0; font-weight: 700; letter-spacing: -0.5px; line-height: 1.3;">
+      {{#if is_rescheduled}}
+        Live Session Rescheduled
+      {{else}}
+        Live Session Confirmed & Scheduled!
+      {{/if}}
+    </h1>
+    <p style="font-size: 15px; color: #4B5563; margin: 0 auto; max-width: 480px; line-height: 1.5;">
+      {{#if is_rescheduled}}
+        Your upcoming interactive live session timing has been updated. Please note the new schedule below.
+      {{else}}
+        Your interactive live session for <strong>{{program_title}}</strong> has been scheduled.
+      {{/if}}
+    </p>
+  </div>
+
+  <!-- Greeting -->
+  <p style="font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 8px; font-family: 'Poppins', 'Inter', sans-serif;">
+    Hi {{recipient_name}},
+  </p>
+  <p style="font-size: 15px; color: #4B5563; line-height: 1.6; margin-top: 0; margin-bottom: 24px;">
+    {{#if is_rescheduled}}
+      An updated schedule has been set for your session in <strong>{{program_title}}</strong>.
+    {{else}}
+      Get ready for an engaging learning experience! Here are the full details of your scheduled session:
+    {{/if}}
+  </p>
+
+  <!-- Session Details Card -->
+  <div style="background: linear-gradient(180deg, #FAF8FD 0%, #F8F5FB 100%); border: 1px solid #F3E8FF; border-radius: 16px; padding: 22px 24px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(156, 39, 176, 0.04);">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td colspan="2" style="padding-bottom: 14px; border-bottom: 1px solid #EAE3EC;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            📚 Program & Topic
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827; font-family: 'Poppins', sans-serif;">
+            {{program_title}}
+          </p>
+          {{#if session_title}}
+          <p style="margin: 3px 0 0 0; font-size: 14px; font-weight: 600; color: #7B1FA2;">
+            {{session_title}}
+          </p>
+          {{/if}}
+          {{#if batch_name}}
+          <div style="margin-top: 6px;">
+            <span style="display: inline-block; background-color: #EDE9FE; color: #6D28D9; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 10px;">
+              👥 Batch: {{batch_name}}
+            </span>
+          </div>
+          {{/if}}
+        </td>
+      </tr>
+
+      <tr>
+        <td class="mobile-block mobile-pr-0" style="width: 50%; vertical-align: top; padding-top: 14px; padding-bottom: 14px;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            📅 Date
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: 700; color: #7B1FA2; font-family: 'Poppins', sans-serif;">
+            {{formatted_date}}
+          </p>
+        </td>
+        <td class="mobile-block mobile-pl-0" style="width: 50%; vertical-align: top; padding-top: 14px; padding-bottom: 14px;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            ⏰ Time
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 15px; font-weight: 700; color: #111827; font-family: 'Poppins', sans-serif;">
+            {{formatted_time}}
+          </p>
+        </td>
+      </tr>
+
+      {{#if expert_name}}
+      <tr>
+        <td colspan="2" style="border-top: 1px dashed #EAE3EC; padding-top: 12px; padding-bottom: 4px;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            👩‍🏫 Session Mentor
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: 600; color: #374151;">
+            {{expert_name}}
+          </p>
+        </td>
+      </tr>
+      {{/if}}
+
+      {{#if meet_link}}
+      <tr>
+        <td colspan="2" style="border-top: 1px dashed #EAE3EC; padding-top: 12px; padding-bottom: 4px;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            🔗 Meeting Link
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: 600; color: #2563EB; word-break: break-all;">
+            <a href="{{meet_link}}" target="_blank" style="color: #2563EB; text-decoration: underline;">{{meet_link}}</a>
+          </p>
+        </td>
+      </tr>
+      {{/if}}
+    </table>
+  </div>
+
+  <!-- Primary Action Button -->
+  <div style="margin: 28px 0 32px; text-align: center;">
+    {{#if meet_link}}
+      <a href="{{meet_link}}" target="_blank" class="button" style="display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: 700; font-size: 15px; border-radius: 9999px; box-shadow: 0 4px 14px rgba(156, 39, 176, 0.28);">
+        Join Live Class
+      </a>
+    {{else}}
+      <a href="https://infano.care/login" class="button" style="display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: 700; font-size: 15px; border-radius: 9999px; box-shadow: 0 4px 14px rgba(156, 39, 176, 0.28);">
+        View In Dashboard
+      </a>
+    {{/if}}
+  </div>
+
+  <!-- Preparation Tips Box -->
+  <div style="border: 1px solid #EAE3EC; border-radius: 12px; padding: 16px 20px; background-color: #FFFFFF; margin-bottom: 28px;">
+    <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #111827;">
+      💡 Quick Tips for the Session:
+    </p>
+    <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #6B7280; line-height: 1.6;">
+      <li>Please join 5 minutes early to test your audio & video setup.</li>
+      <li>Keep your notebook or activity workbook handy.</li>
+      <li>If you have any questions, feel free to ask your mentor during the interactive Q&A!</li>
+    </ul>
+  </div>
+
+  <!-- Help Section Footer -->
+  <div class="help-section">
+    <p style="margin: 0; font-size: 14px; color: #6B7280; line-height: 1.5;">
+      Need assistance with your schedule? Reply directly to this email or visit our <a href="https://infano.care/contact" style="color: #9C27B0; font-weight: 600; text-decoration: none;">Support Center</a>.
+    </p>
+  </div>
+
+</div>

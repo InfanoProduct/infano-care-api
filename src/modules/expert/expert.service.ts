@@ -1,6 +1,7 @@
 import { prisma } from "../../db/client.js";
 import { logger } from "../../config/logger.js";
 import { ProgramsService } from "../programs/programs.service.js";
+import { SessionNotificationService } from "../programs/session-notification.service.js";
 
 export class ExpertService {
   static async getEnrollments() {
@@ -211,10 +212,14 @@ export class ExpertService {
     const session = await prisma.expertSessionSchedule.findUnique({ where: { id: sessionId } });
     if (!session) throw new Error("Session not found");
     if (session.expertId !== expertId) throw new Error("Unauthorized: this session does not belong to you");
-    return await prisma.expertSessionSchedule.update({
+    const updated = await prisma.expertSessionSchedule.update({
       where: { id: sessionId },
       data: { meetLink }
     });
+    SessionNotificationService.notifySessionScheduled(updated.id, "scheduled").catch(err => {
+      logger.error({ err, sessionId }, "Failed to dispatch meetLink update notifications");
+    });
+    return updated;
   }
 
   static async rescheduleSession(expertId: string, sessionId: string, scheduledAt: string) {
@@ -429,162 +434,6 @@ export class ExpertService {
 }
 
 export async function notifyProgramSessionEvent(sessionId: string, eventType: "scheduled" | "rescheduled") {
-  try {
-    const session = await prisma.expertSessionSchedule.findUnique({
-      where: { id: sessionId },
-      include: {
-        expert: { include: { profile: true } },
-        user: { include: { profile: true } },
-        program: true
-      }
-    });
-
-    if (!session || !session.userId || !session.user) return;
-
-    const expertName = session.expert.profile?.displayName || session.expert.username || "Expert";
-    const userName = session.user.profile?.displayName || session.user.username || "User";
-    const formattedDate = new Date(session.scheduledAt).toLocaleString();
-
-    // Determine titles & bodies
-    let userTitle = "";
-    let userBody = "";
-    let partnerBody = "";
-    let expertTitle = "";
-    let expertBody = "";
-
-    const deepLink = `infano://expert/chat/${session.id}`;
-    const notificationType = eventType === "scheduled" ? "sessionScheduled" : "sessionRescheduled";
-
-    if (session.program) {
-      const programTitle = session.program.title;
-      const sessionNum = session.sessionNumber || 1;
-
-      userTitle = eventType === "scheduled" ? "Program Session Scheduled" : "Program Session Rescheduled";
-      userBody = eventType === "scheduled"
-        ? `Session ${sessionNum} of your enrolled program "${programTitle}" with ${expertName} is scheduled for ${formattedDate}.`
-        : `Session ${sessionNum} of your enrolled program "${programTitle}" with ${expertName} has been rescheduled to ${formattedDate}.`;
-
-      partnerBody = eventType === "scheduled"
-        ? `Session ${sessionNum} for ${userName} of program "${programTitle}" with ${expertName} is scheduled for ${formattedDate}.`
-        : `Session ${sessionNum} for ${userName} of program "${programTitle}" with ${expertName} has been rescheduled to ${formattedDate}.`;
-
-      expertTitle = eventType === "scheduled" ? "Program Session Booked" : "Program Session Rescheduled";
-      expertBody = eventType === "scheduled"
-        ? `You have a scheduled session ${sessionNum} with ${userName} for program "${programTitle}" on ${formattedDate}.`
-        : `Session ${sessionNum} with ${userName} for program "${programTitle}" has been rescheduled to ${formattedDate}.`;
-    } else {
-      userTitle = eventType === "scheduled" ? "Expert Session Scheduled" : "Expert Session Rescheduled";
-      userBody = eventType === "scheduled"
-        ? `Your expert session with ${expertName} is scheduled for ${formattedDate}.`
-        : `Your expert session with ${expertName} has been rescheduled to ${formattedDate}.`;
-
-      partnerBody = eventType === "scheduled"
-        ? `The expert session for ${userName} with ${expertName} is scheduled for ${formattedDate}.`
-        : `The expert session for ${userName} with ${expertName} has been rescheduled to ${formattedDate}.`;
-
-      expertTitle = eventType === "scheduled" ? "Expert Session Booked" : "Expert Session Rescheduled";
-      expertBody = eventType === "scheduled"
-        ? `A new expert session with ${userName} has been booked for ${formattedDate}.`
-        : `Your expert session with ${userName} has been rescheduled to ${formattedDate}.`;
-    }
-
-    // 1. Notify User/Teen
-    await prisma.notificationHistory.create({
-      data: {
-        userId: session.userId,
-        type: notificationType,
-        title: userTitle,
-        body: userBody,
-        deepLink,
-        sentAt: new Date()
-      }
-    });
-
-    if (session.user.fcmToken) {
-      try {
-        const { FirebaseService } = await import("../../common/services/firebase.service.js");
-        await FirebaseService.sendPushNotification(session.user.fcmToken, {
-          title: userTitle,
-          body: userBody,
-          deepLink,
-          data: { notificationType, sessionId: session.id }
-        });
-      } catch (err) {
-        console.error("Failed to send push notification to user for session event:", err);
-      }
-    }
-
-    // 2. Notify Linked Partner (if any)
-    const link = await prisma.parentLink.findFirst({
-      where: {
-        OR: [
-          { teenId: session.userId },
-          { parentId: session.userId }
-        ],
-        status: "LINKED"
-      }
-    });
-
-    if (link) {
-      const partnerId = session.userId === link.teenId ? link.parentId : link.teenId;
-      if (partnerId) {
-        const partnerUser = await prisma.user.findUnique({
-          where: { id: partnerId }
-        });
-
-        await prisma.notificationHistory.create({
-          data: {
-            userId: partnerId,
-            type: notificationType,
-            title: userTitle,
-            body: partnerBody,
-            deepLink,
-            sentAt: new Date()
-          }
-        });
-
-        if (partnerUser?.fcmToken) {
-          try {
-            const { FirebaseService } = await import("../../common/services/firebase.service.js");
-            await FirebaseService.sendPushNotification(partnerUser.fcmToken, {
-              title: userTitle,
-              body: partnerBody,
-              deepLink,
-              data: { notificationType, sessionId: session.id }
-            });
-          } catch (err) {
-            console.error("Failed to send push notification to partner for session event:", err);
-          }
-        }
-      }
-    }
-
-    // 3. Notify Expert
-    await prisma.notificationHistory.create({
-      data: {
-        userId: session.expertId,
-        type: notificationType,
-        title: expertTitle,
-        body: expertBody,
-        deepLink,
-        sentAt: new Date()
-      }
-    });
-
-    if (session.expert.fcmToken) {
-      try {
-        const { FirebaseService } = await import("../../common/services/firebase.service.js");
-        await FirebaseService.sendPushNotification(session.expert.fcmToken, {
-          title: expertTitle,
-          body: expertBody,
-          deepLink,
-          data: { notificationType, sessionId: session.id }
-        });
-      } catch (err) {
-        console.error("Failed to send push notification to expert for session event:", err);
-      }
-    }
-  } catch (err) {
-    console.error("Failed to send notifications for session event:", err);
-  }
+  return SessionNotificationService.notifySessionScheduled(sessionId, eventType);
 }
+

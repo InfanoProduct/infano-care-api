@@ -1918,10 +1918,19 @@ export class AdminService {
   static async updateSessionMeetLink(id: string, meetLink: string) {
     const session = await prisma.expertSessionSchedule.findUnique({ where: { id } });
     if (!session) throw new Error("Session not found");
-    return prisma.expertSessionSchedule.update({
+    const updated = await prisma.expertSessionSchedule.update({
       where: { id },
       data: { meetLink }
     });
+
+    try {
+      const { SessionNotificationService } = await import("../programs/session-notification.service.js");
+      await SessionNotificationService.notifySessionScheduled(updated.id, "scheduled");
+    } catch (err) {
+      console.error("Failed to send notifications for session meet link update:", err);
+    }
+
+    return updated;
   }
 
   static async updateSessionStatus(id: string, status: string) {

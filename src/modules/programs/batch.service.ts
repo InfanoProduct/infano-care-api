@@ -1,6 +1,7 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { ProgramsService } from "./programs.service.js";
+import { SessionNotificationService } from "./session-notification.service.js";
 
 export class BatchService {
   /**
@@ -237,6 +238,11 @@ export class BatchService {
       }
     });
 
+    // Trigger multi-channel notifications (In-app, Push, Email) to enrolled students, parents, and expert mentor
+    SessionNotificationService.notifySessionScheduled(session.id, "scheduled").catch(err => {
+      console.error("Failed to dispatch notifications for batch session:", err);
+    });
+
     return session;
   }
 
@@ -260,7 +266,7 @@ export class BatchService {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.sessionNumber !== undefined) updateData.sessionNumber = Number(data.sessionNumber);
 
-    return prisma.expertSessionSchedule.update({
+    const updated = await prisma.expertSessionSchedule.update({
       where: { id: sessionId },
       data: updateData,
       include: {
@@ -278,6 +284,15 @@ export class BatchService {
         }
       }
     });
+
+    // If date/time or meeting link changed, notify participants of the rescheduled session
+    if (data.scheduledAt || (data.meetLink && data.meetLink !== session.meetLink)) {
+      SessionNotificationService.notifySessionScheduled(updated.id, "rescheduled").catch(err => {
+        console.error("Failed to dispatch reschedule notifications for batch session:", err);
+      });
+    }
+
+    return updated;
   }
 
   /**

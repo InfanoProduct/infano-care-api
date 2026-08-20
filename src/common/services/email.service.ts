@@ -161,3 +161,49 @@ export const sendWebinarConfirmationEmail = async (to: string, data: {
   return sendEmail(to, subject, html);
 };
 
+export const sendProgramSessionEmail = async (to: string, data: {
+  recipient_name: string;
+  program_title: string;
+  session_title?: string;
+  batch_name?: string;
+  formatted_date: string;
+  formatted_time: string;
+  expert_name?: string;
+  meet_link?: string;
+  is_rescheduled?: boolean;
+}) => {
+  const isRescheduled = !!data.is_rescheduled;
+  const sessionLabel = data.session_title ? ` (${data.session_title})` : '';
+  const subject = isRescheduled
+    ? `Session Rescheduled: ${data.program_title}${sessionLabel} ⏰`
+    : `Live Class Scheduled: ${data.program_title}${sessionLabel} 🎓`;
+  const preheaderText = isRescheduled
+    ? `Updated date, time, and meeting link for your ${data.program_title} session.`
+    : `Date, time, and join details for your upcoming ${data.program_title} session.`;
+
+  const html = await compileEmailTemplate('session-scheduled', {
+    ...data,
+    subject,
+    preheaderText
+  });
+  return sendEmail(to, subject, html);
+};
+
+export const sendProgramEnrolledEmail = async (to: string, data: {
+  recipient_name: string;
+  program_title: string;
+  program_tagline?: string;
+  duration?: string;
+  batch_name?: string;
+}) => {
+  const subject = `Welcome to ${data.program_title}! 🎉 Your Enrollment is Confirmed`;
+  const preheaderText = `You are successfully enrolled in ${data.program_title}. Access your dashboard and curriculum now.`;
+  const html = await compileEmailTemplate('program-enrolled', {
+    ...data,
+    subject,
+    preheaderText
+  });
+  return sendEmail(to, subject, html);
+};
+
+

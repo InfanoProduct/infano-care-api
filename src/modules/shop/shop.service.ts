@@ -725,7 +725,7 @@ export class ShopService {
               }
             });
             if (!existingEnrollment) {
-              await prisma.programEnrollment.create({
+              const newEnrollment = await prisma.programEnrollment.create({
                 data: {
                   userId,
                   programId: program.id,
@@ -734,6 +734,12 @@ export class ShopService {
                   guestName: order.guestName,
                   guestEmail: order.guestEmail,
                 }
+              });
+
+              import("../programs/session-notification.service.js").then(({ SessionNotificationService }) => {
+                SessionNotificationService.notifyProgramEnrollment(newEnrollment.id).catch(err => {
+                  logger.error({ err, enrollmentId: newEnrollment.id }, "Failed to dispatch program enrollment notification for shop order");
+                });
               });
             }
           }

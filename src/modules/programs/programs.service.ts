@@ -340,6 +340,14 @@ export class ProgramsService {
           program: true
         }
       });
+
+      // Dispatch multi-channel enrollment notification (In-app, Push, Email)
+      import("./session-notification.service.js").then(({ SessionNotificationService }) => {
+        SessionNotificationService.notifyProgramEnrollment(enrollment.id).catch(err => {
+          console.error("Failed to dispatch program enrollment notifications:", err);
+        });
+      });
+
       return { success: true, message: "Enrolled successfully", enrollment };
     } catch (e: any) {
       if (e.code === "P2002") {
@@ -759,6 +767,13 @@ export class ProgramsService {
         }
       });
 
+      // Dispatch multi-channel enrollment notification (In-app, Push, Email)
+      import("./session-notification.service.js").then(({ SessionNotificationService }) => {
+        SessionNotificationService.notifyProgramEnrollment(enrollment.id).catch(err => {
+          console.error("Failed to dispatch admin program enrollment notifications:", err);
+        });
+      });
+
       return { success: true, message: "Enrolled successfully", enrollment };
     } catch (e: any) {
       if (e.code === "P2002") {
@@ -915,6 +930,13 @@ export class ProgramsService {
         console.error("Failed to send demo booking email confirmation:", emailErr);
       }
     }
+
+    // Trigger In-App & Push notifications for demo session booking
+    import("./session-notification.service.js").then(({ SessionNotificationService }) => {
+      SessionNotificationService.notifyDemoSessionBooked(demo.id).catch(err => {
+        console.error("Failed to dispatch demo booking in-app/push notifications:", err);
+      });
+    });
 
     return demo;
   }
