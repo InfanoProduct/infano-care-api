@@ -798,7 +798,9 @@ ABSOLUTE RULES — NO EXCEPTIONS:
               'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
             },
             body: JSON.stringify({
-              model: attempt === 0 ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant',
+              model: attempt === 0
+                ? (process.env.GROQ_MODEL || 'openai/gpt-oss-120b')
+                : (process.env.GROQ_FALLBACK_MODEL || 'openai/gpt-oss-20b'),
               messages: messages,
               temperature: 0.7,
               max_tokens: 1024,
@@ -1170,7 +1172,7 @@ ABSOLUTE RULES — NO EXCEPTIONS:
           'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: process.env.GROQ_TITLE_MODEL || process.env.GROQ_FALLBACK_MODEL || 'openai/gpt-oss-20b',
           messages: messages,
           temperature: 0.5,
           max_tokens: 20,
