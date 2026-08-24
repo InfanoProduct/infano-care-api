@@ -187,7 +187,8 @@ export class SafetyService {
     }
 
     // 4. Build human-readable message
-    const locationStr = (lat && lng) ? `https://maps.google.com/?q=${lat},${lng}` : 'Location unavailable';
+    const hasLocation = lat != null && lng != null && !(lat === 0 && lng === 0);
+    const locationStr = hasLocation ? `https://maps.google.com/?q=${lat},${lng}` : 'Location unavailable';
     const emergencyLabel = emergencyType ? EMERGENCY_TYPE_LABELS[emergencyType] ?? emergencyType : 'Emergency';
     const testPrefix = isTest ? '[TEST ALERT - No action needed] ' : '';
     const message = `${testPrefix}🚨 SOS Alert from ${userName}: ${emergencyLabel}. They may need immediate help. Live location: ${locationStr}. Sent at: ${new Date().toLocaleTimeString('en-IN')}. Please contact them or call emergency services (112).`;
