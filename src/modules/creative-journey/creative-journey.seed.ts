@@ -6,7 +6,6 @@
 import { prisma } from "../../db/client.js";
 
 const BODY_TIMELINE_NODES = [
-  // ── NODE 1 — FIXED START: Story ─────────────────────────────────────────────
   {
     nodeId: "bt_story",
     type: "story",
@@ -28,59 +27,9 @@ const BODY_TIMELINE_NODES = [
             },
           ],
         },
-        {
-          pageNumber: 3,
-          title: "Growing Apart?",
-          image: "assets/images/story/page_3.jpg",
-          panels: [
-            {
-              id: "p3_1",
-              description: "Her eyes moved to the marks right beside hers. Nadia. Same dates. Same height.",
-              dialogue: [{ character: "Meera", type: "thought", text: "Then how is she still the same... and I'm not?" }],
-            },
-          ],
-        },
-        {
-          pageNumber: 4,
-          title: "Same Place. Different Stories.",
-          image: "assets/images/story/page_4.jpg",
-          panels: [
-            {
-              id: "p4_1",
-              description: "Meera quickly pulled out her phone, snapped a picture, and messaged Gigi.",
-              dialogue: [{ character: "Meera", type: "thought", text: "What if growing up doesn't happen at the same time for everyone?" }],
-            },
-          ],
-        },
-        {
-          pageNumber: 5,
-          title: "Not the Same Timeline",
-          image: "assets/images/story/page_5.jpg",
-          panels: [
-            {
-              id: "p5_1",
-              description: "That night, something felt... off. Zoomed in. Her mark higher. Nadia's... stuck.",
-              dialogue: [{ character: "Meera", type: "thought", text: "Wait... what? Her chest tightened a little." }],
-            },
-          ],
-        },
-        {
-          pageNumber: 6,
-          title: "We've Literally Grown Up The Same",
-          image: "assets/images/story/page_6.jpg",
-          panels: [
-            {
-              id: "p6_1",
-              description: "We've literally grown up the same, she muttered. Same class. Same food. Same everything.",
-              dialogue: [{ character: "Meera", type: "thought", text: "What if something is wrong with me?" }],
-            },
-          ],
-        },
       ],
     },
   },
-
-  // ── NODE 2 — Mystery Task Box ──────────────────────────────────────────────
   {
     nodeId: "bt_mysterybox",
     type: "mystery_task_box",
@@ -90,852 +39,1999 @@ const BODY_TIMELINE_NODES = [
     xpReward: 10,
     content: {
       flaps: [
-        {
-          id: 1,
-          type: "fact_task",
-          factText: "During puberty, it's common to grow 2–4 inches in a single year — sometimes called a 'growth spurt.' Hands and feet often grow first!",
-          task: {
-            question: "Tap the body part you think grows first?",
-            options: ["Hands & Feet", "Torso", "Head"],
-            correctIndex: 0,
-            feedbackText: "Ooh, interesting! Hands and feet really do tend to shoot up first — the rest catches up soon after 🌱",
-          },
-        },
-        {
-          id: 2,
-          type: "mini_task",
-          prompt: "Measure your own hand span right now (or guess!) — tap the size that feels closest.",
-          options: [
-            { label: "Small (< 7 inches)", emoji: "✋" },
-            { label: "Medium (7–8 inches)", emoji: "🖐" },
-            { label: "Large (> 8 inches)", emoji: "👋" },
-          ],
-          feedbackText: "There's no right answer here — every hand is perfectly sized for its person! 💛",
-        },
-        {
-          id: 3,
-          type: "fact_reflection",
-          factText: "Skin can get a bit oilier during puberty because of hormones — that's why some people start noticing more shine or occasional pimples.",
-          reflectionPrompt: "How does that make you feel?",
-          emojiOptions: ["😌 Fine", "😬 Nervous", "🤷 Not sure"],
-          isPrivate: true,
-          feedbackText: "All of those feelings are completely valid! Knowing what to expect makes it a little less surprising 💜",
-        },
-        {
-          id: 4,
-          type: "sticker_reward",
-          message: "You opened the whole Growth Box! Here's your sticker 🎁",
-          stickerEmoji: "📦✨",
-        },
+        { id: 1, type: "fact_task", title: "Growth Spurt Timing", description: "Girls typically start growth spurts between ages 9 and 12." },
+        { id: 2, type: "reflection_task", title: "Genetics Factor", description: "Height is mostly inherited from parents." },
       ],
     },
   },
-
-  // ── NODE 3 — Quiz ──────────────────────────────────────────────────────────
   {
     nodeId: "bt_quiz",
     type: "quiz",
     position: "random_pool",
-    title: "Timeline Trivia",
+    title: "Body Timeline Quiz 🧠",
     energyTag: "reflective",
-    xpReward: 10,
+    xpReward: 15,
     passThreshold: 0.6,
     content: {
+      title: "Body Timeline Quiz 🧠",
       questions: [
         {
-          id: "q1",
-          text: "Puberty usually happens somewhere between which ages?",
-          options: ["3–6", "8–14", "16–20", "There's an exact age for everyone"],
-          correctIndex: 1,
-          feedback: "Right — and even 8–14 is a wide range, because every body's road is different! 🌸",
+          id: "btq1",
+          text: "Why did Meera find a difference in height marks on the doorframe?",
+          options: [
+            "Everyone grows on their own unique biological timeline ⏱️",
+            "Nadia stopped growing completely 🛑",
+            "The measuring tape was broken 📏",
+          ],
+          correctIndex: 0,
+          explanation: "Puberty growth spurts start at different ages for everyone!",
         },
         {
-          id: "q2",
-          text: "True or False: Everyone starts puberty on exactly the same day as their friends.",
-          options: ["True", "False"],
-          correctIndex: 1,
-          feedback: "Totally false — and that's a good thing to remember next time you compare yourself to a friend. 💛",
+          id: "btq2",
+          text: "What controls when your puberty growth spurt begins?",
+          options: [
+            "Your internal biological clock & hormones 🧬",
+            "How fast you run in PE class 🏃‍♀️",
+            "What color clothes you wear 👗",
+          ],
+          correctIndex: 0,
+          explanation: "Genetics and endocrine hormones signal your growth plates when to start!",
         },
         {
-          id: "q3",
-          text: "Which of these is a normal part of the Body Timeline?",
-          options: ["Growth spurts", "Skin changes", "New body hair", "All of the above"],
-          correctIndex: 3,
-          feedback: "Yep — all of it! Different stops on the same road. 🗺️",
+          id: "btq3",
+          text: "True or False: Growing faster than your friend means you will be taller forever.",
+          options: [
+            "False — early growers and late growers reach their natural genetic height 🌸",
+            "True — early growth determines final height 📏",
+          ],
+          correctIndex: 0,
+          explanation: "Growth timing varies! Late bloomers catch up naturally.",
         },
         {
-          id: "q4",
-          text: "What are 'growing pains'?",
-          options: ["A sign something's wrong", "Achy legs from fast bone growth", "Something only athletes get"],
-          correctIndex: 1,
-          feedback: "Exactly — bones can grow faster than muscles adjust, and that can feel achy. It passes. 💪",
+          id: "btq4",
+          text: "What are growth plates in long bones made of during early puberty?",
+          options: [
+            "Flexible cartilage that converts to strong bone 🦴",
+            "Solid steel 🔩",
+            "Soft muscle tissue 🥩",
+          ],
+          correctIndex: 0,
+          explanation: "Growth plates are cartilage discs near bone ends that produce new bone cells!",
         },
         {
-          id: "q5",
-          text: "If your timeline looks different from your friend's, that means:",
-          options: ["Something is wrong with you", "You should ask a doctor to speed it up", "You're both perfectly normal, just on your own pace"],
-          correctIndex: 2,
-          feedback: "That's the whole point of today's episode. 💛",
+          id: "btq5",
+          text: "What is the best way to support your body during a active growth spurt?",
+          options: [
+            "Nutritious food, plenty of water, and 8-10 hours of sleep 💤",
+            "Staying awake all night playing video games 🎮",
+            "Skipping breakfast 🥣",
+          ],
+          correctIndex: 0,
+          explanation: "Deep sleep releases Human Growth Hormone (HGH) to rebuild tissues!",
         },
       ],
     },
   },
-
-  // ── NODE 4 — Watch Video ───────────────────────────────────────────────────
   {
     nodeId: "bt_video",
     type: "watch_video",
     position: "random_pool",
-    title: "60 Seconds on Growth Spurts",
+    title: "Understanding Growth Spurts 🎥",
     energyTag: "reflective",
-    xpReward: 5,
-    content: {
-      youtubeVideoId: "PLACEHOLDER_VIDEO_ID",
-      thumbnailEmoji: "🎬",
-      scriptSummary: "Gigi walks along the timeline road explaining growth spurts — fast bone growth, growing pains, and how every body's spurt is different.",
-      postVideoQuestion: {
-        text: "Did you know growing pains were a real thing?",
-        options: ["👍 Yes, I knew!", "😲 No, that's new!"],
-        isScored: false,
-        feedbackText: "Now you know — and knowing makes it way less scary when it happens! 🌱",
-      },
-    },
+    xpReward: 10,
+    content: { videoUrl: "https://assets.infano.care/videos/growth_spurts.mp4", durationSeconds: 120 },
   },
-
-  // ── NODE 5 — Identify Image ────────────────────────────────────────────────
   {
     nodeId: "bt_identify",
     type: "identify_image",
     position: "random_pool",
-    title: "Spot What's True",
+    title: "Spot Healthy Puberty Milestones 🦴✨",
     energyTag: "active",
-    xpReward: 7,
+    xpReward: 15,
     content: {
-      instruction: "Tap ALL the icons that show a normal part of the Body Timeline.",
+      title: "Spot Healthy Puberty Milestones 🦴✨",
+      instruction: "Tap all 4 healthy signals of bone growth and height spurt activity!",
+      completionMessage: "Awesome job! You identified all 4 healthy signals of bone growth and height development!",
       icons: [
-        { id: "shoe", emoji: "👟", label: "Trying on a bigger shoe", isCorrect: true },
-        { id: "height", emoji: "📏", label: "Comparing heights with a friend", isCorrect: true },
-        { id: "magazine", emoji: "📰", label: "Comparing yourself to a magazine model", isCorrect: false, distractorNote: "Magazines often show edited images — they're not a fair comparison for anybody's real timeline." },
-        { id: "pimple", emoji: "🪞", label: "Noticing a pimple in the mirror", isCorrect: true },
-        { id: "stretch", emoji: "🤸", label: "Stretching after a growth ache", isCorrect: true },
-        { id: "worry", emoji: "💭", label: "Feeling worried about being 'too early'", isCorrect: true },
+        { id: "i1", emoji: "⚡", label: "HGH Hormone Signal", isCorrect: true },
+        { id: "i2", emoji: "🦵", label: "Growth Plate Expansion", isCorrect: true },
+        { id: "i3", emoji: "🌙", label: "Deep Sleep Tissue Repair", isCorrect: true },
+        { id: "i4", emoji: "🦴", label: "Strong Bone Mineralization", isCorrect: true },
+        { id: "i5", emoji: "🍿", label: "Junk Food Diet", isCorrect: false, distractorNote: "Junk food lacks essential calcium and Vitamin D needed for bone growth!" },
+        { id: "i6", emoji: "📱", label: "All-Night Screen Time", isCorrect: false, distractorNote: "Staying up late blocks HGH growth hormone release during deep sleep cycles!" },
       ],
-      completionMessage: "Great detective work! You spotted what's real — and what's not a fair comparison. 🔍",
     },
   },
-
-  // ── NODE 6 — Myth Busters ──────────────────────────────────────────────────
   {
     nodeId: "bt_mythbusters",
     type: "myth_busters",
     position: "random_pool",
-    title: "True or Myth?",
+    title: "Growth Myths vs Facts 💡",
     energyTag: "reflective",
-    xpReward: 8,
+    xpReward: 15,
     content: {
-      instruction: "Swipe RIGHT for TRUE → swipe LEFT for MYTH",
+      title: "Growth Myths vs Facts 💡✨",
+      instruction: "Bust common myths about puberty height and growing up!",
       cards: [
-        {
-          id: "m1",
-          statement: "Once you start puberty, everything changes overnight.",
-          verdict: "MYTH",
-          explanation: "It's usually gradual — small changes over months and years, not one big overnight switch. 🌙",
-        },
-        {
-          id: "m2",
-          statement: "Growth spurts can make you clumsy for a while.",
-          verdict: "TRUE",
-          explanation: "Your brain is still catching up to your new arm/leg length — totally normal. 🧠",
-        },
-        {
-          id: "m3",
-          statement: "If you get your period later than your friends, something's wrong.",
-          verdict: "MYTH",
-          explanation: "Periods can start anywhere roughly between 9 and 16 — both ends of that range are normal. 🌸",
-        },
-        {
-          id: "m4",
-          statement: "Boys and girls go through puberty at the exact same time.",
-          verdict: "MYTH",
-          explanation: "On average, girls' bodies often start a bit earlier than boys', but it varies a lot person to person. 💜",
-        },
-        {
-          id: "m5",
-          statement: "You can't do anything to control exactly when puberty starts.",
-          verdict: "TRUE",
-          explanation: "It's mostly set by your own biology/genes — not something you did or didn't do. 🌿",
-        },
+        { id: "btm1", statement: "Drinking milk guarantees you will be 6 feet tall.", verdict: "MYTH", explanation: "Calcium strengthens bones, but genetics determines your height ceiling!" },
+        { id: "btm2", statement: "Growth spurts happen evenly every single day.", verdict: "MYTH", explanation: "Growth happens in quick bursts, often while sleeping at night!" },
+        { id: "btm3", statement: "Shorter girls in 5th grade will always stay short.", verdict: "MYTH", explanation: "Puberty timing varies—growth spurts happen anytime between ages 9 and 14!" },
+        { id: "btm4", statement: "Carrying heavy backpacks permanently stops your height growth.", verdict: "MYTH", explanation: "Heavy bags strain posture and back muscles, but don't stop bone growth plates." },
+        { id: "btm5", statement: "Sleeping extra hours during puberty helps you grow.", verdict: "FACT", explanation: "Deep sleep triggers the pituitary gland to release natural Growth Hormone (HGH)!" },
       ],
     },
   },
-
-  // ── NODE 7 — Timeline Builder ──────────────────────────────────────────────
   {
     nodeId: "bt_timelinebuilder",
     type: "timeline_builder",
     position: "random_pool",
-    title: "Build Your Own Timeline",
+    title: "My Puberty Height Timeline 📏✨",
     energyTag: "active",
-    xpReward: 8,
+    xpReward: 15,
     content: {
-      instruction: "Drag and drop the changes into the order you think they happen.",
+      title: "My Puberty Height Timeline 📏✨",
+      instruction: "Drag and arrange the milestones of your height growth spurt in the correct order!",
       cards: [
-        { id: "c1", emoji: "📈", label: "Growth Spurt" },
-        { id: "c2", emoji: "✨", label: "Skin Changes" },
-        { id: "c3", emoji: "🌿", label: "New Body Hair" },
-        { id: "c4", emoji: "🌸", label: "Body Shape Changes" },
-        { id: "c5", emoji: "🌊", label: "Emotional Ups & Downs" },
-        { id: "c6", emoji: "🩸", label: "Periods Start" },
+        { id: "btc1", label: "Pituitary Hormone Signal 🧬", emoji: "⚡", description: "Pituitary gland releases Growth Hormone (HGH) to kickstart puberty." },
+        { id: "btc2", label: "Cartilage Growth Plates Activate 🦴", emoji: "🦵", description: "Soft cartilage discs near bone ends produce new bone cells rapidly." },
+        { id: "btc3", label: "Nighttime Growth Spurt 🌙", emoji: "📏", description: "Tissues and leg bones stretch during deep sleep as HGH levels peak." },
+        { id: "btc4", label: "Bone Solidification 🦴", emoji: "✨", description: "Cartilage converts into strong, permanent adult bone tissue." },
       ],
-      revealMessage: "However you arranged these — that's a totally valid way it could go! In real life, this order is different for almost everyone. You just built A timeline, not THE timeline. There's no single right answer here — and that's the whole point. 💛",
     },
   },
-
-  // ── NODE 8 — Spot the Change ───────────────────────────────────────────────
   {
     nodeId: "bt_growthdetective",
     type: "spot_the_change",
     position: "random_pool",
     title: "Growth Detective",
     energyTag: "active",
-    xpReward: 7,
-    content: {
-      instruction: "Tap the 5 differences you can spot between Riya at age 9 and age 13.",
-      character: "Riya",
-      differences: [
-        { id: "d1", emoji: "📏", label: "She's taller", hint: "Look at where she stands next to the bus stop sign" },
-        { id: "d2", emoji: "👟", label: "Her shoes are bigger", hint: "Check the size of her trainers" },
-        { id: "d3", emoji: "💇", label: "Her hairstyle changed", hint: "Look at her hair length and style" },
-        { id: "d4", emoji: "😊", label: "She looks more confident", hint: "Notice her expression and posture" },
-        { id: "d5", emoji: "🧴", label: "She has a skincare item in her bag", hint: "Look at what's peeking out of her bag" },
-      ],
-      completionMessage: "You spotted growth — the visible kind AND the invisible kind (confidence!). Your own timeline will have its own differences, and they'll be worth spotting too. 🔍✨",
-    },
+    xpReward: 10,
+    content: { title: "Doorframe Height Tracker" },
   },
-
-  // ── NODE 9 — Emoji Decoder Wheel ──────────────────────────────────────────
   {
-    nodeId: "bt_emoji_decoder",
-    type: "emoji_decoder",
+    nodeId: "bt_askGigi",
+    type: "anonymous_question_box",
     position: "random_pool",
-    title: "Timeline Decoder Wheel 🎭",
-    energyTag: "active",
-    xpReward: 8,
-    content: {
-      title: "Timeline Emotion Decoder 🎭",
-      instruction: "Spin and tap the emoji that best captures the feeling in each timeline scene!",
-      scenarios: [
-        {
-          character: "Meera",
-          scene: "Meera noticed her favorite pair of jeans from last summer didn't reach her ankles anymore.",
-          sceneEmoji: "👖",
-          options: ["😯", "😡", "😭", "😌"],
-          correctEmoji: "😯",
-          gigiResponse: "Spot on! Growth spurts happen fast during puberty — your legs grow before your wardrobe catches up!",
-          wrongResponse: "Growth spurts can feel surprising at first, but it means your long bones are lengthening normally!"
-        },
-        {
-          character: "Mira",
-          scene: "Mira's friend started growing taller before her, while Mira hadn't noticed any height change yet.",
-          sceneEmoji: "⏱️",
-          options: ["😟", "🤔", "👑", "💖"],
-          correctEmoji: "🤔",
-          gigiResponse: "Exactly! Everyone's body timeline runs on its own unique inner clock — there is no race to finish first!",
-          wrongResponse: "Curiosity is great! Remember, your timing is programmed by your unique genetics."
-        },
-        {
-          character: "Gigi's Note",
-          scene: "When you realize that your body's changes aren't a mistake, but proof that your growth masterplan is working.",
-          sceneEmoji: "✨",
-          options: ["💖", "🌟", "😌", "🥳"],
-          correctEmoji: "💖",
-          gigiResponse: "Yes! Your body is working hard every day to build your healthy adult self with total pride!",
-          wrongResponse: "Embracing your body's timing gives you total peace of mind!"
-        }
-      ]
-    }
+    title: "Ask Gigi About Growth",
+    energyTag: "reflective",
+    xpReward: 5,
+    content: { prompt: "Ask Gigi anything about height changes!" },
   },
-
-  // ── NODE 10 — FIXED END: Reflection & Reward ──────────────────────────────
   {
     nodeId: "bt_reflect",
     type: "reflection_reward",
-    position: "fixed_end",
-    title: "Your Timeline, Your Pace",
-    xpReward: 15,
-    unlocksBadge: "timeline_explorer",
+    position: "random_pool",
+    title: "Celebrate Your Unique Rhythm",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: { prompt: "Write one thing you love about your body's journey!" },
+  },
+];
+
+const GROWING_PAINS_NODES = [
+  {
+    nodeId: "gp_story",
+    type: "story",
+    position: "fixed_start",
+    title: "Ache in the Shins",
+    estMinutes: 4,
+    xpReward: 5,
     content: {
+      pages: [
+        {
+          pageNumber: 1,
+          title: "Late Night Ache",
+          image: "assets/images/story/page_2.jpg",
+          panels: [
+            {
+              id: "gp_p1",
+              description: "Meera woke up at 2 AM with a dull throb in both shins.",
+              dialogue: [{ character: "Meera", type: "thought", text: "Why do my legs feel like they ran a marathon?" }],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "gp_growth_plates_lab",
+    type: "mystery_task_box",
+    position: "random_pool",
+    title: "Growth Plates Lab 🦴",
+    energyTag: "active",
+    xpReward: 10,
+    content: {
+      flaps: [
+        { id: 1, type: "fact_task", title: "Cartilage Growth Zones 🦴", description: "Growth plates are soft cartilage discs at the ends of long leg bones that produce new bone cells during puberty." },
+        { id: 2, type: "reflection_task", title: "Why Legs Ache at Night 🌙", description: "Tissues and leg muscles stretch while you rest at night after a busy active day of growth." },
+        { id: 3, type: "fact_task", title: "Stretch Marks (Silver Lines) ✨", description: "Silver lines on thighs or hips happen when skin elastic fibers stretch quickly to accommodate height!" },
+        { id: 4, type: "reflection_task", title: "Warm Relief Remedies 🍵", description: "Warm baths, gentle leg massage, and cozy leg warmers ease muscle tightness naturally." },
+      ],
+    },
+  },
+  {
+    nodeId: "gp_stretch_marks_decoder",
+    type: "spot_the_change",
+    position: "random_pool",
+    title: "Stretch Marks: Skin Badges 🏷️",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: {
+      title: "Silver Lightning Lines ✨",
+      description: "Stretch marks are natural badges of rapid growth! Learn why skin creates them during puberty growth spurts.",
+    },
+  },
+  {
+    nodeId: "gp_mythbusters",
+    type: "myth_busters",
+    position: "random_pool",
+    title: "Growing Pain Myths vs Facts 💡",
+    energyTag: "reflective",
+    xpReward: 15,
+    content: {
+      title: "Growing Pain Myths vs Facts 💡✨",
+      instruction: "Bust common misconceptions about leg aches and bone growth during puberty!",
+      cards: [
+        { id: "gpm1", statement: "Growing leg pains mean your bones are broken or diseased.", verdict: "MYTH", explanation: "Fact: Growing pains are completely safe, temporary leg muscle aches caused by active days and bone growth!" },
+        { id: "gpm2", statement: "Stretch marks are scars caused by poor hygiene.", verdict: "MYTH", explanation: "Fact: Stretch marks are beautiful skin expansion lines created when collagen stretches during height growth!" },
+        { id: "gpm3", statement: "Cracking your joints or stretching causes growing pains.", verdict: "MYTH", explanation: "Fact: Gentle stretching actually relieves muscle tightness and relaxes legs before bedtime!" },
+        { id: "gpm4", statement: "Everyone experiences growing pains at the exact same age.", verdict: "MYTH", explanation: "Fact: Growth spurts happen at different ages for everyone between 8 and 14 years old based on unique genetics!" },
+        { id: "gpm5", statement: "Taking cold baths cures leg ache immediately.", verdict: "MYTH", explanation: "Fact: Cold water tightens muscles! Warm compresses, warm baths, and gentle massages soothe leg aches best." },
+      ],
+    },
+  },
+  {
+    nodeId: "gp_quiz",
+    type: "quiz",
+    position: "random_pool",
+    title: "Growing Pains Master Quiz 🧠",
+    energyTag: "reflective",
+    xpReward: 15,
+    passThreshold: 0.6,
+    content: {
+      title: "Growing Pains Master Quiz 🧠",
+      questions: [
+        {
+          id: "gpq1",
+          text: "Where do active growth plates exist in your body during puberty growth spurts?",
+          options: [
+            "At the soft cartilage ends of long leg and arm bones 🦴",
+            "Inside your teeth and fingernails 💅",
+            "In your stomach muscles 🥣",
+          ],
+          correctIndex: 0,
+          explanation: "Growth plates are cartilage areas near the ends of bones where new bone tissue expands!",
+        },
+        {
+          id: "gpq2",
+          text: "Why did Meera experience dull throbbing in her shins late at night?",
+          options: [
+            "Tired leg muscles and stretching tissues react after an active day of bone growth 🌙",
+            "She ate too many sweets at dinner 🍬",
+            "Her shoes were too small for gym class 👟",
+          ],
+          correctIndex: 0,
+          explanation: "Nighttime leg aches happen when muscles and tendons stretch to match rapid daytime bone growth!",
+        },
+        {
+          id: "gpq3",
+          text: "What are the faint silver or pink lines that appear on hips or thighs during a growth spurt?",
+          options: [
+            "Allergic reactions to soap 🧼",
+            "Natural stretch marks caused by rapid skin collagen expansion ✨",
+            "Scratches from sports gear 🏀",
+          ],
+          correctIndex: 1,
+          explanation: "Stretch marks are natural badges showing your body expanded quickly and healthily!",
+        },
+        {
+          id: "gpq4",
+          text: "Which gentle routine helps soothe aching legs before bedtime?",
+          options: [
+            "A warm bath, gentle leg massage, and cozy warm socks 🛀",
+            "Running 5 kilometers right before sleep 🏃‍♀️",
+            "Applying ice cubes directly to shins 🧊",
+          ],
+          correctIndex: 0,
+          explanation: "Warmth relaxes tight leg muscles and improves circulation for peaceful sleep!",
+        },
+        {
+          id: "gpq5",
+          text: "True or False: Growing pains leave permanent damage in leg bones.",
+          options: [
+            "False — they are safe, temporary muscle aches that fade naturally 🌸",
+            "True — bones become weak permanently 🦴",
+          ],
+          correctIndex: 0,
+          explanation: "Growing pains are completely harmless temporary growth sensations that fade as puberty finishes!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "gp_quest",
+    type: "timeline_builder",
+    position: "random_pool",
+    title: "Leg Ache Relief Action Plan 🦵✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Leg Ache Relief Action Plan 🦵✨",
+      instruction: "Sequence the best steps to comfort growing leg aches before bedtime!",
+      cards: [
+        { id: "gpc1", label: "Warm Bath Soak 🛀", emoji: "🛀", description: "Soak in warm water to relax tight leg muscles and boost circulation." },
+        { id: "gpc2", label: "Gentle Shin Massage 🤲", emoji: "💆‍♀️", description: "Gently massage shins and calves with warm lotion." },
+        { id: "gpc3", label: "Light Calf Stretching 🧘‍♀️", emoji: "🧘‍♀️", description: "Do soft hamstring and calf stretches to release muscle tightness." },
+        { id: "gpc4", label: "Cozy Warm Sleep 🌙", emoji: "🛌", description: "Wear soft warm socks and get cozy rest to let bones rebuild." },
+      ],
+    },
+  },
+  {
+    nodeId: "gp_ask_gigi",
+    type: "anonymous_question_box",
+    position: "random_pool",
+    title: "Growing Pains Q&A with Gigi",
+    energyTag: "reflective",
+    xpReward: 5,
+    content: { prompt: "Ask Gigi about your growth spurts!" },
+  },
+  {
+    nodeId: "gp_reflection_journal",
+    type: "reflection_reward",
+    position: "random_pool",
+    title: "Honor Your Growth Journey",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: { prompt: "Write one thing you appreciate about your growing body!" },
+  },
+];
+
+const SKIN_STORIES_NODES = [
+  {
+    nodeId: "ss_story",
+    type: "story",
+    position: "fixed_start",
+    title: "The Mirror & The Spot",
+    estMinutes: 4,
+    xpReward: 5,
+    content: {
+      pages: [
+        {
+          pageNumber: 1,
+          title: "First Pimple Panic",
+          image: "assets/images/story/page_2.jpg",
+          panels: [
+            {
+              id: "ss_p1",
+              description: "Nadia stared into the bathroom mirror at a tiny red bump on her forehead.",
+              dialogue: [{ character: "Nadia", type: "thought", text: "Oh no... what is this bump doing here today?" }],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "ss_mysterybox",
+    type: "mystery_task_box",
+    position: "random_pool",
+    title: "Sebum & Pores Lab 🔬",
+    energyTag: "active",
+    xpReward: 10,
+    content: {
+      flaps: [
+        { id: 1, type: "fact_task", title: "Sebum Oil 💧", description: "Sebaceous glands produce natural oil (sebum) that keeps skin waterproof, soft, and protected." },
+        { id: 2, type: "reflection_task", title: "Hormone Spark ⚡", description: "Puberty hormones tell glands to make extra sebum, which can combine with dead skin cells in pores." },
+        { id: 3, type: "fact_task", title: "Pores & Bacteria 🦠", description: "When oil gets trapped in a pore, natural skin bacteria create a harmless red bump (pimple)." },
+        { id: 4, type: "reflection_task", title: "Why Popping Harms 🚫", description: "Squeezing pimples pushes bacteria deeper, causing inflammation and scarring!" },
+      ],
+    },
+  },
+  {
+    nodeId: "ss_drag_to_sort",
+    type: "drag_to_sort",
+    position: "random_pool",
+    title: "Skin Routine vs Pimple Traps 🧼",
+    energyTag: "active",
+    xpReward: 12,
+    content: {
+      bins: [
+        { id: "b1", title: "Gentle Care 🌸" },
+        { id: "b2", title: "Harsh Traps 🚫" },
+      ],
+      items: [
+        { id: "i1", text: "Washing twice daily with mild lukewarm cleanser 🧼", correctBinId: "b1" },
+        { id: "i2", text: "Popping pimples with unwashed fingers 🚫", correctBinId: "b2" },
+        { id: "i3", text: "Applying daily broad-spectrum sunscreen ☀️", correctBinId: "b1" },
+        { id: "i4", text: "Scrubbing face violently with rough sponges 🧽", correctBinId: "b2" },
+        { id: "i5", text: "Drinking fresh water & eating colorful vegetables 🥗", correctBinId: "b1" },
+        { id: "i6", text: "Sleeping with heavy makeup on overnight 💄", correctBinId: "b2" },
+      ],
+    },
+  },
+  {
+    nodeId: "ss_appreciation_jar",
+    type: "body_appreciation_jar",
+    position: "random_pool",
+    title: "Skin Confidence Jar ✨",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: {
+      title: "Skin Confidence Jar 🏺✨",
+      instruction: "Collect 4 genuine skin superpower gems! Reject harsh myth bluffs that don't belong in your jar!",
+      maxCapacity: 4,
+      gems: [
+        { id: "sg1", emoji: "🛡️", shortLabel: "Living Shield", actionText: "My skin protects my internal organs from germs every single second.", isCorrect: true },
+        { id: "sg2", emoji: "🧼", shortLabel: "Gentle Cleansing", actionText: "I wash gently with lukewarm water and treat my skin with kindness.", isCorrect: true },
+        { id: "sg3", emoji: "💧", shortLabel: "Hydration Balance", actionText: "Drinking water keeps my skin supple, flexible, and glowing.", isCorrect: true },
+        { id: "sg4", emoji: "☀️", shortLabel: "Sun Safety", actionText: "Applying SPF protects my skin barrier from UV rays.", isCorrect: true },
+        { id: "sg5", emoji: "✨", shortLabel: "Self-Acceptance", actionText: "Pimples are normal temporary signals of puberty growth.", isCorrect: true },
+        { id: "sg_bluff1", emoji: "💥", shortLabel: "Squeezing & Popping Spots", actionText: "Popping pimples to make them disappear.", isCorrect: false, rejectionHint: "Squeezing pushes bacteria deeper into the pore, causing redness and scarring! 🌸" },
+        { id: "sg_bluff2", emoji: "🧪", shortLabel: "Overwashing 5 Times Daily", actionText: "Scrubbing skin repeatedly with harsh alcohol soaps.", isCorrect: false, rejectionHint: "Overwashing strips natural oil, causing glands to produce EVEN MORE sebum! 2 gentle washes is perfect 🧼" },
+        { id: "sg_bluff3", emoji: "🙈", shortLabel: "Hiding Face Behind Filters", actionText: "Feeling ashamed of natural pores.", isCorrect: false, rejectionHint: "Real skin has texture, pores, and occasional spots! ✨" },
+      ],
+    },
+  },
+  {
+    nodeId: "ss_identify",
+    type: "identify_image",
+    position: "random_pool",
+    title: "Identify Healthy Skin Guardians 🧼✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Identify Healthy Skin Guardians 🧼✨",
+      instruction: "Tap all 4 healthy skin guardians that protect your complexion!",
+      completionMessage: "Brilliant! You identified all 4 healthy skin guardians for a glowing, happy complexion!",
+      icons: [
+        { id: "i1", emoji: "🧼", label: "Gentle Cleanser", isCorrect: true },
+        { id: "i2", emoji: "💧", label: "Hydrating Moisturizer", isCorrect: true },
+        { id: "i3", emoji: "☀️", label: "SPF 30+ Sunscreen", isCorrect: true },
+        { id: "i4", emoji: "🥗", label: "Nourishing Water & Diet", isCorrect: true },
+        { id: "i5", emoji: "🤏", label: "Pimple Popping", isCorrect: false, distractorNote: "Popping pimples pushes bacteria deeper into pores and causes permanent skin scarring!" },
+        { id: "i6", emoji: "🧪", label: "Harsh Scrubbing Soap", isCorrect: false, distractorNote: "Harsh soaps strip natural skin oils, triggering pores to produce even more excess sebum!" },
+      ],
+    },
+  },
+  {
+    nodeId: "ss_mythbusters",
+    type: "myth_busters",
+    position: "random_pool",
+    title: "Skin Myths vs Facts 💡",
+    energyTag: "reflective",
+    xpReward: 15,
+    content: {
+      title: "Skin Myths vs Facts 💡✨",
+      instruction: "Bust common skin care myths with dermatological facts!",
+      cards: [
+        { id: "sm1", statement: "Eating chocolate or greasy chips is the main cause of acne.", verdict: "MYTH", explanation: "Fact: Acne is triggered by rising puberty hormones and oil production, not chocolate!" },
+        { id: "sm2", statement: "Popping a pimple makes it heal faster.", verdict: "MYTH", explanation: "Fact: Popping tears skin tissue, spreads bacteria, and creates dark spots or scars!" },
+        { id: "sm3", statement: "People with oily skin don't need to apply moisturizer.", verdict: "MYTH", explanation: "Fact: Oily skin still needs hydration! Lightweight oil-free moisturizers prevent skin overproducing oil." },
+        { id: "sm4", statement: "Scrubbing your face hard with rough towels cures pimples.", verdict: "MYTH", explanation: "Fact: Harsh scrubbing irritates sensitive skin barriers. Gentle patting is best!" },
+        { id: "sm5", statement: "Pimples mean your face is dirty.", verdict: "MYTH", explanation: "Fact: Pimples happen deep inside hair follicles due to hormones, not dirty skin!" },
+        { id: "sm6", statement: "Sun exposure cures acne permanently.", verdict: "MYTH", explanation: "Fact: Sun rays temporarily dry oil but damage skin cells, leading to darker spots later!" },
+      ],
+    },
+  },
+  {
+    nodeId: "ss_match_pairs",
+    type: "match_pairs",
+    position: "random_pool",
+    title: "Match Skin Terms 🧬",
+    energyTag: "active",
+    xpReward: 10,
+    content: {
+      pairs: [
+        { id: "p1", term: "Sebum", definition: "Natural oil produced by skin glands to keep skin soft." },
+        { id: "p2", term: "Pore", definition: "Tiny opening in skin where hair follicles and oil emerge." },
+        { id: "p3", term: "Epidermis", definition: "The protective outer layer of your skin." },
+        { id: "p4", term: "SPF Sunscreen", definition: "Lotion that shields skin cells from harmful UV sun rays." },
+      ],
+    },
+  },
+  {
+    nodeId: "ss_spot_the_change",
+    type: "spot_the_change",
+    position: "random_pool",
+    title: "Pore Clearing Stages",
+    energyTag: "active",
+    xpReward: 10,
+    content: { title: "Clear Pores vs Clogged Pores" },
+  },
+  {
+    nodeId: "ss_emoji_decoder",
+    type: "emoji_decoder",
+    position: "random_pool",
+    title: "Skin Glow Secrets Wheel 🧼✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Skin Glow Secrets Wheel 🧼✨",
+      instruction: "Spin the wheel to land on each sector and unlock Gigi's 4 secret skin glow rules!",
+      scenarios: [
+        {
+          id: "ss_s1",
+          ruleNumber: 1,
+          ruleName: "Lukewarm Cleansing",
+          wheelLabel: "Rule 1 🧼",
+          emoji: "🧼",
+          title: "Rule 1: Lukewarm Cleansing Secret 🧼",
+          description: "Wash your face with lukewarm water! Hot water strips natural protective oils, while cold water closes pores before dirt is washed out.",
+          question: "Which water temperature is best for gentle skin washing?",
+          emojiOptions: ["🧼 Lukewarm", "🔥 Hot Water", "🧊 Ice Cold", "☀️ Sun Warm"],
+          correctEmoji: "🧼 Lukewarm",
+          explanation: "Gigi's Tip: Lukewarm water opens pores gently to dissolve oil while preserving your natural skin barrier!",
+        },
+        {
+          id: "ss_s2",
+          ruleNumber: 2,
+          ruleName: "No-Pop Shield",
+          wheelLabel: "Rule 2 🛡️",
+          emoji: "🛡️",
+          question: "What is the #1 rule when a pimple appears on your skin?",
+          title: "Rule 2: Pimple Protection Shield 🛡️",
+          description: "Never squeeze or pop pimples! Popping pushes bacteria deeper into surrounding pores and causes permanent dark scars.",
+          emojiOptions: ["🛡️ Leave Alone", "🤏 Squeeze", "📍 Needle Pop", "🪨 Rub Hard"],
+          correctEmoji: "🛡️ Leave Alone",
+          explanation: "Gigi's Tip: Apply a warm compress or pimple patch—letting your body's immune system heal it prevents scarring!",
+        },
+        {
+          id: "ss_s3",
+          ruleNumber: 3,
+          ruleName: "Daily Sun Shield",
+          wheelLabel: "Rule 3 ☀️",
+          emoji: "☀️",
+          title: "Rule 3: Daily Sun Shield ☀️",
+          description: "Apply SPF 30+ broad-spectrum sunscreen every morning, even on cloudy days, to protect your skin barrier from UV damage.",
+          question: "Which daily step protects skin from UV spots and premature aging?",
+          emojiOptions: ["☀️ SPF 30+", "💧 Water Spray", "🧼 Face Soap", "🌱 Scrub"],
+          correctEmoji: "☀️ SPF 30+",
+          explanation: "Gigi's Tip: Sunscreen is your ultimate skin protector—it prevents dark spots and keeps your natural skin shield strong!",
+        },
+        {
+          id: "ss_s4",
+          ruleNumber: 4,
+          ruleName: "Lightweight Hydration",
+          wheelLabel: "Rule 4 💧",
+          emoji: "💧",
+          title: "Rule 4: Lightweight Hydration Power 💧",
+          description: "All skin types need moisture! Lightweight oil-free moisturizer signals pores that skin is hydrated, stopping overproduction of oil.",
+          question: "Does oily teen skin still need daily moisturizer?",
+          emojiOptions: ["💧 Yes Always", "🏜️ Never", "🚫 Only Dried", "🌵 Dry Only"],
+          correctEmoji: "💧 Yes Always",
+          explanation: "Gigi's Tip: Skipping moisturizer causes pores to overcompensate by pumping out MORE oil. Hydration creates balance!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "ss_reflect",
+    type: "reflection_reward",
+    position: "random_pool",
+    title: "Skin Kindness Reflection",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: { prompt: "Write one nice statement to your skin today!" },
+  },
+];
+
+const PERIOD_PREVIEW_NODES = [
+  {
+    nodeId: "pp_story",
+    type: "story",
+    position: "fixed_start",
+    title: "The Prepared Pack & Period Secrets",
+    estMinutes: 5,
+    xpReward: 20,
+    content: {
+      pages: [
+        {
+          pageNumber: 1,
+          title: "Locker Room Question",
+          image: "assets/images/story/page_2.jpg",
+          panels: [
+            {
+              id: "pp_p1",
+              description: "Nadia asked Amara about what happens when your period starts at school.",
+              dialogue: [
+                { character: "Nadia", type: "speech", text: "How will I know what to do if my period starts at school?" },
+                { character: "Amara", type: "speech", text: "Having a prep pouch in your bag gives you total peace of mind!" },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_drag_to_label",
+    type: "drag_to_label",
+    position: "random_pool",
+    title: "Map the 4 Cycle Phases 🏷️",
+    energyTag: "active",
+    xpReward: 10,
+    content: {
+      instruction: "Drag each cycle phase label onto the wheel and tap reveal to check your sequence!",
+      targets: [
+        { id: "cm1", label: "Period", emoji: "🩸", correctZone: "zone_1", desc: "Uterine lining sheds naturally to start fresh. Rest, drink warm water, and stay cozy.", superpower: "🛀 Rest & Recharging" },
+        { id: "cm2", label: "Follicular Phase", emoji: "🌱", correctZone: "zone_2", desc: "Estrogen rises, energy climbs, and a fresh egg matures inside the ovary.", superpower: "💡 Focus & Creativity" },
+        { id: "cm3", label: "Ovulation", emoji: "☀️", correctZone: "zone_3", desc: "The mature egg releases into the fallopian tube. Energy, confidence, and glow peak.", superpower: "🌟 Vitality & Confidence" },
+        { id: "cm4", label: "Luteal Phase", emoji: "🍂", correctZone: "zone_4", desc: "Progesterone warms the body and prepares a cozy space for wind-down.", superpower: "🧘 Intuition & Self-Care" },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_quiz",
+    type: "quiz",
+    position: "random_pool",
+    title: "Period Preview Master Trivia 🧠",
+    energyTag: "reflective",
+    xpReward: 15,
+    passThreshold: 0.6,
+    content: {
+      title: "Period Preview Master Trivia 🧠",
+      questions: [
+        {
+          id: "q1",
+          text: "In Nadia's locker room conversation with Amara, what key item gave Nadia instant peace of mind about her first period?",
+          options: [
+            "Carrying a discrete prep pouch in her bag with pads & spare undies 🎒",
+            "Hiding in the library during recess 📚",
+            "Skipping gym class every week 🏃‍♀️",
+          ],
+          correctIndex: 0,
+          explanation: "Carrying a small period pouch with pads and extra undies gives you total confidence anywhere!",
+        },
+        {
+          id: "q2",
+          text: "What biologically causes period flow to happen each month?",
+          options: [
+            "The body getting rid of harmful toxins 🦠",
+            "Natural shedding of the soft uterine lining when an egg isn't fertilized 🩸",
+            "An infection caused by wearing tight clothes 👖",
+          ],
+          correctIndex: 1,
+          explanation: "A period is simply your body resetting by shedding the soft nutrient cushion built up inside the uterus.",
+        },
+        {
+          id: "q3",
+          text: "During which phase of the cycle does estrogen peak, releasing a mature egg from the ovary?",
+          options: [
+            "Menstruation (Winter Phase) ❄️",
+            "Luteal Phase (Autumn Phase) 🍂",
+            "Ovulation (Summer Phase) ☀️",
+          ],
+          correctIndex: 2,
+          explanation: "Ovulation is the peak spark of the cycle when an egg is released into the fallopian tube!",
+        },
+        {
+          id: "q4",
+          text: "Why do some girls experience mild belly cramps during their period, and what helps soothe them?",
+          options: [
+            "Uterine muscles contract to shed lining; warm water bottles & light stretching help 🍵",
+            "Stomach acid builds up; eating ice cream fixes it 🍦",
+            "Bones are growing; heavy lifting helps 🏋️‍♀️",
+          ],
+          correctIndex: 0,
+          explanation: "Mild cramping comes from gentle uterine contractions. A cozy heating pad or warm bath relaxes muscles!",
+        },
+        {
+          id: "q5",
+          text: "Nadia noticed a clear, soft fluid on her undies months before her period started. What is this?",
+          options: [
+            "A sign of a severe illness 🤒",
+            "Normal cervical fluid showing her reproductive system is maturing 🌸",
+            "Sweat from playing sports 🏀",
+          ],
+          correctIndex: 1,
+          explanation: "Clear or white vaginal discharge is a healthy, natural sign that your body is preparing for your first period!",
+        },
+        {
+          id: "q6",
+          text: "If your period starts unexpectedly during school and you don't have a pad, what should you do?",
+          options: [
+            "Panic and run straight home without telling anyone 🏃‍♀️",
+            "Quietly ask a school nurse, teacher, or trusted friend for a pad 👩‍⚕️",
+            "Use rough paper towels for the whole week 🧻",
+          ],
+          correctIndex: 1,
+          explanation: "Teachers and school nurses keep spare pads ready and are always happy to help you privately!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_appreciation_jar",
+    type: "body_appreciation_jar",
+    position: "random_pool",
+    title: "Cycle Appreciation Jar 🩸✨",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: {
+      title: "Cycle Appreciation Jar 🏺✨",
+      instruction: "Collect 4 genuine body superpower gems into your jar! Watch out for negative myth bluffs that don't belong in your jar!",
+      maxCapacity: 4,
+      gems: [
+        { id: "pg1", emoji: "🩸", shortLabel: "Body Maturity", actionText: "My cycle is a natural sign of health and biological strength.", isCorrect: true },
+        { id: "pg2", emoji: "🍵", shortLabel: "Cozy Hydration & Rest", actionText: "I sip warm water and give my body extra rest during flow days.", isCorrect: true },
+        { id: "pg3", emoji: "🎒", shortLabel: "Prepared Confidence", actionText: "Carrying my period pouch lets me move freely without stress.", isCorrect: true },
+        { id: "pg4", emoji: "🌸", shortLabel: "Gentle Hygiene", actionText: "Changing pads regularly keeps my skin clean, fresh, and happy.", isCorrect: true },
+        { id: "pg5", emoji: "🧘‍♀️", shortLabel: "Listening to Signals", actionText: "I tune into my body's needs and slow down when feeling low energy.", isCorrect: true },
+        { id: "pg_bluff1", emoji: "🚫", shortLabel: "Skipping Meals During Flow", actionText: "Starving the body during period cramps.", isCorrect: false, rejectionHint: "Skipping meals deprives your body of vital energy! 🍲" },
+        { id: "pg_bluff2", emoji: "🤐", shortLabel: "Hiding Symptoms in Silence", actionText: "Keeping period discomfort secret.", isCorrect: false, rejectionHint: "Reaching out to a trusted mom or nurse brings instant support 💖" },
+        { id: "pg_bluff3", emoji: "🥤", shortLabel: "Chugging Icy Fizzy Sodas", actionText: "Drinking freezing soda during belly cramps.", isCorrect: false, rejectionHint: "Warm herbal tea or water is much gentler 🍵" },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_scenario_choice",
+    type: "scenario_choice",
+    position: "random_pool",
+    title: "School Day Scenario: What Would You Do? 🛣️",
+    energyTag: "active",
+    xpReward: 20,
+    content: {
+      title: "What Would You Do? 🎒✨",
+      instruction: "Step into Nadia's shoes and choose how to handle real school period moments!",
+      scenarios: [
+        {
+          id: "sc1",
+          rolePrompt: "Moment 1 • Spotting Flow in Class",
+          situationEmoji: "🩸",
+          situation: "During 2nd period math class, you feel a soft warm trickle and notice a tiny spot of period blood on your undies. What's your move?",
+          choices: [
+            { id: "c1", text: "Calmly raise your hand, ask for a bathroom pass, and use a pad from your prep pouch 👝", feedback: "Spot-on response! Having your period pouch in your bag gives you instant confidence!", gigiNote: "Sisterly Tip: Teachers are super understanding—asking for a pass is private! 🌸", isBest: true },
+            { id: "c2", text: "Panic and stay seated without moving until the end of the day 😬", feedback: "Staying seated for hours causes unnecessary stress!", gigiNote: "Sisterly Tip: Pads absorb flow instantly so you can move freely! 🛡️", isBest: false },
+            { id: "c3", text: "Quietly ask a trusted classmate or friend to borrow a spare pad 🧥", feedback: "Great sisterhood move! Friends love helping each other out!", gigiNote: "Sisterly Tip: Period solidarity is real! 💕", isBest: false },
+          ],
+        },
+        {
+          id: "sc2",
+          rolePrompt: "Moment 2 • Mild Cramps in Gym Class",
+          situationEmoji: "🏀",
+          situation: "During PE class, you feel mild uterine cramp tightness in your lower belly. How do you respond?",
+          choices: [
+            { id: "c1", text: "Inform your PE teacher quietly, do light warm stretches, and drink warm water 🍵", feedback: "Awesome self-care choice! Light stretching relaxes tight uterine muscles naturally!", gigiNote: "Sisterly Tip: Gentle movement eases period cramps fast! 🧘‍♀️", isBest: true },
+            { id: "c2", text: "Force yourself to sprint hard and ignore your body's signals 🏃‍♀️", feedback: "Pushing through severe discomfort can make uterine muscles feel tighter!", gigiNote: "Sisterly Tip: Always listen to your body's rest signals! 🌸", isBest: false },
+          ],
+        },
+        {
+          id: "sc3",
+          rolePrompt: "Moment 3 • Friend Asking for Emergency Help",
+          situationEmoji: "👝",
+          situation: "During recess, your friend Meera comes up looking super anxious—she just started her first period and forgot her pouch! How do you help?",
+          choices: [
+            { id: "c1", text: "Share a spare pad from your prep pouch with a warm encouraging smile 🌸", feedback: "Sisterhood superpower! Sharing a pad removes instant anxiety!", gigiNote: "Sisterly Tip: Supporting friends builds incredible trust! 💖", isBest: true },
+            { id: "c2", text: "Escort her quietly to the school nurse's office for spare supplies 👩‍⚕️", feedback: "Wonderful support! The school nurse has warm pads ready!", gigiNote: "Sisterly Tip: School nurses are period allies! 🩺", isBest: true },
+            { id: "c3", text: "Tell her to go home immediately without offering help 🏃‍♀️", feedback: "Escaping school isn't necessary when simple pad backup solves it right away!", gigiNote: "Sisterly Tip: A quick trip to the bathroom fixes period flow in 2 minutes! 🎒", isBest: false },
+          ],
+        },
+        {
+          id: "sc4",
+          rolePrompt: "Moment 4 • Caring for Stained Underwear",
+          situationEmoji: "🧼",
+          situation: "You return home after school and notice a small blood spot on your cotton undies. How do you clean it best?",
+          choices: [
+            { id: "c1", text: "Rinse immediately under COLD running water with gentle soap 💧", feedback: "Laundry genius! Cold water dissolves organic blood proteins easily!", gigiNote: "Sisterly Tip: Never use hot water on blood spots—hot water bakes blood into fabric! 🧼✨", isBest: true },
+            { id: "c2", text: "Soak in boiling hot water right away ♨️", feedback: "Hot water actually sets protein blood stains permanently into clothing fibers!", gigiNote: "Sisterly Tip: Cold tap water is your secret weapon for fresh blood spots! 💧", isBest: false },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_mythbusters",
+    type: "myth_busters",
+    position: "random_pool",
+    title: "Period Myths vs Facts 💡",
+    energyTag: "reflective",
+    xpReward: 15,
+    content: {
+      title: "Period Myths vs Facts 💡✨",
+      instruction: "Swipe or tap cards to bust common period myths with scientific body facts!",
+      cards: [
+        { id: "pm1", statement: "You lose a dangerous amount of blood during a period.", verdict: "MYTH", explanation: "Fact: Average flow is only 2 to 3 tablespoons (30-50 mL) total across all flow days!" },
+        { id: "pm2", statement: "You shouldn't play sports, swim, or exercise when you have your period.", verdict: "MYTH", explanation: "Fact: Exercise releases endorphins that naturally relieve uterine cramps and boost mood!" },
+        { id: "pm3", statement: "Washing your hair or taking a bath during your period stops flow.", verdict: "MYTH", explanation: "Fact: Warm baths keep you fresh and relax tight uterine muscles, soothing cramps!" },
+        { id: "pm4", statement: "Your period will be exactly 28 days long right from your very first month.", verdict: "MYTH", explanation: "Fact: During the first 1-2 years, cycle lengths are naturally irregular as hormones settle!" },
+        { id: "pm5", statement: "A period is dirty blood or a sign that something is wrong with your health.", verdict: "MYTH", explanation: "Fact: Period flow is clean, healthy uterine tissue and blood—a natural sign of body maturity!" },
+        { id: "pm6", statement: "Severe, unbearable pain that keeps you in bed all day is normal.", verdict: "MYTH", explanation: "Fact: Mild tightness is normal, but severe pain is NOT something you have to endure in silence!" },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_timelinebuilder",
+    type: "timeline_builder",
+    position: "random_pool",
+    title: "First Period Action Plan 🎒✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "First Period Action Plan 🎒✨",
+      instruction: "Arrange the steps to confidently handle your period starting at school!",
+      cards: [
+        { id: "ppc1", label: "Pack Prep Pouch 🎒", emoji: "👝", description: "Keep a cute zippered pouch in your bag with 2 pads and spare undies." },
+        { id: "ppc2", label: "Calm Bathroom Visit 🚪", emoji: "🩸", description: "Excuse yourself calmly to the restroom when you notice flow." },
+        { id: "ppc3", label: "Secure Pad Alignment 🛡️", emoji: "✨", description: "Peel adhesive strip and press pad firmly into center of undies." },
+        { id: "ppc4", label: "Return with Peace of Mind 🌸", emoji: "👑", description: "Dispose wrapper privately and return to class with total confidence!" },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_mysterybox",
+    type: "mystery_task_box",
+    position: "random_pool",
+    title: "Period Prep & Body Signals Lab 🧰✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Period Prep & Body Signals Lab 🧰✨",
+      instruction: "Tap open each flap to discover secret period readiness facts and body signals!",
+      flaps: [
+        {
+          id: 1,
+          type: "fact_task",
+          title: "The Secret Prep Pouch 👝",
+          description: "Nadia keeps a small zippered pouch in her schoolbag with 2 soft pads, spare cotton undies, and gentle wipes for instant confidence anywhere!",
+          factText: "Nadia keeps a small zippered pouch in her schoolbag with 2 soft pads, spare cotton undies, and gentle wipes for instant confidence anywhere!",
+        },
+        {
+          id: 2,
+          type: "reflection_task",
+          title: "Pre-Period Body Signals 🩺",
+          description: "Months before your first period, your body sends friendly signals like clear or white vaginal discharge, mild belly fullness, and growth spurts!",
+          factText: "Months before your first period, your body sends friendly signals like clear or white vaginal discharge, mild belly fullness, and growth spurts!",
+          reflectionPrompt: "How do you feel about recognizing these friendly signals?",
+        },
+        {
+          id: 3,
+          type: "fact_task",
+          title: "What Flow Really Is 🩸",
+          description: "Period flow is just your body resetting by shedding the soft nutrient cushion (uterine lining) built up inside the uterus. It's clean, natural, and healthy!",
+          factText: "Period flow is just your body resetting by shedding the soft nutrient cushion (uterine lining) built up inside the uterus. It's clean, natural, and healthy!",
+        },
+        {
+          id: 4,
+          type: "sticker_reward",
+          title: "Secret Badge Unlocked! 👑✨",
+          stickerEmoji: "👑🌸",
+          stickerName: "Period Power Champion Badge 🏆",
+          description: "Congratulations! You've earned the Secret Period Confidence Badge! You know flow is clean & natural, your prep pouch is ready, and school allies are always by your side!",
+          factText: "Congratulations! You've earned the Secret Period Confidence Badge! You know flow is clean & natural, your prep pouch is ready, and school allies are always by your side!",
+          message: "🎉 Secret Badge Earned: Period Power Champion! You are 100% prepared and empowered for your period journey!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_match_pairs",
+    type: "match_pairs",
+    position: "random_pool",
+    title: "Period Products Explorer 🌸",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Period Products Explorer 🌸✨",
+      instruction: "Match each period product with its exact description and friendly care tip!",
+      pairs: [
+        {
+          id: "p1",
+          term: "Regular Disposable Pads 🩸",
+          emoji: "🩸",
+          definition: "Soft cottony pads with adhesive backing that stick into underwear to absorb flow.",
+          gigiNote: "Change every 4-6 hours for maximum freshness & hygiene!",
+        },
+        {
+          id: "p2",
+          term: "Panty Liners 🩲",
+          emoji: "✨",
+          definition: "Ultra-thin lightweight liners for daily spot protection or light discharge days.",
+          gigiNote: "Great for pre-period security when you feel flow is coming soon!",
+        },
+        {
+          id: "p3",
+          term: "Period Panties 🩲✨",
+          emoji: "🩲",
+          definition: "Washable leak-proof absorbent underwear designed to wear without extra pads.",
+          gigiNote: "Feels just like regular undies while keeping you 100% leak-free!",
+        },
+        {
+          id: "p4",
+          term: "Reusable Cloth Pads 🌿",
+          emoji: "🌱",
+          definition: "Eco-friendly washable cotton pads that snap securely around underwear wings.",
+          gigiNote: "Soft on skin, reusable for years, and eco-conscious!",
+        },
+        {
+          id: "p5",
+          term: "Tampons 🧪",
+          emoji: "🩺",
+          definition: "Soft cotton cylinders inserted internally into the vagina to absorb flow directly.",
+          gigiNote: "Ideal for swimming & sports! Always change within 4-8 hours.",
+        },
+        {
+          id: "p6",
+          term: "Menstrual Cup 🏆",
+          emoji: "🥛",
+          definition: "Flexible medical-grade silicone cup inserted internally to collect flow safely.",
+          gigiNote: "Reusable for up to 10 years and holds up to 12 hours of flow!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "pp_reflect",
+    type: "reflection_reward",
+    position: "random_pool",
+    title: "The Period Preview Graduation 👑✨",
+    energyTag: "reflective",
+    xpReward: 20,
+    content: {
+      title: "The Period Preview Graduation 👑✨",
       moodQuestion: {
-        prompt: "Before you go — how are you feeling about your own Body Timeline right now?",
+        prompt: "How do you feel about embarking on your first period journey?",
         options: [
-          { emoji: "😌", label: "Calm", gigiResponse: "That's wonderful to hear. Your body is doing exactly what it's meant to do, at exactly the right time for you. 💛" },
-          { emoji: "🤔", label: "Curious", gigiResponse: "Curiosity is the best superpower! Keep asking questions — every question is a step closer to understanding. 🌟" },
-          { emoji: "😟", label: "A little nervous", gigiResponse: "That's completely understandable — change can feel big. But you now know so much more than you did at the start of this episode. You've got this. 💜" },
+          {
+            emoji: "💪",
+            label: "Empowered",
+            gigiResponse: "Period flow is just your body resetting its uterine lining naturally—it is a healthy badge of growing up!",
+          },
+          {
+            emoji: "🌸",
+            label: "Reassured",
+            gigiResponse: "You are 100% prepared with your secret prep pouch packed and ready in your school bag.",
+          },
+          {
+            emoji: "✨",
+            label: "Confident",
+            gigiResponse: "School nurses, teachers, and family allies are always ready to support you privately.",
+          },
+          {
+            emoji: "🧠",
+            label: "Wise",
+            gigiResponse: "You know all period products—pads, liners, cloth pads, period panties, tampons & cups!",
+          },
         ],
       },
       recapCards: [
-        { emoji: "🌸", text: "Everybody's timeline looks different — and that's normal." },
-        { emoji: "🗺️", text: "Growth spurts, skin changes, new hair, body shape, feelings, periods — all part of the same road." },
-        { emoji: "💪", text: "Growing pains are real, and they pass." },
-        { emoji: "💛", text: "Comparing yourself to magazines (or friends) isn't a fair measuring stick." },
-        { emoji: "🤝", text: "A trusted adult is always a great person to talk to about your own timeline." },
+        {
+          emoji: "👝",
+          text: "Recap 1: Packed a cute secret pouch with 2 pads, spare undies & gentle wipes.",
+        },
+        {
+          emoji: "🩺",
+          text: "Recap 2: Learned to spot pre-period signals like clear discharge & mild belly fullness.",
+        },
+        {
+          emoji: "🩸",
+          text: "Recap 3: Understood that period flow is clean, healthy & completely natural.",
+        },
+        {
+          emoji: "👑",
+          text: "Recap 4: Earned your Secret Period Power Champion Badge!",
+        },
       ],
-      badge: {
-        id: "timeline_explorer",
-        name: "Timeline Explorer",
-        emoji: "🗺️",
-        description: "Awarded for completing The Body Timeline episode",
-        totalPieces: 10,
-      },
       closingMessage: {
-        character: "Mira",
-        text: "Thanks for walking the road with me, Detective. See you at the next stop?",
-      },
-      nextEpisode: {
-        title: "Growing Pains",
-        emoji: "🌱",
-        teaser: "Find out why fast bone growth makes your legs achy!",
+        character: "Nadia & Gigi",
+        text: "Congratulations! You have completed The Period Preview. Walk tall with confidence—you are fully empowered!",
       },
     },
   },
 ];
 
-async function seed() {
-  console.log("🌱 Seeding Creative Learning Journey with multi-episode hierarchy...");
-
-  // ── Journey 1: My Changing Body ───────────────────────────────────────────
-  const journey1 = await prisma.creativeJourney.upsert({
-    where: { id: "cj_my_changing_body" },
-    update: {
-      title: "My Changing Body",
-      description:
-        "A warm, funny, big-sister-style guide to puberty — from growth spurts to hormones, mood waves, skin stories, and everything in between.",
-      ageBand: "9-15",
-      icon: "🌸",
-      isActive: true,
-    },
-    create: {
-      id: "cj_my_changing_body",
-      title: "My Changing Body",
-      description:
-        "A warm, funny, big-sister-style guide to puberty — from growth spurts to hormones, mood waves, skin stories, and everything in between.",
-      ageBand: "9-15",
-      icon: "🌸",
-      isActive: true,
-    },
-  });
-
-  // ── Journey 2: Period Diaries ──────────────────────────────────────────────
-  const journey2 = await prisma.creativeJourney.upsert({
-    where: { id: "cj_period_diaries" },
-    update: {
-      title: "Period Diaries",
-      description:
-        "Your friendly, empowering companion to understanding cycles, products, tracking, and self-care without any stress.",
-      ageBand: "10-16",
-      icon: "🩸",
-      isActive: true,
-    },
-    create: {
-      id: "cj_period_diaries",
-      title: "Period Diaries",
-      description:
-        "Your friendly, empowering companion to understanding cycles, products, tracking, and self-care without any stress.",
-      ageBand: "10-16",
-      icon: "🩸",
-      isActive: true,
-    },
-  });
-
-  console.log(`✅ Journeys created: ${journey1.title}, ${journey2.title}`);
-
-  // ── Episodes under "My Changing Body" ──────────────────────────────────────
-  const episodesList = [
-    {
-      id: "ce_body_timeline",
-      journeyId: journey1.id,
-      title: "1. The Body Timeline",
-      description: "Walk the Body Timeline with Mira and Gigi — bust myths, build your own timeline, and discover your body's timing.",
-      episodeIcon: "🗺️",
-      order: 1,
-      nodes: BODY_TIMELINE_NODES,
-      totalXP: 83,
-      totalCoins: 83,
-      isActive: true,
-    },
-    {
-      id: "ce_growing_pains",
-      journeyId: journey1.id,
-      title: "2. Growing Pains",
-      description: "Fast bone growth, split jeans, stretch marks, and why your body is working exactly as it should.",
-      episodeIcon: "🌱",
-      order: 2,
-      nodes: [
-        // ── NODE 1 — FIXED START: Story ───────────────────────────────────────
+const BRA_BASICS_NODES = [
+  {
+    nodeId: "bb_story",
+    type: "story",
+    position: "fixed_start",
+    title: "The First Fitting",
+    estMinutes: 4,
+    xpReward: 5,
+    content: {
+      pages: [
         {
-          nodeId: "gp_story",
-          type: "story",
-          position: "fixed_start",
-          title: "The Corridor Moment & Split Jeans",
-          estMinutes: 5,
-          xpReward: 20,
-          content: {
-            pages: [
-              {
-                pageNumber: 1,
-                title: "The In-Between Moment",
-                image: "assets/images/story/page_2.jpg",
-                panels: [
-                  {
-                    id: "gp_p1_1",
-                    description: "The school corridor was loud. Footsteps, lockers, laughter. Outside the bathroom door, Amara heard a quiet, shaky voice.",
-                    dialogue: [
-                      { character: "Amara", type: "speech", text: "Hey... I heard that. You okay?" },
-                      { character: "Meera", type: "speech", text: "...No." },
-                    ],
-                  },
-                ],
-              },
-              {
-                pageNumber: 2,
-                title: "The Split Seam",
-                image: "assets/images/story/page_3.jpg",
-                panels: [
-                  {
-                    id: "gp_p2_1",
-                    description: "Amara pushed her yellow cardigan under the door gap. Meera stepped out keeping her back to the wall.",
-                    dialogue: [
-                      { character: "Meera", type: "speech", text: "My jeans split... at the seam. I bought them last month." },
-                      { character: "Amara", type: "thought", text: "That's because your body is growing faster than your wardrobe can keep up. And that's a sign things are working!" },
-                    ],
-                  },
-                ],
-              },
-              {
-                pageNumber: 3,
-                title: "The Science of Growth Plates",
-                image: "assets/images/story/page_4.jpg",
-                panels: [
-                  {
-                    id: "gp_p3_1",
-                    description: "Amara sketched a femur bone in her notebook, pointing to the epiphyseal growth plates at the ends.",
-                    dialogue: [
-                      { character: "Amara", type: "speech", text: "These growth plates stay active from age 8 to 18. Some girls grow 8 to 10 cm in a year!" },
-                      { character: "Meera", type: "thought", text: "So my femur just decided to level up... and my jeans weren't prepared?" },
-                    ],
-                  },
-                ],
-              },
-              {
-                pageNumber: 4,
-                title: "Stretch Marks Reframed",
-                image: "assets/images/story/page_5.jpg",
-                panels: [
-                  {
-                    id: "gp_p4_1",
-                    description: "Meera looked in the bathroom mirror and noticed faint silvery-pink lines on her hip.",
-                    dialogue: [
-                      { character: "Meera", type: "speech", text: "What are these lines?" },
-                      { character: "Amara", type: "speech", text: "Collagen and elastin stretchy threads stretching faster than they rebuild. 40-70% of teens get them. They're receipts — a map of where your body grew!" },
-                    ],
-                  },
-                ],
-              },
-              {
-                pageNumber: 5,
-                title: "Oestrogen & Body Reshaping",
-                image: "assets/images/story/page_6.jpg",
-                panels: [
-                  {
-                    id: "gp_p5_1",
-                    description: "Amara explained how oestrogen stores fat in hips and chest to build adult shape, and why bones outpace muscles causing night leg aches.",
-                    dialogue: [
-                      { character: "Meera", type: "speech", text: "So my body isn't gaining bad weight... it's building structure?" },
-                      { character: "Amara", type: "thought", text: "Exactly. Structure, design, and development!" },
-                    ],
-                  },
-                ],
-              },
-              {
-                pageNumber: 6,
-                title: "My Body Is Working!",
-                image: "assets/images/story/page_2.jpg",
-                panels: [
-                  {
-                    id: "gp_p6_1",
-                    description: "Back in class, Nadia asked if Meera was okay. Meera wrote on her notebook: 'Actually... yes. I think I'm growing.' Nadia drew a tiny star.",
-                    dialogue: [
-                      { character: "Amara", type: "speech", text: "Next time something feels off, remember: 'My body is working.' Not failing. Working." },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        },
-
-        // ── NODE 2 — Mystery Growth Box (Interactive Bone & Muscle Simulator) ──
-        {
-          nodeId: "gp_growth_plates_lab",
-          type: "mystery_task_box",
-          position: "random_pool",
-          title: "Bone & Muscle Growth Simulator 🦴⚡",
-          estMinutes: 3,
-          xpReward: 20,
-          content: {
-            flaps: [
-              {
-                id: 1,
-                type: "fact_task",
-                factText: "At the ends of your long bones (like the femur in your thigh), there are active growth zones called epiphyseal growth plates!",
-                task: {
-                  question: "Which part of your long bones allows you to shoot up tall during puberty?",
-                  options: ["Epiphyseal growth plates", "Muscle tendons", "Outer skin layer"],
-                  correctIndex: 0,
-                  feedbackText: "Spot on! Epiphyseal growth plates stay open between ages 8 and 18 to lengthen your bones! 🦴",
-                },
-              },
-              {
-                id: 2,
-                type: "mini_task",
-                prompt: "During a growth spurt, how many centimeters can a girl's height increase in a single year?",
-                options: [
-                  { label: "1–2 cm", emoji: "🌱" },
-                  { label: "8–10 cm", emoji: "🚀" },
-                  { label: "25–30 cm", emoji: "🦒" },
-                ],
-                feedbackText: "Bingo! Up to 8 to 10 cm in a single year! Hands and feet often sprout first, then your long bones! ⚡",
-              },
-              {
-                id: 3,
-                type: "fact_reflection",
-                factText: "Growing pains happen because long bones grow faster than muscles can stretch and adjust — especially when resting at night.",
-                reflectionPrompt: "Have you ever noticed achy shins or legs in the evening?",
-                emojiOptions: ["🦵 Yes, often!", "🤔 Maybe once or twice", "😃 Not yet!"],
-                isPrivate: true,
-                feedbackText: "Achy legs in the evening are a normal sign that your bones are busy leveling up! 🌙",
-              },
-              {
-                id: 4,
-                type: "sticker_reward",
-                message: "You mastered the Growth Simulator! Here's your Bone Builder Sticker 🎁",
-                stickerEmoji: "🦴✨",
-              },
-            ],
-          },
-        },
-
-        // ── NODE 3 — Spot the Change (Stretch Mark Map Decoder) ───────────────
-        {
-          nodeId: "gp_stretch_marks_decoder",
-          type: "spot_the_change",
-          position: "random_pool",
-          title: "Stretch Mark Map Decoder 🗺️✨",
-          estMinutes: 3,
-          xpReward: 20,
-          content: {
-            instruction: "Tap ALL 5 hidden truths about your skin's stretchy collagen threads (striae)!",
-            character: "Meera's Mirror",
-            differences: [
-              { id: "sm1", emoji: "🧬", label: "Collagen & Elastin Threads", hint: "Stretchy threads under skin that stretch during fast growth" },
-              { id: "sm2", emoji: "📍", label: "Body Map Receipts", hint: "Faint pink or silvery lines proving your body leveled up" },
-              { id: "sm3", emoji: "📊", label: "40–70% Teen Normal", hint: "Super common across teenagers regardless of weight or diet" },
-              { id: "sm4", emoji: "🚫", label: "Not Damage or Flaw", hint: "Completely healthy evidence of rapid biological growth" },
-              { id: "sm5", emoji: "🌸", label: "Adult Shape Development", hint: "Natural structural changes in hips, thighs, and chest" },
-            ],
-            completionMessage: "You decoded the map! Stretch marks are evidence of your body's amazing growth story. 🗺️✨",
-          },
-        },
-
-        // ── NODE 4 — Myth Busters (Growing Stretch Myths) ─────────────────────
-        {
-          nodeId: "gp_mythbusters",
-          type: "myth_busters",
-          position: "random_pool",
-          title: "Growing Stretch Myths 🛡️⚡",
-          estMinutes: 4,
-          xpReward: 20,
-          content: {
-            instruction: "Swipe RIGHT for TRUE → swipe LEFT for MYTH",
-            cards: [
-              {
-                id: "m1",
-                statement: "If your jeans split at the seam after one month, it means you gained bad weight.",
-                verdict: "MYTH",
-                explanation: "Myth! Your femur bone and body structure shoot up fast during growth spurts — your clothes just haven't caught up!",
-              },
-              {
-                id: "m2",
-                statement: "Stretch marks (striae) happen when collagen threads stretch faster than they rebuild.",
-                verdict: "TRUE",
-                explanation: "True! 40–70% of teenagers get pink, purple, or silver stretch lines as their skin adjusts to rapid growth.",
-              },
-              {
-                id: "m3",
-                statement: "Achy legs at night mean something is medically wrong with your knees or shins.",
-                verdict: "MYTH",
-                explanation: "Myth! Growing pains are mild, harmless aches occurring because bones grow faster than muscles adjust.",
-              },
-              {
-                id: "m4",
-                statement: "Oestrogen signals your body to store fat in hips and chest to build adult shape.",
-                verdict: "TRUE",
-                explanation: "True! This is your body's intentional, healthy adult design — not random weight gain!",
-              },
-              {
-                id: "m5",
-                statement: "Everyone's growth spurt starts at the exact same age.",
-                verdict: "MYTH",
-                explanation: "Myth! Growth plates open and close on their own unique biological timeline between ages 8 and 18.",
-              },
-            ],
-          },
-        },
-
-        // ── NODE 5 — Quiz (Science & Mindset) ────────────────────────────────
-        {
-          nodeId: "gp_quiz",
-          type: "quiz",
-          position: "random_pool",
-          title: "Do You Understand Your Body? 🧠🎯",
-          estMinutes: 5,
-          xpReward: 25,
-          passThreshold: 0.6,
-          content: {
-            questions: [
-              {
-                id: "q1",
-                text: "Which statement best explains why rapid height increase happens during puberty?",
-                options: [
-                  "Muscles grow faster than bones",
-                  "Growth plates at the ends of bones remain active and allow elongation",
-                  "Bones expand equally from all sides",
-                  "Height increases due to fat accumulation",
-                ],
-                correctIndex: 1,
-                feedback: "Growth plates (epiphyseal plates) are active zones where bones lengthen during puberty. 🦴",
-              },
-              {
-                id: "q2",
-                text: "Meera's jeans split after one month. What is the most scientifically accurate explanation?",
-                options: [
-                  "Poor fabric quality",
-                  "Sudden weight gain",
-                  "Rapid bone growth outpacing clothing fit",
-                  "Incorrect washing method",
-                ],
-                correctIndex: 2,
-                feedback: "Growth spurts can happen quickly — your wardrobe doesn't always keep up! 👖",
-              },
-              {
-                id: "q3",
-                text: "Which of the following is TRUE about stretch marks during puberty?",
-                options: [
-                  "They are caused by unhealthy eating habits",
-                  "They are permanent skin damage",
-                  "They occur due to rapid growth stretching deeper skin layers",
-                  "Only overweight individuals experience them",
-                ],
-                correctIndex: 2,
-                feedback: "They are natural and common (40–70% of teens) — your skin adjusting to growth. 🧬",
-              },
-              {
-                id: "q4",
-                text: "What role does oestrogen play during puberty?",
-                options: [
-                  "It reduces body fat",
-                  "It prevents physical changes",
-                  "It signals fat distribution in areas like hips and chest",
-                  "It only affects mood",
-                ],
-                correctIndex: 2,
-                feedback: "This is how your body develops its adult shape — by design! 🌸",
-              },
-              {
-                id: "q5",
-                text: "Which situation is MOST consistent with normal growing pains?",
-                options: [
-                  "Sharp pain in one leg during the day",
-                  "Dull aching in both legs at night",
-                  "Constant pain in one knee",
-                  "Pain only after injury",
-                ],
-                correctIndex: 1,
-                feedback: "Growing pains are usually mild, occur at night, and affect both legs. 🌙",
-              },
-              {
-                id: "q6",
-                text: "Which statement best reflects a scientifically accurate AND emotionally healthy understanding of puberty?",
-                options: [
-                  "Body changes should be controlled and minimized",
-                  "Growth discomfort means something is wrong",
-                  "Puberty is a structured biological process with individual variation",
-                  "Everyone should develop at the same pace",
-                ],
-                correctIndex: 2,
-                feedback: "This is the core idea: different timelines, same normal! 🌟",
-              },
-            ],
-          },
-        },
-
-        // ── NODE 6 — Action Quest (My Body is Working Challenge) ─────────────
-        {
-          nodeId: "gp_quest",
-          type: "timeline_builder",
-          position: "random_pool",
-          title: "My Body is Working Challenge 🌟",
-          estMinutes: 4,
-          xpReward: 25,
-          content: {
-            instruction: "Reorder the 4 steps of the 'My Body Is Working' Mindset Challenge to reframe uncomfortable moments into growth!",
-            cards: [
-              { id: "c1", emoji: "👁️", label: "STEP 1: Notice (Tight clothes, leg aches, sweat)" },
-              { id: "c2", emoji: "🧠", label: "STEP 2: Catch Thought ('Something is wrong with me')" },
-              { id: "c3", emoji: "🔄", label: "STEP 3: Reframe ('This is not failing... this is growth!')" },
-              { id: "c4", emoji: "✍️", label: "STEP 4: Self-Anchor ('My body is working by design')" },
-            ],
-            revealMessage: "Challenge Unlocked! Next time something feels off, remember: 'This is not embarrassing. This is my body working!' 🌟",
-          },
-        },
-
-        // ── NODE 7 — Ask Gigi (Anonymous Q&A Box) ────────────────────────────
-        {
-          nodeId: "gp_ask_gigi",
-          type: "anonymous_question_box",
-          position: "random_pool",
-          title: "Ask Gigi: Growth & Body Changes 💭",
-          estMinutes: 3,
-          xpReward: 15,
-          content: {
-            prompt: "Got a question about growth spurts, stretch marks, or achy legs? Ask Gigi anonymously!",
-            placeholder: "What's on your mind? 💭",
-            privacyNote: "Your words are private. Only you (and a trusted parent/guardian) can see what you write here.",
-            keywordResponses: [
-              {
-                keywords: ["stretch", "mark", "marks", "striae", "lines", "skin"],
-                response: "Stretch marks are just your skin's stretchy collagen threads doing their best to keep up with your fast growth! 40–70% of teenagers get them — they're like receipts showing your body leveled up. 💖",
-              },
-              {
-                keywords: ["jeans", "clothes", "tight", "fitting", "split", "pant", "size"],
-                response: "When your femur bone grows 8 to 10 cm in a year, your wardrobe can't always keep up! Needing bigger clothes isn't a bad thing — it's proof your body is building its adult shape. 👖",
-              },
-              {
-                keywords: ["leg", "legs", "ache", "aches", "growing", "pain", "night"],
-                response: "Achy legs in the evening are super common during growth spurts! Gentle stretching, warm baths, and drinking water help relax your muscles as your bones grow. 🌙",
-              },
-              {
-                keywords: ["hip", "hips", "thigh", "chest", "fat", "shape", "weight"],
-                response: "During puberty, oestrogen tells your body to store soft energy in your hips and chest to create your adult structure. It's not bad weight — it's design! 🌸",
-              },
-            ],
-            defaultResponse: "That's a thoughtful question! Every body grows on its own unique timeline. If you ever feel uncertain, a trusted adult, parent, or doctor can give you answers tailored to you. 🌟",
-            conversationStarterOffer: "Want a gentle way to ask a parent or trusted adult about your body changes?",
-            conversationStarters: [
-              "\"Hey [Name], can I ask you a question about growth spurts and body changes?\"",
-              "\"I was reading about how bones and skin stretch during puberty — did you get growing pains when you were my age?\"",
-              "\"I noticed my clothes are fitting differently — could we go pick out some comfortable new sizes together?\"",
-            ],
-          },
-        },
-
-        // ── NODE 8 — FIXED END: Reflection Journal & Reward Ceremony ────────
-        {
-          nodeId: "gp_reflection_journal",
-          type: "reflection_reward",
-          position: "fixed_end",
-          title: "Is My Body Failing... or Working? 🏆",
-          estMinutes: 4,
-          xpReward: 30,
-          unlocksBadge: "growth_decoder",
-          content: {
-            moodQuestion: {
-              prompt: "Before you finish — how do you feel about your body's growth right now?",
-              options: [
-                { emoji: "😌", label: "Relieved", gigiResponse: "That's wonderful! Realizing your body is working (not failing) makes all the difference. 💛" },
-                { emoji: "🤔", label: "Curious", gigiResponse: "Curiosity is your superpower! Your body is a fascinating machine working on its own master design. 🌟" },
-                { emoji: "💖", label: "Empowered", gigiResponse: "Yes! You now have the knowledge to wear your growth receipts with total pride! 👑" },
-              ],
+          pageNumber: 1,
+          title: "Shopping Trip",
+          image: "assets/images/story/page_2.jpg",
+          panels: [
+            {
+              id: "bb_p1",
+              description: "Amara and her mom visited the clothing store for a soft starter bra.",
+              dialogue: [{ character: "Amara", type: "speech", text: "I want something comfortable that doesn't feel tight or scratchy." }],
             },
-            recapCards: [
-              { emoji: "🦴", text: "Epiphyseal growth plates in your long bones can lengthen your height by 8–10 cm in a year!" },
-              { emoji: "👖", text: "Split jeans and tight clothes mean your body is growing faster than your wardrobe can keep up." },
-              { emoji: "🧬", text: "Stretch marks (striae) are collagen stretchy threads — receipts showing where your body grew." },
-              { emoji: "🌸", text: "Oestrogen reshapes your hips, thighs, and chest to build your healthy adult structure." },
-              { emoji: "✨", text: "Next time your body feels uncomfortable, remember: 'My body is working!'" },
-            ],
-            badge: {
-              id: "growth_decoder",
-              name: "Growth Decoder",
-              emoji: "🧠✨",
-              description: "Awarded for completing Episode 2: Growing Pains and unlocking the 'My Body Is Working' mindset!",
-              totalPieces: 8,
-            },
-            closingMessage: {
-              character: "Amara",
-              text: "The next time something feels off, try this thought once: 'My body is working.' Not failing. Working. See you in the next episode!",
-            },
-            nextEpisode: {
-              title: "Skin Stories",
-              emoji: "🧴",
-              teaser: "Oily skin, pimples, glow ups, and simple gentle skincare habits.",
-            },
-          },
+          ],
         },
       ],
-      totalXP: 175,
-      isActive: true,
     },
-    {
-      id: "ce_skin_stories",
-      journeyId: journey1.id,
-      title: "3. Skin Stories",
-      description: "Oily skin, pimples, glow ups, and simple gentle skincare habits.",
-      episodeIcon: "🧴",
-      order: 3,
-      nodes: [],
-      totalXP: 110,
-      isActive: true,
+  },
+  {
+    nodeId: "bb_mysterybox",
+    type: "mystery_task_box",
+    position: "random_pool",
+    title: "First Bra Sizing & Comfort Lab 🎽✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "First Bra Sizing & Comfort Lab 🎽✨",
+      instruction: "Tap open each flap to discover bra fitting secrets, sports bra protection, and care tips!",
+      flaps: [
+        {
+          id: 1,
+          type: "fact_task",
+          title: "Soft Bralette Secret 🌸",
+          description: "Seamless stretch-cotton bralettes provide gentle protection and coverage for developing breast buds without rigid underwires or uncomfortable padding.",
+          factText: "Seamless stretch-cotton bralettes provide gentle protection and coverage for developing breast buds without rigid underwires or uncomfortable padding.",
+        },
+        {
+          id: 2,
+          type: "reflection_task",
+          title: "Sports Bra Power 🏃‍♀️",
+          description: "Wide-strap racerback sports bras keep chest tissues snug, preventing bounce and friction pain during PE, running, and dance class!",
+          factText: "Wide-strap racerback sports bras keep chest tissues snug, preventing bounce and friction pain during PE, running, and dance class!",
+          reflectionPrompt: "How do you feel when your body is comfortable and supported during active sports?",
+        },
+        {
+          id: 3,
+          type: "fact_task",
+          title: "Sizing & Band Fit Formula 📐",
+          description: "Measure your ribcage directly below your breast buds to find your band size (e.g. 28, 30, 32). A proper bra band sits flat without digging in or riding up your back!",
+          factText: "Measure your ribcage directly below your breast buds to find your band size (e.g. 28, 30, 32). A proper bra band sits flat without digging in or riding up your back!",
+        },
+        {
+          id: 4,
+          type: "sticker_reward",
+          title: "Secret Badge Unlocked! 🎽✨",
+          stickerEmoji: "🎽🌸",
+          stickerName: "Bra Comfort Expert Badge 🏆",
+          description: "Congratulations! You earned the Bra Comfort Expert Badge! You know how to measure band size, select breathable cotton bralettes, and care for your growing body!",
+          factText: "Congratulations! You earned the Bra Comfort Expert Badge! You know how to measure band size, select breathable cotton bralettes, and care for your growing body!",
+          message: "🎉 Secret Badge Earned: Bra Comfort Expert! You are 100% wise, confident, and prepared for your first bra fitting!",
+        },
+      ],
     },
-    {
-      id: "ce_period_preview",
-      journeyId: journey1.id,
-      title: "4. The Period Preview",
-      description: "Everything you need to know about what happens when your first period arrives.",
-      episodeIcon: "🩸",
-      order: 4,
-      nodes: [],
-      totalXP: 150,
-      isActive: true,
+  },
+  {
+    nodeId: "bb_quiz",
+    type: "quiz",
+    position: "random_pool",
+    title: "Bra Basics Quiz 🧠",
+    energyTag: "reflective",
+    xpReward: 15,
+    passThreshold: 0.6,
+    content: {
+      title: "Bra Basics Quiz 🧠",
+      questions: [
+        {
+          id: "bbq1",
+          text: "What is the primary purpose of wearing a starter bra during early puberty breast development?",
+          options: [
+            "To provide comfortable support and shield sensitive chest tissue from friction 🌸",
+            "Because everyone in school has to wear one 🏫",
+            "To make your shoulders look broader 🏋️‍♀️",
+          ],
+          correctIndex: 0,
+          explanation: "Starter bras cushion growing breast buds and prevent rubbing against shirts!",
+        },
+        {
+          id: "bbq2",
+          text: "Which type of bra is best for running, sports, and active PE classes?",
+          options: [
+            "A snug, supportive sports bra with wide straps 🏃‍♀️",
+            "A heavy underwire formal bra 👗",
+            "No bra at all 🚫",
+          ],
+          correctIndex: 0,
+          explanation: "Sports bras reduce chest movement and protect delicate cooper ligaments during exercise!",
+        },
+        {
+          id: "bbq3",
+          text: "How do you know if a bra fits your body correctly?",
+          options: [
+            "The band sits flat around your ribcage without pinching or slipping up 📐",
+            "It leaves deep red painful marks on your shoulders 😣",
+            "It is 3 sizes too big 👕",
+          ],
+          correctIndex: 0,
+          explanation: "A good fit feels cozy, flat, and supportive without cutting into your skin!",
+        },
+        {
+          id: "bbq4",
+          text: "Why do breast buds sometimes feel slightly tender or sore when they first form?",
+          options: [
+            "Estrogen hormones are building new milk duct tissue under the nipple 🌸",
+            "You ate too much ice cream 🍦",
+            "Your posture is crooked 🚶‍♀️",
+          ],
+          correctIndex: 0,
+          explanation: "Mild soreness is a completely normal sign that estrogen is expanding chest tissue!",
+        },
+        {
+          id: "bbq5",
+          text: "True or False: Both breasts always grow at the exact same speed and size.",
+          options: [
+            "False — one breast bud often grows faster than the other, which is 100% normal! 💖",
+            "True — they are always identical mirrors 🪞",
+          ],
+          correctIndex: 0,
+          explanation: "Asymmetry is completely normal during puberty! Most women have slightly different sized breasts.",
+        },
+      ],
     },
-    {
-      id: "ce_bra_basics",
-      journeyId: journey1.id,
-      title: "5. Bra Basics",
-      description: "Finding the right fit, comfort, and feeling confident in your growing body.",
-      episodeIcon: "👚",
-      order: 5,
-      nodes: [],
-      totalXP: 100,
-      isActive: true,
+  },
+  {
+    nodeId: "bb_drag_to_sort",
+    type: "drag_to_sort",
+    position: "random_pool",
+    title: "Bra Comfort Care 🎽",
+    energyTag: "active",
+    xpReward: 12,
+    content: {
+      bins: [
+        { id: "b1", title: "Comfortable Practices 🌸" },
+        { id: "b2", title: "Uncomfortable Traps 🚫" },
+      ],
+      items: [
+        { id: "i1", text: "Measuring ribcage chest circumference with a soft tape 📐", correctBinId: "b1" },
+        { id: "i2", text: "Wearing tight underwire bras that dig into skin overnight 🌙", correctBinId: "b2" },
+        { id: "i3", text: "Choosing breathable cotton fabrics for daily wear 🌬️", correctBinId: "b1" },
+        { id: "i4", text: "Ignoring painful red shoulder strap marks 😣", correctBinId: "b2" },
+      ],
     },
-    {
-      id: "ce_body_image",
-      journeyId: journey1.id,
-      title: "6. Body Image Unlocked",
-      description: "Loving your unique shape, building self-confidence, and busting social media comparison traps.",
-      episodeIcon: "🪞",
-      order: 6,
-      nodes: [],
-      totalXP: 130,
-      isActive: true,
+  },
+  {
+    nodeId: "bb_identify",
+    type: "identify_image",
+    position: "random_pool",
+    title: "Identify Essential Bra Components 👙✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Identify Essential Bra Components 👙✨",
+      instruction: "Tap all 4 essential comfort features to look for when choosing your first bralette or sports bra!",
+      completionMessage: "Fantastic observation skills! You identified all 4 essential comfort features for choosing your first bra routine!",
+      icons: [
+        { id: "i1", emoji: "📐", label: "Flat Elastic Underband", isCorrect: true },
+        { id: "i2", emoji: "🌸", label: "Breathable Cotton Fabric", isCorrect: true },
+        { id: "i3", emoji: "🎽", label: "Wide Flat Shoulder Straps", isCorrect: true },
+        { id: "i4", emoji: "🛡️", label: "Seamless Double Layer Front", isCorrect: true },
+        { id: "i5", emoji: "⛓️", label: "Rigid Metal Underwire", isCorrect: false, distractorNote: "Underwires can press uncomfortably against developing breast buds and are unnecessary for starter bras!" },
+        { id: "i6", emoji: "📌", label: "Tight Stiff Metal Hooks", isCorrect: false, distractorNote: "Tight metal hooks can scratch sensitive back skin. Pull-over seamless bralettes are much softer!" },
+      ],
     },
-  ];
+  },
+  {
+    nodeId: "bb_mythbusters",
+    type: "myth_busters",
+    position: "random_pool",
+    title: "Bra Myths vs Facts 💡",
+    energyTag: "reflective",
+    xpReward: 15,
+    content: {
+      title: "Bra Myths vs Facts 💡✨",
+      instruction: "Bust common myths about breast development and bra wearing!",
+      cards: [
+        { id: "bm1", statement: "Wearing a bra to sleep makes breasts grow faster.", verdict: "MYTH", explanation: "Fact: Sleep does not affect breast growth! Sleeping without a bra gives skin & ribs a comfortable rest." },
+        { id: "bm2", statement: "Uneven breast development means something is medically wrong.", verdict: "MYTH", explanation: "Fact: Asymmetry is 100% normal! One side almost always starts growing earlier than the other." },
+        { id: "bm3", statement: "Underwires are mandatory for all starter bras.", verdict: "MYTH", explanation: "Fact: Soft wireless bralettes and sports bras are much softer and more comfortable for growing tissue!" },
+        { id: "bm4", statement: "Wearing a tight bra stops breast growth permanently.", verdict: "MYTH", explanation: "Fact: Tight bras cause skin irritation and muscle soreness, but cannot alter internal hormone growth." },
+        { id: "bm5", statement: "Sports bras should be worn for 24 hours non-stop.", verdict: "MYTH", explanation: "Fact: Change out of sweaty sports bras after PE to keep chest skin clean and prevent breakouts!" },
+      ],
+    },
+  },
+  {
+    nodeId: "bb_timelinebuilder",
+    type: "timeline_builder",
+    position: "random_pool",
+    title: "First Bra Fitting & Care Journey 🎽✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "First Bra Fitting & Care Journey 🎽✨",
+      instruction: "Sequence the timeline for choosing and caring for your first starter bra!",
+      cards: [
+        { id: "bbc1", label: "Measure Chest Circumference 📐", emoji: "📏", description: "Measure ribcage right below breast buds to find your comfortable band size." },
+        { id: "bbc2", label: "Select Breathable Cotton 🌸", emoji: "🎽", description: "Choose seamless cotton bralettes or soft sports bras without underwires." },
+        { id: "bbc3", label: "Adjust Straps Flat 🎽", emoji: "✨", description: "Ensure shoulder straps sit flat without pinching skin or riding up." },
+        { id: "bbc4", label: "Gentle Wash Care 🧺", emoji: "🧼", description: "Hand wash or use delicate wash bags to keep elastic soft and durable." },
+      ],
+    },
+  },
+  {
+    nodeId: "bb_match_pairs",
+    type: "match_pairs",
+    position: "random_pool",
+    title: "Match Bra Styles Explorer 🎽✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Match Bra Styles & Features 🎽✨",
+      instruction: "Match each bra style with its exact design feature and friendly comfort tip!",
+      pairs: [
+        {
+          id: "p1",
+          term: "Seamless Cotton Bralette 🌸",
+          emoji: "🌸",
+          definition: "Soft wireless pullover top providing gentle starter coverage for developing breast buds.",
+          gigiNote: "Ideal first bra! Breathable and wire-free for all-day comfort.",
+        },
+        {
+          id: "p2",
+          term: "Racerback Sports Bra 🏃‍♀️",
+          emoji: "🏃‍♀️",
+          definition: "Snug wide-strap bra that prevents bounce and friction pain during PE, running, & sports.",
+          gigiNote: "Keeps chest tissues secure and protected during active play!",
+        },
+        {
+          id: "p3",
+          term: "Smooth T-Shirt Bra 🎽",
+          emoji: "🎽",
+          definition: "Seamless bra with thin molded foam cups that sits completely invisible under fitted school shirts.",
+          gigiNote: "Gives a smooth silhouette without showing seams under light fabrics!",
+        },
+        {
+          id: "p4",
+          term: "Training Crop Top 🌱",
+          emoji: "🌱",
+          definition: "Ultra-light soft cotton crop layer perfect as a gentle first step for sensitive breast buds.",
+          gigiNote: "Super lightweight—feels like a cozy second skin!",
+        },
+        {
+          id: "p5",
+          term: "Convertible Multi-Way Bra ✨",
+          emoji: "✨",
+          definition: "Versatile bra with detachable straps that re-hook into cross-back or halter neck styles.",
+          gigiNote: "Perfect for party dresses, sports tops, and tricky necklines!",
+        },
+        {
+          id: "p6",
+          term: "Soft Wireless Everyday Bra ☁️",
+          emoji: "☁️",
+          definition: "Flexible supportive bra with natural shaping cups and zero rigid underwires.",
+          gigiNote: "Provides great shape & support while staying soft and pinch-free!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "bb_emoji_decoder",
+    type: "emoji_decoder",
+    position: "random_pool",
+    title: "Bra Comfort Secret Wheel 🎽✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Bra Comfort Secrets Wheel 🎽✨",
+      instruction: "Spin the wheel to land on each sector and unlock Gigi's 4 secret bra comfort rules!",
+      scenarios: [
+        {
+          id: "bb_s1",
+          ruleNumber: 1,
+          ruleName: "80% Underband Support",
+          wheelLabel: "Rule 1 📐",
+          emoji: "📐",
+          title: "Rule 1: Underband Support Secret 📐",
+          description: "80% of bra support comes from the flat elastic underband around your ribcage, NOT tight shoulder straps!",
+          question: "Where should the main support of your bra come from?",
+          emojiOptions: ["📐 Underband", "🎽 Straps", "⛓️ Underwire", "📌 Hooks"],
+          correctEmoji: "📐 Underband",
+          explanation: "Gigi's Tip: The underband should sit level all the way around your ribcage without pinching or riding up!",
+        },
+        {
+          id: "bb_s2",
+          ruleNumber: 2,
+          ruleName: "Sports Protection",
+          wheelLabel: "Rule 2 🏃‍♀️",
+          emoji: "🏃‍♀️",
+          title: "Rule 2: Sports Protection Secret 🏃‍♀️",
+          description: "Wide-strap racerback sports bras prevent bounce and protect developing chest tissues during PE and active sports!",
+          question: "Which bra prevents bounce and friction pain during sports?",
+          emojiOptions: ["🏃‍♀️ Sports Bra", "🌸 Bralette", "✨ Halter", "☁️ Soft Bra"],
+          correctEmoji: "🏃‍♀️ Sports Bra",
+          explanation: "Gigi's Tip: Always wear a supportive sports bra during running, dance, and PE to prevent ligament strain!",
+        },
+        {
+          id: "bb_s3",
+          ruleNumber: 3,
+          ruleName: "Breathable Cotton",
+          wheelLabel: "Rule 3 🌸",
+          emoji: "🌸",
+          title: "Rule 3: Breathable Cotton Secret 🌸",
+          description: "Natural breathable cotton absorbs sweat and protects delicate developing skin from rashes and irritation!",
+          question: "Which fabric keeps skin cool, dry, and rash-free?",
+          emojiOptions: ["🌸 Cotton", "⛓️ Synthetic", "📌 Nylon", "📐 Polyester"],
+          correctEmoji: "🌸 Cotton",
+          explanation: "Gigi's Tip: Soft natural cotton allows your skin to breathe naturally during long school days!",
+        },
+        {
+          id: "bb_s4",
+          ruleNumber: 4,
+          ruleName: "Two-Finger Strap Fit",
+          wheelLabel: "Rule 4 🎽",
+          emoji: "🎽",
+          title: "Rule 4: Two-Finger Strap Alignment 🎽",
+          description: "Shoulder straps should sit flat without digging in. You should easily slide two fingers underneath!",
+          question: "How should shoulder straps fit for maximum comfort?",
+          emojiOptions: ["🎽 2-Finger Fit", "📐 Tight Fit", "🏃‍♀️ Loose Fit", "✨ Off-Shoulder"],
+          correctEmoji: "🎽 2-Finger Fit",
+          explanation: "Gigi's Tip: If straps leave red marks, loosen them slightly—the band does the heavy lifting!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "bb_reflect",
+    type: "reflection_reward",
+    position: "random_pool",
+    title: "Self-Care Reflection",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: { prompt: "Write down what makes your body feel cozy and supported!" },
+  },
+];
 
-  // Clean up obsolete episodes 7 & 8 if present
-  await prisma.creativeEpisode.deleteMany({
-    where: { id: { in: ["ce_hygiene_hero", "ce_masterclass"] } },
+const BODY_IMAGE_NODES = [
+  {
+    nodeId: "bi_story",
+    type: "story",
+    position: "fixed_start",
+    title: "Beyond the Screen",
+    estMinutes: 4,
+    xpReward: 5,
+    content: {
+      pages: [
+        {
+          pageNumber: 1,
+          title: "The Filter Trap",
+          image: "assets/images/story/page_2.jpg",
+          panels: [
+            {
+              id: "bi_p1",
+              description: "Meera scrolled through social media photos of airwashed model faces.",
+              dialogue: [{ character: "Meera", type: "thought", text: "Why does everyone online look so flawless without any pores?" }],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "bi_comparison_filter_unmask",
+    type: "comparison_filter_unmask",
+    position: "random_pool",
+    title: "Unmasking Social Media Filters 🪄✨",
+    energyTag: "active",
+    xpReward: 20,
+    content: {
+      title: "Feed vs. Reality Unmasker 🪄✨",
+      instruction: "Slide the interactive lens to unmask digital filters and uncover the real truth behind social media posts!",
+      posts: [
+        {
+          id: "post_1",
+          username: "@perfect_skin_daily",
+          userEmoji: "✨",
+          filteredText: "Zero pores, zero texture, flawless 100% natural morning glow! #NoFilter #NaturalBeauty ✨",
+          realityText: "Ring lights, heavy concealer, digital smoothing filter, and 45 studio takes! Real skin has natural pores, oil, and texture.",
+          filteredImageUrl: "assets/images/unmask_perfect_skin_filtered.jpg",
+          realityImageUrl: "assets/images/unmask_perfect_skin_reality.jpg",
+          gigiInsight: "Gigi's Check: Social media filters blur away real human skin texture! Real skin has pores, pimples, and shadows—and that is 100% normal and beautiful!",
+        },
+        {
+          id: "post_2",
+          username: "@fitness_hour_queen",
+          userEmoji: "🏃‍♀️",
+          filteredText: "Woke up with perfect hourglass abs and zero bloating after 10 slices of pizza! 💪🔥 #BodyGoals",
+          realityText: "Posed with arched back, breath held in, high-waist tight leggings, and slimming video warp filters. Everyone bloats after eating!",
+          gigiInsight: "Gigi's Check: Body shapes shift naturally when sitting, eating, or breathing. Posed highlights don't equal real everyday body life!",
+        },
+        {
+          id: "post_3",
+          username: "@glam_lifestyle_vibes",
+          userEmoji: "📸",
+          filteredText: "Living my dream effortless 24/7 aesthetic life with perfect hair every single second! 🌟💅 #Flawless",
+          realityText: "Stylist team, professional lighting, ring light shadows removed, and 30 minutes of editing. Real hair gets messy, frizzy, and natural!",
+          gigiInsight: "Gigi's Check: Effortless posts are heavily effort-filled! Real hair moves, gets frizzy, and doesn't sit like a frozen mannequin.",
+        },
+        {
+          id: "post_4",
+          username: "@beach_sunset_glow",
+          userEmoji: "🏖️",
+          filteredText: "Golden hour glow with zero skin folds, zero stretch marks, and silky smooth legs! ☀️🌊",
+          realityText: "Airbrushed stretch marks, skin texture blurred, warm color filter cranked to 100%, and skin folds edited out. Stretch marks are natural growth badges!",
+          gigiInsight: "Gigi's Check: Stretch marks are beautiful natural growth badges that show your body is growing! Never let a digital filter make you doubt your worth.",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "bi_quiz",
+    type: "quiz",
+    position: "random_pool",
+    title: "Body Confidence Quiz 🧠",
+    energyTag: "reflective",
+    xpReward: 15,
+    passThreshold: 0.6,
+    content: {
+      title: "Body Confidence Quiz 🧠",
+      questions: [
+        {
+          id: "biq1",
+          text: "Why do photos on social media often look unnaturally perfect?",
+          options: [
+            "They use digital smoothing filters, lighting edits, and selective angles 📸",
+            "People online don't have real human skin 🤖",
+            "Everyone online eats only salads 🥗",
+          ],
+          correctIndex: 0,
+          explanation: "Digital editing and filters erase pores, shadows, and natural skin texture!",
+        },
+        {
+          id: "biq2",
+          text: "What does 'Body Neutrality' mean?",
+          options: [
+            "Appreciating what your body DOES for you (running, laughing, thinking) rather than just how it looks 🏃‍♀️",
+            "Comparing your height to everyone in your class 📏",
+            "Ignoring your health completely 🚫",
+          ],
+          correctIndex: 0,
+          explanation: "Body neutrality focuses on your body's incredible functional superpowers!",
+        },
+        {
+          id: "biq3",
+          text: "True or False: There is one single 'ideal' body shape that everyone should aim for.",
+          options: [
+            "False — human bodies come in diverse, beautiful shapes, heights, and builds! 🌸",
+            "True — everyone must look identical 👯‍♀️",
+          ],
+          correctIndex: 0,
+          explanation: "Diversity is natural and beautiful! Genetics creates unique body shapes.",
+        },
+        {
+          id: "biq4",
+          text: "How should you respond when social media posts make you feel insecure about your appearance?",
+          options: [
+            "Unfollow those accounts, take a screen break, and spend time on real-life hobbies 🎨",
+            "Stare at the photo for 3 hours and criticize yourself 🪞",
+            "Stop eating meals 🥣",
+          ],
+          correctIndex: 0,
+          explanation: "Curating your digital feed protects your mental health and self-esteem!",
+        },
+        {
+          id: "biq5",
+          text: "What is a great daily habit for building strong inner confidence?",
+          options: [
+            "Speaking to yourself in the mirror with the same warmth you use with a best friend 💖",
+            "Searching for flaws in every photo 🔍",
+            "Comparing your progress to others 🏃‍♀️",
+          ],
+          correctIndex: 0,
+          explanation: "Self-compassion builds lifelong self-worth and confidence!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "bi_mirror_reflection_flip",
+    type: "mirror_reflection_flip",
+    position: "random_pool",
+    title: "Mirror Perspective Shifter 🪞✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Mirror Perspective Shifter 🪞✨",
+      instruction: "Tap the mirror to flip self-critical thoughts into empowering body-gratitude & wisdom perspectives!",
+      cards: [
+        {
+          id: "m1",
+          thoughtEmoji: "📏",
+          thoughtText: "Why do my jeans feel tighter than they did a few months ago?",
+          perspectiveEmoji: "✨",
+          perspectiveText: "My bones, hips, and height are growing naturally on schedule! Tighter clothes mean my body is building its strong adult framework.",
+        },
+        {
+          id: "m2",
+          thoughtEmoji: "🔍",
+          thoughtText: "I don't look like the flawless, airbrushed girls on my social media feed.",
+          perspectiveEmoji: "🌸",
+          perspectiveText: "Feeds are edited highlight reels with studio lights! Real bodies have pores, texture, curves, and unique shapes—and that's 100% beautiful.",
+        },
+        {
+          id: "m3",
+          thoughtEmoji: "😔",
+          thoughtText: "I wish I could change how my body looks in the mirror right now.",
+          perspectiveEmoji: "💖",
+          perspectiveText: "My body carries me through life, lets me laugh, dance, swim, and think. I choose body gratitude and self-kindness over mirror inspection!",
+        },
+        {
+          id: "m4",
+          thoughtEmoji: "⚡",
+          thoughtText: "Some days I feel bloated or tired and I feel unhappy with my reflection.",
+          perspectiveEmoji: "👑",
+          perspectiveText: "Body feelings fluctuate naturally with cycle hormones, food, and rest. My worth is constant and doesn't change with a temporary mirror reflection!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "bi_appreciation_jar",
+    type: "body_appreciation_jar",
+    position: "random_pool",
+    title: "Body Worth Jar 💖",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: {
+      title: "Body Worth Jar 🏺✨",
+      instruction: "Collect 4 true inner confidence gems! Reject negative comparison bluffs!",
+      maxCapacity: 4,
+      gems: [
+        { id: "bg1", emoji: "💖", shortLabel: "Functional Strength", actionText: "My body carries me through dance, sports, and daily fun.", isCorrect: true },
+        { id: "bg2", emoji: "🎨", shortLabel: "Unique Beauty", actionText: "My unique features and smile make me one of a kind.", isCorrect: true },
+        { id: "bg3", emoji: "🧠", shortLabel: "Curious Mind", actionText: "My brain learns, solves puzzles, and imagines new ideas.", isCorrect: true },
+        { id: "bg4", emoji: "🌟", shortLabel: "Real-Life Value", actionText: "My worth is defined by my kindness and character, not photo likes.", isCorrect: true },
+        { id: "bg5", emoji: "🛡️", shortLabel: "Digital Detox", actionText: "I unfollow accounts that trigger body comparison or self-doubt.", isCorrect: true },
+        { id: "bg_bluff1", emoji: "🔍", shortLabel: "Zooming in on Flaws", actionText: "Examining skin imperfections in harsh lighting.", isCorrect: false, rejectionHint: "Magnifying minor flaws destroys peace! Zoom out and see your whole amazing self 🌸" },
+        { id: "bg_bluff2", emoji: "📱", shortLabel: "Comparing to Filtered Photos", actionText: "Comparing your real skin to digital face filters.", isCorrect: false, rejectionHint: "Digital filters aren't real life! Real human skin has texture, pores, and movement ✨" },
+        { id: "bg_bluff3", emoji: "🗣️", shortLabel: "Harsh Self-Criticism", actionText: "Speaking meanly to yourself in the mirror.", isCorrect: false, rejectionHint: "Speak to yourself with the same loving kindness you give your best friend! 💕" },
+      ],
+    },
+  },
+  {
+    nodeId: "bi_mythbusters",
+    type: "myth_busters",
+    position: "random_pool",
+    title: "Body Image Myths vs Facts 💡",
+    energyTag: "reflective",
+    xpReward: 15,
+    content: {
+      title: "Body Image Myths vs Facts 💡✨",
+      instruction: "Bust digital comparison myths with real body acceptance facts!",
+      cards: [
+        { id: "bim1", statement: "Influencers on social media look flawless naturally 24/7.", verdict: "MYTH", explanation: "Fact: Professional lighting, ring lights, digital filters, and pose editing create artificial perfection!" },
+        { id: "bim2", statement: "Having belly folds when sitting down is a sign of bad health.", verdict: "MYTH", explanation: "Fact: Skin and tissue fold naturally so your body can bend, sit, and move comfortably!" },
+        { id: "bim3", statement: "Changing your body shape will solve all your insecurities.", verdict: "MYTH", explanation: "Fact: True confidence comes from practicing self-compassion and inner self-worth, not body numbers!" },
+        { id: "bim4", statement: "Cellulite and stretch marks only happen to older adults.", verdict: "MYTH", explanation: "Fact: Over 90% of women develop stretch marks & skin texture during puberty growth spurts!" },
+        { id: "bim5", statement: "Your value as a person depends on how many likes your selfie receives.", verdict: "MYTH", explanation: "Fact: Social media likes are algorithms, not measures of your intelligence, kindness, or value!" },
+      ],
+    },
+  },
+  {
+    nodeId: "bi_timelinebuilder",
+    type: "timeline_builder",
+    position: "random_pool",
+    title: "Social Media Digital Detox Routine 📸✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Social Media Digital Detox Routine 📸✨",
+      instruction: "Sequence the steps to reset your mindset and build strong body worth!",
+      cards: [
+        { id: "bic1", label: "Recognize Filter Traps 👁️", emoji: "📱", description: "Realize photos online use digital filters, studio lighting, and edits." },
+        { id: "bic2", label: "Unfollow Comparison Feeds 🚫", emoji: "✂️", description: "Unfollow social media accounts that trigger self-doubt or insecurity." },
+        { id: "bic3", label: "Mirror Kindness Affirmation 🪞", emoji: "💖", description: "Speak loving best-friend words to your mirror reflection." },
+        { id: "bic4", label: "Focus on Body Superpowers 🏃‍♀️", emoji: "🌟", description: "Celebrate what your body achieves—running, laughing, dancing, and thinking!" },
+      ],
+    },
+  },
+  {
+    nodeId: "bi_emoji_decoder",
+    type: "emoji_decoder",
+    position: "random_pool",
+    title: "Body Worth Secret Wheel 🪞✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Body Worth Secrets Wheel 🪞✨",
+      instruction: "Spin the wheel to land on each sector and unlock Gigi's 4 secret body worth rules!",
+      scenarios: [
+        {
+          id: "bi_s1",
+          ruleNumber: 1,
+          ruleName: "Unmask Digital Filters",
+          wheelLabel: "Rule 1 📱",
+          emoji: "📱",
+          title: "Rule 1: Unmask Digital Filters 📱",
+          description: "Photos online use digital filters, lighting, and ring lights. Never compare your real life to someone else's edited highlight reel!",
+          question: "What is the truth behind flawless social media photos online?",
+          emojiOptions: ["📱 Edited Poses", "🪞 100% Real", "🌟 Natural Lighting", "💖 Zero Edits"],
+          correctEmoji: "📱 Edited Poses",
+          explanation: "Gigi's Tip: Real skin has texture, pores, and natural shadows—and that's beautiful!",
+        },
+        {
+          id: "bi_s2",
+          ruleNumber: 2,
+          ruleName: "Social Feed Detox",
+          wheelLabel: "Rule 2 ✂️",
+          emoji: "✂️",
+          title: "Rule 2: Social Feed Detox ✂️",
+          description: "Unfollow or mute any social media account that makes you feel insecure, small, or unhappy with your body.",
+          question: "What should you do if an account makes you feel insecure?",
+          emojiOptions: ["✂️ Unfollow/Mute", "👀 Stare More", "📱 Scroll Hours", "📉 Compare Self"],
+          correctEmoji: "✂️ Unfollow/Mute",
+          explanation: "Gigi's Tip: Curating your digital space to inspire confidence is an act of self-love!",
+        },
+        {
+          id: "bi_s3",
+          ruleNumber: 3,
+          ruleName: "Best-Friend Mirror Rule",
+          wheelLabel: "Rule 3 🪞",
+          emoji: "🪞",
+          title: "Rule 3: Best-Friend Mirror Rule 🪞",
+          description: "Whenever you look in the mirror, speak to yourself with the exact same kindness, love, and support you would give your best friend.",
+          question: "How should you speak to your reflection in the mirror?",
+          emojiOptions: ["🪞 Best-Friend Love", "🗣️ Harsh Critique", "📌 Comparison", "🚫 Ignore Self"],
+          correctEmoji: "🪞 Best-Friend Love",
+          explanation: "Gigi's Tip: You are your body's lifelong best friend—treat your reflection with warmth!",
+        },
+        {
+          id: "bi_s4",
+          ruleNumber: 4,
+          ruleName: "Instrument Not Ornament",
+          wheelLabel: "Rule 4 🌟",
+          emoji: "🌟",
+          title: "Rule 4: Instrument, Not Ornament 🌟",
+          description: "Your body is a powerful instrument that lets you run, dance, laugh, hug, and create—NOT just something to be looked at!",
+          question: "What is the true value of your growing body?",
+          emojiOptions: ["🌟 Living Instrument", "📸 Photo Ornament", "🏷️ Display Item", "📱 Picture Object"],
+          correctEmoji: "🌟 Living Instrument",
+          explanation: "Gigi's Tip: Celebrate what your body DOES every single day instead of focusing on appearance!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "bi_reflect",
+    type: "reflection_reward",
+    position: "random_pool",
+    title: "Self-Worth Reflection",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: { prompt: "Write down 3 non-physical things you love about yourself!" },
+  },
+];
+
+const CYCLE_BASICS_NODES = [
+  {
+    nodeId: "cb_story",
+    type: "story",
+    position: "fixed_start",
+    title: "The 4 Seasons Within",
+    estMinutes: 5,
+    xpReward: 20,
+    content: {
+      pages: [
+        {
+          pageNumber: 1,
+          title: "Understanding Cycle Rhythm",
+          image: "assets/images/story/page_2.jpg",
+          panels: [
+            {
+              id: "cb_p1",
+              description: "Gigi explained that a girl's cycle is like 4 beautiful seasons in a year.",
+              dialogue: [{ character: "Gigi", type: "speech", text: "Your 28-day cycle moves through Winter, Spring, Summer, and Autumn!" }],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_drag_to_label",
+    type: "drag_to_label",
+    position: "random_pool",
+    title: "Map the 4 Cycle Seasons 🏷️",
+    energyTag: "active",
+    xpReward: 10,
+    content: {
+      instruction: "Drag each cycle season label to its matching phase on the cycle wheel!",
+      targets: [
+        { id: "cm1", label: "Period", emoji: "🩸", correctZone: "zone_1", desc: "Uterine lining sheds naturally to start fresh. Rest and hydrate.", superpower: "🛀 Rest & Recharging" },
+        { id: "cm2", label: "Follicular Phase", emoji: "🌱", correctZone: "zone_2", desc: "Estrogen rises, energy climbs, and fresh creativity sparks.", superpower: "💡 Focus & Creativity" },
+        { id: "cm3", label: "Ovulation", emoji: "☀️", correctZone: "zone_3", desc: "Egg releases. Energy, confidence, and social glow peak.", superpower: "🌟 Vitality & Confidence" },
+        { id: "cm4", label: "Luteal Phase", emoji: "🍂", correctZone: "zone_4", desc: "Progesterone warms the body and prepares a cozy space for wind-down.", superpower: "🧘 Intuition & Self-Care" },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_quiz",
+    type: "quiz",
+    position: "random_pool",
+    title: "Cycle Seasons Master Quiz 🧠",
+    energyTag: "reflective",
+    xpReward: 15,
+    passThreshold: 0.6,
+    content: {
+      title: "Cycle Seasons Master Quiz 🧠",
+      questions: [
+        {
+          id: "cbq1",
+          text: "Which season metaphor represents your period bleeding days when energy asks for rest?",
+          options: [
+            "Winter Menstruation Phase ❄️",
+            "Summer Ovulation Phase ☀️",
+            "Spring Follicular Phase 🌱",
+          ],
+          correctIndex: 0,
+          explanation: "Winter Menstruation is your inner rest and reset time!",
+        },
+        {
+          id: "cbq2",
+          text: "What key hormone rises during the Spring Follicular phase, boosting brain focus and sharp memory?",
+          options: [
+            "Estrogen ⚡",
+            "Melatonin 😴",
+            "Adrenaline 🏃‍♀️",
+          ],
+          correctIndex: 0,
+          explanation: "Estrogen boosts brain plasticity, optimism, and learning power!",
+        },
+        {
+          id: "cbq3",
+          text: "What happens during Summer Ovulation around days 13-16 of a 28-day cycle?",
+          options: [
+            "A mature egg is released into the fallopian tube during peak energy 🌟",
+            "The body drops into deep hibernation 🐻",
+            "Estrogen drops to zero 📉",
+          ],
+          correctIndex: 0,
+          explanation: "Ovulation is the mid-cycle peak spark when confidence and energy shine brightest!",
+        },
+        {
+          id: "cbq4",
+          text: "Which warming hormone rises during the Autumn Luteal phase (days 17-28), signaling cozy wind-down?",
+          options: [
+            "Progesterone 🍂",
+            "Insulin 🍬",
+            "Cortisol ⚡",
+          ],
+          correctIndex: 0,
+          explanation: "Progesterone gently warms body temperature and encourages restorative rest!",
+        },
+        {
+          id: "cbq5",
+          text: "Why is tracking your cycle seasons useful for daily life?",
+          options: [
+            "It helps you sync study goals, exercise, and rest with your natural body energy 🔄",
+            "It forces you to stay indoors all month 🚪",
+            "It changes your eye color 👁️",
+          ],
+          correctIndex: 0,
+          explanation: "Knowing your cycle seasons turns body changes into your personal superpower roadmap!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_appreciation_jar",
+    type: "body_appreciation_jar",
+    position: "random_pool",
+    title: "Cycle Wisdom Jar 🏺✨",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: {
+      title: "Cycle Wisdom Jar 🏺✨",
+      instruction: "Collect 4 true cycle wisdom gems! Reject negative myth bluffs!",
+      maxCapacity: 4,
+      gems: [
+        { id: "cg1", emoji: "🔄", shortLabel: "4 Season Rhythm", actionText: "My body has a 28-day continuous cycle rhythm.", isCorrect: true },
+        { id: "cg2", emoji: "🌱", shortLabel: "Follicular Focus", actionText: "Rising estrogen boosts my brain focus and creativity.", isCorrect: true },
+        { id: "cg3", emoji: "☀️", shortLabel: "Ovulation Glow", actionText: "Ovulation is my peak energy spark for social confidence.", isCorrect: true },
+        { id: "cg4", emoji: "🍂", shortLabel: "Luteal Wind-Down", actionText: "Progesterone reminds me to rest and honor self-care.", isCorrect: true },
+        { id: "cg5", emoji: "🍵", shortLabel: "Nourishing Rest", actionText: "Warm fluids and cozy sleep soothe my body during flow.", isCorrect: true },
+        { id: "cg_bluff1", emoji: "🚫", shortLabel: "Cycles Are Only Bleeding", actionText: "Believing the cycle is only active 5 days a month.", isCorrect: false, rejectionHint: "The cycle is an ongoing 28-day journey through 4 active hormonal seasons! 🔄" },
+        { id: "cg_bluff2", emoji: "⚡", shortLabel: "Pushing 100% Every Day", actionText: "Forcing intense workouts when low energy asks for rest.", isCorrect: false, rejectionHint: "Listen to your body's rest signals during Luteal & Menstruation phases! 🧘‍♀️" },
+        { id: "cg_bluff3", emoji: "📱", shortLabel: "Ignoring Cycle Signals", actionText: "Staying up until 2 AM during flow days.", isCorrect: false, rejectionHint: "Cozy early sleep keeps your immune system strong during flow days 🌙" },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_scenario_choice",
+    type: "scenario_choice",
+    position: "random_pool",
+    title: "Cycle Season Scenario Choice: Energy & Self-Care 🛣️",
+    energyTag: "active",
+    xpReward: 20,
+    content: {
+      title: "Cycle Season Choices 🛣️✨",
+      instruction: "Choose how to tune into your body's energy during different cycle seasons!",
+      scenarios: [
+        {
+          id: "cb_sc1",
+          rolePrompt: "Moment 1 • Luteal Phase Wind-Down",
+          situationEmoji: "🍂",
+          situation: "You are in your Autumn Luteal phase (days 17-28) and progesterone is warming your body. You feel low energy after school. What do you do?",
+          choices: [
+            { id: "cbc1", text: "Sip warm herbal tea, write in your journal, and get cozy early sleep 🍵", feedback: "Optimal choice! Honoring your Luteal wind-down phase keeps your immune system strong!", gigiNote: "Sisterly Tip: The Luteal phase is your inner sanctuary time! 🧘‍♀️", isBest: true },
+            { id: "cbc2", text: "Stay up until midnight scrolling social media photos 📱", feedback: "Late night screen light disrupts sleep hormones!", gigiNote: "Sisterly Tip: Swap screen time for relaxing music before bed! 🌙", isBest: false },
+          ],
+        },
+        {
+          id: "cb_sc2",
+          rolePrompt: "Moment 2 • Follicular Phase Energy Surge",
+          situationEmoji: "🌱",
+          situation: "Estrogen is rising in your Spring Follicular phase and your brain feels super sharp and creative. How do you channel it?",
+          choices: [
+            { id: "cbc3", text: "Start an exciting new art project or study a topic you love 🎨", feedback: "Brilliant! Rising estrogen boosts focus and brain plasticity!", gigiNote: "Sisterly Tip: Use your Follicular phase to try new hobbies! 💡", isBest: true },
+            { id: "cbc4", text: "Sleep all day and ignore your creative energy boost 😴", feedback: "Missing your peak energy phase skips a great focus window!", gigiNote: "Sisterly Tip: Ride the natural estrogen wave when energized! ⚡", isBest: false },
+          ],
+        },
+        {
+          id: "cb_sc3",
+          rolePrompt: "Moment 3 • Ovulation Peak Glow",
+          situationEmoji: "☀️",
+          situation: "You're in your Summer Ovulation phase (days 13-16). You feel a natural surge of confidence and high social energy. How do you spend your weekend?",
+          choices: [
+            { id: "cbc5", text: "Join a team sport, present your group project, or hang out with friends 🌟", feedback: "Fantastic! Ovulation is your peak spark phase when communication peaks!", gigiNote: "Sisterly Tip: Step into the spotlight during Ovulation! 👑✨", isBest: true },
+            { id: "cbc6", text: "Hide indoors and refuse to speak to anyone 🚪", feedback: "Missing Ovulation peak social energy skips a great connection spark!", gigiNote: "Sisterly Tip: Share your vibrant energy with friends! 💖", isBest: false },
+          ],
+        },
+        {
+          id: "cb_sc4",
+          rolePrompt: "Moment 4 • Period Menstruation Reset",
+          situationEmoji: "🩸",
+          situation: "It's Day 1 of your Winter Menstruation phase. Your body is shedding its lining and asking for warmth. How do you practice self-care?",
+          choices: [
+            { id: "cbc7", text: "Wear cozy breathable clothes, use a warm heating pad, and eat warm soup 🥣", feedback: "Perfection! Warmth and gentle nourishment soothe uterine contractions!", gigiNote: "Sisterly Tip: Treat yourself with royalty kindness during Day 1 reset! 🛀", isBest: true },
+            { id: "cbc8", text: "Drink icy sodas and force yourself into intense gymnastics 🤸‍♀️", feedback: "Cold sodas and extreme physical strain can increase cramping tightness!", gigiNote: "Sisterly Tip: Choose gentle warm self-care over intense strain! 🍵", isBest: false },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_mythbusters",
+    type: "myth_busters",
+    position: "random_pool",
+    title: "Cycle Myths vs Facts 💡",
+    energyTag: "reflective",
+    xpReward: 15,
+    content: {
+      title: "Cycle Season Myths vs Facts 💡✨",
+      instruction: "Uncover the science behind your 28-day cycle seasons!",
+      cards: [
+        { id: "cbm1", statement: "Your menstrual cycle is only active on the days you bleed.", verdict: "MYTH", explanation: "Fact: Your cycle spans roughly 28 days continuously across 4 active phases!" },
+        { id: "cbm2", statement: "Girls who live together ALWAYS synchronize their period dates.", verdict: "MYTH", explanation: "Fact: Scientific studies show this is random statistical overlap! Each cycle follows a unique internal clock." },
+        { id: "cbm3", statement: "A girl's cycle has no purpose other than making her feel tired.", verdict: "MYTH", explanation: "Fact: Cycle hormones build bone density, boost brain plasticity, and protect heart health!" },
+        { id: "cbm4", statement: "Emotional shifts during your cycle are imaginary or totally out of control.", verdict: "MYTH", explanation: "Fact: Shifting hormone levels naturally influence brain chemistry. Knowing your seasons helps you practice self-compassion!" },
+        { id: "cbm5", statement: "If your cycle is 32 days instead of 28, your body is broken.", verdict: "MYTH", explanation: "Fact: Normal healthy cycles range anywhere from 21 to 35 days!" },
+        { id: "cbm6", statement: "Drinking cold ice water during your cycle freezes your blood.", verdict: "MYTH", explanation: "Fact: Digestion and reproductive systems are separate! Cold water does not freeze blood." },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_timelinebuilder",
+    type: "timeline_builder",
+    position: "random_pool",
+    title: "The 4 Cycle Seasons Journey 🔄✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "The 4 Cycle Seasons Journey 🔄✨",
+      instruction: "Arrange the 4 active hormonal seasons of your 28-day cycle in order!",
+      cards: [
+        { id: "cbc1", label: "Winter Menstruation (Days 1-5) ❄️", emoji: "🩸", description: "Flow shedding reset. Inner sanctuary time requiring rest & warm fluids." },
+        { id: "cbc2", label: "Spring Follicular (Days 6-12) 🌱", emoji: "🌱", description: "Estrogen rises, boosting brain energy, focus, and new creative ideas." },
+        { id: "cbc3", label: "Summer Ovulation (Days 13-16) ☀️", emoji: "☀️", description: "Egg release peak spark! Confidence, social energy, and vitality peak." },
+        { id: "cbc4", label: "Autumn Luteal (Days 17-28) 🍂", emoji: "🍂", description: "Progesterone warms body. Time to slow down, write, and cozy rest." },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_match_pairs",
+    type: "match_pairs",
+    position: "random_pool",
+    title: "Match Cycle Seasons 🍂",
+    energyTag: "active",
+    xpReward: 10,
+    content: {
+      pairs: [
+        { id: "p1", term: "Winter Phase", definition: "Menstruation flow days requiring cozy rest and warm fluids." },
+        { id: "p2", term: "Spring Phase", definition: "Follicular phase with rising estrogen, high focus, and creativity." },
+        { id: "p3", term: "Summer Phase", definition: "Ovulation peak spark with egg release, high energy, and social glow." },
+        { id: "p4", term: "Autumn Phase", definition: "Luteal phase with progesterone warming, wind-down, and intuition." },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_emoji_decoder",
+    type: "emoji_decoder",
+    position: "random_pool",
+    title: "Cycle Rhythm Secret Wheel 🔄✨",
+    energyTag: "active",
+    xpReward: 15,
+    content: {
+      title: "Cycle Rhythm Secrets Wheel 🔄✨",
+      instruction: "Spin the wheel to land on each sector and unlock Gigi's 4 secret cycle rhythm rules!",
+      scenarios: [
+        {
+          id: "cb_s1",
+          ruleNumber: 1,
+          ruleName: "Winter Rest & Reset",
+          wheelLabel: "Rule 1 ❄️",
+          emoji: "❄️",
+          title: "Rule 1: Winter Rest & Reset ❄️",
+          description: "Days 1-5 (Menstruation): Your uterine lining sheds naturally. Energy drops to ask for cozy rest, warm tea, and gentle self-care.",
+          question: "What does your body ask for during Day 1-5 Winter Menstruation?",
+          emojiOptions: ["❄️ Cozy Rest", "🏋️‍♀️ Extreme Gym", "🏃‍♀️ High Sprint", "⚡ No Sleep"],
+          correctEmoji: "❄️ Cozy Rest",
+          explanation: "Gigi's Tip: Honor your Winter phase by sleeping early and keeping your tummy warm!",
+        },
+        {
+          id: "cb_s2",
+          ruleNumber: 2,
+          ruleName: "Spring Brain Spark",
+          wheelLabel: "Rule 2 🌱",
+          emoji: "🌱",
+          title: "Rule 2: Spring Brain Spark 🌱",
+          description: "Days 6-12 (Follicular Phase): Estrogen rises, boosting brain energy, sharp memory, optimistic mood, and creative problem solving.",
+          question: "What superpower rises during the Spring Follicular phase (Days 6-12)?",
+          emojiOptions: ["🌱 Brain Focus", "😴 Hibernation", "🍂 Slowdown", "❄️ Deep Rest"],
+          correctEmoji: "🌱 Brain Focus",
+          explanation: "Gigi's Tip: Use your Spring phase to tackle complex homework and try new creative hobbies!",
+        },
+        {
+          id: "cb_s3",
+          ruleNumber: 3,
+          ruleName: "Summer Vitality Glow",
+          wheelLabel: "Rule 3 ☀️",
+          emoji: "☀️",
+          title: "Rule 3: Summer Vitality Glow ☀️",
+          description: "Days 13-16 (Ovulation): Mature egg releases. Estrogen peaks, giving you high physical energy, social confidence, and a radiant glow.",
+          question: "What happens during mid-cycle Summer Ovulation (Days 13-16)?",
+          emojiOptions: ["☀️ Peak Energy", "❄️ Low Energy", "💤 Sleepiness", "🚪 Isolation"],
+          correctEmoji: "☀️ Peak Energy",
+          explanation: "Gigi's Tip: Step into the spotlight during Summer phase—present group projects and hang out with friends!",
+        },
+        {
+          id: "cb_s4",
+          ruleNumber: 4,
+          ruleName: "Autumn Wind-Down",
+          wheelLabel: "Rule 4 🍂",
+          emoji: "🍂",
+          title: "Rule 4: Autumn Wind-Down 🍂",
+          description: "Days 17-28 (Luteal Phase): Progesterone warms your body temperature. Energy gently shifts inward for intuition, organizing, and quiet time.",
+          question: "How does progesterone affect your body during Autumn Luteal (Days 17-28)?",
+          emojiOptions: ["🍂 Cozy Reflection", "🌱 High Energy", "⚡ Sprint Mode", "☀️ Peak Glow"],
+          correctEmoji: "🍂 Cozy Reflection",
+          explanation: "Gigi's Tip: Journal, organize your room, and enjoy calming bedtime routines as progesterone rises!",
+        },
+      ],
+    },
+  },
+  {
+    nodeId: "cb_reflect",
+    type: "reflection_reward",
+    position: "random_pool",
+    title: "Cycle Season Reflection",
+    energyTag: "reflective",
+    xpReward: 10,
+    content: { prompt: "Write down which cycle season matches your energy today!" },
+  },
+];
+
+async function seed() {
+  console.log("🌱 Seeding ALL 7 EPISODES with RICH ENRICHED DATA...");
+
+  const journey1 = await prisma.creativeJourney.upsert({
+    where: { id: "cj_my_changing_body" },
+    update: { title: "My Changing Body", description: "Discover the magic of puberty, growth, and body confidence!" },
+    create: { id: "cj_my_changing_body", title: "My Changing Body", description: "Discover the magic of puberty, growth, and body confidence!", ageBand: "8-12", icon: "🌱" },
   });
+
+  const journey2 = await prisma.creativeJourney.upsert({
+    where: { id: "cj_period_diaries" },
+    update: { title: "Period Diaries", description: "Your complete guide to cycle phases, preparation, and body wisdom!" },
+    create: { id: "cj_period_diaries", title: "Period Diaries", description: "Your complete guide to cycle phases, preparation, and body wisdom!", ageBand: "10-14", icon: "🩸" },
+  });
+
+  const episodesList = [
+    { id: "ce_body_timeline", journeyId: journey1.id, title: "1. The Body Timeline", description: "Explore growth spurts and body changes.", episodeIcon: "📏", order: 1, nodes: BODY_TIMELINE_NODES, totalXP: 100, totalCoins: 50 },
+    { id: "ce_growing_pains", journeyId: journey1.id, title: "2. Growing Pains", description: "Learn about bone growth, shins, and stretch marks.", episodeIcon: "🦴", order: 2, nodes: GROWING_PAINS_NODES, totalXP: 100, totalCoins: 50 },
+    { id: "ce_skin_stories", journeyId: journey1.id, title: "3. Skin Stories", description: "Master pores, sebum oil, and gentle skincare routines.", episodeIcon: "✨", order: 3, nodes: SKIN_STORIES_NODES, totalXP: 100, totalCoins: 50 },
+    { id: "ce_period_preview", journeyId: journey1.id, title: "4. The Period Preview", description: "Master period preparation and confidence.", episodeIcon: "🎒", order: 4, nodes: PERIOD_PREVIEW_NODES, totalXP: 100, totalCoins: 50 },
+    { id: "ce_bra_basics", journeyId: journey1.id, title: "5. Bra Basics", description: "Starter bras, sports support, and chest comfort.", episodeIcon: "🎽", order: 5, nodes: BRA_BASICS_NODES, totalXP: 100, totalCoins: 50 },
+    { id: "ce_body_image", journeyId: journey1.id, title: "6. Body Image Unlocked", description: "Unmask digital filters and celebrate unique body worth.", episodeIcon: "🪞", order: 6, nodes: BODY_IMAGE_NODES, totalXP: 100, totalCoins: 50 },
+    { id: "ce_cycle_basics", journeyId: journey2.id, title: "1. What is a Cycle?", description: "Map the 4 seasons of your 28-day cycle.", episodeIcon: "🩸", order: 1, nodes: CYCLE_BASICS_NODES, totalXP: 140, totalCoins: 70 },
+  ];
 
   for (const ep of episodesList) {
     const created = await prisma.creativeEpisode.upsert({
@@ -947,7 +2043,7 @@ async function seed() {
         order: ep.order,
         nodes: ep.nodes as any,
         totalXP: ep.totalXP,
-        totalCoins: (ep as any).totalCoins ?? 83,
+        totalCoins: ep.totalCoins,
       },
       create: {
         id: ep.id,
@@ -958,39 +2054,15 @@ async function seed() {
         order: ep.order,
         nodes: ep.nodes as any,
         totalXP: ep.totalXP,
-        totalCoins: (ep as any).totalCoins ?? 83,
+        totalCoins: ep.totalCoins,
         unlockCondition: { type: ep.order === 1 ? "first_in_journey" : "previous_episode_completed" },
         isActive: true,
       },
     });
-    console.log(`  └─ Episode ${created.order}: ${created.title}`);
+    console.log(`  └─ Episode ${created.order}: ${created.title} (${created.id}) seeded with ${(created.nodes as any[]).length} nodes!`);
   }
 
-  // ── Episodes under "Period Diaries" (teaser) ──────────────────────────────
-  const periodDiariesEpisode = await prisma.creativeEpisode.upsert({
-    where: { id: "ce_cycle_basics" },
-    update: {},
-    create: {
-      id: "ce_cycle_basics",
-      journeyId: journey2.id,
-      title: "1. What is a Cycle?",
-      description: "Understanding the 4 phases of your monthly cycle.",
-      episodeIcon: "🩸",
-      order: 1,
-      nodes: [],
-      totalXP: 140,
-      unlockCondition: { type: "first_in_journey" },
-      isActive: true,
-    },
-  });
-
-  console.log(`  └─ Episode ${periodDiariesEpisode.order}: ${periodDiariesEpisode.title}`);
-  console.log("🎉 Creative Journey seed complete!");
+  console.log("🎉 ALL 7 EPISODES FULLY ENRICHED AND SEEDED IN POSTGRES!");
 }
 
-seed()
-  .catch((e) => {
-    console.error("❌ Seed failed:", e);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+seed().catch(console.error).finally(() => prisma.$disconnect());

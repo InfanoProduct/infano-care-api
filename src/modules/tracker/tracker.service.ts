@@ -523,14 +523,19 @@ export class TrackerService {
         },
       });
     }
-    // Award Onboarding Points (existing logic)
-    await GamificationService.awardPoints(
-      userId,
-      50,
-      "onboarding",
-      undefined,
-      "Setup completion"
-    );
+    // Award 20 coins for period tracker setup ONLY ONCE
+    const existingLedger = await prisma.pointsLedger.findFirst({
+      where: { userId, sourceType: "tracker_setup" },
+    });
+    if (!existingLedger) {
+      await GamificationService.awardPoints(
+        userId,
+        20,
+        "tracker_setup",
+        undefined,
+        "Completed Period Tracker Setup (+20 Coins)"
+      );
+    }
     // Evaluate quest completion for cycle setup
     try {
       const { QuestService } = await import("../quest/quest.service.js");
