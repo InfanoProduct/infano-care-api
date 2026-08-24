@@ -61,15 +61,25 @@ function balanceEnergyTags(nodes: any[]): any[] {
 
 // ── Service ───────────────────────────────────────────────────────────────────
 
+let cachedJourneys: any[] | null = null;
+let cachedJourneysTime = 0;
+
 export class CreativeJourneyService {
   // ── Journeys ──────────────────────────────────────────────────────────────
 
   static async listJourneys() {
-    return prisma.creativeJourney.findMany({
+    const now = Date.now();
+    if (cachedJourneys && now - cachedJourneysTime < 300000) {
+      return cachedJourneys;
+    }
+    const journeys = await prisma.creativeJourney.findMany({
       where: { isActive: true },
       orderBy: { createdAt: "asc" },
       include: { episodes: { where: { isActive: true }, orderBy: { order: "asc" } } },
     });
+    cachedJourneys = journeys;
+    cachedJourneysTime = now;
+    return journeys;
   }
 
   static async getJourney(id: string) {
@@ -95,9 +105,12 @@ export class CreativeJourneyService {
     if (!episode) throw new AppError("Episode not found", 404);
 
     const allNodes: any[] = (episode.nodes as any[]) ?? [];
-    const currentIds = new Set(allNodes.map((n) => n.nodeId));
+    if (allNodes.length === 0) return [];
 
-    // Check if we already have a persisted order (stored on ANY node progress row)
+    // Canonical order is the curated sequence defined in episode.nodes
+    const canonicalOrder = allNodes.map((n) => n.nodeId);
+
+    // Check if we already have a persisted order
     const progressList = await prisma.creativeNodeProgress.findMany({
       where: { userId, episodeId },
       select: { nodeOrder: true },
@@ -106,57 +119,90 @@ export class CreativeJourneyService {
 
     if (existing?.nodeOrder) {
       const order = existing.nodeOrder as string[];
-      const isStale = order.length !== allNodes.length || !order.every((id) => currentIds.has(id));
+      const isStale =
+        order.length !== canonicalOrder.length ||
+        !order.every((id, idx) => id === canonicalOrder[idx]);
       if (!isStale) {
         return order;
       }
     }
 
-    // Compute order for the first time or if stale
-    const storyNode = allNodes.find((n) => n.position === "fixed_start");
-    const reflectionNode = allNodes.find((n) => n.position === "fixed_end");
-    const middlePool = allNodes.filter((n) => n.position === "random_pool");
-
-    const seed = djb2Hash(userId + episodeId);
-    const shuffled = seededShuffle(middlePool, seed);
-    const balanced = balanceEnergyTags(shuffled);
-
-    const orderedNodes = [
-      ...(storyNode ? [storyNode] : []),
-      ...balanced,
-      ...(reflectionNode ? [reflectionNode] : []),
-    ];
-
-    const nodeOrder = orderedNodes.map((n) => n.nodeId);
-
-    // Persist on story/first node row (unlock the story node)
-    const firstNodeId = storyNode?.nodeId ?? nodeOrder[0];
+    // Persist canonical order on the first node progress row
+    const firstNodeId = canonicalOrder[0];
     if (firstNodeId) {
       await prisma.creativeNodeProgress.upsert({
         where: { userId_episodeId_nodeId: { userId, episodeId, nodeId: firstNodeId } },
-        update: { nodeOrder, status: "UNLOCKED" },
-        create: { userId, episodeId, nodeId: firstNodeId, status: "UNLOCKED", nodeOrder },
+        update: { nodeOrder: canonicalOrder, status: "UNLOCKED" },
+        create: { userId, episodeId, nodeId: firstNodeId, status: "UNLOCKED", nodeOrder: canonicalOrder },
       });
     }
 
-    return nodeOrder;
+    return canonicalOrder;
   }
 
   // ── Node Progress ─────────────────────────────────────────────────────────
 
   static async getEpisodeProgress(userId: string, episodeId: string) {
     const nodeOrder = await CreativeJourneyService.getOrCreateNodeOrder(userId, episodeId);
+    const validSet = new Set(nodeOrder);
+
     const progressList = await prisma.creativeNodeProgress.findMany({
       where: { userId, episodeId },
     });
 
+    // Delete obsolete progress rows referencing old/removed node IDs
+    const obsoleteIds = progressList.filter((p) => !validSet.has(p.nodeId)).map((p) => p.id);
+    if (obsoleteIds.length > 0) {
+      await prisma.creativeNodeProgress.deleteMany({
+        where: { id: { in: obsoleteIds } },
+      });
+    }
+
+    const validProgress = progressList.filter((p) => validSet.has(p.nodeId));
     const progressMap = new Map<string, any>();
-    for (const p of progressList) {
+    for (const p of validProgress) {
       progressMap.set(p.nodeId, p);
     }
 
+    // Find highest completed index in nodeOrder
+    let maxCompletedIndex = -1;
+    for (let i = 0; i < nodeOrder.length; i++) {
+      if (progressMap.get(nodeOrder[i])?.status === "COMPLETED") {
+        maxCompletedIndex = i;
+      }
+    }
+
+    // Backfill any preceding nodes as COMPLETED if a later node was completed
+    if (maxCompletedIndex > 0) {
+      for (let i = 0; i < maxCompletedIndex; i++) {
+        const id = nodeOrder[i];
+        const prog = progressMap.get(id);
+        if (prog?.status !== "COMPLETED") {
+          const completedRow = await prisma.creativeNodeProgress.upsert({
+            where: { userId_episodeId_nodeId: { userId, episodeId, nodeId: id } },
+            update: { status: "COMPLETED", xpEarned: 10 },
+            create: { userId, episodeId, nodeId: id, status: "COMPLETED", xpEarned: 10 },
+          });
+          progressMap.set(id, completedRow);
+        }
+      }
+    }
+
+    // Ensure first node is at least UNLOCKED if no nodes completed yet
+    if (nodeOrder.length > 0) {
+      const firstId = nodeOrder[0];
+      const firstProg = progressMap.get(firstId);
+      if (!firstProg) {
+        const firstRow = await prisma.creativeNodeProgress.upsert({
+          where: { userId_episodeId_nodeId: { userId, episodeId, nodeId: firstId } },
+          update: { status: "UNLOCKED" },
+          create: { userId, episodeId, nodeId: firstId, status: "UNLOCKED" },
+        });
+        progressMap.set(firstId, firstRow);
+      }
+    }
+
     // Ensure linear progression: unlock node i if node i-1 is COMPLETED
-    let updatedNeeded = false;
     for (let i = 1; i < nodeOrder.length; i++) {
       const prevId = nodeOrder[i - 1];
       const prevProg = progressMap.get(prevId);
@@ -170,7 +216,6 @@ export class CreativeJourneyService {
             create: { userId, episodeId, nodeId: currId, status: "UNLOCKED" },
           });
           progressMap.set(currId, unlockedRow);
-          updatedNeeded = true;
         }
       }
     }
@@ -186,10 +231,21 @@ export class CreativeJourneyService {
     xpEarned = 0,
     lastScreen?: string
   ) {
+    const existing = await prisma.creativeNodeProgress.findUnique({
+      where: { userId_episodeId_nodeId: { userId, episodeId, nodeId } },
+    });
+
+    const isFirstTimeCompletion = (!existing || existing.status !== "COMPLETED") && status === "COMPLETED";
+    const coinsToAward = isFirstTimeCompletion ? xpEarned : 0;
+
     const record = await prisma.creativeNodeProgress.upsert({
       where: { userId_episodeId_nodeId: { userId, episodeId, nodeId } },
-      update: { status, xpEarned, lastScreen },
-      create: { userId, episodeId, nodeId, status, xpEarned, lastScreen },
+      update: {
+        status,
+        xpEarned: existing?.status === "COMPLETED" ? existing.xpEarned : xpEarned,
+        lastScreen,
+      },
+      create: { userId, episodeId, nodeId, status, xpEarned: coinsToAward, lastScreen },
     });
 
     // If node just completed, unlock the next node
@@ -213,23 +269,23 @@ export class CreativeJourneyService {
         }
       }
 
-      // Award XP via gamification
-      if (xpEarned > 0) {
+      // Award coins via gamification ONLY on first-time completion
+      if (coinsToAward > 0) {
         try {
           await GamificationService.awardPoints(
             userId,
-            xpEarned,
+            coinsToAward,
             "creative_journey_node",
             nodeId,
             `Completed node ${nodeId}`
           );
         } catch (e) {
-          console.error("[CREATIVE JOURNEY] Failed to award XP:", e);
+          console.error("[CREATIVE JOURNEY] Failed to award coins:", e);
         }
       }
     }
 
-    return record;
+    return { ...record, coinsAwarded: coinsToAward };
   }
 
   // ── Ask Gigi ──────────────────────────────────────────────────────────────
