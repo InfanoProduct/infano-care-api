@@ -164,6 +164,28 @@ export const PROMPT_BANK = [
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export class JournalService {
+  /**
+   * Scans journal content and mood tags for severe emotional distress/crisis indicators
+   */
+  static scanForDistress(content: any, moodTag?: string | null): boolean {
+    const distressKeywords = [
+      "suicide", "kill myself", "die", "end it all", "hurt myself", 
+      "cutting", "want to disappear", "hate my life", "cannot take this anymore",
+      "no reason to live", "worthless", "nobody loves me", "want to die",
+      "give up on life", "hopeless", "better off dead"
+    ];
+    let textToScan = "";
+    if (typeof content === "string") {
+      textToScan += " " + content.toLowerCase();
+    } else if (content && typeof content === "object") {
+      textToScan += " " + JSON.stringify(content).toLowerCase();
+    }
+    if (moodTag) {
+      textToScan += " " + moodTag.toLowerCase();
+    }
+    return distressKeywords.some(keyword => textToScan.includes(keyword));
+  }
+
   // ─── Entries ────────────────────────────────────────────────────────────────
 
   static async createEntry(userId: string, dto: {
@@ -207,6 +229,18 @@ export class JournalService {
       await QuestService.evaluateCompletion(userId, { type: "journal_entry_created" });
     } catch (e) {
       console.error("[JOURNAL] Quest evaluation failed:", e);
+    }
+
+    // Safety distress scan -> notify linked parent
+    try {
+      if (this.scanForDistress(dto.content, dto.moodTag)) {
+        const { ParentService } = await import("../parent/parent.service.js");
+        ParentService.notifyParentOfCrisis(userId, "journal").catch(err => {
+          console.error("[JOURNAL] Failed to notify linked parent of distress:", err);
+        });
+      }
+    } catch (distressErr) {
+      console.error("[JOURNAL] Error checking distress keywords:", distressErr);
     }
 
     return entry;

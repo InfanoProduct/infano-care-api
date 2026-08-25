@@ -25,6 +25,7 @@ export function initTrackerJobs() {
     try {
       await TrackerNotificationService.checkDailyLogReminders();
       await TrackerNotificationService.checkStreakAtRiskAlerts();
+      await TrackerNotificationService.checkDailyCycleInsights();
     } catch (error) {
       logger.error({ err: error }, "Failed to run log/streak reminders");
     }

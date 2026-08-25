@@ -116,4 +116,91 @@ export class FirebaseService {
       return null;
     }
   }
+
+  /**
+   * Sends multicast push notifications to multiple FCM tokens in efficient parallel batches of up to 500 tokens.
+   */
+  static async sendMulticastNotification(fcmTokens: string[], payload: PushNotificationPayload) {
+    const adminApp = await getFirebaseAdmin();
+    if (!adminApp) {
+      logger.warn("Skipping multicast push: Firebase not initialized.");
+      return { successCount: 0, failureCount: 0 };
+    }
+
+    const validTokens = Array.from(new Set(fcmTokens.filter(Boolean)));
+    if (validTokens.length === 0) return { successCount: 0, failureCount: 0 };
+
+    const BATCH_SIZE = 500;
+    let totalSuccess = 0;
+    let totalFailure = 0;
+    const tokensToClean: string[] = [];
+
+    for (let i = 0; i < validTokens.length; i += BATCH_SIZE) {
+      const batchTokens = validTokens.slice(i, i + BATCH_SIZE);
+      try {
+        const message = {
+          tokens: batchTokens,
+          notification: {
+            title: payload.title,
+            body: payload.body,
+          },
+          data: {
+            ...payload.data,
+            deepLink: payload.deepLink || "",
+          },
+          android: {
+            notification: {
+              clickAction: "FLUTTER_NOTIFICATION_CLICK",
+              channelId: "high_priority_channel",
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: "default",
+                badge: 1,
+              },
+            },
+          },
+        };
+
+        const batchResponse = await getMessaging(adminApp).sendEachForMulticast(message);
+        totalSuccess += batchResponse.successCount;
+        totalFailure += batchResponse.failureCount;
+
+        // Check for any invalid tokens in this batch
+        batchResponse.responses.forEach((resp, idx) => {
+          if (!resp.success && resp.error) {
+            const errCode = resp.error.code;
+            if (
+              errCode === "messaging/registration-token-not-registered" ||
+              errCode === "messaging/invalid-registration-token"
+            ) {
+              tokensToClean.push(batchTokens[idx]);
+            }
+          }
+        });
+      } catch (batchErr) {
+        logger.error({ err: batchErr }, "Failed to send multicast batch");
+      }
+    }
+
+    // Clean up all invalid tokens discovered across batches in a single DB query
+    if (tokensToClean.length > 0) {
+      try {
+        const { prisma } = await import('../../db/client.js');
+        await prisma.user.updateMany({
+          where: { fcmToken: { in: tokensToClean } },
+          data: { fcmToken: null }
+        });
+        logger.info(`Nullified ${tokensToClean.length} invalid FCM tokens after multicast send.`);
+      } catch (cleanErr) {
+        logger.error({ err: cleanErr }, "Failed to clean invalid multicast FCM tokens");
+      }
+    }
+
+    logger.info({ totalSuccess, totalFailure, totalTokens: validTokens.length }, "Multicast push notification batch completed.");
+    return { successCount: totalSuccess, failureCount: totalFailure };
+  }
 }
+

@@ -148,4 +148,53 @@ export function initParentJobs() {
       logger.error({ err: error }, "[CRON] Error in Expert Session 15-Minute Reminders job");
     }
   });
+
+  // 3. Weekly Parent Digest (Sundays at 10:00 AM)
+  cron.schedule("0 10 * * 0", async () => {
+    logger.info("[CRON] Running Weekly Parent Digest job...");
+    try {
+      const parentLinks = await prisma.parentLink.findMany({
+        where: { status: "LINKED" },
+        include: {
+          parent: true,
+          teen: { include: { profile: true } }
+        }
+      });
+
+      for (const link of parentLinks) {
+        if (!link.parent || !link.parentId || !link.teen) continue;
+        const teenName = link.teen.profile?.displayName || "your daughter";
+        const title = `📊 Weekly Family Digest Ready`;
+        const body = `Review ${teenName}'s weekly wellness milestones and 3 suggested conversation starters for this week 💙`;
+        const deepLink = `infano://account/family`;
+
+        await prisma.notificationHistory.create({
+          data: {
+            userId: link.parentId,
+            type: "PARENT_WEEKLY_DIGEST",
+            title,
+            body,
+            deepLink,
+            payload: { teenId: link.teenId },
+            sentAt: new Date()
+          }
+        });
+
+        if (link.parent.fcmToken) {
+          try {
+            await FirebaseService.sendPushNotification(link.parent.fcmToken, {
+              title,
+              body,
+              deepLink,
+              data: { notificationType: "PARENT_WEEKLY_DIGEST", teenId: link.teenId || "" }
+            });
+          } catch (err) {
+            logger.error({ err, parentId: link.parentId }, "Failed to send weekly digest push to parent");
+          }
+        }
+      }
+    } catch (error) {
+      logger.error({ err: error }, "[CRON] Error in Weekly Parent Digest job");
+    }
+  });
 }

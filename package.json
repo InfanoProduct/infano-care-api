@@ -13,7 +13,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed:experts": "dotenv --override -e .env.development -e .env.local -- tsx prisma/seed-experts.ts"
+    "prisma:seed:experts": "dotenv --override -e .env.development -e .env.local -- tsx prisma/seed-experts.ts",
+    "test:notifications": "dotenv --override -e .env.development -e .env.local -- tsx scripts/test-notifications.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

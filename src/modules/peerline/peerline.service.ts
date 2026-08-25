@@ -431,6 +431,15 @@ export class PeerLineService {
         where: { id: sessionId },
         data: { hadCrisisFlag: true }
       });
+
+      try {
+        const { ParentService } = await import('../parent/parent.service.js');
+        ParentService.notifyParentOfCrisis(userId, 'peerline').catch(err => {
+          logger.error({ err, userId }, 'Failed to notify parent of peerline crisis');
+        });
+      } catch (e) {
+        logger.error({ e }, 'Error importing ParentService for peerline crisis alert');
+      }
     }
 
     // 6. Send push notification to the other participant

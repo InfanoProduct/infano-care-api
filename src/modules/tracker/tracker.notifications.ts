@@ -11,7 +11,8 @@ export type TrackerNotificationType =
   | "DOCTOR_CONNECT" 
   | "CYCLE_MILESTONE"
   | "STREAK_AT_RISK"
-  | "MONTHLY_INSIGHTS";
+  | "MONTHLY_INSIGHTS"
+  | "DAILY_CYCLE_INSIGHT";
 
 interface NotificationPayload {
   title: string;
@@ -269,6 +270,54 @@ export class TrackerNotificationService {
     }
   }
 
+  /**
+   * Evaluates and dispatches daily cycle morning wisdom (at 8:30 AM local time).
+   */
+  static async checkDailyCycleInsights() {
+    const now = new Date();
+
+    const users = await prisma.user.findMany({
+      where: {
+        accountStatus: "ACTIVE",
+        NotificationPreferences: {
+          globalEnabled: true
+        },
+        cycleProfile: { isNot: null }
+      },
+      include: { NotificationPreferences: true, cycleProfile: true }
+    });
+
+    for (const user of users) {
+      const tz = user.timezone || "UTC";
+      let localTimeStr: string;
+      try {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        localTimeStr = formatter.format(now);
+      } catch (err) {
+        localTimeStr = "08:30";
+      }
+
+      // Check for 08:30 AM window
+      if (localTimeStr !== "08:30") continue;
+
+      const profile = user.cycleProfile;
+      if (!profile) continue;
+
+      const phase = profile.currentPhase || "follicular";
+      const cycleDay = profile.currentCycleDay || 1;
+
+      await this.send(user.id, "DAILY_CYCLE_INSIGHT", {
+        phase,
+        cycleDay
+      });
+    }
+  }
+
   private static async evaluateDoctorConnect(user: any) {
     const lastSent = await prisma.notificationHistory.findFirst({
         where: { userId: user.id, type: "DOCTOR_CONNECT", sentAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }
@@ -433,6 +482,18 @@ export class TrackerNotificationService {
         body: "Your monthly reflection and analytics are compiled. Tap to view your insights summary 💜",
         deepLink: "infano://tracker/insights",
         optOutLabel: "Monthly insights ready notifications"
+      },
+      DAILY_CYCLE_INSIGHT: {
+        title: data?.phase === "menstrual" ? `🩸 Day ${data?.cycleDay || 1}: Rest & Reset`
+             : data?.phase === "ovulation" ? `✨ Day ${data?.cycleDay || 14}: Peak Vitality`
+             : data?.phase === "luteal" ? `🌙 Day ${data?.cycleDay || 20}: Gentle Self-Care`
+             : `🌱 Day ${data?.cycleDay || 7}: Energy Rising`,
+        body: data?.phase === "menstrual" ? "Your body is shedding and resetting today. Warm tea and restorative rest are your superpower."
+             : data?.phase === "ovulation" ? "Estrogen is at its peak! You may feel extra confident, articulate, and energized today."
+             : data?.phase === "luteal" ? "Progesterone is taking the lead. Prioritize calming routines, good sleep, and wholesome meals."
+             : "Your energy is climbing! A wonderful day for creative tasks, fresh learning, and starting new goals.",
+        deepLink: "infano://tracker",
+        optOutLabel: "Daily cycle insights"
       }
     };
 
