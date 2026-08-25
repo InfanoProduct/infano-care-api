@@ -113,7 +113,7 @@ app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uplo
  *                   type: string
  *                   format: date-time
  */
-app.get("/health", (_req, res) => {
+app.get(["/health", "/api/health"], (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
