@@ -176,7 +176,10 @@ export class FirebaseService {
               errCode === "messaging/registration-token-not-registered" ||
               errCode === "messaging/invalid-registration-token"
             ) {
-              tokensToClean.push(batchTokens[idx]);
+              const token = batchTokens[idx];
+              if (token) {
+                tokensToClean.push(token);
+              }
             }
           }
         });

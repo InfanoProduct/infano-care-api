@@ -1367,7 +1367,7 @@ export class ParentService {
 
       if (!links.length) return;
 
-      const teen = links[0].teen;
+      const teen = links[0]?.teen;
       const teenName = teen?.profile?.displayName || teen?.username || "Your daughter";
 
       // Rate limiting: max 1 alert per 4 hours to avoid overwhelm
