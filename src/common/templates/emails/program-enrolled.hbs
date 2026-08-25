@@ -1,0 +1,100 @@
+<div class="content">
+
+  <!-- Hero Welcome Header -->
+  <div style="text-align: center; margin-bottom: 28px; padding-top: 10px;">
+    <div style="display: inline-block; width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #F3E8FF 0%, #FCE7F3 100%); margin-bottom: 16px; line-height: 64px; text-align: center; box-shadow: 0 4px 12px rgba(156, 39, 176, 0.12);">
+      <span style="font-size: 30px; vertical-align: middle;">🎉</span>
+    </div>
+    <h1 style="font-family: 'Poppins', 'Inter', sans-serif; font-size: 24px; color: #111827; margin: 0 0 8px 0; font-weight: 700; letter-spacing: -0.5px; line-height: 1.3;">
+      Welcome to {{program_title}}!
+    </h1>
+    <p style="font-size: 15px; color: #4B5563; margin: 0 auto; max-width: 480px; line-height: 1.5;">
+      You are officially enrolled. We are thrilled to accompany you on this transformative learning journey!
+    </p>
+  </div>
+
+  <!-- Greeting -->
+  <p style="font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 8px; font-family: 'Poppins', 'Inter', sans-serif;">
+    Hi {{recipient_name}},
+  </p>
+  <p style="font-size: 15px; color: #4B5563; line-height: 1.6; margin-top: 0; margin-bottom: 24px;">
+    Your enrollment for <strong>{{program_title}}</strong> is confirmed. You now have full access to the program curriculum, expert mentor guidance, and upcoming live cohort sessions.
+  </p>
+
+  <!-- Program Details Card -->
+  <div style="background: linear-gradient(180deg, #FAF8FD 0%, #F8F5FB 100%); border: 1px solid #F3E8FF; border-radius: 16px; padding: 22px 24px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(156, 39, 176, 0.04);">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding-bottom: 14px; border-bottom: 1px solid #EAE3EC;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            🎓 Enrolled Learning Program
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: 700; color: #7B1FA2; font-family: 'Poppins', sans-serif;">
+            {{program_title}}
+          </p>
+          {{#if program_tagline}}
+          <p style="margin: 4px 0 0 0; font-size: 13px; font-weight: 500; color: #4B5563;">
+            {{program_tagline}}
+          </p>
+          {{/if}}
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding-top: 14px; padding-bottom: 6px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              {{#if duration}}
+              <td class="mobile-block mobile-pr-0" style="width: 50%; vertical-align: top; padding-bottom: 10px;">
+                <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+                  ⏱ Duration
+                </p>
+                <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: 700; color: #111827;">
+                  {{duration}}
+                </p>
+              </td>
+              {{/if}}
+              {{#if batch_name}}
+              <td class="mobile-block mobile-pl-0" style="width: 50%; vertical-align: top; padding-bottom: 10px;">
+                <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+                  👥 Assigned Batch
+                </p>
+                <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: 700; color: #7B1FA2;">
+                  {{batch_name}}
+                </p>
+              </td>
+              {{/if}}
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Highlights Box -->
+  <div style="border: 1px solid #EAE3EC; border-radius: 14px; padding: 18px 20px; background-color: #FFFFFF; margin-bottom: 28px;">
+    <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #111827; font-family: 'Poppins', sans-serif;">
+      ✨ What happens next?
+    </p>
+    <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #4B5563; line-height: 1.7;">
+      <li><strong>Session Schedule:</strong> When live sessions are scheduled by our team, you will receive timely email and app reminders with join links.</li>
+      <li><strong>Interactive Learning:</strong> Access lessons, activities, and expert guidance directly through your Infano Care account.</li>
+      <li><strong>Parent & Student Insights:</strong> Track growth and milestone achievements throughout the journey.</li>
+    </ul>
+  </div>
+
+  <!-- Primary Action Button -->
+  <div style="margin: 28px 0 32px; text-align: center;">
+    <a href="https://infano.care/dashboard/program-sessions" target="_blank" class="button" style="display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: 700; font-size: 15px; border-radius: 9999px; box-shadow: 0 4px 14px rgba(156, 39, 176, 0.28);">
+      Go to Program Dashboard
+    </a>
+  </div>
+
+  <!-- Help Section Footer -->
+  <div class="help-section">
+    <p style="margin: 0; font-size: 14px; color: #6B7280; line-height: 1.5;">
+      Have questions about your enrollment? Reply directly to this email or visit our <a href="https://infano.care/contact" style="color: #9C27B0; font-weight: 600; text-decoration: none;">Support Center</a>.
+    </p>
+  </div>
+
+</div>

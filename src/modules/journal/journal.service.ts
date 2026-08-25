@@ -422,18 +422,18 @@ export class JournalService {
       const year = e.createdAt.getFullYear();
       const month = String(e.createdAt.getMonth() + 1).padStart(2, '0');
       const day = String(e.createdAt.getDate()).padStart(2, '0');
-      
+
       const localKey = `${year}-${month}-${day}`;
       const isoKey = e.createdAt.toISOString().slice(0, 10);
 
       let color = e.moodColor;
       let tag = e.moodTag;
 
-      if (!color && e.mode === 'mood_color' && e.content && typeof e.content === 'object' && !Array.isArray(e.content)) {
+      if (!color && e.mode === 'mood_color' && e.content && typeof e.content === 'object') {
         const contentObj = e.content as any;
         const colors = contentObj.colors as string[] | undefined;
-        if (colors && colors.length > 0) color = colors[0] || null;
-        if (!tag && contentObj.label) tag = contentObj.label as string;
+        if (colors && colors.length > 0) color = colors[0] ?? null;
+        if (!tag && contentObj.label) tag = String(contentObj.label);
       }
 
       color = color || modeColorMap[e.mode] || '#7C3AED';

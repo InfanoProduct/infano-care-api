@@ -154,7 +154,7 @@ export class AuthService {
         birthMonth: true,
         birthYear: true,
         peerApplication: { select: { status: true } },
-        profile: { select: { displayName: true, pronouns: true, totalPoints: true, avatarUrl: true } }
+        profile: { select: { displayName: true, pronouns: true, totalPoints: true, totalCoins: true, avatarUrl: true } }
       }
     });
 

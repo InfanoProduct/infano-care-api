@@ -30,10 +30,12 @@ export class GamificationService {
         where: { userId },
         update: {
           pointsTotal: { increment: points },
+          coinsTotal: { increment: points },
         },
         create: {
           userId,
           pointsTotal: points,
+          coinsTotal: points,
           currentLevel: 1,
         },
       });
@@ -64,20 +66,24 @@ export class GamificationService {
           where: { userId },
           data: {
             totalPoints: level.pointsTotal,
+            totalCoins: level.coinsTotal,
             bloomLevel: newLevel,
           },
         });
 
-        return { pointsEarned: points, leveledUp: true, newLevel };
+        return { pointsEarned: points, coinsEarned: points, leveledUp: true, newLevel };
       }
 
-      // Update profile total points even if no level up
+      // Update profile total points & coins even if no level up
       await tx.profile.update({
         where: { userId },
-        data: { totalPoints: level.pointsTotal },
+        data: {
+          totalPoints: level.pointsTotal,
+          totalCoins: level.coinsTotal,
+        },
       });
 
-      return { pointsEarned: points, leveledUp: false };
+      return { pointsEarned: points, coinsEarned: points, leveledUp: false };
     });
   }
 

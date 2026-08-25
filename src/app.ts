@@ -12,7 +12,6 @@ import consentRoutes from "./modules/consent/consent.routes.js";
 import onboardingRoutes from "./modules/onboarding/onboarding.routes.js";
 import userRoutes from "./modules/user/user.routes.js";
 import trackerRoutes from "./modules/tracker/tracker.routes.js";
-import learningRoutes from "./modules/learning/learning.routes.js";
 import questRoutes from "./modules/quest/quest.routes.js";
 import chatRoutes from "./modules/chat/chat.routes.js";
 import expertRoutes from "./modules/expert/expert.routes.js";
@@ -32,6 +31,7 @@ import teenRouter from "./modules/teen/teen.routes.js";
 import schoolRoutes from "./modules/school/school.routes.js";
 import journalRoutes from "./modules/journal/journal.routes.js";
 import lmsRoutes from "./modules/lms/lms.routes.js";
+import creativeJourneyRoutes from "./modules/creative-journey/creative-journey.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
@@ -69,7 +69,6 @@ app.use("/api/auth/consent", consentRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/tracker", trackerRoutes);
-app.use("/api/learning", learningRoutes);
 app.use("/api/quest", questRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/expert", expertRoutes);
@@ -89,6 +88,7 @@ app.use("/api/teen", teenRouter);
 app.use("/api/school", schoolRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/lms", lmsRoutes);
+app.use("/api/creative-journey", creativeJourneyRoutes);
 app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
 
@@ -113,7 +113,7 @@ app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uplo
  *                   type: string
  *                   format: date-time
  */
-app.get("/health", (_req, res) => {
+app.get(["/health", "/api/health"], (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 

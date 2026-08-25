@@ -5,6 +5,7 @@ import { requireAuth } from "../../common/middleware/requireAuth.js";
 const router = Router();
 
 // Public routes (no auth required)
+router.get("/daily-quote", ParentController.getDailyQuote);
 router.get("/resources", ParentController.getResources);
 router.get("/public/experts", ParentController.getExperts);
 router.get("/public/experts/:id/slots", ParentController.getExpertSlots);

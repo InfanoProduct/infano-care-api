@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "prisma:seed:experts": "dotenv --override -e .env.development -e .env.local -- tsx prisma/seed-experts.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

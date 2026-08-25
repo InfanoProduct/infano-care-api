@@ -44,12 +44,20 @@
       </tr>
       {{#if phone}}
       <tr>
-        <td colspan="2" style="border-top: 1px dashed #EAE3EC; padding-top: 12px; margin-top: 4px;">
+        <td style="border-top: 1px dashed #EAE3EC; padding-top: 12px; margin-top: 4px; width: 50%; vertical-align: top;">
           <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
             📱 Registered Contact Number
           </p>
           <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: 600; color: #374151;">
             {{phone}}
+          </p>
+        </td>
+        <td style="border-top: 1px dashed #EAE3EC; padding-top: 12px; margin-top: 4px; width: 50%; vertical-align: top;">
+          <p style="margin: 0; color: #8E8EA0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">
+            💳 Payment Status
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 14px; font-weight: 700; color: #059669;">
+            Paid ₹{{#if amount}}{{amount}}{{else}}29{{/if}} INR ✓
           </p>
         </td>
       </tr>

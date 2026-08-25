@@ -507,7 +507,25 @@ export class ShopService {
         where: { razorpayOrderId },
         include: { webinar: true }
       });
-      if (!registration) return null;
+      if (!registration) {
+        // Check if it's a demo session booking
+        const demo = await prisma.demoSession.findUnique({
+          where: { razorpayOrderId }
+        });
+        if (demo) {
+          if (demo.paymentStatus === PaymentStatus.COMPLETED) {
+            return demo;
+          }
+          const { ProgramsService } = await import("../programs/programs.service.js");
+          const result = await ProgramsService.verifyDemoPayment({
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature
+          });
+          return result.demo;
+        }
+        return null;
+      }
 
       if (registration.paymentStatus === PaymentStatus.COMPLETED) {
         return registration; // already completed
@@ -725,7 +743,7 @@ export class ShopService {
               }
             });
             if (!existingEnrollment) {
-              await prisma.programEnrollment.create({
+              const newEnrollment = await prisma.programEnrollment.create({
                 data: {
                   userId,
                   programId: program.id,
@@ -734,6 +752,12 @@ export class ShopService {
                   guestName: order.guestName,
                   guestEmail: order.guestEmail,
                 }
+              });
+
+              import("../programs/session-notification.service.js").then(({ SessionNotificationService }) => {
+                SessionNotificationService.notifyProgramEnrollment(newEnrollment.id).catch(err => {
+                  logger.error({ err, enrollmentId: newEnrollment.id }, "Failed to dispatch program enrollment notification for shop order");
+                });
               });
             }
           }

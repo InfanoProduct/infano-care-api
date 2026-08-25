@@ -125,7 +125,7 @@ export class OnboardingService {
     });
 
     // First-pass journey recommendations
-    const allJourneys = await prisma.learningJourney.findMany();
+    const allJourneys = await prisma.creativeJourney.findMany();
     const ranked: JourneyScore[] = allJourneys
       .map((j) => ({ id: j.id, title: j.title, description: j.description, score: scoreJourney(j, { interestTopics: data.interestTopics, goals: data.goals, periodStatus: data.periodStatus, periodContentTone: tone }, String(user.contentTier)) }))
       .sort((a, b) => b.score - a.score)

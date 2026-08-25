@@ -4,6 +4,7 @@ import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import crypto from "crypto";
 import { FirebaseService } from "../../common/services/firebase.service.js";
+import { smsProvider } from "../auth/sms.service.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "rzp_test_mock",
@@ -19,51 +20,8 @@ export class ParentService {
     });
     if (!sender) throw new Error("Sender not found");
 
-    let testUser = await prisma.user.findUnique({ where: { phone: receiverPhone } });
-    if (testUser?.isTestNumber) {
-      // Bypass logic for test account
-
-      const existing = await prisma.parentLink.findUnique({
-        where: { senderId_receiverPhone: { senderId, receiverPhone } }
-      });
-
-      if (existing) {
-        return await prisma.parentLink.update({
-          where: { id: existing.id },
-          data: { status: "LINKED" }
-        });
-      }
-
-      let pId = null;
-      let tId = null;
-      if (sender.role === "PARENT" || sender.role === "GUARDIAN") {
-        pId = sender.id;
-      } else if (sender.role === "TEEN") {
-        tId = sender.id;
-      }
-      if (testUser.role === "PARENT" || testUser.role === "GUARDIAN") {
-        pId = testUser.id;
-      } else if (testUser.role === "TEEN") {
-        tId = testUser.id;
-      }
-      if (!pId && !tId) {
-        pId = sender.id;
-        tId = testUser.id;
-      } else if (!pId) {
-        pId = sender.id === tId ? testUser.id : sender.id;
-      } else if (!tId) {
-        tId = sender.id === pId ? testUser.id : sender.id;
-      }
-
-      return await prisma.parentLink.create({
-        data: {
-          senderId,
-          receiverPhone,
-          status: "LINKED",
-          parentId: pId,
-          teenId: tId
-        }
-      });
+    if (sender.phone === receiverPhone) {
+      throw new Error("You cannot link with your own phone number.");
     }
 
     const receiver = await prisma.user.findUnique({ where: { phone: receiverPhone } });
@@ -122,7 +80,7 @@ export class ParentService {
       const body = `${accepterName} has accepted your account linking request.`;
       const deepLink = "infano://account/family";
 
-      // 1. Create InApp Notification History for the original sender
+      // 1. Create InApp Notification History for original sender
       await prisma.notificationHistory.create({
         data: {
           userId: existing.senderId,
@@ -137,7 +95,7 @@ export class ParentService {
       // 2. Send Push Notification if FCM token is registered
       const originalSender = await prisma.user.findUnique({
         where: { id: existing.senderId },
-        select: { fcmToken: true }
+        select: { fcmToken: true, phone: true }
       });
       if (originalSender?.fcmToken) {
         try {
@@ -149,6 +107,14 @@ export class ParentService {
           });
         } catch (err) {
           console.error("Failed to send firebase push notification for link acceptance:", err);
+        }
+      }
+
+      if (originalSender?.phone) {
+        try {
+          await smsProvider.sendAlert(originalSender.phone, `Hi! ${body}`);
+        } catch (err) {
+          console.error("Failed to send SMS for link acceptance:", err);
         }
       }
 
@@ -168,7 +134,7 @@ export class ParentService {
     const senderName = sender.profile?.displayName || sender.username || sender.phone;
     const type = "linkRequest";
     const title = "Link Request Received";
-    const body = `${senderName} wants to link accounts with you.`;
+    const body = `${senderName} wants to link accounts with you on Infano Care. Open Family Settings in your app to accept the request.`;
     const deepLink = "infano://account/family";
 
     // 1. Create InApp Notification History
@@ -196,7 +162,14 @@ export class ParentService {
         console.error("Failed to send firebase push notification for link request:", err);
       }
     }
-    
+
+    // 3. Send SMS Notification
+    try {
+      await smsProvider.sendAlert(receiverPhone, body);
+    } catch (err) {
+      console.error("Failed to send SMS for link request:", err);
+    }
+
     return link;
   }
 
@@ -205,7 +178,7 @@ export class ParentService {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
       // 1. Progress score (up to 30 points)
-      const progressCount = await prisma.userProgress.count({
+      const progressCount = await prisma.creativeNodeProgress.count({
         where: { userId: teenId }
       });
       const progressScore = Math.min(Math.round((progressCount / 10) * 30), 30);
@@ -256,12 +229,19 @@ export class ParentService {
 
   static async getLinks(userId: string) {
     try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phone: true }
+      });
+      const userPhone = user?.phone;
+
       const links = await prisma.parentLink.findMany({
         where: {
           OR: [
             { senderId: userId },
             { parentId: userId },
-            { teenId: userId }
+            { teenId: userId },
+            ...(userPhone ? [{ receiverPhone: userPhone }] : [])
           ]
         },
         include: {
@@ -357,9 +337,26 @@ export class ParentService {
       throw new Error("Unauthorized");
     }
 
+    let pId = link.parentId;
+    let tId = link.teenId;
+    const senderUser = await prisma.user.findUnique({ where: { id: link.senderId } });
+    if (!pId && !tId && senderUser) {
+      if (senderUser.role === "PARENT" || senderUser.role === "GUARDIAN") pId = senderUser.id;
+      else if (senderUser.role === "TEEN") tId = senderUser.id;
+
+      if (user.role === "PARENT" || user.role === "GUARDIAN") pId = user.id;
+      else if (user.role === "TEEN") tId = user.id;
+    }
+    if (!pId && senderUser) pId = senderUser.id === tId ? user.id : senderUser.id;
+    if (!tId && senderUser) tId = senderUser.id === pId ? user.id : senderUser.id;
+
     const updatedLink = await prisma.parentLink.update({
       where: { id: linkId },
-      data: { status: "LINKED" }
+      data: {
+        status: "LINKED",
+        parentId: pId,
+        teenId: tId
+      }
     });
 
     const accepterName = user.profile?.displayName || user.username || user.phone;
@@ -381,10 +378,6 @@ export class ParentService {
     });
 
     // 2. Send Push Notification if FCM token is registered
-    const senderUser = await prisma.user.findUnique({
-      where: { id: link.senderId },
-      select: { fcmToken: true }
-    });
     if (senderUser?.fcmToken) {
       try {
         await FirebaseService.sendPushNotification(senderUser.fcmToken, {
@@ -395,6 +388,15 @@ export class ParentService {
         });
       } catch (err) {
         console.error("Failed to send firebase push notification for link acceptance:", err);
+      }
+    }
+
+    // 3. Send SMS notification to sender
+    if (senderUser?.phone) {
+      try {
+        await smsProvider.sendAlert(senderUser.phone, `Hi! ${body}`);
+      } catch (err) {
+        console.error("Failed to send SMS for link acceptance:", err);
       }
     }
 
@@ -423,18 +425,9 @@ export class ParentService {
 
     const teenId = link.teenId;
 
-    // 2. Active Journey (latest UserProgress)
-    const activeProgress = await prisma.userProgress.findFirst({
-      where: { 
-        userId: teenId,
-        episode: {
-          journey: {
-            slug: {
-              not: "peerline-mentor-certification"
-            }
-          }
-        }
-      },
+    // 2. Active Journey (latest CreativeNodeProgress)
+    const activeProgress = await prisma.creativeNodeProgress.findFirst({
+      where: { userId: teenId },
       orderBy: { updatedAt: "desc" },
       include: {
         episode: {
@@ -448,21 +441,21 @@ export class ParentService {
     let activeJourney = null;
     if (activeProgress && activeProgress.episode && activeProgress.episode.journey) {
       const journeyId = activeProgress.episode.journeyId;
-      // Calculate completion based on completed episodes
-      const totalEpisodes = await prisma.episode.count({ where: { journeyId } });
-      const completedEpisodes = await prisma.userProgress.count({
+      // Calculate completion based on completed nodes
+      const totalEpisodes = await prisma.creativeEpisode.count({ where: { journeyId } });
+      const completedCount = await prisma.creativeNodeProgress.count({
         where: {
           userId: teenId,
           episode: { journeyId },
-          completed: true
+          status: "COMPLETED"
         }
       });
-      const percentComplete = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
+      const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
       
       activeJourney = {
         name: activeProgress.episode.journey.title,
         percentComplete,
-        thumbnailUrl: activeProgress.episode.journey.thumbnailUrl || activeProgress.episode.journey.bannerImage
+        thumbnailUrl: null
       };
     }
 
@@ -829,7 +822,7 @@ export class ParentService {
     const validUserIds = [userId];
     if (link && link.teenId) validUserIds.push(link.teenId);
 
-    if (!validUserIds.includes(session.userId)) {
+    if (!session.userId || !validUserIds.includes(session.userId)) {
       throw new Error("Unauthorized to cancel this session");
     }
 
@@ -852,6 +845,10 @@ export class ParentService {
   static async rescheduleExpertSession(userId: string, sessionId: string, newScheduledAt: Date) {
     const session = await prisma.expertSessionSchedule.findUnique({ where: { id: sessionId } });
     if (!session) throw new Error("Session not found");
+
+    if (!session.userId) {
+      throw new Error("Cannot reschedule batch session individually");
+    }
 
     const link = await prisma.parentLink.findFirst({
       where: {
@@ -888,30 +885,32 @@ export class ParentService {
       const expertName = expert?.profile?.displayName || expert?.username || "Expert";
 
       // Fetch user details
-      const targetUser = await prisma.user.findUnique({
+      const targetUser = session.userId ? await prisma.user.findUnique({
         where: { id: session.userId },
         include: { profile: true }
-      });
+      }) : null;
       const userName = targetUser?.profile?.displayName || targetUser?.username || "User";
 
       // Formatted date-time
       const formattedDate = new Date(newScheduledAt).toLocaleString();
 
-      // 1. Notify User/Teen
       const userTitle = "Expert Session Rescheduled";
       const userBody = `Your session with ${expertName} has been rescheduled to ${formattedDate}.`;
       const deepLink = `infano://expert/chat/${sessionId}`;
 
-      await prisma.notificationHistory.create({
-        data: {
-          userId: session.userId,
-          type: "sessionRescheduled",
-          title: userTitle,
-          body: userBody,
-          deepLink,
-          sentAt: new Date()
-        }
-      });
+      // 1. Notify User/Teen
+      if (session.userId) {
+        await prisma.notificationHistory.create({
+          data: {
+            userId: session.userId,
+            type: "sessionRescheduled",
+            title: userTitle,
+            body: userBody,
+            deepLink,
+            sentAt: new Date()
+          }
+        });
+      }
 
       if (targetUser?.fcmToken) {
         try {
@@ -1152,13 +1151,15 @@ export class ParentService {
         let alertBody = "";
         if (session.userId === userId) {
           alertBody = `reminder: expert session for program '${programTitle}' starts in ${hoursLeft} hours.`;
-        } else {
+        } else if (session.userId) {
           const targetUser = await prisma.user.findUnique({
             where: { id: session.userId },
             include: { profile: true }
           });
           const targetUserName = targetUser?.profile?.displayName || targetUser?.username || "your family member";
           alertBody = `reminder: expert session for ${targetUserName} of program '${programTitle}' starts in ${hoursLeft} hours.`;
+        } else {
+          alertBody = `reminder: expert session for program '${programTitle}' starts in ${hoursLeft} hours.`;
         }
         
         const existing = await prisma.notificationHistory.findFirst({

@@ -128,22 +128,14 @@ class TwoFactorSmsProvider implements SmsProvider {
   }
 
   async send(phone: string, otp: string, appHash?: string): Promise<void> {
-    // 2Factor.in expects the phone number with prefix (e.g. 919876543210), usually without the '+' for the SMS URL
-    const mobile = phone.replace("+", "");
-    const encodedPhone = encodeURIComponent(mobile);
+    // 2Factor.in expects the phone number with prefix (e.g. +91), encoded for URL
+    const encodedPhone = encodeURIComponent(phone);
     
     // URL format: https://2factor.in/API/V1/{api_key}/SMS/{phone}/{otp}/{template}
-    // Note: To include the hash and <#> prefix, the dashboard template 'InfanoOTPMessage' must be updated.
-    // Recommended Template: "<#> Your OTP is {otp}. {hash}"
-    let url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/InfanoOTPMessage`;
+    const templateName = process.env.TWOFACTOR_OTP_TEMPLATE || "InfanoOTPMessage";
+    const url = `https://2factor.in/API/V1/${this.apiKey}/SMS/${encodedPhone}/${otp}/${templateName}`;
     
-    if (appHash) {
-      // Pass the hash as an extra variable (template dependent)
-      url += `?var1=${encodeURIComponent(appHash)}`;
-      logger.info({ phone: encodedPhone, appHash }, `[SMS 2FACTOR] Sending OTP with appHash (and expected <#> prefix in template) via 2Factor.in...`);
-    } else {
-      logger.info({ phone: encodedPhone }, `[SMS 2FACTOR] Sending OTP via 2Factor.in...`);
-    }
+    logger.info({ phone: encodedPhone, templateName }, `[SMS 2FACTOR] Sending OTP via 2Factor.in (${templateName})...`);
     
     try {
       const res = await fetch(url);
