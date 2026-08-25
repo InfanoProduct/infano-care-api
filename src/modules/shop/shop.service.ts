@@ -507,7 +507,25 @@ export class ShopService {
         where: { razorpayOrderId },
         include: { webinar: true }
       });
-      if (!registration) return null;
+      if (!registration) {
+        // Check if it's a demo session booking
+        const demo = await prisma.demoSession.findUnique({
+          where: { razorpayOrderId }
+        });
+        if (demo) {
+          if (demo.paymentStatus === PaymentStatus.COMPLETED) {
+            return demo;
+          }
+          const { ProgramsService } = await import("../programs/programs.service.js");
+          const result = await ProgramsService.verifyDemoPayment({
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature
+          });
+          return result.demo;
+        }
+        return null;
+      }
 
       if (registration.paymentStatus === PaymentStatus.COMPLETED) {
         return registration; // already completed

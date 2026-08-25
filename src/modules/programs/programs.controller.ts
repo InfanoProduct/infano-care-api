@@ -142,9 +142,18 @@ export class ProgramsController {
 
   static async bookDemo(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).userId;
-      const demo = await ProgramsService.bookDemoSession(req.body, userId);
-      res.status(201).json({ success: true, data: demo });
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await ProgramsService.bookDemoSession(req.body, userId);
+      res.status(201).json({ success: true, data: result.demo, razorpay: result.razorpay });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async verifyDemo(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ProgramsService.verifyDemoPayment(req.body);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }
@@ -161,8 +170,8 @@ export class ProgramsController {
 
   static async adminUpdateDemoStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status, isReadyToEnroll, comment, meetLink, slotDate, slotTime } = req.body;
-      const demo = await ProgramsService.adminUpdateDemoStatus(req.params.id as string, { status, isReadyToEnroll, comment, meetLink, slotDate, slotTime });
+      const { status, isReadyToEnroll, comment, meetLink, slotDate, slotTime, paymentStatus, amount } = req.body;
+      const demo = await ProgramsService.adminUpdateDemoStatus(req.params.id as string, { status, isReadyToEnroll, comment, meetLink, slotDate, slotTime, paymentStatus, amount });
       res.status(200).json(demo);
     } catch (error) {
       next(error);

@@ -51,6 +51,7 @@ model User {
   cycleLogs                 CycleLog[]
   cycleProfile              CycleProfile?
   cycleRecords              CycleRecord[]
+  demoSessions              DemoSession[]
   escalations               EscalationEvent[]
   calendarSettings          ExpertCalendarSettings?
   expertChats               ExpertChatSession[]      @relation("ExpertSessions")
@@ -1293,7 +1294,7 @@ model ProgramEnrollment {
 }
 
 model DemoSession {
-  id                String   @id @default(uuid())
+  id                String        @id @default(uuid())
   parentName        String
   phone             String
   email             String?
@@ -1307,12 +1308,23 @@ model DemoSession {
   suggestedPrograms String[]
   slotDate          String?
   slotTime          String?
-  status            String   @default("PENDING")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  comment           String?  @default("")
-  isReadyToEnroll   Boolean  @default(false)
+  status            String        @default("PENDING")
+  amount            Float         @default(29)
+  paymentStatus     PaymentStatus @default(PENDING)
+  paymentMethod     PaymentMethod @default(ONLINE)
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  userId            String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  comment           String?       @default("")
+  isReadyToEnroll   Boolean       @default(false)
   meetLink          String?
+  user              User?         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([phone])
 }
 
 model ParentLink {

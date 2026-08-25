@@ -15,5 +15,6 @@ router.get("/:id", optionalAuthenticate, ProgramsController.get);
 
 router.post("/:id/enroll", authenticate, ProgramsController.enroll);
 router.post("/demo/book", optionalAuthenticate, ProgramsController.bookDemo);
+router.post("/demo/verify", optionalAuthenticate, ProgramsController.verifyDemo);
 
 export default router;

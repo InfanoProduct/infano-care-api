@@ -644,7 +644,7 @@ export class SessionNotificationService {
       const dateStr = demo.slotDate || "Upcoming Date";
       const timeStr = demo.slotTime || "";
       const title = "Demo Session Confirmed 🌟";
-      const body = `Your interactive demo session is booked for ${dateStr}${timeStr ? ` at ${timeStr}` : ""}. An expert mentor will connect with you soon!`;
+      const body = `Your interactive demo session is booked for ${dateStr}${timeStr ? ` at ${timeStr}` : ""} (Paid ₹${demo.amount || 29}). An expert mentor will connect with you soon!`;
       const deepLink = `infano://programs/demos`;
 
       for (const user of users) {
@@ -660,7 +660,9 @@ export class SessionNotificationService {
               payload: {
                 demoId: demo.id,
                 slotDate: demo.slotDate,
-                slotTime: demo.slotTime
+                slotTime: demo.slotTime,
+                amount: demo.amount || 29,
+                paymentStatus: demo.paymentStatus
               },
               sentAt: new Date()
             }
@@ -678,7 +680,8 @@ export class SessionNotificationService {
               deepLink,
               data: {
                 notificationType: "demoSessionBooked",
-                demoId: demo.id
+                demoId: demo.id,
+                amount: String(demo.amount || 29)
               }
             });
           } catch (err) {

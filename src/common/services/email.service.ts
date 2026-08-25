@@ -135,6 +135,8 @@ export const sendDemoSessionBookedEmail = async (to: string, data: {
   slot_date: string;
   slot_time: string;
   comment?: string;
+  amount?: number | string;
+  payment_id?: string;
   programs?: { title: string; duration: string; thumbnailUrl?: string }[];
 }) => {
   const subject = `Your Demo Session at Infano Care is Confirmed! 🌟`;

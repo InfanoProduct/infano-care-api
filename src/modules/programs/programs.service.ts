@@ -1,5 +1,13 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import Razorpay from "razorpay";
+import crypto from "crypto";
+import { env } from "../../config/env.js";
+
+const razorpay = new Razorpay({
+  key_id: env.RAZORPAY_KEY_ID || "",
+  key_secret: env.RAZORPAY_KEY_SECRET || "",
+});
 
 export class ProgramsService {
   static getMockSessionsForProgram(title: string) {
@@ -808,6 +816,7 @@ export class ProgramsService {
       where: {
         slotDate: data.slotDate,
         slotTime: data.slotTime,
+        paymentStatus: "COMPLETED"
       }
     });
     if (bookingCount >= 2) {
@@ -819,6 +828,7 @@ export class ProgramsService {
 
     // Resolve email to send confirmation to
     let emailToSend = data.email || null;
+    let resolvedUserId = loggedInUserId || null;
 
     // If logged in, prioritize retrieving email from their user record
     if (!emailToSend && loggedInUserId) {
@@ -831,7 +841,7 @@ export class ProgramsService {
     }
 
     // If not resolved yet (e.g. guest or missing field), check by phone search matching existing user
-    if (!emailToSend && data.phone) {
+    if (data.phone) {
       const rawPhone = data.phone.replace(/[^\d]/g, '');
       const last10Digits = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
 
@@ -845,8 +855,28 @@ export class ProgramsService {
         }
       });
       if (matchingUser) {
-        emailToSend = matchingUser.email || matchingUser.parentEmail || null;
+        if (!resolvedUserId) resolvedUserId = matchingUser.id;
+        if (!emailToSend) emailToSend = matchingUser.email || matchingUser.parentEmail || null;
       }
+    }
+
+    const demoPrice = 29; // ₹29 paid demo session fee
+    let razorpayOrderId: string | null = null;
+
+    if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
+      try {
+        const rpOrder = await razorpay.orders.create({
+          amount: Math.round(demoPrice * 100),
+          currency: "INR",
+          receipt: `rcpt_demo_${Date.now()}`
+        });
+        razorpayOrderId = rpOrder.id;
+      } catch (err) {
+        console.error("Razorpay order creation failed for demo session, using fallback:", err);
+        razorpayOrderId = `demo_mock_${Date.now()}`;
+      }
+    } else {
+      razorpayOrderId = `demo_mock_${Date.now()}`;
     }
 
     const demo = await prisma.demoSession.create({
@@ -864,65 +894,104 @@ export class ProgramsService {
         suggestedPrograms: Array.isArray(data.suggestedPrograms) ? data.suggestedPrograms : [],
         slotDate: data.slotDate || null,
         slotTime: data.slotTime || null,
-        status: "PENDING"
+        status: "PENDING",
+        amount: demoPrice,
+        paymentStatus: "PENDING",
+        paymentMethod: "ONLINE",
+        razorpayOrderId,
+        userId: resolvedUserId
       }
     });
 
-    if (emailToSend) {
-      // Trigger confirmation email asynchronously
+    return {
+      demo,
+      razorpay: {
+        orderId: razorpayOrderId,
+        amount: demoPrice,
+        currency: "INR",
+        keyId: env.RAZORPAY_KEY_ID || ""
+      }
+    };
+  }
+
+  static async verifyDemoPayment(data: {
+    razorpayOrderId: string;
+    razorpayPaymentId?: string;
+    razorpaySignature?: string;
+  }) {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = data;
+    if (!razorpayOrderId) {
+      throw new AppError("Razorpay Order ID is required", 400);
+    }
+
+    const demo = await prisma.demoSession.findUnique({
+      where: { razorpayOrderId }
+    });
+    if (!demo) {
+      throw new AppError("Demo session booking not found for this order", 404);
+    }
+
+    if (demo.paymentStatus === "COMPLETED") {
+      return { success: true, message: "Payment already verified", demo };
+    }
+
+    const isMock = razorpayOrderId.startsWith("demo_mock_") || !env.RAZORPAY_KEY_SECRET;
+    if (!isMock && razorpayPaymentId && razorpaySignature) {
+      const body = razorpayOrderId + "|" + razorpayPaymentId;
+      const expectedSignature = crypto
+        .createHmac("sha256", env.RAZORPAY_KEY_SECRET || "")
+        .update(body.toString())
+        .digest("hex");
+
+      if (expectedSignature !== razorpaySignature) {
+        throw new AppError("Invalid payment signature", 400);
+      }
+    }
+
+    const updatedDemo = await prisma.demoSession.update({
+      where: { id: demo.id },
+      data: {
+        paymentStatus: "COMPLETED",
+        razorpayPaymentId: razorpayPaymentId || `pay_mock_${Date.now()}`,
+        razorpaySignature: razorpaySignature || "mock_signature"
+      }
+    });
+
+    // Send confirmation email upon verified payment
+    if (updatedDemo.email) {
       try {
         let programsList: any[] = [];
-        if (Array.isArray(data.suggestedPrograms) && data.suggestedPrograms.length > 0) {
+        if (Array.isArray(updatedDemo.suggestedPrograms) && updatedDemo.suggestedPrograms.length > 0) {
           programsList = await prisma.program.findMany({
             where: {
               OR: [
-                { id: { in: data.suggestedPrograms } },
-                { title: { in: data.suggestedPrograms } }
+                { id: { in: updatedDemo.suggestedPrograms } },
+                { title: { in: updatedDemo.suggestedPrograms } }
               ]
             }
           });
         }
 
         const { sendDemoSessionBookedEmail } = await import("../../common/services/email.service.js");
-        await sendDemoSessionBookedEmail(emailToSend, {
-          parent_name: data.parentName,
-          phone: normalizedPhone,
-          email: emailToSend,
-          slot_date: data.slotDate,
-          slot_time: data.slotTime,
-          comment: data.comment || data.confidence || "",
+        await sendDemoSessionBookedEmail(updatedDemo.email, {
+          parent_name: updatedDemo.parentName,
+          phone: updatedDemo.phone,
+          email: updatedDemo.email,
+          slot_date: updatedDemo.slotDate || "",
+          slot_time: updatedDemo.slotTime || "",
+          comment: updatedDemo.comment || updatedDemo.confidence || "",
+          amount: updatedDemo.amount || 29,
+          payment_id: updatedDemo.razorpayPaymentId || undefined,
           programs: await Promise.all(programsList.map(async p => {
             let imgUrl = p.thumbnailUrl || "";
             if (imgUrl && !imgUrl.startsWith("http")) {
               const baseUrl = process.env.APP_URL || process.env.IMAGE_BASE_URL || "https://api.infano.care";
               imgUrl = `${baseUrl.replace(/\/$/, '')}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`;
             }
-            if (imgUrl.includes("api-dev.infano.care")) {
-              try {
-                const res = await fetch(imgUrl, { method: "HEAD" });
-                if (!res.ok) {
-                  const altUrl = imgUrl.replace("api-dev.infano.care", "api.infano.care");
-                  const res2 = await fetch(altUrl, { method: "HEAD" });
-                  if (res2.ok) imgUrl = altUrl;
-                }
-              } catch (e) {}
-            } else if (imgUrl.includes("api.infano.care")) {
-              try {
-                const res = await fetch(imgUrl, { method: "HEAD" });
-                if (!res.ok) {
-                  const altUrl = imgUrl.replace("api.infano.care", "api-dev.infano.care");
-                  const res2 = await fetch(altUrl, { method: "HEAD" });
-                  if (res2.ok) imgUrl = altUrl;
-                }
-              } catch (e) {}
-            }
-            if (!imgUrl) {
-              imgUrl = "https://api.infano.care/uploads/assets/Page-1.png";
-            }
             return {
               title: p.title,
               duration: p.duration,
-              thumbnailUrl: imgUrl
+              thumbnailUrl: imgUrl || "https://api.infano.care/uploads/assets/Page-1.png"
             };
           }))
         });
@@ -931,14 +1000,14 @@ export class ProgramsService {
       }
     }
 
-    // Trigger In-App & Push notifications for demo session booking
+    // Dispatch In-App & Push notifications
     import("./session-notification.service.js").then(({ SessionNotificationService }) => {
-      SessionNotificationService.notifyDemoSessionBooked(demo.id).catch(err => {
-        console.error("Failed to dispatch demo booking in-app/push notifications:", err);
+      SessionNotificationService.notifyDemoSessionBooked(updatedDemo.id).catch(err => {
+        console.error("Failed to dispatch demo booking notifications:", err);
       });
     });
 
-    return demo;
+    return { success: true, message: "Payment verified and demo session confirmed", demo: updatedDemo };
   }
 
   static async getUserDemosForUser(userId: string) {
@@ -1029,7 +1098,7 @@ export class ProgramsService {
     });
   }
 
-  static async adminUpdateDemoStatus(id: string, payload: { status?: string; isReadyToEnroll?: boolean; comment?: string; meetLink?: string; slotDate?: string; slotTime?: string }) {
+  static async adminUpdateDemoStatus(id: string, payload: { status?: string; isReadyToEnroll?: boolean; comment?: string; meetLink?: string; slotDate?: string; slotTime?: string; paymentStatus?: any; amount?: number }) {
     const existing = await prisma.demoSession.findUnique({ where: { id } });
     if (!existing) {
       throw new AppError("Demo session booking not found", 404);
@@ -1041,6 +1110,8 @@ export class ProgramsService {
     if (payload.meetLink !== undefined) data.meetLink = payload.meetLink;
     if (payload.slotDate !== undefined) data.slotDate = payload.slotDate;
     if (payload.slotTime !== undefined) data.slotTime = payload.slotTime;
+    if (payload.paymentStatus !== undefined) data.paymentStatus = payload.paymentStatus;
+    if (payload.amount !== undefined) data.amount = payload.amount;
     return prisma.demoSession.update({
       where: { id },
       data
