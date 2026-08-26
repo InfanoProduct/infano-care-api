@@ -79,6 +79,20 @@ export class ParentController {
     }
   }
 
+  static async getDaughterReport(req: Request, res: Response) {
+    try {
+      const userId = (req as any).userId;
+      const { teenId } = req.params;
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+      if (!teenId) return res.status(400).json({ error: "Missing teenId parameter" });
+
+      const report = await ParentService.getDaughterReport(userId, teenId as string);
+      res.json(report);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to fetch daughter report" });
+    }
+  }
+
   // --- Expert Booking Methods ---
 
   static async getExperts(req: Request, res: Response) {

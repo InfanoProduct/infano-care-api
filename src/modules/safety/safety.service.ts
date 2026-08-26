@@ -272,6 +272,37 @@ export class SafetyService {
       }
     });
 
+    // If initial notification had "Location unavailable", update notification text with the fresh Google Maps URL
+    try {
+      const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+      const notifications = await prisma.notificationHistory.findMany({
+        where: {
+          type: 'SOS_ALERT',
+        }
+      });
+
+      for (const notif of notifications) {
+        const payload = notif.payload as any;
+        if (payload?.incidentId === incidentId && notif.body.includes('Location unavailable')) {
+          const updatedBody = notif.body.replace('Location unavailable', mapsUrl);
+          await prisma.notificationHistory.update({
+            where: { id: notif.id },
+            data: {
+              body: updatedBody,
+              payload: {
+                ...(typeof payload === 'object' && payload !== null ? payload : {}),
+                lat,
+                lng,
+                mapsUrl
+              }
+            }
+          });
+        }
+      }
+    } catch (e: any) {
+      logger.error(`Failed to update notification history location: ${e.message}`);
+    }
+
     return incident;
   }
 

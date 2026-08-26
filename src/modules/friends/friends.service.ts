@@ -1,8 +1,6 @@
-import { PrismaClient, MatchStatus } from "@prisma/client";
+import { prisma, MatchStatus } from "../../db/client.js";
 import { logger } from "../../config/logger.js";
 import { emitFriendMatch } from "./friends.socket.js";
-
-const prisma = new PrismaClient();
 
 // ── Vibe tag categories for weighted compatibility scoring ─────────────────────
 const VIBE_CATEGORIES: Record<string, string[]> = {
