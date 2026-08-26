@@ -1351,4 +1351,94 @@ export class ParentService {
       scheduledAt: data.scheduledAt
     });
   }
+
+  /**
+   * Notifies linked parents when a teen daughter triggers a crisis/distress event (in chat or journal)
+   */
+  static async notifyParentOfCrisis(teenId: string, source: "chat" | "journal" | "peerline", details?: { category?: string }) {
+    try {
+      const links = await prisma.parentLink.findMany({
+        where: { teenId, status: "LINKED" },
+        include: {
+          parent: { include: { profile: true } },
+          teen: { include: { profile: true } }
+        }
+      });
+
+      if (!links.length) return;
+
+      const teen = links[0]?.teen;
+      const teenName = teen?.profile?.displayName || teen?.username || "Your daughter";
+
+      // Rate limiting: max 1 alert per 4 hours to avoid overwhelm
+      const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+
+      for (const link of links) {
+        if (!link.parent || !link.parentId) continue;
+
+        const parent = link.parent;
+        const recentAlert = await prisma.notificationHistory.findFirst({
+          where: {
+            userId: parent.id,
+            type: "DAUGHTER_CRISIS_ALERT",
+            sentAt: { gte: fourHoursAgo }
+          }
+        });
+
+        if (recentAlert) continue;
+
+        const title = `💜 Sensitive Alert: Check in with ${teenName}`;
+        const sourceLabel = source === "journal" 
+          ? "logged a difficult emotional reflection in her journal"
+          : "expressed feelings of sadness or emotional distress in the app";
+        const body = `${teenName} recently ${sourceLabel}. Consider reaching out with a gentle, supportive check-in.`;
+        const deepLink = "infano://account/family";
+
+        // 1. In-App Notification Record
+        await prisma.notificationHistory.create({
+          data: {
+            userId: parent.id,
+            type: "DAUGHTER_CRISIS_ALERT",
+            title,
+            body,
+            deepLink,
+            payload: { teenId, source, details: details || {} },
+            sentAt: new Date()
+          }
+        });
+
+        // 2. Firebase Push Notification
+        if (parent.fcmToken) {
+          try {
+            await FirebaseService.sendPushNotification(parent.fcmToken, {
+              title,
+              body,
+              deepLink,
+              data: {
+                notificationType: "DAUGHTER_CRISIS_ALERT",
+                teenId,
+                source
+              }
+            });
+          } catch (pushErr) {
+            console.error("Failed to send crisis alert push to parent:", pushErr);
+          }
+        }
+
+        // 3. SMS Alert for critical chat distress
+        if (parent.phone && source !== "journal") {
+          try {
+            await smsProvider.sendAlert(
+              parent.phone,
+              `Infano Care: ${teenName} recently expressed feelings of emotional distress in the app. Please check in with her with a gentle, supportive conversation. 💙`
+            );
+          } catch (smsErr) {
+            console.error("Failed to send crisis SMS to parent:", smsErr);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to process parent crisis alert:", err);
+    }
+  }
 }

@@ -452,15 +452,108 @@ export class CommunityService {
       },
     });
 
-    // Update post reply count
+    // Update post reply count & dispatch notification
     if (status === PostStatus.APPROVED) {
       await prisma.communityPost.update({
         where: { id: postId },
         data: { replyCount: { increment: 1 } },
       });
+
+      this.dispatchReplyNotification(userId, postId, reply.id, input.content, input.parentReplyId).catch(err => {
+        logger.error({ err, postId, replyId: reply.id }, "Failed to dispatch reply notification");
+      });
     }
 
     return reply;
+  }
+
+  private async dispatchReplyNotification(
+    replierUserId: string,
+    postId: string,
+    replyId: string,
+    content: string,
+    parentReplyId?: string | null
+  ) {
+    try {
+      const replier = await prisma.user.findUnique({
+        where: { id: replierUserId },
+        include: { profile: true }
+      });
+      const replierName = replier?.profile?.displayName || replier?.username || "A community member";
+      const preview = content.length > 80 ? content.slice(0, 77) + "..." : content;
+      const { FirebaseService } = await import("../../common/services/firebase.service.js");
+
+      if (parentReplyId) {
+        // Nested reply -> notify parent comment author
+        const parentReply = await prisma.communityReply.findUnique({
+          where: { id: parentReplyId },
+          include: { author: true }
+        });
+
+        if (parentReply && parentReply.authorId && parentReply.authorId !== replierUserId) {
+          const title = `${replierName} replied to your comment 💬`;
+          const body = `"${preview}"`;
+          const deepLink = `infano://community/post/${postId}`;
+
+          await prisma.notificationHistory.create({
+            data: {
+              userId: parentReply.authorId,
+              type: "COMMUNITY_REPLY_REPLIED",
+              title,
+              body,
+              deepLink,
+              payload: { postId, replyId, parentReplyId },
+              sentAt: new Date()
+            }
+          });
+
+          if (parentReply.author?.fcmToken) {
+            await FirebaseService.sendPushNotification(parentReply.author.fcmToken, {
+              title,
+              body,
+              deepLink,
+              data: { notificationType: "COMMUNITY_REPLY_REPLIED", postId, replyId }
+            });
+          }
+        }
+      } else {
+        // Direct reply to post -> notify post author
+        const post = await prisma.communityPost.findUnique({
+          where: { id: postId },
+          include: { author: true, circle: true }
+        });
+
+        if (post && post.authorId && post.authorId !== replierUserId) {
+          const circleName = post.circle?.name ? ` in #${post.circle.name}` : "";
+          const title = `${replierName} replied to your post 💬`;
+          const body = `"${preview}"${circleName}`;
+          const deepLink = `infano://community/post/${postId}`;
+
+          await prisma.notificationHistory.create({
+            data: {
+              userId: post.authorId,
+              type: "COMMUNITY_POST_REPLIED",
+              title,
+              body,
+              deepLink,
+              payload: { postId, replyId, circleId: post.circleId },
+              sentAt: new Date()
+            }
+          });
+
+          if (post.author?.fcmToken) {
+            await FirebaseService.sendPushNotification(post.author.fcmToken, {
+              title,
+              body,
+              deepLink,
+              data: { notificationType: "COMMUNITY_POST_REPLIED", postId, replyId }
+            });
+          }
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, "Error in dispatchReplyNotification");
+    }
   }
 
   // Reactions
@@ -503,10 +596,49 @@ export class CommunityService {
     });
 
     if (contentType === 'post') {
-      await prisma.communityPost.update({
+      const updatedPost = await prisma.communityPost.update({
         where: { id: contentId },
         data: { [field]: { increment: 1 } },
+        include: { author: true }
       });
+
+      // Notify post author of reaction if not self-reaction
+      if (updatedPost.authorId && updatedPost.authorId !== userId) {
+        try {
+          const reactor = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { profile: true }
+          });
+          const reactorName = reactor?.profile?.displayName || reactor?.username || "A member";
+          const title = `${reactorName} supported your post 💜`;
+          const body = `Someone gave your post a ${reaction} reaction!`;
+          const deepLink = `infano://community/post/${contentId}`;
+
+          await prisma.notificationHistory.create({
+            data: {
+              userId: updatedPost.authorId,
+              type: "COMMUNITY_REACTION_MILESTONE",
+              title,
+              body,
+              deepLink,
+              payload: { postId: contentId, reaction },
+              sentAt: new Date()
+            }
+          });
+
+          if (updatedPost.author.fcmToken) {
+            const { FirebaseService } = await import("../../common/services/firebase.service.js");
+            await FirebaseService.sendPushNotification(updatedPost.author.fcmToken, {
+              title,
+              body,
+              deepLink,
+              data: { notificationType: "COMMUNITY_REACTION_MILESTONE", postId: contentId }
+            });
+          }
+        } catch (reactErr) {
+          logger.error({ reactErr }, "Error sending reaction notification");
+        }
+      }
     } else {
       await prisma.communityReply.update({
         where: { id: contentId },

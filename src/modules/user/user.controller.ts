@@ -25,6 +25,66 @@ export class UserController {
     }
   }
 
+  static async getBootstrap(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId || (req as any).user?.id;
+      if (!userId) throw new AppError("Unauthorized", 401);
+
+      const [user, cycleProfile] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: userId },
+          include: { profile: true, peerApplication: true },
+        }),
+        prisma.cycleProfile.findUnique({
+          where: { userId },
+        }),
+      ]);
+
+      if (!user) throw new AppError("User not found", 404);
+
+      // Fast Gigi Quote computation
+      const quotes = [
+        "Main character energy today, bestie! 💅✨ Your body is doing magic, keep shining!",
+        "No cap, you are literally glowing today! Take it easy and slay ✨🌸",
+        "Friendly reminder: You're that girl! Own your day with 100% confidence 💪🔥",
+        "Big brain vibes only today! Never let anyone dim your sparkle 🧠✨",
+        "It's giving unstoppable! Whatever you're working on, you've got this 🚀💖",
+        "Self-care check: Hydrate, breathe, and remember you're iconic 💧👑",
+        "Period or no period, you are an absolute force of nature! Slay today 🌸💫",
+        "Serotonin boost activated! You are stronger and smarter than you know 🌟✨",
+        "Era of body confidence unlocked! Every phase of you is beautiful 💖🏆",
+        "Radiating main character confidence! Go conquer your goals today 💅🔥",
+        "Soft girl aesthetic + strong mindset = unstoppable you! 🌸💪",
+        "Manifesting good vibes, high energy, and pure joy for you today! ✨🌈",
+        "No bad vibes allowed in your space today! Stay golden, bestie ⭐💖",
+        "Your timeline, your pace! You're right where you're supposed to be 🌱✨"
+      ];
+      const startOfYear = new Date(new Date().getFullYear(), 0, 0);
+      const diff = new Date().getTime() - startOfYear.getTime();
+      const oneDay = 1000 * 60 * 60 * 24;
+      const dayOfYear = Math.floor(diff / oneDay);
+      const quoteIndex = dayOfYear % quotes.length;
+
+      const { onboardingCompletedAt, ...userWithoutDate } = user;
+
+      res.status(200).json({
+        user: {
+          ...userWithoutDate,
+          onboardingCompletedAt,
+          isOnboardingCompleted: onboardingCompletedAt !== null,
+        },
+        cycleProfile,
+        quote: {
+          quote: quotes[quoteIndex],
+          date: new Date().toISOString().split("T")[0],
+          author: "Gigi",
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updateOnboardingStep(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).userId || (req as any).user?.id;

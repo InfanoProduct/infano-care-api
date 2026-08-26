@@ -77,7 +77,7 @@ export class BlogService {
     // Ensure unique slug
     const uniqueSlug = await this.getUniqueSlug('blogPost', rest.title, rest.slug);
     
-    return prisma.blogPost.create({
+    const post = await prisma.blogPost.create({
       data: {
         ...rest,
         slug: uniqueSlug,
@@ -92,18 +92,28 @@ export class BlogService {
         } : undefined,
       },
     });
+
+    if (post.isPublished) {
+      this.notifySubscribersOfNewArticle(post).catch(err => {
+        console.error("[BLOG] Failed to broadcast new article push notification:", err);
+      });
+    }
+
+    return post;
   }
 
   static async updatePost(id: string, data: any) {
     const { categoryIds, ctaIds, authorId, seoTitle, seoDescription, seoKeywords, ...rest } = data;
     
+    const existing = await prisma.blogPost.findUnique({ where: { id } });
+
     // Ensure unique slug if provided
     let slug = rest.slug;
     if (slug || rest.title) {
       slug = await this.getUniqueSlug('blogPost', rest.title, rest.slug, id);
     }
 
-    return prisma.blogPost.update({
+    const updatedPost = await prisma.blogPost.update({
       where: { id },
       data: {
         ...rest,
@@ -119,6 +129,60 @@ export class BlogService {
         } : undefined,
       },
     });
+
+    // If transitioned to published from unpublished
+    if (!existing?.isPublished && updatedPost.isPublished) {
+      this.notifySubscribersOfNewArticle(updatedPost).catch(err => {
+        console.error("[BLOG] Failed to broadcast published article push notification:", err);
+      });
+    }
+
+    return updatedPost;
+  }
+
+  static async notifySubscribersOfNewArticle(post: any) {
+    try {
+      const { FirebaseService } = await import("../../common/services/firebase.service.js");
+      
+      const users = await prisma.user.findMany({
+        where: {
+          accountStatus: "ACTIVE",
+          fcmToken: { not: null }
+        },
+        select: { id: true, fcmToken: true }
+      });
+
+      if (users.length === 0) return;
+
+      const title = `📚 New Article: ${post.title}`;
+      const body = post.seoDescription || post.excerpt || "New expert wellness article is now available in the library. Tap to read ✨";
+      const deepLink = `infano://blog/${post.slug || post.id}`;
+
+      // 1. Bulk push to all active devices using Multicast
+      const tokens = users.map(u => u.fcmToken).filter(Boolean) as string[];
+      await FirebaseService.sendMulticastNotification(tokens, {
+        title,
+        body,
+        deepLink,
+        data: { notificationType: "NEW_BLOG_ARTICLE_PUBLISHED", postId: post.id, slug: post.slug || "" }
+      });
+
+      // 2. Create in-app notification records in batch
+      await prisma.notificationHistory.createMany({
+        data: users.map(u => ({
+          userId: u.id,
+          type: "NEW_BLOG_ARTICLE_PUBLISHED",
+          title,
+          body,
+          deepLink,
+          payload: { postId: post.id, slug: post.slug || "" },
+          sentAt: new Date()
+        })),
+        skipDuplicates: true
+      });
+    } catch (err) {
+      console.error("[BLOG] Error in notifySubscribersOfNewArticle:", err);
+    }
   }
 
   static async deletePost(id: string) {

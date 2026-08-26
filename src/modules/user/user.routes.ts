@@ -27,6 +27,7 @@ router.use(requireAuth);
  *         description: User profile data
  */
 router.get("/me", UserController.getMe);
+router.get("/bootstrap", UserController.getBootstrap);
 
 /**
  * @openapi

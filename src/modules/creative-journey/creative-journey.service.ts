@@ -283,9 +283,141 @@ export class CreativeJourneyService {
           console.error("[CREATIVE JOURNEY] Failed to award coins:", e);
         }
       }
+
+      // Check for episode completion & unlock notifications
+      CreativeJourneyService.checkAndNotifyJourneyProgress(userId, episodeId).catch(e => {
+        console.error("[CREATIVE JOURNEY] Error in checkAndNotifyJourneyProgress:", e);
+      });
     }
 
     return { ...record, coinsAwarded: coinsToAward };
+  }
+
+  static async checkAndNotifyJourneyProgress(userId: string, episodeId: string) {
+    try {
+      const episode = await prisma.creativeEpisode.findUnique({
+        where: { id: episodeId },
+        include: { journey: { include: { episodes: { orderBy: { order: "asc" } } } } }
+      });
+      if (!episode || !episode.journey) return;
+
+      const journey = episode.journey;
+      const order = await CreativeJourneyService.getOrCreateNodeOrder(userId, episodeId);
+      const progress = await prisma.creativeNodeProgress.findMany({
+        where: { userId, episodeId, status: "COMPLETED" },
+        select: { nodeId: true }
+      });
+
+      const isEpisodeComplete = order.length > 0 && progress.length >= order.length;
+      if (!isEpisodeComplete) return;
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { profile: true }
+      });
+      if (!user) return;
+      const userName = user.profile?.displayName || user.username || "Your daughter";
+
+      // 1. Check if next episode exists
+      const currentIdx = journey.episodes.findIndex(e => e.id === episodeId);
+      const nextEpisode = currentIdx !== -1 && currentIdx < journey.episodes.length - 1 ? journey.episodes[currentIdx + 1] : null;
+
+      const { FirebaseService } = await import("../../common/services/firebase.service.js");
+
+      if (nextEpisode) {
+        // User notification for next unlocked episode
+        const title = `🎉 Episode Unlocked: "${nextEpisode.title}"`;
+        const body = `You finished "${episode.title}"! Tap to continue your creative journey ✨`;
+        const deepLink = `infano://creative-journey/episode/${nextEpisode.id}`;
+
+        await prisma.notificationHistory.create({
+          data: {
+            userId,
+            type: "CREATIVE_EPISODE_UNLOCKED",
+            title,
+            body,
+            deepLink,
+            payload: { episodeId: nextEpisode.id, journeyId: journey.id },
+            sentAt: new Date()
+          }
+        });
+
+        if (user.fcmToken) {
+          await FirebaseService.sendPushNotification(user.fcmToken, {
+            title,
+            body,
+            deepLink,
+            data: { notificationType: "CREATIVE_EPISODE_UNLOCKED", episodeId: nextEpisode.id }
+          });
+        }
+      } else {
+        // Entire journey complete!
+        const title = `👑 Journey Completed: ${journey.title}!`;
+        const body = `You've completed every episode in "${journey.title}"! Tap to view your milestone badge 🏆`;
+        const deepLink = `infano://creative-journey`;
+
+        await prisma.notificationHistory.create({
+          data: {
+            userId,
+            type: "CREATIVE_JOURNEY_COMPLETED",
+            title,
+            body,
+            deepLink,
+            payload: { journeyId: journey.id },
+            sentAt: new Date()
+          }
+        });
+
+        if (user.fcmToken) {
+          await FirebaseService.sendPushNotification(user.fcmToken, {
+            title,
+            body,
+            deepLink,
+            data: { notificationType: "CREATIVE_JOURNEY_COMPLETED", journeyId: journey.id }
+          });
+        }
+      }
+
+      // 2. Notify linked parents
+      const links = await prisma.parentLink.findMany({
+        where: { teenId: userId, status: "LINKED" },
+        include: { parent: true }
+      });
+
+      for (const link of links) {
+        if (!link.parent || !link.parentId) continue;
+        const parentTitle = nextEpisode
+          ? `🌟 Learning Progress: ${userName}`
+          : `🏆 Journey Graduation: ${userName}`;
+        const parentBody = nextEpisode
+          ? `${userName} just completed Episode "${episode.title}" in ${journey.title}!`
+          : `Congratulations! ${userName} has graduated from the "${journey.title}" journey!`;
+        const deepLink = `infano://account/family`;
+
+        await prisma.notificationHistory.create({
+          data: {
+            userId: link.parentId,
+            type: "PARENT_TEEN_JOURNEY_PROGRESS",
+            title: parentTitle,
+            body: parentBody,
+            deepLink,
+            payload: { teenId: userId, journeyId: journey.id, episodeId },
+            sentAt: new Date()
+          }
+        });
+
+        if (link.parent.fcmToken) {
+          await FirebaseService.sendPushNotification(link.parent.fcmToken, {
+            title: parentTitle,
+            body: parentBody,
+            deepLink,
+            data: { notificationType: "PARENT_TEEN_JOURNEY_PROGRESS", teenId: userId }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[CREATIVE JOURNEY] Failed to process journey progress notifications:", err);
+    }
   }
 
   // ── Ask Gigi ──────────────────────────────────────────────────────────────

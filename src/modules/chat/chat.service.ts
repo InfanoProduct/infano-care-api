@@ -654,6 +654,18 @@ SUGGESTING PROGRAMS & JOURNEYS:
       const isCrisis = distressWords.some(w => content.toLowerCase().includes(w));
       const currentLevel = isCrisis ? EscalationLevel.LEVEL_3 : EscalationLevel.LEVEL_0;
 
+      // If crisis detected, alert linked parent if user is a teen
+      if (isCrisis) {
+        try {
+          const { ParentService } = await import("../parent/parent.service.js");
+          ParentService.notifyParentOfCrisis(userId, "chat").catch(err => {
+            logger.error({ err, userId }, "Failed to notify parent of crisis event in chat");
+          });
+        } catch (alertErr) {
+          logger.error({ alertErr }, "Error importing ParentService for chat crisis alert");
+        }
+      }
+
       // 6. Save & Return Gigi Response
       const savedMsg = await prisma.chatMessage.create({
         data: {
