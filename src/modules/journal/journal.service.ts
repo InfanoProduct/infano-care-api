@@ -1,5 +1,6 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import { CrisisAlertService } from "../safety/crisis-alert.service.js";
 
 // ─── Prompt Bank Seed Data ────────────────────────────────────────────────────
 export const PROMPT_BANK = [
@@ -209,6 +210,9 @@ export class JournalService {
       console.error("[JOURNAL] Quest evaluation failed:", e);
     }
 
+    // Real-time parent notification on suicide / self-harm distress in journal
+    CrisisAlertService.checkAndNotifyCrisis(userId, { content: dto.content, title: dto.title }, "JOURNAL").catch(() => {});
+
     return entry;
   }
 
@@ -266,7 +270,7 @@ export class JournalService {
     const existing = await prisma.journalEntry.findFirst({ where: { id, userId, isDeleted: false } });
     if (!existing) throw new AppError("Entry not found", 404);
 
-    return prisma.journalEntry.update({
+    const updated = await prisma.journalEntry.update({
       where: { id },
       data: {
         ...(dto.content !== undefined && { content: dto.content }),
@@ -279,6 +283,11 @@ export class JournalService {
       },
       include: { prompt: true },
     });
+
+    // Real-time parent notification on updated journal entry with crisis content
+    CrisisAlertService.checkAndNotifyCrisis(userId, { content: dto.content ?? existing.content, title: dto.title ?? existing.title }, "JOURNAL").catch(() => {});
+
+    return updated;
   }
 
   static async deleteEntry(userId: string, id: string) {

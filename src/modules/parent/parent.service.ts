@@ -511,6 +511,420 @@ export class ParentService {
     };
   }
 
+  static async getDaughterReport(parentId: string, teenId: string) {
+    const link = await prisma.parentLink.findFirst({
+      where: {
+        parentId,
+        teenId,
+        status: "LINKED"
+      },
+      include: {
+        teen: {
+          include: {
+            profile: true,
+            avatar: true
+          }
+        }
+      }
+    });
+
+    if (!link || !link.teen) {
+      throw new Error("Unauthorized or no linked daughter found");
+    }
+
+    const teen = link.teen;
+    const displayName = teen.profile?.displayName || teen.username || "Daughter";
+    const avatarUrl = teen.profile?.avatarUrl || null;
+    const phone = teen.phone;
+
+    // 1. Fetch all detailed metrics in parallel
+    const [
+      cycleProfile,
+      recentCycleLogs,
+      creativeProgresses,
+      askGigiEntries,
+      enrollments,
+      expertSessions,
+      wellnessScore,
+      journalEntries,
+      recentCrisisAlert
+    ] = await Promise.all([
+      prisma.cycleProfile.findUnique({ where: { userId: teenId } }),
+      prisma.cycleLog.findMany({
+        where: { userId: teenId },
+        orderBy: { date: "desc" },
+        take: 30
+      }),
+      prisma.creativeNodeProgress.findMany({
+        where: { userId: teenId },
+        include: {
+          episode: {
+            include: { journey: true }
+          }
+        },
+        orderBy: { updatedAt: "desc" }
+      }),
+      prisma.creativeAskGigiEntry.findMany({
+        where: { userId: teenId },
+        include: { episode: true },
+        orderBy: { createdAt: "desc" },
+        take: 10
+      }),
+      prisma.programEnrollment.findMany({
+        where: {
+          OR: [{ userId: teenId }, { userId: parentId }],
+          status: "ACTIVE",
+          program: { isActive: true }
+        },
+        include: { program: true }
+      }),
+      prisma.expertSessionSchedule.findMany({
+        where: { userId: teenId },
+        include: { expert: { include: { profile: true } } },
+        orderBy: { scheduledAt: "desc" },
+        take: 10
+      }),
+      this.calculateWellnessScore(teenId),
+      prisma.journalEntry.findMany({
+        where: { userId: teenId },
+        orderBy: { createdAt: "desc" },
+        take: 5
+      }),
+      prisma.notificationHistory.findFirst({
+        where: {
+          userId: parentId,
+          type: "CRISIS_ALERT",
+          sentAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+        },
+        orderBy: { sentAt: "desc" }
+      })
+    ]);
+
+    // 2. Inactivity calculation across sections
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const firstLog = recentCycleLogs[0];
+    let trackerDaysInactive = 5;
+    if (firstLog && firstLog.date) {
+      const diffMs = now.getTime() - new Date(firstLog.date).getTime();
+      trackerDaysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    const firstProgress = creativeProgresses[0];
+    let journeyDaysInactive = 5;
+    if (firstProgress && firstProgress.updatedAt) {
+      const diffMs = now.getTime() - new Date(firstProgress.updatedAt).getTime();
+      journeyDaysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    const firstGigi = askGigiEntries[0];
+    let journalDaysInactive = 5;
+    if (firstGigi && firstGigi.createdAt) {
+      const diffMs = now.getTime() - new Date(firstGigi.createdAt).getTime();
+      journalDaysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    const firstSession = expertSessions.find(s => s.status === "COMPLETED");
+    let sessionDaysInactive: number | null = null;
+    if (firstSession && firstSession.scheduledAt) {
+      const diffMs = now.getTime() - new Date(firstSession.scheduledAt).getTime();
+      sessionDaysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    const activityDates: Date[] = [];
+    if (firstLog && firstLog.date) activityDates.push(new Date(firstLog.date));
+    if (firstProgress && firstProgress.updatedAt) activityDates.push(new Date(firstProgress.updatedAt));
+    if (firstGigi && firstGigi.createdAt) activityDates.push(new Date(firstGigi.createdAt));
+    if (journalEntries[0]?.createdAt) activityDates.push(new Date(journalEntries[0].createdAt));
+
+    let lastActiveAt: Date | null = null;
+    let daysInactive = 0;
+    if (activityDates.length > 0) {
+      activityDates.sort((a, b) => b.getTime() - a.getTime());
+      const latest = activityDates[0];
+      if (latest) {
+        lastActiveAt = latest;
+        const diffMs = now.getTime() - latest.getTime();
+        daysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+      }
+    } else {
+      daysInactive = 5; // Default if never logged
+    }
+
+    const isInactiveWarning = daysInactive >= 2;
+    let activityStatusText = "Active today";
+    if (daysInactive === 1) activityStatusText = "Active yesterday";
+    else if (daysInactive >= 2) activityStatusText = `Inactive for ${daysInactive} days`;
+
+    // Today's Live Activity
+    const loggedTrackerToday = recentCycleLogs.some(l => new Date(l.date) >= todayStart);
+    const completedLearningToday = creativeProgresses.some(p => new Date(p.updatedAt) >= todayStart && p.status === "COMPLETED");
+    const checkinCompletedToday = askGigiEntries.some(g => new Date(g.createdAt) >= todayStart) || journalEntries.some(j => new Date(j.createdAt) >= todayStart);
+
+    const todayActivity = {
+      loggedTrackerToday,
+      completedLearningToday,
+      checkinCompletedToday,
+      hasAnyActivityToday: loggedTrackerToday || completedLearningToday || checkinCompletedToday
+    };
+
+    // 3. Menstrual & Cycle Data (with period countdown, late period detection, and AI insight)
+    let daysUntilNextPeriod: number | null = null;
+    let isPeriodLate = false;
+    let daysLate = 0;
+
+    let expectedPeriodStart: Date | null = null;
+    if (cycleProfile?.predictedNextStart) {
+      expectedPeriodStart = new Date(cycleProfile.predictedNextStart);
+    } else if (cycleProfile?.lastPeriodStart) {
+      const avgLen = cycleProfile.avgCycleLength || 28;
+      expectedPeriodStart = new Date(new Date(cycleProfile.lastPeriodStart).getTime() + avgLen * 24 * 60 * 60 * 1000);
+    }
+
+    if (expectedPeriodStart) {
+      const diffMs = expectedPeriodStart.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) {
+        isPeriodLate = true;
+        daysLate = Math.abs(diffDays);
+        daysUntilNextPeriod = 0;
+      } else {
+        isPeriodLate = false;
+        daysLate = 0;
+        daysUntilNextPeriod = diffDays;
+      }
+    }
+
+    const phase = (cycleProfile?.currentPhase || "watching_waiting").toLowerCase();
+    let aiCycleInsight = "She is in a steady cycle phase. Tracking consistently ensures accurate forecasts.";
+    if (isPeriodLate) {
+      aiCycleInsight = `Her period is approximately ${daysLate} ${daysLate === 1 ? 'day' : 'days'} late based on previous cycle patterns. In teenage years, occasional cycle delays due to exams, growth, stress, or mild fatigue are normal. Encourage her to log if her period started.`;
+    } else if (phase.includes("menstrual") || phase.includes("period")) {
+      aiCycleInsight = "Her period is active right now. Rest, hydration, and warmth are recommended.";
+    } else if (phase.includes("luteal") || phase.includes("pms")) {
+      if (daysUntilNextPeriod !== null && daysUntilNextPeriod > 0) {
+        aiCycleInsight = `Her period is predicted in approximately ${daysUntilNextPeriod} days. Pre-menstrual mood changes or mild cramps may appear.`;
+      } else if (daysUntilNextPeriod === 0) {
+        aiCycleInsight = "Her period is expected today or within the next 24 hours. Keep supplies and comfort items accessible.";
+      } else {
+        aiCycleInsight = "She is in her Luteal phase. Mood sensitivity or energy shifts are typical.";
+      }
+    } else if (phase.includes("ovulation")) {
+      aiCycleInsight = "Mid-cycle ovulation phase. Confidence, social energy, and focus are usually at peak.";
+    } else if (phase.includes("follicular")) {
+      aiCycleInsight = "Post-period follicular renewal. Estrogen is rising, supporting high stamina and creativity.";
+    }
+
+    let trackerStatusMessage = "Logged today in period tracker ✅";
+    if (trackerDaysInactive === 1) {
+      trackerStatusMessage = "Not logged today (last log yesterday)";
+    } else if (trackerDaysInactive >= 2) {
+      trackerStatusMessage = `Not logged in period tracker for ${trackerDaysInactive} days ⚠️`;
+    } else if (recentCycleLogs.length === 0) {
+      trackerStatusMessage = "No cycle or period logs recorded yet ⚠️";
+    }
+
+    const cycleData = {
+      trackerMode: cycleProfile?.trackerMode || "watching_waiting",
+      currentPhase: cycleProfile?.currentPhase || "waiting",
+      currentCycleDay: cycleProfile?.currentCycleDay || null,
+      lastPeriodStart: cycleProfile?.lastPeriodStart || null,
+      predictedNextStart: cycleProfile?.predictedNextStart || expectedPeriodStart || null,
+      predictedNextEnd: cycleProfile?.predictedNextEnd || null,
+      daysUntilNextPeriod,
+      isPeriodLate,
+      daysLate,
+      avgCycleLength: cycleProfile?.avgCycleLength || 28,
+      avgPeriodDuration: cycleProfile?.avgPeriodDuration || 5,
+      currentLogStreak: cycleProfile?.currentLogStreak || 0,
+      daysInactive: trackerDaysInactive,
+      trackerStatusMessage,
+      aiCycleInsight,
+      recentLogs: recentCycleLogs.slice(0, 7).map(log => ({
+        date: log.date,
+        flow: log.flow,
+        moodPrimary: log.moodPrimary,
+        symptoms: log.symptoms,
+        crampIntensity: log.crampIntensity,
+        energyLevel: log.energyLevel,
+        sleepHours: log.sleepHours
+      }))
+    };
+
+    // 4. Learning Journey Data
+    const completedNodesCount = creativeProgresses.filter(p => p.status === "COMPLETED").length;
+    const todayNodesCount = creativeProgresses.filter(p => new Date(p.updatedAt) >= todayStart && p.status === "COMPLETED").length;
+    const totalXpEarned = creativeProgresses.reduce((acc, curr) => acc + (curr.xpEarned || 0), 0);
+    const totalCoinsEarned = creativeProgresses.reduce((acc, curr) => acc + (curr.coinsEarned || 0), 0);
+
+    const activeProgress = creativeProgresses[0];
+    let activeJourneyTitle = "Creative Journey";
+    let activeEpisodeTitle = null;
+    if (activeProgress && activeProgress.episode) {
+      activeEpisodeTitle = activeProgress.episode.title;
+      if (activeProgress.episode.journey) {
+        activeJourneyTitle = activeProgress.episode.journey.title;
+      }
+    }
+
+    const journeyData = {
+      activeJourneyTitle,
+      activeEpisodeTitle,
+      completedNodesCount,
+      todayNodesCount,
+      totalXpEarned,
+      totalCoinsEarned,
+      daysInactive: journeyDaysInactive,
+      lastNodeCompletedAt: activeProgress?.updatedAt || null
+    };
+
+    // 5. Course / Programs & Sessions
+    const uniquePrograms = Array.from(new Set(enrollments.map(e => e.program.title)));
+    const upcomingSessions = expertSessions.filter(s => new Date(s.scheduledAt) >= new Date() && (s.status === "SCHEDULED" || s.status === "RESCHEDULED"));
+    const completedSessionsCount = expertSessions.filter(s => s.status === "COMPLETED").length;
+    const nextSession = upcomingSessions.length > 0 ? upcomingSessions[0] : null;
+
+    const programData = {
+      enrolledPrograms: uniquePrograms,
+      totalCompletedSessions: completedSessionsCount,
+      daysInactive: sessionDaysInactive,
+      nextSession: nextSession ? {
+        scheduledAt: nextSession.scheduledAt,
+        status: nextSession.status,
+        expertName: nextSession.expert?.profile?.displayName || nextSession.expert?.username || "Infano Specialist"
+      } : null
+    };
+
+    // 6. Mood Breakdown & Trends (Last 30 days)
+    const moodCounts: Record<string, number> = {};
+    let totalMoodLogs = 0;
+    for (const log of recentCycleLogs) {
+      if (log.moodPrimary) {
+        const mood = log.moodPrimary.toLowerCase();
+        moodCounts[mood] = (moodCounts[mood] || 0) + 1;
+        totalMoodLogs++;
+      }
+    }
+
+    let topMood = "Balanced";
+    let maxCount = 0;
+    for (const [m, count] of Object.entries(moodCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        topMood = m;
+      }
+    }
+
+    let aiMoodInsight = "Her mood has been stable with regular check-ins.";
+    if (totalMoodLogs > 0) {
+      if (topMood === "happy" || topMood === "great") {
+        aiMoodInsight = `Predominantly joyful and upbeat over the past ${totalMoodLogs} logs (${Math.round((maxCount / totalMoodLogs) * 100)}% Happy).`;
+      } else if (topMood === "calm" || topMood === "relaxed") {
+        aiMoodInsight = `Maintaining a calm, grounded emotional state across recent days.`;
+      } else if (topMood === "tired" || topMood === "exhausted") {
+        aiMoodInsight = `Frequent fatigue or lower energy noted. Ensure balanced sleep and light physical recovery.`;
+      } else if (topMood === "anxious" || topMood === "sad" || topMood === "irritable") {
+        aiMoodInsight = `Elevated sensitivity or stress reported recently. Warm, low-pressure conversations are suggested.`;
+      }
+    }
+
+    const moodData = {
+      moodCounts,
+      totalMoodLogs,
+      topMood,
+      aiMoodInsight,
+      recentTimeline: recentCycleLogs.slice(0, 14).map(l => ({
+        date: l.date,
+        mood: l.moodPrimary,
+        symptoms: l.symptoms,
+        energy: l.energyLevel
+      }))
+    };
+
+    // 7. Recent Reflections / Ask Gigi Entries
+    const reflections = askGigiEntries.slice(0, 5).map(entry => ({
+      id: entry.id,
+      promptText: entry.episode?.title || "Journal Reflection",
+      entryText: entry.entryText,
+      createdAt: entry.createdAt
+    }));
+
+    // 8. Weekly Summary Card Synthesis
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const logsThisWeek = recentCycleLogs.filter(l => new Date(l.date) >= sevenDaysAgo);
+    const activeNodesThisWeek = creativeProgresses.filter(p => new Date(p.updatedAt) >= sevenDaysAgo && p.status === "COMPLETED");
+
+    let weeklyGrade = "Balanced";
+    if (wellnessScore >= 80) weeklyGrade = "Thriving";
+    else if (wellnessScore < 60) weeklyGrade = "Needs Care";
+
+    const highlights: string[] = [];
+    if (logsThisWeek.length > 0) {
+      highlights.push(`Logged health & mood on ${logsThisWeek.length} of the last 7 days`);
+    } else {
+      highlights.push(`No health logs recorded this week`);
+    }
+
+    if (activeNodesThisWeek.length > 0) {
+      highlights.push(`Completed ${activeNodesThisWeek.length} learning modules`);
+    }
+
+    if (nextSession) {
+      highlights.push(`Upcoming expert session scheduled for ${new Date(nextSession.scheduledAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+    } else if (completedSessionsCount > 0) {
+      highlights.push(`Completed ${completedSessionsCount} guidance sessions to date`);
+    }
+
+    // Actionable Parenting Tip based on current phase and mood
+    let parentTip = "Offer a listening ear and gentle encouragement this week to support her routines.";
+    const currentPhaseLower = (cycleProfile?.currentPhase || "").toLowerCase();
+    if (isPeriodLate) {
+      parentTip = `Her period is currently ${daysLate} ${daysLate === 1 ? 'day' : 'days'} late. Stress or school fatigue can delay teen cycles. Keep a warm, supportive atmosphere and remind her to track symptoms.`;
+    } else if (currentPhaseLower.includes("luteal") || currentPhaseLower.includes("pms")) {
+      parentTip = "She may experience mood fluctuations or lower energy. Warm teas, low-pressure conversations, and rest will support her well.";
+    } else if (currentPhaseLower.includes("menstrual") || currentPhaseLower.includes("period")) {
+      parentTip = "Her body is recharging. Hydration, balanced warm meals, and plenty of rest are especially helpful right now.";
+    } else if (currentPhaseLower.includes("follicular") || currentPhaseLower.includes("ovulation")) {
+      parentTip = "Energy and confidence are typically elevated. This is a great time to encourage new goals, hobbies, and family activities.";
+    }
+
+    const weeklySummary = {
+      weeklyGrade,
+      activeDaysThisWeek: logsThisWeek.length,
+      wellnessScore,
+      highlights,
+      parentTip,
+      generatedAt: new Date()
+    };
+
+    return {
+      teenId,
+      displayName,
+      avatarUrl,
+      phone,
+      wellnessScore,
+      activityStatus: {
+        daysInactive,
+        isInactiveWarning,
+        statusText: activityStatusText,
+        lastActiveAt
+      },
+      todayActivity,
+      cycleData,
+      journeyData,
+      programData,
+      moodData,
+      reflections,
+      weeklySummary,
+      recentCrisisAlert: recentCrisisAlert ? {
+        title: recentCrisisAlert.title,
+        body: recentCrisisAlert.body,
+        sentAt: recentCrisisAlert.sentAt
+      } : null
+    };
+  }
+
   // --- Expert Session Methods ---
 
   static async getExpertSlots(expertId: string) {

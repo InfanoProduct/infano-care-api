@@ -1,9 +1,8 @@
-import { PrismaClient, ChatSender, EscalationLevel } from '@prisma/client';
+import { prisma, ChatSender, EscalationLevel } from '../../db/client.js';
 import { logger } from '../../config/logger.js';
 import { AppError } from '../../common/middleware/errorHandler.js';
 import { nsp as peerlineNsp } from '../peerline/peerline.socket.js';
-
-const prisma = new PrismaClient();
+import { CrisisAlertService } from '../safety/crisis-alert.service.js';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const OPENAI_MODERATION_URL = 'https://api.openai.com/v1/moderations';
@@ -653,6 +652,11 @@ SUGGESTING PROGRAMS & JOURNEYS:
       const distressWords = ['hurt', 'die', 'kill', 'suicide', 'abuse', 'safe', 'cutting'];
       const isCrisis = distressWords.some(w => content.toLowerCase().includes(w));
       const currentLevel = isCrisis ? EscalationLevel.LEVEL_3 : EscalationLevel.LEVEL_0;
+
+      // Real-time parent notification on suicide / self-harm distress
+      CrisisAlertService.checkAndNotifyCrisis(userId, content, 'GIGI_CHAT').catch((err) => {
+        logger.error({ err, userId }, 'Failed to check/notify crisis in Gigi chat');
+      });
 
       // 6. Save & Return Gigi Response
       const savedMsg = await prisma.chatMessage.create({

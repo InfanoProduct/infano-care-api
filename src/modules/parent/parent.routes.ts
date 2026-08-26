@@ -20,6 +20,7 @@ router.get("/notifications", ParentController.getNotifications);
 router.delete("/notifications/:id", ParentController.dismissNotification);
 router.delete("/notifications", ParentController.clearAllNotifications);
 router.get("/dashboard-summary", ParentController.getDashboardSummary);
+router.get("/daughter/:teenId/report", ParentController.getDaughterReport);
 router.post("/cancel/:id", ParentController.cancelInvite);
 router.post("/accept/:id", ParentController.acceptInvite);
 

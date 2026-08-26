@@ -148,4 +148,59 @@ export function initParentJobs() {
       logger.error({ err: error }, "[CRON] Error in Expert Session 15-Minute Reminders job");
     }
   });
+
+  // Run every Sunday at 18:00 (6 PM) to notify parents of their daughter's weekly wellness summary
+  cron.schedule("0 18 * * 0", async () => {
+    logger.info("[CRON] Running Weekly Daughter Summary Notifications job for parents...");
+    try {
+      const activeLinks = await prisma.parentLink.findMany({
+        where: {
+          status: "LINKED",
+          parentId: { not: null },
+          teenId: { not: null }
+        },
+        include: {
+          parent: { include: { profile: true } },
+          teen: { include: { profile: true } }
+        }
+      });
+
+      for (const link of activeLinks) {
+        if (!link.parentId || !link.parent || !link.teen) continue;
+
+        const teenName = link.teen.profile?.displayName || link.teen.username || "your daughter";
+        const title = "Weekly Wellness Summary 📊";
+        const body = `${teenName}'s weekly wellness & activity summary is ready to view. Tap to see her progress and parenting insights.`;
+        const deepLink = `infano://account/family`;
+        const type = "weeklySummaryReport";
+
+        await prisma.notificationHistory.create({
+          data: {
+            userId: link.parentId,
+            type,
+            title,
+            body,
+            deepLink,
+            payload: { teenId: link.teenId },
+            sentAt: new Date()
+          }
+        });
+
+        if (link.parent.fcmToken) {
+          try {
+            await FirebaseService.sendPushNotification(link.parent.fcmToken, {
+              title,
+              body,
+              deepLink,
+              data: { notificationType: type, teenId: link.teenId || "" }
+            });
+          } catch (err) {
+            logger.error({ err, parentId: link.parentId }, "Failed to send FCM push for weekly summary to parent");
+          }
+        }
+      }
+    } catch (error) {
+      logger.error({ err: error }, "[CRON] Error in Weekly Daughter Summary Notifications job");
+    }
+  });
 }
