@@ -269,18 +269,30 @@ export class CreativeJourneyService {
         }
       }
 
-      // Award coins via gamification ONLY on first-time completion
-      if (coinsToAward > 0) {
+      // Award XP & Spendable Coins via gamification ONLY on first-time completion
+      if (isFirstTimeCompletion) {
         try {
+          const xp = 50;
+          const coins = 10; // ~500 coins total for 50 nodes across a full journey
           await GamificationService.awardPoints(
             userId,
-            coinsToAward,
+            xp,
+            coins,
             "creative_journey_node",
             nodeId,
             `Completed node ${nodeId}`
           );
         } catch (e) {
-          console.error("[CREATIVE JOURNEY] Failed to award coins:", e);
+          console.error("[CREATIVE JOURNEY] Failed to award XP/coins:", e);
+        }
+
+        // Trigger quest completion evaluation for Explore Episode / Complete Node
+        try {
+          const { QuestService } = await import("../quest/quest.service.js");
+          await QuestService.evaluateCompletion(userId, { type: "node_completed" });
+          await QuestService.evaluateCompletion(userId, { type: "episode_started" });
+        } catch (e) {
+          console.error("[CREATIVE JOURNEY] Failed to evaluate quest completion:", e);
         }
       }
     }

@@ -95,6 +95,8 @@ model User {
   sosPreference             UserSosPreference?
   userStreak                UserStreak?
   userWeeklyChallenges      UserWeeklyChallenge[]
+  coinLedger                CoinLedger[]
+  userInventory             UserInventory[]
   webinarRegistrations      WebinarRegistration[]
   joinedCircles             CommunityCircle[]        @relation("CircleMembers")
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
@@ -431,10 +433,36 @@ model UserLevel {
   userId        String    @id
   currentLevel  Int       @default(1)
   pointsTotal   Int       @default(0)
+  coinsBalance  Int       @default(0)
   coinsTotal    Int       @default(0)
   lastLevelUpAt DateTime?
   updatedAt     DateTime  @updatedAt
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoinLedger {
+  id          String   @id @default(uuid())
+  userId      String
+  amount      Int
+  type        String
+  referenceId String?
+  description String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model UserInventory {
+  id          String   @id @default(uuid())
+  userId      String
+  itemType    String
+  itemId      String
+  quantity    Int      @default(1)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemType, itemId])
 }
 
 model SeasonalEvent {

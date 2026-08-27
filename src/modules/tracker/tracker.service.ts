@@ -78,10 +78,17 @@ export class TrackerService {
     // 4. Trigger Cycle Recalculation if Period Flow changed
     let cycleUpdated = false;
     let milestone: string | null = null;
+    let extraQuestPoints = 0;
+
     if (details.flow && details.flow !== "none" && details.flow !== "ended") {
       const result = await this.handlePeriodStart(userId, logDate, wasWatching);
       cycleUpdated = true;
       if (result.firstPeriod) milestone = "first_period";
+      extraQuestPoints += await QuestService.evaluateCompletion(userId, { type: "period_start_marked" });
+    }
+
+    if (details.flow === "ended") {
+      extraQuestPoints += await QuestService.evaluateCompletion(userId, { type: "period_end_marked" });
     }
 
     // 5. Award points ONLY for a brand-new log saved for TODAY
@@ -89,13 +96,13 @@ export class TrackerService {
     //    - Logging past days → no points
     //    - Points come exclusively from active quest rewards
     //    - Once all quests are exhausted, no further points are given
-    let totalPoints = 0;
+    let totalPoints = extraQuestPoints;
     const today = new Date();
     const isToday = logDate.toISOString().split('T')[0] === today.toISOString().split('T')[0];
 
-    if (isNewLog && isToday) {
+    if (isToday) {
       const questPoints = await QuestService.evaluateCompletion(userId, { type: "log_saved" });
-      totalPoints = questPoints; // 0 if no active quest matches — intentional
+      totalPoints += questPoints;
     }
 
     if (milestone === "first_period") {
@@ -367,6 +374,7 @@ export class TrackerService {
         await GamificationService.awardPoints(
           userId,
           200,
+          40,
           "milestone",
           undefined,
           "Milestone: First period logged"
@@ -523,22 +531,22 @@ export class TrackerService {
         },
       });
     }
-    // Award 20 coins for period tracker setup ONLY ONCE
+    // Award 15 coins & 100 XP for period tracker setup ONLY ONCE
     const existingLedger = await prisma.pointsLedger.findFirst({
       where: { userId, sourceType: "tracker_setup" },
     });
     if (!existingLedger) {
       await GamificationService.awardPoints(
         userId,
-        20,
+        100,
+        15,
         "tracker_setup",
         undefined,
-        "Completed Period Tracker Setup (+20 Coins)"
+        "Completed Period Tracker Setup (+100 XP • +15 Coins)"
       );
     }
     // Evaluate quest completion for cycle setup
     try {
-      const { QuestService } = await import("../quest/quest.service.js");
       await QuestService.evaluateCompletion(userId, { type: "cycle_setup_completed" });
     } catch (e) {
       console.error("[TRACKER] Failed to trigger quest completion for setup:", e);

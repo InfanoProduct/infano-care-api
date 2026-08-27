@@ -36,14 +36,17 @@ export class MindfulService {
       totalPoints = pointsAwarded;
     } else {
       const { GamificationService } = await import("../quest/gamification.service.js");
+      const xp = activity.points || 30;
+      const coins = Math.max(5, Math.round(xp / 5));
       await GamificationService.awardPoints(
         userId,
-        activity.points || 30,
+        xp,
+        coins,
         "mindfulness",
         activityId,
         `Completed Mindful Minute: ${activity.title}`
       );
-      totalPoints = activity.points || 30;
+      totalPoints = xp;
     }
 
     return { success: true, pointsEarned: totalPoints };

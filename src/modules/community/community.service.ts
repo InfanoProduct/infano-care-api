@@ -371,6 +371,14 @@ export class CommunityService {
       }
     });
 
+    // Trigger quest evaluation for Connect & Share
+    try {
+      const { QuestService } = await import("../quest/quest.service.js");
+      await QuestService.evaluateCompletion(userId, { type: "post_created" });
+    } catch (e) {
+      console.error("[COMMUNITY] Quest evaluation failed:", e);
+    }
+
     return post;
   }
 
