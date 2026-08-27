@@ -935,6 +935,7 @@ export class PeerLineService {
                 unavailableUntil: true,
                 certifiedTopicIds: true,
                 mentorExpertise: true,
+                specialisation: true,
                 bio: true,
                 completedSessionsCount: true,
               }
@@ -960,7 +961,7 @@ export class PeerLineService {
 
       const formatted = mentors.map(m => {
         const isOnline = m.profile?.isAvailable && (!m.profile.unavailableUntil || m.profile.unavailableUntil < new Date());
-        const topicNames = (m.profile?.certifiedTopicIds || []).map(id => topicNameMap[id]).filter(Boolean);
+        const topicNames = (m.profile?.certifiedTopicIds || []).map(id => topicNameMap[id]).filter((t): t is string => Boolean(t));
         const expertise = (m.profile?.mentorExpertise as any) || {};
         let expertiseTags: string[] = [];
         
@@ -974,7 +975,7 @@ export class PeerLineService {
         const activeSession = activeSessions.find(s => s.mentorId === m.id || s.menteeId === m.id);
 
         const mainTopic = topicNames[0] || 'Emotional Health';
-        const headline = m.profile?.specialisation || (topicNames.some(t => t.toLowerCase().includes('mental'))
+        const headline = m.profile?.specialisation || (topicNames.some(t => t?.toLowerCase().includes('mental'))
           ? 'Certified Peer Listener & Emotional Health Coach'
           : `Certified Peer Listener & ${mainTopic} Mentor`);
 
