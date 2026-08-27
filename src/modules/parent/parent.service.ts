@@ -252,14 +252,25 @@ export class ParentService {
         orderBy: { createdAt: "desc" }
       });
 
+      const receiverPhones = links.map(l => l.receiverPhone).filter(Boolean);
+      const receiverUsers = receiverPhones.length > 0
+        ? await prisma.user.findMany({
+            where: { phone: { in: receiverPhones } },
+            include: { profile: true }
+          })
+        : [];
+      const receiverMap = new Map(receiverUsers.map(u => [u.phone, u]));
+
       // Calculate wellness score for each link if the requesting user is the parent
       return await Promise.all(links.map(async (link) => {
         let wellnessScore: number | null = null;
         if (link.parentId === userId && link.teenId) {
           wellnessScore = await this.calculateWellnessScore(link.teenId);
         }
+        const receiverUser = receiverMap.get(link.receiverPhone);
         return {
           ...link,
+          receiver: receiverUser || (link.teenId === link.senderId ? link.parent : link.teen),
           wellnessScore
         };
       }));

@@ -264,15 +264,22 @@ export class AuthService {
 
     await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, finalUser.id);
 
+    const isFullyOnboarded = Boolean(
+      finalUser.isTestNumber ||
+      finalUser.accountStatus === "ACTIVE" ||
+      finalUser.onboardingCompletedAt !== null ||
+      (finalUser.profile?.displayName && finalUser.profile.displayName.trim().length > 0)
+    );
+
     return {
       accessToken,
       refreshToken,
       tempToken: accessToken, // Frontend expects tempToken
-      isNewUser,
+      isNewUser: !isFullyOnboarded,
       onboardingStep: finalUser.onboardingStep,
       onboardingStage: finalUser.onboardingStep, // Frontend expects onboardingStage
       accountStatus: finalUser.accountStatus,
-      isOnboardingCompleted: finalUser.onboardingCompletedAt !== null,
+      isOnboardingCompleted: isFullyOnboarded,
       role: finalUser.role,
       userId: finalUser.id,
       peerApplicationStatus: finalUser.peerApplication?.status || 'none',

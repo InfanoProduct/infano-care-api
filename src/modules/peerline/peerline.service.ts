@@ -950,7 +950,10 @@ export class PeerLineService {
 
       const activeSessions = await prisma.peerLineSession.findMany({
         where: {
-          menteeId: userId,
+          OR: [
+            { menteeId: userId },
+            { mentorId: userId },
+          ],
           status: { in: [PeerLineStatus.MATCHING, PeerLineStatus.QUEUED, PeerLineStatus.ACTIVE] }
         }
       });
@@ -968,20 +971,40 @@ export class PeerLineService {
           }
         });
 
-        const activeSession = activeSessions.find(s => s.mentorId === m.id);
+        const activeSession = activeSessions.find(s => s.mentorId === m.id || s.menteeId === m.id);
+
+        const mainTopic = topicNames[0] || 'Emotional Health';
+        const headline = m.profile?.specialisation || (topicNames.some(t => t.toLowerCase().includes('mental'))
+          ? 'Certified Peer Listener & Emotional Health Coach'
+          : `Certified Peer Listener & ${mainTopic} Mentor`);
+
+        const isMatchingOrQueued = activeSession
+          ? (activeSession.status === PeerLineStatus.MATCHING || activeSession.status === PeerLineStatus.QUEUED)
+          : false;
+        const isActive = activeSession ? (activeSession.status === PeerLineStatus.ACTIVE) : false;
 
         return {
           id: m.id,
           name: m.profile?.displayName || 'Peer Mentor',
+          fullName: m.profile?.displayName || 'Peer Mentor',
+          initial: (m.profile?.displayName || 'P').trim().charAt(0).toUpperCase(),
+          headline,
           isOnline,
           unavailableUntil: m.profile?.unavailableUntil,
           rating: 5.0,
+          reviewsCount: `${Math.max(24, (m.profile?.completedSessionsCount || 10) + 12)} reviews`,
+          sessionsCount: `${m.profile?.completedSessionsCount || 0}+ Mentees`,
+          responseTime: '< 15 mins',
+          languages: 'English, Hindi',
+          quote: m.profile?.bio || 'Helping girls navigate their journey with empathy and care.',
           topics: topicNames.length > 0 ? topicNames : ['Mental & Emotional Health', 'Personal Growth'],
           certifiedTopicIds: m.profile?.certifiedTopicIds || [],
           expertiseTags: [...new Set(expertiseTags)],
           bio: m.profile?.bio || 'Helping girls navigate their journey with empathy and care.',
+          fullBio: m.profile?.bio || 'Helping girls navigate their journey with empathy and care.',
           experienceCount: m.profile?.completedSessionsCount || 0,
-          hasPendingRequest: activeSession ? (activeSession.status === PeerLineStatus.MATCHING) : false,
+          hasPendingRequest: isMatchingOrQueued,
+          hasActiveSession: isActive,
           sessionId: activeSession ? activeSession.id : null,
         };
       });
