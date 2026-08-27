@@ -172,8 +172,8 @@ export class PredictionEngine {
     const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     const daysSinceStart = Math.ceil((today.getTime() - profile.lastPeriodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const currentPhase = this.calculatePhase(daysSinceStart, avgLength, profile.lastPeriodEnd);
-    const nextPhaseInfo = this.calculateNextPhase(daysSinceStart, avgLength, profile.lastPeriodEnd);
+    const currentPhase = this.calculatePhase(daysSinceStart, avgLength, profile.lastPeriodStart, profile.lastPeriodEnd);
+    const nextPhaseInfo = this.calculateNextPhase(daysSinceStart, avgLength, profile.lastPeriodStart, profile.lastPeriodEnd);
 
     return {
       predictedStart,
@@ -194,8 +194,8 @@ export class PredictionEngine {
     };
   }
 
-  private static calculatePhase(day: number, avgLength: number, lastPeriodEnd: Date | null): any {
-    if (lastPeriodEnd) {
+  private static calculatePhase(day: number, avgLength: number, lastPeriodStart: Date | null, lastPeriodEnd: Date | null): any {
+    if (lastPeriodEnd && lastPeriodStart && new Date(lastPeriodEnd).getTime() >= new Date(lastPeriodStart).getTime()) {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
       const end = new Date(lastPeriodEnd);
@@ -209,6 +209,11 @@ export class PredictionEngine {
       }
     }
 
+    if (lastPeriodStart) {
+      // Period has started and period end has not been marked yet!
+      return "menstrual";
+    }
+
     if (day <= 5) return "menstrual";
     if (day <= avgLength * 0.45) return "follicular";
     if (day <= avgLength * 0.55) return "ovulation";
@@ -216,13 +221,13 @@ export class PredictionEngine {
     return "delayed";
   }
 
-  private static calculateNextPhase(day: number, avgLength: number, lastPeriodEnd: Date | null): { name: any; daysLeft: number } {
+  private static calculateNextPhase(day: number, avgLength: number, lastPeriodStart: Date | null, lastPeriodEnd: Date | null): { name: any; daysLeft: number } {
     const follicularStart = 6;
     const ovulationStart = Math.floor(avgLength * 0.45) + 1;
     const lutealStart = Math.floor(avgLength * 0.55) + 1;
     const periodStart = Math.floor(avgLength) + 1;
 
-    if (lastPeriodEnd) {
+    if (lastPeriodEnd && lastPeriodStart && new Date(lastPeriodEnd).getTime() >= new Date(lastPeriodStart).getTime()) {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
       const end = new Date(lastPeriodEnd);
@@ -242,6 +247,10 @@ export class PredictionEngine {
       }
     }
 
+    if (lastPeriodStart) {
+      return { name: "follicular", daysLeft: 1 };
+    }
+    
     if (day < follicularStart) {
       return { name: "follicular", daysLeft: follicularStart - day };
     }

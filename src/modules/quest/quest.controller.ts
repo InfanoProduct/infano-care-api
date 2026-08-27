@@ -72,6 +72,45 @@ export class QuestController {
     res.json({ success: true, data: badgeGallery });
   }
 
+  // Reroll an uncompleted daily quest
+  static async rerollQuest(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const { questId } = req.body;
+    if (!questId) throw new Error("questId is required");
+    const updated = await QuestService.rerollQuest(userId, questId);
+    res.json({ success: true, data: updated });
+  }
+
+  // Gigi's Daily Vibe Check micro-activity
+  static async submitVibeCheck(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const { moodScore, energyScore, primaryEmotion } = req.body;
+    const result = await QuestService.submitVibeCheck(userId, { moodScore, energyScore, primaryEmotion });
+    res.json({ success: true, data: result });
+  }
+
+  // Quick Spark Trivia Blitz micro-activity
+  static async submitQuickSpark(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const { score, totalQuestions } = req.body;
+    const result = await QuestService.submitQuickSpark(userId, { score, totalQuestions });
+    res.json({ success: true, data: result });
+  }
+
+  // Open Mystery Discovery Chest (3/3 daily quests done)
+  static async openMysteryChest(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const result = await QuestService.openMysteryChest(userId);
+    res.json({ success: true, data: result });
+  }
+
+  // Buy Streak Freeze Token
+  static async buyStreakFreeze(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const result = await QuestService.buyStreakFreeze(userId);
+    res.json({ success: true, data: result });
+  }
+
   // Debug/Test endpoint to manually complete a quest
   static async completeQuestManual(req: Request, res: Response) {
     const userId = (req as any).user.id;

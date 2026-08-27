@@ -228,6 +228,7 @@ export class JournalService {
     try {
       const { QuestService } = await import("../quest/quest.service.js");
       await QuestService.evaluateCompletion(userId, { type: "journal_entry_created" });
+      await QuestService.evaluateCompletion(userId, { type: "reflection_added" });
     } catch (e) {
       console.error("[JOURNAL] Quest evaluation failed:", e);
     }
