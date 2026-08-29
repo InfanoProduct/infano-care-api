@@ -55,7 +55,7 @@ export class ParentService {
       where: {
         OR: [
           { senderId, receiverPhone },
-          { senderId: receiver.id, receiverPhone: sender.phone }
+          ...(sender.phone ? [{ senderId: receiver.id, receiverPhone: sender.phone }] : [])
         ]
       }
     });

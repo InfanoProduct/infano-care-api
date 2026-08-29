@@ -1,1 +1,0 @@
-import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { const apps = await prisma.peerApplication.findMany({ select: { id: true, name: true, certificationStatus: true }}); console.log(apps); } main();

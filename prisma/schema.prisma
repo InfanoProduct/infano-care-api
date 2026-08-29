@@ -26,7 +26,7 @@ model User {
   otpRetryCount             Int                      @default(0)
   otpSendOn                 DateTime?
   parentEmail               String?
-  phone                     String                   @unique
+  phone                     String?                  @unique
   privacyAcceptedAt         DateTime?
   role                      UserRole?
   termsAcceptedAt           DateTime?

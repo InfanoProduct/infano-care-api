@@ -80,7 +80,7 @@ export class AuthService {
     logger.debug({ phone: finalPhone, userStatus: user?.accountStatus, isTest: user?.isTestNumber }, "[AUTH] User lookup result");
 
     // 3. Rule 2: Test Number -> Bypass SMS send and set default OTP to 0000
-    const isTest = user?.isTestNumber === true || finalPhone === "+919742802063";
+    const isTest = user?.isTestNumber === true;
     if (isTest) {
       logger.info({ phone: finalPhone }, "[AUTH] Test number detected - bypassing SMS send, setting default OTP to 0000");
       await redis.setex(`otp:${finalPhone}`, OTP_TTL_SECONDS, hashOtp("0000"));
@@ -159,7 +159,7 @@ export class AuthService {
       }
     });
 
-    const isTest = user?.isTestNumber === true || finalPhone === "+919742802063";
+    const isTest = user?.isTestNumber === true;
 
     // 1. Test Number -> Allow ANY OTP or 0000
     if (isTest) {
