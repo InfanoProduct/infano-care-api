@@ -1,32 +1,13 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { logger } from "../../config/logger.js";
+import { sendEmail } from "../../common/services/email.service.js";
 
 const CONSENT_JWT_SECRET  = process.env.CONSENT_JWT_SECRET || "infano_consent_secret_dev";
 const CONSENT_TOKEN_TTL   = 7 * 24 * 60 * 60; // 7 days in seconds
-const APP_BASE_URL        = process.env.APP_BASE_URL || "http://localhost:4000";
-
-// ─── Email transport (Ethereal test in dev, real SMTP in prod) ────────────────
-async function getTransport() {
-  if (process.env.NODE_ENV === "production" && process.env.SMTP_HOST) {
-    return nodemailer.createTransport({
-      host:   process.env.SMTP_HOST,
-      port:   Number(process.env.SMTP_PORT) || 587,
-      auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
-  }
-  // Dev: use Ethereal (auto-creates free test account)
-  const testAccount = await nodemailer.createTestAccount();
-  const transport = nodemailer.createTransport({
-    host: "smtp.ethereal.email",
-    port: 587,
-    auth: { user: testAccount.user, pass: testAccount.pass },
-  });
-  return transport;
-}
+const APP_BASE_URL        = process.env.APP_BASE_URL || process.env.CLIENT_URL || process.env.FRONTEND_URL || "https://infano.care";
 
 // ─── Consent Service ─────────────────────────────────────────────────────────
 
@@ -55,54 +36,50 @@ export class ConsentService {
     const privacyUrl    = `${APP_BASE_URL}/privacy`;
     const displayName   = user.profile?.displayName ?? "your daughter";
 
-    const transport = await getTransport();
-
-    const info = await transport.sendMail({
-      from:    `"Infano.Care" <hello@infano.care>`,
-      to:      parentEmail,
-      subject: `[Infano.Care] ${displayName} wants to join — quick approval needed`,
-      html:    `
-        <div style="font-family: 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #f0e6ff;">
-          <div style="background: linear-gradient(135deg, #4a1e7f, #ec4899); padding: 32px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Infano.Care 🌸</h1>
-            <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0;">Your safe space to bloom</p>
-          </div>
-          <div style="padding: 32px; background: white;">
-            <h2 style="color: #1e1b4b;">Hi there! 👋</h2>
-            <p style="color: #4b5563; line-height: 1.7;">
-              <strong>${displayName}</strong> wants to join <strong>Infano.Care</strong> — 
-              a safe, COPPA-compliant platform designed for young girls to learn about their bodies, 
-              track their health, and build confidence in a supportive community.
-            </p>
-            <h3 style="color: #4a1e7f;">What Infano.Care does:</h3>
-            <ul style="color: #4b5563; line-height: 1.8;">
-              <li>📚 Age-appropriate health education (body, puberty, wellbeing)</li>
-              <li>📅 Period tracker with gentle predictions</li>
-              <li>💜 Supportive community and guided journeys</li>
-              <li>🔒 No ads. No data sold. Privacy first.</li>
-            </ul>
-            <p style="color: #4b5563; line-height: 1.7;">
-              Because ${displayName} is under 13, we need your approval before she can access any content. 
-              This link is valid for <strong>7 days</strong>.
-            </p>
-            <div style="text-align: center; margin: 32px 0;">
-              <a href="${approvalUrl}" style="background: linear-gradient(135deg, #4a1e7f, #ec4899); color: white; padding: 14px 32px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
-                ✅ Approve ${displayName}'s Account
-              </a>
-            </div>
-            <p style="color: #9ca3af; font-size: 13px;">
-              <a href="${privacyUrl}" style="color: #4a1e7f;">Read our full Privacy Policy</a> · 
-              This email was sent because someone entered this email as a parent/guardian. 
-              If you did not request this, please ignore.
-            </p>
-          </div>
+    const html = `
+      <div style="font-family: 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #f0e6ff;">
+        <div style="background: linear-gradient(135deg, #4a1e7f, #ec4899); padding: 32px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">Infano.Care 🌸</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0;">Your safe space to bloom</p>
         </div>
-      `,
-    });
+        <div style="padding: 32px; background: white;">
+          <h2 style="color: #1e1b4b;">Hi there! 👋</h2>
+          <p style="color: #4b5563; line-height: 1.7;">
+            <strong>${displayName}</strong> wants to join <strong>Infano.Care</strong> — 
+            a safe, COPPA-compliant platform designed for young girls to learn about their bodies, 
+            track their health, and build confidence in a supportive community.
+          </p>
+          <h3 style="color: #4a1e7f;">What Infano.Care does:</h3>
+          <ul style="color: #4b5563; line-height: 1.8;">
+            <li>📚 Age-appropriate health education (body, puberty, wellbeing)</li>
+            <li>📅 Period tracker with gentle predictions</li>
+            <li>💜 Supportive community and guided journeys</li>
+            <li>🔒 No ads. No data sold. Privacy first.</li>
+          </ul>
+          <p style="color: #4b5563; line-height: 1.7;">
+            Because ${displayName} is under 13, we need your approval before she can access any content. 
+            This link is valid for <strong>7 days</strong>.
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${approvalUrl}" style="background: linear-gradient(135deg, #4a1e7f, #ec4899); color: white; padding: 14px 32px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
+              ✅ Approve ${displayName}'s Account
+            </a>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px;">
+            <a href="${privacyUrl}" style="color: #4a1e7f;">Read our full Privacy Policy</a> · 
+            This email was sent because someone entered this email as a parent/guardian. 
+            If you did not request this, please ignore.
+          </p>
+        </div>
+      </div>
+    `;
 
-    if (process.env.NODE_ENV !== "production") {
-      logger.info({ previewUrl: nodemailer.getTestMessageUrl(info) }, "Consent email preview URL");
-    }
+    await sendEmail(
+      parentEmail,
+      `[Infano.Care] ${displayName} wants to join — quick approval needed`,
+      html
+    );
+    logger.info({ parentEmail, userId }, "Consent email sent successfully");
   }
 
   // Get consent status for polling
