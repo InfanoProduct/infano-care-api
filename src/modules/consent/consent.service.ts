@@ -5,15 +5,49 @@ import { AppError } from "../../common/middleware/errorHandler.js";
 import { logger } from "../../config/logger.js";
 import { sendEmail } from "../../common/services/email.service.js";
 
+import type { Request } from "express";
+
 const CONSENT_JWT_SECRET  = process.env.CONSENT_JWT_SECRET || "infano_consent_secret_dev";
 const CONSENT_TOKEN_TTL   = 7 * 24 * 60 * 60; // 7 days in seconds
-const APP_BASE_URL        = process.env.APP_BASE_URL || process.env.CLIENT_URL || process.env.FRONTEND_URL || "https://infano.care";
+
+export function getAppBaseUrl(req?: Request): string {
+  // 1. Explicit env variable overrides all
+  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, "");
+  if (process.env.CLIENT_URL) return process.env.CLIENT_URL.replace(/\/$/, "");
+  if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/$/, "");
+
+  // 2. Identify from request host / origin if available
+  if (req) {
+    const host = (req.get("x-forwarded-host") || req.get("host") || "").toLowerCase();
+    const origin = (req.get("origin") || req.get("referer") || "").toLowerCase();
+
+    if (host.includes("api-dev") || host.includes("dev.infano.care") || origin.includes("dev.infano.care")) {
+      return "https://dev.infano.care";
+    }
+    if (host.includes("localhost") || host.includes("127.0.0.1") || origin.includes("localhost")) {
+      return "http://localhost:3000";
+    }
+  }
+
+  // 3. Fallback based on NODE_ENV / SERVER_ENV
+  const isDevelopment =
+    process.env.NODE_ENV === "development" ||
+    process.env.SERVER_ENV === "dev" ||
+    process.env.ENVIRONMENT === "development";
+
+  if (isDevelopment) {
+    return "https://dev.infano.care";
+  }
+
+  // 4. Production default
+  return "https://infano.care";
+}
 
 // ─── Consent Service ─────────────────────────────────────────────────────────
 
 export class ConsentService {
   // Send COPPA parental consent email
-  static async sendConsentEmail(userId: string, parentEmail: string): Promise<void> {
+  static async sendConsentEmail(userId: string, parentEmail: string, req?: Request): Promise<void> {
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });
     if (!user) throw new AppError("User not found.", 404);
 
@@ -32,8 +66,9 @@ export class ConsentService {
       },
     });
 
-    const approvalUrl   = `${APP_BASE_URL}/parent/consent/approve?token=${token}`;
-    const privacyUrl    = `${APP_BASE_URL}/privacy`;
+    const appBaseUrl    = getAppBaseUrl(req);
+    const approvalUrl   = `${appBaseUrl}/parent/consent/approve?token=${token}`;
+    const privacyUrl    = `${appBaseUrl}/privacy`;
     const displayName   = user.profile?.displayName ?? "your daughter";
 
     const html = `

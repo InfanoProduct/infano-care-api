@@ -37,7 +37,7 @@ const router = Router();
 router.post("/send", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { parentEmail } = z.object({ parentEmail: z.string().email() }).parse(req.body);
-    await ConsentService.sendConsentEmail((req as any).userId, parentEmail);
+    await ConsentService.sendConsentEmail((req as any).userId, parentEmail, req);
     res.status(200).json({ message: "Consent email sent to parent." });
   } catch (e) { next(e); }
 });
