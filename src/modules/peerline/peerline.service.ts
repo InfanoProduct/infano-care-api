@@ -1010,84 +1010,11 @@ export class PeerLineService {
         };
       });
 
-      if (formatted.length > 0) {
-        return formatted;
-      }
+      return formatted;
     } catch (error) {
-      logger.warn(`[PeerLineService] Error searching mentors from DB: ${error}. Serving default mentors list.`);
+      logger.warn(`[PeerLineService] Error searching mentors from DB: ${error}.`);
+      return [];
     }
-
-    // Default verified mentors fallback
-    return [
-      {
-        id: 'mentor-khushi',
-        name: 'Khushi',
-        fullName: 'Khushi Sharma',
-        headline: 'Certified Peer Listener & Emotional Health Coach',
-        rating: 5.0,
-        reviewsCount: '48 reviews',
-        sessionsCount: '140+ Mentees',
-        responseTime: '< 15 mins',
-        languages: 'English, Hindi',
-        topics: ['Mental & Emotional Health', 'Identity & Personal Growth'],
-        certifiedTopicIds: ['mental_health', 'body_confidence'],
-        isOnline: true,
-        bio: 'Hi there! I am Khushi, a certified peer mentor passionate about creating a safe, judgment-free space for young girls. Whether you are navigating school stress, emotional highs & lows, or just need a warm listening ear, I am here to help you feel supported and heard.',
-        hasPendingRequest: false,
-        sessionId: null,
-      },
-      {
-        id: 'mentor-ananya',
-        name: 'Ananya',
-        fullName: 'Ananya Roy',
-        headline: 'Academic Stress & Self-Confidence Mentor',
-        rating: 5.0,
-        reviewsCount: '36 reviews',
-        sessionsCount: '115+ Mentees',
-        responseTime: '< 10 mins',
-        languages: 'English, Bengali',
-        topics: ['Academic & School Support', 'Self Confidence'],
-        certifiedTopicIds: ['academic'],
-        isOnline: true,
-        bio: 'Hello! I am Ananya. School, exams, and peer pressure can feel overwhelming at times. I offer actionable coping strategies, study-life balance tips, and genuine peer encouragement so you never feel alone in your journey.',
-        hasPendingRequest: false,
-        sessionId: null,
-      },
-      {
-        id: 'mentor-rhea',
-        name: 'Rhea',
-        fullName: 'Rhea Kapoor',
-        headline: 'Body Confidence & Mindfulness Peer Guide',
-        rating: 4.9,
-        reviewsCount: '52 reviews',
-        sessionsCount: '160+ Mentees',
-        responseTime: '< 20 mins',
-        languages: 'English, Hindi',
-        topics: ['Body Confidence & Growth', 'Wellness & Mindfulness'],
-        certifiedTopicIds: ['body_confidence'],
-        isOnline: true,
-        bio: 'Welcome! I am Rhea. Loving yourself and feeling comfortable in your own skin is a process. I am here to share mindful self-care rituals, body-positivity practices, and a gentle space where you can share your thoughts freely.',
-        hasPendingRequest: false,
-        sessionId: null,
-      },
-      {
-        id: 'mentor-priya',
-        name: 'Priya',
-        fullName: 'Priya Verma',
-        headline: 'Relationships & Peer Harmony Advocate',
-        rating: 5.0,
-        reviewsCount: '42 reviews',
-        sessionsCount: '130+ Mentees',
-        responseTime: '< 12 mins',
-        languages: 'English, Punjabi',
-        topics: ['Friendship & Relationships', 'Emotional Health'],
-        certifiedTopicIds: ['relationships', 'mental_health'],
-        isOnline: true,
-        bio: 'Hi! I am Priya. Navigating friendships, family expectations, and personal growth can get confusing. I specialize in helping girls communicate effectively, set healthy boundaries, and build meaningful relationships.',
-        hasPendingRequest: false,
-        sessionId: null,
-      },
-    ];
   }
 
   async updateMentorExpertise(userId: string, expertise: any) {
