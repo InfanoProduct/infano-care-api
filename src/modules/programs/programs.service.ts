@@ -860,7 +860,7 @@ export class ProgramsService {
       }
     }
 
-    const demoPrice = 29; // ₹29 paid demo session fee
+    const demoPrice = 9; // ₹9 paid demo session fee
     let razorpayOrderId: string | null = null;
 
     if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
@@ -980,7 +980,7 @@ export class ProgramsService {
           slot_date: updatedDemo.slotDate || "",
           slot_time: updatedDemo.slotTime || "",
           comment: updatedDemo.comment || updatedDemo.confidence || "",
-          amount: updatedDemo.amount || 29,
+          amount: updatedDemo.amount || 9,
           payment_id: updatedDemo.razorpayPaymentId || undefined,
           programs: await Promise.all(programsList.map(async p => {
             let imgUrl = p.thumbnailUrl || "";

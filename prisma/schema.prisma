@@ -1337,7 +1337,7 @@ model DemoSession {
   slotDate          String?
   slotTime          String?
   status            String        @default("PENDING")
-  amount            Float         @default(29)
+  amount            Float         @default(9)
   paymentStatus     PaymentStatus @default(PENDING)
   paymentMethod     PaymentMethod @default(ONLINE)
   razorpayOrderId   String?       @unique
