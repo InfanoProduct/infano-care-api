@@ -66,6 +66,8 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/auth/consent", consentRoutes);
+app.use("/api/consent", consentRoutes);
+app.use("/parent/consent", consentRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/tracker", trackerRoutes);

@@ -1,1 +1,0 @@
-import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { const apps = await prisma.peerApplication.findMany(); console.log(JSON.stringify(apps, null, 2)); } main();

@@ -79,11 +79,12 @@ export class AuthService {
     // to allow new users to register.
     logger.debug({ phone: finalPhone, userStatus: user?.accountStatus, isTest: user?.isTestNumber }, "[AUTH] User lookup result");
 
-    // 3. Rule 2: Test Number -> Bypass OTP
-    if (user?.isTestNumber) {
-      logger.info({ phone: finalPhone }, "Test number detected - bypassing OTP send and providing auto-login");
-      const loginData = await this.verifyOtp(finalPhone, "0000"); // 0000 is dummy as it's bypassed anyway
-      return { autoLogin: loginData };
+    // 3. Rule 2: Test Number -> Bypass SMS send and set default OTP to 0000
+    const isTest = user?.isTestNumber === true;
+    if (isTest) {
+      logger.info({ phone: finalPhone }, "[AUTH] Test number detected - bypassing SMS send, setting default OTP to 0000");
+      await redis.setex(`otp:${finalPhone}`, OTP_TTL_SECONDS, hashOtp("0000"));
+      return;
     }
 
     // 4. Rule 3: Rate Limiting (1-minute cooldown + 5 retries in 24h)
@@ -158,9 +159,11 @@ export class AuthService {
       }
     });
 
-    // 1. Test Number -> Allow ANY OTP
-    if (user?.isTestNumber) {
-      logger.info({ phone: finalPhone }, "Test number detected - allowing ANY OTP bypass");
+    const isTest = user?.isTestNumber === true;
+
+    // 1. Test Number -> Allow ANY OTP or 0000
+    if (isTest) {
+      logger.info({ phone: finalPhone }, "[AUTH] Test number detected - allowing OTP verification (default 0000)");
       // Bypass external verification for test users
     } else if (process.env.SMS_PROVIDER === "mock") {
       const storedHash = await redis.get(`otp:${finalPhone}`);
@@ -261,15 +264,21 @@ export class AuthService {
 
     await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, finalUser.id);
 
+    const isFullyOnboarded = Boolean(
+      finalUser.accountStatus === "ACTIVE" ||
+      finalUser.onboardingCompletedAt !== null ||
+      (finalUser.profile?.displayName && finalUser.profile.displayName.trim().length > 0)
+    );
+
     return {
       accessToken,
       refreshToken,
       tempToken: accessToken, // Frontend expects tempToken
-      isNewUser,
+      isNewUser: !isFullyOnboarded,
       onboardingStep: finalUser.onboardingStep,
       onboardingStage: finalUser.onboardingStep, // Frontend expects onboardingStage
       accountStatus: finalUser.accountStatus,
-      isOnboardingCompleted: finalUser.onboardingCompletedAt !== null,
+      isOnboardingCompleted: isFullyOnboarded,
       role: finalUser.role,
       userId: finalUser.id,
       peerApplicationStatus: finalUser.peerApplication?.status || 'none',

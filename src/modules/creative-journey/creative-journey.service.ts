@@ -1,6 +1,7 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { GamificationService } from "../quest/gamification.service.js";
+import { CrisisAlertService } from "../safety/crisis-alert.service.js";
 
 // ── Seeded Shuffle Utility ────────────────────────────────────────────────────
 // Uses a deterministic LCG PRNG so the same userId+episodeId always produces
@@ -269,18 +270,30 @@ export class CreativeJourneyService {
         }
       }
 
-      // Award coins via gamification ONLY on first-time completion
-      if (coinsToAward > 0) {
+      // Award XP & Spendable Coins via gamification ONLY on first-time completion
+      if (isFirstTimeCompletion) {
         try {
+          const xp = 50;
+          const coins = 10; // ~500 coins total for 50 nodes across a full journey
           await GamificationService.awardPoints(
             userId,
-            coinsToAward,
+            xp,
+            coins,
             "creative_journey_node",
             nodeId,
             `Completed node ${nodeId}`
           );
         } catch (e) {
-          console.error("[CREATIVE JOURNEY] Failed to award coins:", e);
+          console.error("[CREATIVE JOURNEY] Failed to award XP/coins:", e);
+        }
+
+        // Trigger quest completion evaluation for Explore Episode / Complete Node
+        try {
+          const { QuestService } = await import("../quest/quest.service.js");
+          await QuestService.evaluateCompletion(userId, { type: "node_completed" });
+          await QuestService.evaluateCompletion(userId, { type: "episode_started" });
+        } catch (e) {
+          console.error("[CREATIVE JOURNEY] Failed to evaluate quest completion:", e);
         }
       }
 
@@ -428,9 +441,14 @@ export class CreativeJourneyService {
     nodeId: string,
     entryText: string
   ) {
-    return prisma.creativeAskGigiEntry.create({
+    const entry = await prisma.creativeAskGigiEntry.create({
       data: { userId, episodeId, nodeId, entryText },
     });
+
+    // Real-time parent notification on suicide / self-harm distress in Ask Gigi reflection
+    CrisisAlertService.checkAndNotifyCrisis(userId, entryText, "ASK_GIGI").catch(() => {});
+
+    return entry;
   }
 
   // Parent/guardian access to their child's gigi entries

@@ -3,22 +3,58 @@ import { AppError } from "../../common/middleware/errorHandler.js";
 import { GamificationService } from "./gamification.service.js";
 
 export class QuestService {
+  static async ensureTrackPeriodTemplate() {
+    let t = await prisma.questTemplate.findFirst({
+      where: { title: "Track Your Period" },
+    });
+    if (!t) {
+      t = await prisma.questTemplate.create({
+        data: {
+          title: "Track Your Period",
+          description: "Configure your period tracker to unlock smart cycle predictions and health insights.",
+          category: "tracker",
+          pointsBase: 100,
+          type: "daily",
+          isActive: true,
+          completionCondition: { event: "cycle_setup_completed", count: 1 },
+          estimatedMinutes: 2,
+          phaseWeights: { menstrual: 1, follicular: 1, ovulation: 1, luteal: 1, waiting: 1 },
+        },
+      });
+    } else if (t.pointsBase !== 100) {
+      t = await prisma.questTemplate.update({
+        where: { id: t.id },
+        data: { pointsBase: 100 },
+      });
+    }
+    return t;
+  }
+
   /**
    * Generates a personalized daily quest pool for the user.
    * Based on cycle phase, level, and category distribution.
    */
   static async generateDailyPool(userId: string) {
+    const trackPeriodTpl = await QuestService.ensureTrackPeriodTemplate();
+
     // 1. Check if user already has quests for today (using a 24h window to handle timezones)
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
+    const [cycleProfile, userLevel] = await Promise.all([
+      prisma.cycleProfile.findUnique({ where: { userId } }),
+      prisma.userLevel.findUnique({ where: { userId } }),
+    ]);
+
+    const isTrackerConfigured = cycleProfile?.lastPeriodStart != null;
+
     const existingQuests = await prisma.userDailyQuest.findMany({
       where: { 
         userId, 
         questDate: {
-          gte: new Date(startOfDay.getTime() - 12 * 60 * 60 * 1000), // Buffer for previous day/timezone
+          gte: startOfDay,
           lte: endOfDay
         }
       },
@@ -26,28 +62,67 @@ export class QuestService {
     });
 
     if (existingQuests.length > 0) {
-      // Filter for the most recent ones if multiple days found
-      const sorted = existingQuests.sort((a, b) => b.questDate.getTime() - a.questDate.getTime()).slice(0, 8);
+      const hasTrackPeriodQuest = existingQuests.some(q => q.questTemplateId === trackPeriodTpl.id || q.questTemplate?.title === "Track Your Period");
+      
+      // If user hasn't configured period tracker yet, ensure "Track Your Period" quest is in the daily list
+      if (!isTrackerConfigured && !hasTrackPeriodQuest) {
+        try {
+          const newQuest = await prisma.userDailyQuest.create({
+            data: {
+              userId,
+              questTemplateId: trackPeriodTpl.id,
+              questDate: startOfDay,
+              status: "available",
+            },
+            include: { questTemplate: true },
+          });
+          existingQuests.unshift(newQuest);
+        } catch (e: any) {
+          if (e.code !== 'P2002') console.error('[QUEST] Error adding Track Your Period quest:', e);
+        }
+      }
+
+      // If user HAS configured period tracker, auto-evaluate completion if quest is still pending
+      if (isTrackerConfigured) {
+        const pendingQuest = existingQuests.find(
+          q => (q.questTemplateId === trackPeriodTpl.id || q.questTemplate?.title === "Track Your Period") && q.status !== "completed"
+        );
+        if (pendingQuest) {
+          await QuestService.evaluateCompletion(userId, { type: "cycle_setup_completed" });
+          pendingQuest.status = "completed";
+          pendingQuest.completedAt = new Date();
+          pendingQuest.pointsAwarded = 100;
+        }
+      }
+
+      // Filter out Curiosity Quest permanently and deduplicate identical quest titles
+      const seenTitles = new Set<string>();
+      const filteredExisting = existingQuests.filter(q => {
+        const title = q.questTemplate?.title?.toLowerCase().trim();
+        if (!title || title.includes("curiosity")) return false;
+        if (title === "track your periods") return false;
+        if (seenTitles.has(title)) return false;
+        seenTitles.add(title);
+        return true;
+      });
+
+      // Sort deterministically by id so quest pool remains 100% fixed and stable without reshuffling
+      const sorted = filteredExisting.sort((a, b) => a.id.localeCompare(b.id));
       return QuestService.formatUserQuests(userId, sorted);
     }
-
-    // 2. Get user context (phase, level)
-    const [cycleProfile, userLevel] = await Promise.all([
-      prisma.cycleProfile.findUnique({ where: { userId } }),
-      prisma.userLevel.findUnique({ where: { userId } }),
-    ]);
 
     const phase = cycleProfile?.currentPhase || "waiting";
     const level = userLevel?.currentLevel || 1;
     const today = startOfDay; // Re-define today for creation logic
 
-    console.log(`[QUEST_GEN] User ${userId} context: Phase=${phase}, Level=${level}`);
+    console.log(`[QUEST_GEN] User ${userId} context: Phase=${phase}, Level=${level}, TrackerConfigured=${isTrackerConfigured}`);
 
-    // 3. Fetch all active daily quest templates
+    // 3. Fetch all active daily quest templates (excluding Curiosity Quest)
     const templates = await prisma.questTemplate.findMany({
       where: { 
         type: "daily",
         isActive: true,
+        title: { not: { contains: "Curiosity" } },
         minLevel: { lte: level },
         OR: [
           { maxLevel: null },
@@ -63,120 +138,71 @@ export class QuestService {
       return [];
     }
 
-    // 4. Select quests based on category distribution and phase weights
-    const counts = { tracker: 2, learning: 2, community: 2, wellbeing: 1, wildcard: 1 };
+    // 4. Select EXACTLY 6 Quests: 2 Tracker + 1 Learning + 1 Wellbeing + 1 Circle + 1 Connect
     const selectedTemplates: any[] = [];
 
-    // Let's determine the tracker quests dynamically based on user state
-    const isTrackingSetupCompleted = cycleProfile?.setupCompletedAt !== null && cycleProfile?.setupCompletedAt !== undefined;
-    let isPeriodDelayed = false;
+    // ── 1. TRACKER CATEGORY (EXACTLY 2 QUESTS) ──────────────────────────
+    const trackerTemplates = templates.filter(t => t.category === "tracker");
+    if (!isTrackerConfigured) {
+      const setupQuest = trackerTemplates.find(t => t.title === "Track Your Period") || trackPeriodTpl;
+      const symptomsQuest = trackerTemplates.find(t => t.title === "Log Symptoms & Mood");
+      if (setupQuest) selectedTemplates.push(setupQuest);
+      if (symptomsQuest) selectedTemplates.push(symptomsQuest);
+    } else {
+      // Always include Log Symptoms & Mood
+      const symptomsQuest = trackerTemplates.find(t => t.title === "Log Symptoms & Mood");
+      if (symptomsQuest) selectedTemplates.push(symptomsQuest);
 
-    if (isTrackingSetupCompleted && cycleProfile) {
-      const lastStart = cycleProfile.lastPeriodStart;
-      const lastEnd = cycleProfile.lastPeriodEnd;
-      if (lastStart) {
-        if (!lastEnd || lastEnd.getTime() < lastStart.getTime()) {
-          // Period is ongoing. Calculate duration
-          const durationDays = Math.ceil((Date.now() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
-          const maxDuration = (cycleProfile.avgPeriodDuration || 5) + 3;
-          if (durationDays > maxDuration) {
-            isPeriodDelayed = true;
-          }
+      // Dynamic 2nd tracker quest based on phase
+      if (phase === 'menstrual') {
+        const endQuest = trackerTemplates.find(t => t.title === "Confirm Period End");
+        if (endQuest) selectedTemplates.push(endQuest);
+      } else {
+        const startQuest = trackerTemplates.find(t => t.title === "Log Period Start");
+        if (startQuest) selectedTemplates.push(startQuest);
+      }
+    }
+
+    // Ensure exactly 2 tracker quests
+    if (selectedTemplates.filter(t => t.category === "tracker").length < 2) {
+      for (const t of trackerTemplates) {
+        if (!selectedTemplates.some(st => st.id === t.id)) {
+          selectedTemplates.push(t);
+          if (selectedTemplates.filter(st => st.category === "tracker").length >= 2) break;
         }
       }
     }
 
-    const isCycleDelayed = isTrackingSetupCompleted && (cycleProfile?.currentPhase === "delayed" || cycleProfile?.currentPhase === "late");
-
-    console.log(`[QUEST_GEN] Tracker state: setupCompleted=${isTrackingSetupCompleted}, periodDelayed=${isPeriodDelayed}, cycleDelayed=${isCycleDelayed}`);
-
-    // ── DYNAMIC TRACKER SELECTION ──────────────────────────────────────────
-    const trackerTemplates = templates.filter(t => t.category === "tracker");
-    const trackerPicks: any[] = [];
-
-    if (!isTrackingSetupCompleted) {
-      // User is not tracking yet: assign "Track Your Periods" and "Review Daily Insights"
-      const trackSetUp = trackerTemplates.find(t => t.title === "Track Your Periods");
-      const reviewInsights = trackerTemplates.find(t => t.title === "Review Daily Insights");
-      if (trackSetUp) trackerPicks.push(trackSetUp);
-      if (reviewInsights) trackerPicks.push(reviewInsights);
-    } else if (isPeriodDelayed) {
-      // Period is delayed (user didn't mark end date): assign "Confirm Period End" and "Review Daily Insights"
-      const confirmEnd = trackerTemplates.find(t => t.title === "Confirm Period End");
-      const reviewInsights = trackerTemplates.find(t => t.title === "Review Daily Insights");
-      if (confirmEnd) trackerPicks.push(confirmEnd);
-      if (reviewInsights) trackerPicks.push(reviewInsights);
-    } else if (isCycleDelayed) {
-      // Next period start is delayed: assign "Log Period Start" and "Review Daily Insights"
-      const logStart = trackerTemplates.find(t => t.title === "Log Period Start");
-      const reviewInsights = trackerTemplates.find(t => t.title === "Review Daily Insights");
-      if (logStart) trackerPicks.push(logStart);
-      if (reviewInsights) trackerPicks.push(reviewInsights);
-    } else {
-      // User is tracking normally: assign "Hormone Harmony Log" and "Review Daily Insights"
-      const harmonyLog = trackerTemplates.find(t => t.title === "Hormone Harmony Log");
-      const reviewInsights = trackerTemplates.find(t => t.title === "Review Daily Insights");
-      if (harmonyLog) trackerPicks.push(harmonyLog);
-      if (reviewInsights) trackerPicks.push(reviewInsights);
-    }
-
-    // Fallback if we didn't fill the tracker picks
-    if (trackerPicks.length < 2) {
-      const others = trackerTemplates.filter(t => !trackerPicks.includes(t));
-      trackerPicks.push(...others.slice(0, 2 - trackerPicks.length));
-    }
-    selectedTemplates.push(...trackerPicks);
-
-    // ── DYNAMIC LEARNING SELECTION ──────────────────────────────────────────
+    // ── 2. LEARNING CATEGORY (EXACTLY 1 QUEST) ──────────────────────────
     const learningTemplates = templates.filter(t => t.category === "learning");
-    const learningPicks: any[] = [];
-
-    const { sequenceState } = await QuestService.getActiveEpisodeInfo(userId);
-
-    if (sequenceState === "read") {
-      const exploreQuest = learningTemplates.find(t => t.title === "Explore Episode");
-      if (exploreQuest) learningPicks.push(exploreQuest);
-    } else if (sequenceState === "quiz") {
-      const quizQuest = learningTemplates.find(t => t.title === "Quiz Challenge");
-      if (quizQuest) learningPicks.push(quizQuest);
-    } else if (sequenceState === "reflection") {
-      const wisdomQuest = learningTemplates.find(t => t.title === "Wisdom Journal");
-      if (wisdomQuest) learningPicks.push(wisdomQuest);
+    const { isEpisodeStarted } = await QuestService.getActiveEpisodeInfo(userId);
+    if (!isEpisodeStarted) {
+      const exploreQuest = learningTemplates.find(t => t.title === "Explore Episode") || learningTemplates[0];
+      if (exploreQuest) selectedTemplates.push(exploreQuest);
+    } else {
+      const completeNodeQuest = learningTemplates.find(t => t.title === "Complete Node") || learningTemplates[0];
+      if (completeNodeQuest) selectedTemplates.push(completeNodeQuest);
     }
 
-    // Always assign "Mindful Meditation" as the second learning quest (standard helper)
-    const mindfulQuest = learningTemplates.find(t => t.title === "Mindful Meditation");
-    if (mindfulQuest) learningPicks.push(mindfulQuest);
+    // ── 3. WELLBEING CATEGORY (EXACTLY 1 QUEST: Gratitude Note) ─────────
+    const wellbeingTemplates = templates.filter(t => t.category === "wellbeing");
+    const gratitudeQuest = wellbeingTemplates.find(t => t.title === "Gratitude Note") || wellbeingTemplates[0];
+    if (gratitudeQuest) selectedTemplates.push(gratitudeQuest);
 
-    // Fallback if we didn't fill the learning picks to 2
-    if (learningPicks.length < 2) {
-      const others = learningTemplates.filter(t => !learningPicks.includes(t));
-      learningPicks.push(...others.slice(0, 2 - learningPicks.length));
-    }
-    selectedTemplates.push(...learningPicks);
-
-    // ── OTHER CATEGORIES ───────────────────────────────────────────────────
-    const otherCategories = ["community", "wellbeing", "wildcard"];
-    for (const cat of otherCategories) {
-      const catTemplates = templates.filter(t => t.category === cat);
-      if (catTemplates.length === 0) continue;
-      
-      const weighted = catTemplates.sort((a, b) => {
-        const weightA = (a.phaseWeights as any)[phase] || 1;
-        const weightB = (b.phaseWeights as any)[phase] || 1;
-        return weightB - weightA;
-      });
-
-      selectedTemplates.push(...weighted.slice(0, (counts as any)[cat]));
+    // ── 4. CIRCLE CATEGORY (EXACTLY 1 QUEST) ─────────────────────────────
+    const circleTemplates = templates.filter(t => t.category === "circle");
+    if (circleTemplates.length > 0) {
+      const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+      const circlePick = circleTemplates[dayOfYear % circleTemplates.length] || circleTemplates[0];
+      if (circlePick) selectedTemplates.push(circlePick);
     }
 
-    // Fallback: If we have templates but selection yielded nothing, just take any 5
-    if (selectedTemplates.length === 0 && templates.length > 0) {
-      console.log(`[QUEST_GEN] ⚠️ Category selection yielded nothing. Using first 5 templates as fallback.`);
-      selectedTemplates.push(...templates.slice(0, 5));
-    }
+    // ── 5. CONNECT CATEGORY (EXACTLY 1 QUEST: PeerLine Connection) ──────
+    const connectTemplates = templates.filter(t => t.category === "connect");
+    const peerlineQuest = connectTemplates.find(t => t.title === "PeerLine Connection") || connectTemplates[0];
+    if (peerlineQuest) selectedTemplates.push(peerlineQuest);
 
-    console.log(`[QUEST_GEN] Final selection: ${selectedTemplates.length} templates. Saving...`);
+    console.log(`[QUEST_GEN] Final 6-Quest Pool selection: ${selectedTemplates.length} templates. Saving...`);
 
     // 5. Save to userDailyQuests
     try {
@@ -202,6 +228,9 @@ export class QuestService {
       }
     }
 
+    // Auto-sync tracker quest completion status if already satisfied in CycleProfile
+    await QuestService.syncTrackerQuestStatus(userId);
+
     const freshQuests = await prisma.userDailyQuest.findMany({
       where: { 
         userId, 
@@ -214,6 +243,93 @@ export class QuestService {
     });
     
     return QuestService.formatUserQuests(userId, freshQuests);
+  }
+
+  static async syncTrackerQuestStatus(userId: string) {
+    try {
+      const profile = await prisma.cycleProfile.findUnique({ where: { userId } });
+      if (!profile) return;
+
+      if (profile.setupCompletedAt) {
+        await this.evaluateCompletion(userId, { type: "cycle_setup_completed" });
+      }
+
+      if (profile.lastPeriodStart) {
+        await this.evaluateCompletion(userId, { type: "period_start_marked" });
+      }
+
+      if (
+        profile.lastPeriodEnd &&
+        profile.lastPeriodStart &&
+        new Date(profile.lastPeriodEnd).getTime() >= new Date(profile.lastPeriodStart).getTime()
+      ) {
+        await this.evaluateCompletion(userId, { type: "period_end_marked" });
+      }
+
+      // Check if a log has been saved or updated for today to auto-complete Log Symptoms & Mood
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const past24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const todayLog = await prisma.cycleLog.findFirst({
+        where: {
+          userId,
+          OR: [
+            { date: { gte: startOfToday } },
+            { updatedAt: { gte: past24h } }
+          ]
+        }
+      });
+
+      if (todayLog) {
+        await this.evaluateCompletion(userId, { type: "log_saved" });
+      }
+
+      // Check if a journal entry has been created or updated for today to auto-complete Gratitude Note
+      const todayJournal = await prisma.journalEntry.findFirst({
+        where: {
+          userId,
+          isDeleted: false,
+          OR: [
+            { createdAt: { gte: startOfToday } },
+            { createdAt: { gte: past24h } }
+          ]
+        }
+      });
+
+      if (todayJournal) {
+        await this.evaluateCompletion(userId, { type: "reflection_added" });
+        await this.evaluateCompletion(userId, { type: "journal_entry_created" });
+      }
+
+      // Check if a community post has been created for today to auto-complete Connect & Share
+      const todayPost = await prisma.communityPost.findFirst({
+        where: {
+          authorId: userId,
+          createdAt: { gte: startOfToday }
+        }
+      });
+
+      if (todayPost) {
+        await this.evaluateCompletion(userId, { type: "post_created" });
+      }
+
+      // Check if a creative journey node has been completed today to auto-complete Explore Episode / Complete Node
+      const todayCreativeNode = await prisma.creativeNodeProgress.findFirst({
+        where: {
+          userId,
+          status: "COMPLETED",
+          updatedAt: { gte: startOfToday }
+        }
+      });
+
+      if (todayCreativeNode) {
+        await this.evaluateCompletion(userId, { type: "node_completed" });
+        await this.evaluateCompletion(userId, { type: "episode_started" });
+      }
+    } catch (err) {
+      console.error("[QUEST] Error in syncTrackerQuestStatus:", err);
+    }
   }
 
   static async acceptQuest(userId: string, userQuestId: string) {
@@ -233,12 +349,13 @@ export class QuestService {
   }
 
   /**
-   * Evaluates completion of active quests based on a domain event.
+   * Evaluates completion of active/available quests based on a domain event.
+   * Automatically promotes matching available quests to accepted (zero friction).
    */
   static async evaluateCompletion(userId: string, event: { type: string, count?: number, detail?: string }): Promise<number> {
-    // 1. Find accepted quests for this user
+    // 1. Find accepted OR available quests for this user
     const activeQuests = await prisma.userDailyQuest.findMany({
-      where: { userId, status: "accepted" },
+      where: { userId, status: { in: ["accepted", "available"] } },
       include: { questTemplate: true }
     });
 
@@ -253,65 +370,51 @@ export class QuestService {
         matches = true;
       }
 
+      if ((uq.questTemplate.title === "Gratitude Note" || condition.event === "reflection_added") &&
+          (event.type === "reflection_added" || event.type === "journal_entry_created" || event.type === "journal_added")) {
+        matches = true;
+      }
+
+      if ((uq.questTemplate.title === "Connect & Share" || uq.questTemplate.title === "Support a Friend" || condition.event === "post_created") &&
+          (event.type === "post_created" || event.type === "circle_post_created" || event.type === "reply_created")) {
+        matches = true;
+      }
+
+      if ((uq.questTemplate.title === "PeerLine Connection" || condition.event === "peerline_session_started") &&
+          (event.type === "peerline_session_started" || event.type === "match_action")) {
+        matches = true;
+      }
+
+      if ((uq.questTemplate.title === "Explore Episode" || uq.questTemplate.title === "Complete Node") &&
+          (event.type === "node_completed" || event.type === "episode_started" || event.type === "episode_completed")) {
+        matches = true;
+      }
+
       if (matches) {
-        if (uq.questTemplate.title === "Review Daily Insights") {
-          const currentProgress = uq.progressJson as any || {};
-          const readIds = currentProgress.readIds || [];
-          const newInsightId = event.detail;
+        // Auto-promote available quest to accepted (Zero friction auto-claim)
+        if (uq.status === "available") {
+          await prisma.userDailyQuest.update({
+            where: { id: uq.id },
+            data: { status: "accepted", acceptedAt: new Date() }
+          });
+        }
 
-          if (newInsightId && !readIds.includes(newInsightId)) {
-            readIds.push(newInsightId);
-          }
+        const targetCount = condition.count || 1;
+        const currentProgress = uq.progressJson as any || {};
+        const newCount = (currentProgress.currentCount || 0) + (event.count || 1);
 
-          const { InsightsService } = await import("../tracker/insights.service.js");
-          const { insights } = await InsightsService.getDailyInsights(userId);
-          const totalInsightsCount = insights.length || 1;
-
-          if (readIds.length >= totalInsightsCount) {
-            await prisma.userDailyQuest.update({
-              where: { id: uq.id },
-              data: {
-                progressJson: {
-                  ...currentProgress,
-                  currentCount: readIds.length,
-                  totalCount: totalInsightsCount,
-                  readIds
-                }
-              }
-            });
-            await this.completeQuest(userId, uq.id);
-            totalPoints += uq.questTemplate.pointsBase;
-          } else {
-            await prisma.userDailyQuest.update({
-              where: { id: uq.id },
-              data: {
-                progressJson: {
-                  ...currentProgress,
-                  currentCount: readIds.length,
-                  totalCount: totalInsightsCount,
-                  readIds
-                }
-              }
-            });
-          }
+        if (newCount >= targetCount) {
+          await prisma.userDailyQuest.update({
+            where: { id: uq.id },
+            data: { progressJson: { ...currentProgress, currentCount: newCount } }
+          });
+          await this.completeQuest(userId, uq.id);
+          totalPoints += uq.questTemplate.pointsBase;
         } else {
-          const targetCount = condition.count || 1;
-          const currentProgress = uq.progressJson as any || {};
-          const newCount = (currentProgress.currentCount || 0) + (event.count || 1);
-
-          if (newCount >= targetCount) {
-            await prisma.userDailyQuest.update({
-              where: { id: uq.id },
-              data: { progressJson: { ...currentProgress, currentCount: newCount } }
-            });
-            await this.completeQuest(userId, uq.id);
-            totalPoints += uq.questTemplate.pointsBase;
-          } else {
-            await prisma.userDailyQuest.update({
-              where: { id: uq.id },
-              data: { progressJson: { ...currentProgress, currentCount: newCount } }
-            });
-          }
+          await prisma.userDailyQuest.update({
+            where: { id: uq.id },
+            data: { progressJson: { ...currentProgress, currentCount: newCount } }
+          });
         }
       }
     }
@@ -392,9 +495,12 @@ export class QuestService {
 
       if (isCompleted) {
         totalPoints += challenge.rewardPoints;
+        const xp = challenge.rewardPoints;
+        const coins = Math.max(25, Math.round(xp / 6));
         await GamificationService.awardPoints(
           userId,
-          challenge.rewardPoints,
+          xp,
+          coins,
           "weekly_challenge",
           challenge.id,
           `Completed weekly challenge: ${challenge.title}`
@@ -476,21 +582,45 @@ export class QuestService {
 
     if (!uq || uq.status === "completed") return;
 
+    const xp = uq.questTemplate.pointsBase;
+    const title = uq.questTemplate.title;
+    let coins = Math.max(5, Math.round(xp / 6));
+    if (title === "Track Your Period" || title === "PeerLine Connection") {
+      coins = 10;
+    } else if (title === "Log Period Start" || title === "Confirm Period End" || title === "Connect & Share" || title === "Explore Episode") {
+      coins = 5;
+    } else if (title === "Log Symptoms & Mood" || title === "Gratitude Note" || title === "Support a Friend") {
+      coins = 3;
+    } else if (title === "Complete Node") {
+      coins = 2;
+    }
+
     // 1. Mark as completed
     await prisma.userDailyQuest.update({
       where: { id: userQuestId },
       data: { 
         status: "completed", 
         completedAt: new Date(),
-        pointsAwarded: uq.questTemplate.pointsBase
+        pointsAwarded: xp
       },
       include: { questTemplate: true },
     });
 
-    // 2. Award points
+    // Check if points/coins were already awarded during tracker_setup to prevent duplicate awards
+    if (uq.questTemplate.title === "Track Your Period" || (uq.questTemplate.completionCondition as any)?.event === "cycle_setup_completed") {
+      const setupLedger = await prisma.pointsLedger.findFirst({
+        where: { userId, sourceType: "tracker_setup" },
+      });
+      if (setupLedger) {
+        return;
+      }
+    }
+
+    // 2. Award XP & Spendable Coins
     await GamificationService.awardPoints(
       userId,
-      uq.questTemplate.pointsBase,
+      xp,
+      coins,
       "daily_quest",
       uq.id,
       `Completed quest: ${uq.questTemplate.title}`
@@ -503,6 +633,183 @@ export class QuestService {
 
     // 4. Update complex badge progress
     await this.updateBadgeProgress(userId, "quest_completed", uq.questTemplate);
+  }
+
+  /**
+   * Rerolls an uncompleted daily quest with another available template of the same category.
+   * Costs 50 Coins (or free if user has a reroll token in inventory).
+   */
+  static async rerollQuest(userId: string, userQuestId: string) {
+    const uq = await prisma.userDailyQuest.findFirst({
+      where: { id: userQuestId, userId },
+      include: { questTemplate: true }
+    });
+
+    if (!uq) throw new AppError("Quest not found", 404);
+    if (uq.status === "completed") throw new AppError("Cannot reroll a completed quest", 400);
+
+    // Check if user has reroll token in inventory
+    const rerollToken = await prisma.userInventory.findUnique({
+      where: { userId_itemType_itemId: { userId, itemType: "reroll_token", itemId: "reroll" } }
+    });
+
+    if (rerollToken && rerollToken.quantity > 0) {
+      await prisma.userInventory.update({
+        where: { id: rerollToken.id },
+        data: { quantity: { decrement: 1 } }
+      });
+    } else {
+      // Deduct 50 spendable coins
+      await GamificationService.spendCoins(userId, 50, "reroll_token", "reroll", "Quest Reroll Purchase");
+    }
+
+    // Find unused template of same category
+    const activeDailyQuests = await prisma.userDailyQuest.findMany({
+      where: { userId },
+      select: { questTemplateId: true }
+    });
+    const usedTemplateIds = activeDailyQuests.map(q => q.questTemplateId);
+
+    const alternativeTemplate = await prisma.questTemplate.findFirst({
+      where: {
+        category: uq.questTemplate.category,
+        isActive: true,
+        id: { notIn: usedTemplateIds }
+      }
+    });
+
+    if (!alternativeTemplate) {
+      // Fallback: pick any unused active template
+      const fallbackTemplate = await prisma.questTemplate.findFirst({
+        where: { isActive: true, id: { notIn: usedTemplateIds } }
+      });
+      if (!fallbackTemplate) throw new AppError("No available replacement quests found", 400);
+
+      const updated = await prisma.userDailyQuest.update({
+        where: { id: userQuestId },
+        data: { questTemplateId: fallbackTemplate.id, status: "available", progressJson: {} },
+        include: { questTemplate: true }
+      });
+      return QuestService.formatUserQuest(userId, updated);
+    }
+
+    const updated = await prisma.userDailyQuest.update({
+      where: { id: userQuestId },
+      data: { questTemplateId: alternativeTemplate.id, status: "available", progressJson: {} },
+      include: { questTemplate: true }
+    });
+
+    return QuestService.formatUserQuest(userId, updated);
+  }
+
+  /**
+   * Creative Micro-Activity: Gigi's Daily Vibe Check (30s Emotion & Energy Slider)
+   * Awards 30 XP + 20 Spendable Coins.
+   */
+  static async submitVibeCheck(userId: string, data: { moodScore: number; energyScore: number; primaryEmotion?: string }) {
+    const xp = 30;
+    const coins = 20;
+
+    const result = await GamificationService.awardPoints(
+      userId,
+      xp,
+      coins,
+      "vibe_check",
+      undefined,
+      `Completed Gigi's Daily Vibe Check (${data.primaryEmotion || "Balanced"})`
+    );
+
+    // Evaluate associated quests
+    await this.evaluateCompletion(userId, { type: "vibe_check_completed" });
+
+    return {
+      ...result,
+      success: true,
+      affirmation: `Your energy is valid today! Nurture yourself with quiet moments.`,
+    };
+  }
+
+  /**
+   * Creative Micro-Activity: Quick Spark Quiz (3-Question Trivia Blitz)
+   * Awards 50 XP + 35 Spendable Coins.
+   */
+  static async submitQuickSpark(userId: string, data: { score: number; totalQuestions: number }) {
+    const xp = Math.min(50, Math.round((data.score / (data.totalQuestions || 3)) * 50));
+    const coins = Math.min(35, Math.round((data.score / (data.totalQuestions || 3)) * 35));
+
+    const result = await GamificationService.awardPoints(
+      userId,
+      xp,
+      coins,
+      "quick_spark",
+      undefined,
+      `Completed Quick Spark Trivia (${data.score}/${data.totalQuestions || 3})`
+    );
+
+    await this.evaluateCompletion(userId, { type: "quick_spark_completed" });
+
+    return {
+      ...result,
+      success: true,
+    };
+  }
+
+  /**
+   * Unlocks Mystery Discovery Chest when 3/3 daily quests are completed.
+   */
+  static async openMysteryChest(userId: string) {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const completedQuestsToday = await prisma.userDailyQuest.count({
+      where: {
+        userId,
+        status: "completed",
+        completedAt: { gte: startOfDay }
+      }
+    });
+
+    if (completedQuestsToday < 3) {
+      throw new AppError("Complete at least 3 daily quests to unlock the Mystery Discovery Chest!", 400);
+    }
+
+    const xp = 150;
+    const coins = 100;
+
+    const result = await GamificationService.awardPoints(
+      userId,
+      xp,
+      coins,
+      "mystery_chest",
+      undefined,
+      "Opened Daily Mystery Discovery Chest!"
+    );
+
+    // Add 1 Streak Freeze to Inventory as chest bonus
+    await prisma.userInventory.upsert({
+      where: { userId_itemType_itemId: { userId, itemType: "streak_freeze", itemId: "streak_freeze" } },
+      update: { quantity: { increment: 1 } },
+      create: { userId, itemType: "streak_freeze", itemId: "streak_freeze", quantity: 1 }
+    });
+
+    return {
+      ...result,
+      success: true,
+      itemReward: "1x Streak Freeze Protection",
+    };
+  }
+
+  /**
+   * Purchases a Streak Freeze Token for 200 Coins.
+   */
+  static async buyStreakFreeze(userId: string) {
+    return await GamificationService.spendCoins(
+      userId,
+      200,
+      "streak_freeze",
+      "streak_freeze",
+      "Purchased 1x Streak Freeze Protection Token"
+    );
   }
 
   static async updateBadgeProgress(userId: string, type: 'quest_completed' | 'period_logged', payload: any) {
@@ -716,11 +1023,16 @@ export class QuestService {
       }
     }
 
+    let isEpisodeStarted = false;
     if (activeEpisode) {
       activeEpisodeTitle = activeEpisode.title;
       const completedNodeCount = await prisma.creativeNodeProgress.count({
         where: { userId, episodeId: activeEpisode.id, status: "COMPLETED" }
       });
+
+      if (completedNodeCount > 0) {
+        isEpisodeStarted = true;
+      }
 
       if (completedNodeCount >= 4) {
         sequenceState = "reflection";
@@ -731,14 +1043,14 @@ export class QuestService {
       }
     }
 
-    return { activeEpisodeTitle, activeJourneyTitle, sequenceState };
+    return { activeEpisodeTitle, activeJourneyTitle, sequenceState, isEpisodeStarted };
   }
 
   static async formatUserQuest(userId: string, q: any) {
     if (!q || !q.questTemplate) return q;
     
     const t = q.questTemplate;
-    if (t.title !== "Explore Episode" && t.title !== "Quiz Challenge" && t.title !== "Wisdom Journal") {
+    if (t.title !== "Explore Episode" && t.title !== "Complete Node" && t.title !== "Quiz Challenge" && t.title !== "Wisdom Journal") {
       return q;
     }
 
@@ -750,6 +1062,9 @@ export class QuestService {
       if (title === "Explore Episode") {
         title = `Explore: ${activeEpisodeTitle}`;
         description = `Read the next episode "${activeEpisodeTitle}" in your "${activeJourneyTitle}" journey.`;
+      } else if (title === "Complete Node") {
+        title = `Complete Node: ${activeEpisodeTitle}`;
+        description = `Continue reading and complete the active node in "${activeEpisodeTitle}".`;
       } else if (title === "Quiz Challenge") {
         title = `Quiz: ${activeEpisodeTitle}`;
         description = `Complete the knowledge check quiz for "${activeEpisodeTitle}" to test your knowledge.`;

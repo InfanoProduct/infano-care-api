@@ -153,25 +153,31 @@ export function initParentJobs() {
   cron.schedule("0 10 * * 0", async () => {
     logger.info("[CRON] Running Weekly Parent Digest job...");
     try {
-      const parentLinks = await prisma.parentLink.findMany({
-        where: { status: "LINKED" },
+      const activeLinks = await prisma.parentLink.findMany({
+        where: {
+          status: "LINKED",
+          parentId: { not: null },
+          teenId: { not: null }
+        },
         include: {
-          parent: true,
+          parent: { include: { profile: true } },
           teen: { include: { profile: true } }
         }
       });
 
-      for (const link of parentLinks) {
-        if (!link.parent || !link.parentId || !link.teen) continue;
-        const teenName = link.teen.profile?.displayName || "your daughter";
-        const title = `📊 Weekly Family Digest Ready`;
+      for (const link of activeLinks) {
+        if (!link.parentId || !link.parent || !link.teen) continue;
+
+        const teenName = link.teen.profile?.displayName || link.teen.username || "your daughter";
+        const title = "📊 Weekly Family Digest Ready";
         const body = `Review ${teenName}'s weekly wellness milestones and 3 suggested conversation starters for this week 💙`;
-        const deepLink = `infano://account/family`;
+        const deepLink = "infano://account/family";
+        const type = "PARENT_WEEKLY_DIGEST";
 
         await prisma.notificationHistory.create({
           data: {
             userId: link.parentId,
-            type: "PARENT_WEEKLY_DIGEST",
+            type,
             title,
             body,
             deepLink,
@@ -186,7 +192,7 @@ export function initParentJobs() {
               title,
               body,
               deepLink,
-              data: { notificationType: "PARENT_WEEKLY_DIGEST", teenId: link.teenId || "" }
+              data: { notificationType: type, teenId: link.teenId || "" }
             });
           } catch (err) {
             logger.error({ err, parentId: link.parentId }, "Failed to send weekly digest push to parent");

@@ -18,6 +18,13 @@ router.get("/weekly", QuestController.getWeeklyChallenges);
 router.post("/:id/accept", QuestController.acceptQuest);
 router.get("/progress", QuestController.getProgress);
 router.get("/badges", QuestController.getBadges);
+
+router.post("/reroll", QuestController.rerollQuest);
+router.post("/vibe-check", QuestController.submitVibeCheck);
+router.post("/quick-spark", QuestController.submitQuickSpark);
+router.post("/open-chest", QuestController.openMysteryChest);
+router.post("/buy-streak-freeze", QuestController.buyStreakFreeze);
+
 router.post("/:id/complete-manual", QuestController.completeQuestManual);
 
 export default router;
