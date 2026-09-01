@@ -816,7 +816,9 @@ export class ProgramsService {
     if (slotDateParts.length !== 3) {
       throw new AppError("Invalid slot date format. Expected YYYY-MM-DD.", 400);
     }
-    const [sYear, sMonth, sDay] = slotDateParts.map(Number);
+    const sYear = Number(slotDateParts[0]);
+    const sMonth = Number(slotDateParts[1]);
+    const sDay = Number(slotDateParts[2]);
     if (isNaN(sYear) || isNaN(sMonth) || isNaN(sDay)) {
       throw new AppError("Invalid slot date.", 400);
     }
