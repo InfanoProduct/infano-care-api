@@ -812,6 +812,31 @@ export class ProgramsService {
       throw new AppError("Missing required fields for booking a demo session (parentName, phone, slotDate, slotTime)", 400);
     }
 
+    const slotDateParts = String(data.slotDate).split('-');
+    if (slotDateParts.length !== 3) {
+      throw new AppError("Invalid slot date format. Expected YYYY-MM-DD.", 400);
+    }
+    const [sYear, sMonth, sDay] = slotDateParts.map(Number);
+    if (isNaN(sYear) || isNaN(sMonth) || isNaN(sDay)) {
+      throw new AppError("Invalid slot date.", 400);
+    }
+
+    const slotDateObj = new Date(sYear, sMonth - 1, sDay);
+    slotDateObj.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + 7);
+    maxDate.setHours(23, 59, 59, 999);
+
+    if (slotDateObj < today) {
+      throw new AppError("Cannot book demo sessions for past dates.", 400);
+    }
+    if (slotDateObj > maxDate) {
+      throw new AppError("Demo sessions can only be booked up to 7 days in advance.", 400);
+    }
+
     const bookingCount = await prisma.demoSession.count({
       where: {
         slotDate: data.slotDate,
