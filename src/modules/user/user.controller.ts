@@ -172,31 +172,41 @@ export class UserController {
     try {
       const userId = (req as any).userId || (req as any).user?.id;
       const userRole = (req as any).userRole;
-      const { displayName, email, specialisation, consultationPrice, bio, dateOfBirth } = req.body;
+      const { displayName, email, pronouns, specialisation, consultationPrice, bio, dateOfBirth, birthMonth, birthYear } = req.body;
 
-      let birthMonth, birthYear;
+      let bMonth = birthMonth;
+      let bYear = birthYear;
       if (dateOfBirth) {
         const d = new Date(dateOfBirth);
         if (!isNaN(d.getTime())) {
-          birthMonth = d.getMonth() + 1;
-          birthYear = d.getFullYear();
+          bMonth = d.getMonth() + 1;
+          bYear = d.getFullYear();
         }
       }
 
       // Update User email and date of birth
-      await prisma.user.update({
-        where: { id: userId },
-        data: { 
-          email,
-          ...(birthMonth !== undefined && { birthMonth }),
-          ...(birthYear !== undefined && { birthYear })
-        }
-      });
+      const userUpdateData: any = {};
+      if (email !== undefined) {
+        userUpdateData.email = (email === "" || email === null) ? null : email.trim().toLowerCase();
+      }
+      if (bMonth !== undefined) {
+        userUpdateData.birthMonth = bMonth ? parseInt(bMonth, 10) : null;
+      }
+      if (bYear !== undefined) {
+        userUpdateData.birthYear = bYear ? parseInt(bYear, 10) : null;
+      }
+
+      if (Object.keys(userUpdateData).length > 0) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: userUpdateData
+        });
+      }
 
       const isExpert = userRole === 'EXPERT';
-      const profileData: any = {
-        displayName: displayName || ""
-      };
+      const profileData: any = {};
+      if (displayName !== undefined) profileData.displayName = displayName.trim();
+      if (pronouns !== undefined) profileData.pronouns = pronouns.trim();
 
       if (isExpert) {
         if (specialisation !== undefined) profileData.specialisation = specialisation;
@@ -211,15 +221,22 @@ export class UserController {
         where: { userId },
         create: {
           userId,
+          displayName: displayName || "",
           ...profileData
         },
         update: profileData
       });
 
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { profile: true }
+      });
+
       res.status(200).json({
         success: true,
+        user: updatedUser,
         profile: updatedProfile,
-        email
+        email: updatedUser?.email
       });
     } catch (error: any) {
       if (error.code === 'P2002') {
