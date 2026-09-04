@@ -4,6 +4,7 @@ import { ShopService } from "./shop.service.js";
 export class ShopController {
   static async getBooks(_req: Request, res: Response, next: NextFunction) {
     try {
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
       const books = await ShopService.getBooks();
       res.status(200).json(books);
     } catch (error) {
@@ -13,6 +14,7 @@ export class ShopController {
 
   static async getBook(req: Request, res: Response, next: NextFunction) {
     try {
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
       const book = await ShopService.getBook(req.params.id as string);
       if (!book) return res.status(404).json({ message: "Book not found" });
       res.status(200).json(book);
@@ -23,6 +25,7 @@ export class ShopController {
 
   static async getWebinarBySlug(req: Request, res: Response, next: NextFunction) {
     try {
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
       const webinar = await ShopService.getWebinarBySlug(req.params.slug as string);
       if (!webinar) return res.status(404).json({ message: "Webinar not found" });
       res.status(200).json(webinar);

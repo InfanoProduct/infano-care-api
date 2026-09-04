@@ -1,5 +1,5 @@
 import { prisma } from "../../db/client.js";
-import { ShopService } from "../shop/shop.service.js";
+import { ShopService, invalidateShopCache } from "../shop/shop.service.js";
 import bcrypt from "bcryptjs";
 import { UserRole, Prisma } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
@@ -1578,6 +1578,7 @@ export class AdminService {
       orderBy: { createdAt: "desc" }
     });
 
+    invalidateShopCache();
     return { ...book, coupon: latestCoupon };
   }
 
@@ -1631,10 +1632,12 @@ export class AdminService {
       orderBy: { createdAt: "desc" }
     });
 
+    invalidateShopCache();
     return { ...book, coupon: latestCoupon };
   }
 
   static async deleteBook(id: string) {
+    invalidateShopCache();
     return prisma.book.delete({ where: { id } });
   }
 

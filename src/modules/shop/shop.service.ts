@@ -16,8 +16,33 @@ const razorpay = new Razorpay({
 
 const GST_RATE = 0.05; // 5% for books
 
+// Fast in-memory TTL cache for high-traffic catalog endpoints
+const cacheStore = new Map<string, { data: any; expiry: number }>();
+
+function getCached<T>(key: string): T | null {
+  const item = cacheStore.get(key);
+  if (!item) return null;
+  if (Date.now() > item.expiry) {
+    cacheStore.delete(key);
+    return null;
+  }
+  return item.data as T;
+}
+
+function setCached(key: string, data: any, ttlSeconds = 60) {
+  cacheStore.set(key, { data, expiry: Date.now() + ttlSeconds * 1000 });
+}
+
+export function invalidateShopCache() {
+  cacheStore.clear();
+}
+
 export class ShopService {
   static async getBooks() {
+    const cacheKey = "shop:books:active";
+    const cached = getCached<any[]>(cacheKey);
+    if (cached) return cached;
+
     const books = await prisma.book.findMany({
       where: {
         isActive: true,
@@ -31,10 +56,16 @@ export class ShopService {
     const coupon = await prisma.discountCoupon.findFirst({
       orderBy: { createdAt: "desc" },
     });
-    return books.map(book => ({ ...book, coupon }));
+    const result = books.map(book => ({ ...book, coupon }));
+    setCached(cacheKey, result, 60);
+    return result;
   }
 
   static async getBook(id: string) {
+    const cacheKey = `shop:book:${id}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
     const book = await prisma.book.findUnique({
       where: { id },
     });
@@ -42,19 +73,31 @@ export class ShopService {
     const coupon = await prisma.discountCoupon.findFirst({
       orderBy: { createdAt: "desc" },
     });
-    return { ...book, coupon };
+    const result = { ...book, coupon };
+    setCached(cacheKey, result, 60);
+    return result;
   }
 
   static async getWebinarBySlug(slug: string) {
+    const cacheKey = `shop:webinar:${slug}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
+    let result = null;
     if (slug === 'active') {
-      return await prisma.webinar.findFirst({
+      result = await prisma.webinar.findFirst({
         where: { isActive: true },
         orderBy: { date: 'asc' }
       });
+    } else {
+      result = await prisma.webinar.findFirst({
+        where: { slug, isActive: true },
+      });
     }
-    return await prisma.webinar.findFirst({
-      where: { slug, isActive: true },
-    });
+    if (result) {
+      setCached(cacheKey, result, 60);
+    }
+    return result;
   }
 
 
