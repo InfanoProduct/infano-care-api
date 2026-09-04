@@ -17,7 +17,7 @@ export class AdminService {
   static async getStats(startDate?: Date, endDate?: Date) {
     const dateFilter = startDate && endDate ? { gte: startDate, lte: endDate } : undefined;
 
-    // 1. Module Counts (Overall Lifetime Totals)
+    // 1. Module Counts (Overall Lifetime Totals) - executed as a batched transaction
     const [
       totalMembers,
       activeConsultations,
@@ -29,7 +29,7 @@ export class AdminService {
       blogs,
       schools,
       orders
-    ] = await Promise.all([
+    ] = await prisma.$transaction([
       prisma.user.count({ where: { role: { in: ["TEEN", "PARENT", "GUARDIAN", "PEER"] } } }),
       prisma.expertSessionSchedule.count({ where: { status: "SCHEDULED", programId: null } }),
       prisma.creativeJourney.count(),
@@ -43,7 +43,7 @@ export class AdminService {
     ]);
 
     // 2. Financial Metrics & Breakdown
-    const [bookRevenueResult, programRevenueResult, expertRevenueResult] = await Promise.all([
+    const [bookRevenueResult, programRevenueResult, expertRevenueResult] = await prisma.$transaction([
       prisma.order.aggregate({
         _sum: { totalAmount: true },
         where: { orderStatus: { not: "CANCELLED" }, ...(dateFilter ? { createdAt: dateFilter } : {}) }

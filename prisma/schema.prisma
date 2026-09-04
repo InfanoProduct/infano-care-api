@@ -1049,6 +1049,8 @@ model Order {
   paymentMethod     PaymentMethod
   paymentStatus     PaymentStatus   @default(PENDING)
   orderStatus       OrderStatus     @default(PLACED)
+  country           String?         @default("IN")
+  currency          String          @default("INR")
   shippingAddress   String
   city              String
   state             String
@@ -1338,6 +1340,7 @@ model DemoSession {
   slotTime          String?
   status            String        @default("PENDING")
   amount            Float         @default(9)
+  currency          String        @default("INR")
   paymentStatus     PaymentStatus @default(PENDING)
   paymentMethod     PaymentMethod @default(ONLINE)
   razorpayOrderId   String?       @unique
@@ -1586,6 +1589,7 @@ model WebinarRegistration {
   razorpayPaymentId String?
   razorpaySignature String?
   amount            Float
+  currency          String        @default("INR")
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   user              User?         @relation(fields: [userId], references: [id])
@@ -1818,6 +1822,7 @@ model LmsEnrollment {
   razorpayOrderId   String?
   razorpayPaymentId String?
   pricePaid         Float         @default(0)
+  currency          String        @default("INR")
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   course            LmsCourse     @relation(fields: [courseId], references: [id], onDelete: Cascade)

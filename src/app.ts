@@ -53,11 +53,20 @@ app.use(cors({ origin: "*" }));
 app.use(compression());
 app.use(express.json({ limit: "200mb" }));
 app.use(express.urlencoded({ limit: "200mb", extended: true }));
+// Clean, readable HTTP request/response logger
 app.use((req, res, next) => {
-  console.log(`[RAW REQUEST] ${req.method} ${req.url}`);
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    const status = res.statusCode;
+    const method = req.method;
+    const url = req.originalUrl || req.url;
+    const indicator = status >= 500 ? "🔴" : status >= 400 ? "🟡" : "🟢";
+    const time = new Date().toLocaleTimeString();
+    console.log(`[${time}] ${indicator} ${method.padEnd(6)} ${url} -> ${status} (${duration}ms)`);
+  });
   next();
 });
-app.use(pinoHttp({ logger }));
 logger.info({ allowedOrigins: env.ALLOWED_ORIGINS }, "CORS configuration");
 
 // Swagger Documentation

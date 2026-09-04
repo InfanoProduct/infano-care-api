@@ -93,6 +93,8 @@ export class ShopService {
     couponCode?: string;
     gstNumber?: string;
     comments?: string;
+    currency?: string;
+    country?: string;
   }) {
     const result = await prisma.$transaction(async (tx) => {
       // Resolve valid userId (checking if the user actually exists in DB to prevent foreign key violation)
@@ -164,12 +166,19 @@ export class ShopService {
         let totalAmount = subtotal - discountAmount;
         if (totalAmount < 0) totalAmount = 0;
 
+        const resolvedCurrency = (data.currency || "INR").toUpperCase();
         let razorpayOrderId = null;
         if (data.paymentMethod === PaymentMethod.ONLINE) {
           const options = {
             amount: Math.round(totalAmount * 100),
-            currency: "INR",
-            receipt: `rcpt_webinar_${Date.now()}`,
+            currency: resolvedCurrency,
+            receipt: `rcpt_web_${Date.now()}`,
+            notes: {
+              product_type: "digital_webinar",
+              rbi_purpose_code: "P1006",
+              webinar_id: webinar.id,
+              customer_phone: data.guestPhone || "",
+            }
           };
           const rpOrder = await razorpay.orders.create(options);
           razorpayOrderId = rpOrder.id;
@@ -189,6 +198,7 @@ export class ShopService {
             paymentMethod: data.paymentMethod,
             razorpayOrderId,
             amount: totalAmount,
+            currency: resolvedCurrency,
           }
         });
 
@@ -222,7 +232,9 @@ export class ShopService {
         return {
           id: registration.id,
           totalAmount: registration.amount,
+          currency: resolvedCurrency,
           razorpayOrderId: registration.razorpayOrderId,
+          razorpayKeyId: env.RAZORPAY_KEY_ID || "",
           paymentMethod: registration.paymentMethod,
           paymentStatus: registration.paymentStatus,
           createdAt: registration.createdAt,
@@ -230,8 +242,8 @@ export class ShopService {
         } as any;
       }
 
-      // Parse country from comments
-      let country = "IN";
+      // Parse country from input or comments
+      let country = (data.country || "IN").toUpperCase();
       if (data.comments) {
         try {
           const parsed = JSON.parse(data.comments);
@@ -243,14 +255,16 @@ export class ShopService {
         } catch (e) {
           if (typeof data.comments === "string") {
             const cleaned = data.comments.trim().toUpperCase();
-            if (cleaned === "US" || cleaned === "UK" || cleaned === "IN") {
-              country = cleaned;
+            if (cleaned === "US" || cleaned === "UK" || cleaned === "GB" || cleaned === "IN") {
+              country = cleaned === "GB" ? "UK" : cleaned;
             }
           }
         }
       }
 
-      // Generate order ID beforehand so Stripe can use it
+      const resolvedCurrency = (data.currency || (country === "US" ? "USD" : (country === "UK" || country === "GB") ? "GBP" : "INR")).toUpperCase();
+
+      // Generate order ID
       const orderId = uuidv4();
 
       // 1. Calculate subtotal and verify stock
@@ -273,7 +287,7 @@ export class ShopService {
           bookPrice = (book as any).priceUS != null
             ? (book as any).priceUS
             : Math.round((book.price / 83) * 100) / 100;
-        } else if (country === "UK") {
+        } else if (country === "UK" || country === "GB") {
           bookPrice = (book as any).priceUK != null
             ? (book as any).priceUK
             : Math.round((book.price / 105) * 100) / 100;
@@ -304,7 +318,7 @@ export class ShopService {
         }
       }
 
-      // 3. Calculate GST and Total (Production Grade Reverse Calculation)
+      // 3. Calculate GST and Total
       let taxableSubtotal = subtotal - discountAmount;
       let taxableAmount = taxableSubtotal;
       let cgstAmount = 0;
@@ -313,7 +327,7 @@ export class ShopService {
       let deliveryCharge = 0;
       let totalAmount = taxableSubtotal;
 
-      // Determine delivery charge from first book's DB settings (applies uniformly across items)
+      // Determine delivery charge from first book's DB settings
       const firstBook = await tx.book.findUnique({ where: { id: data.items[0]?.bookId || "" } });
 
       if (country === "IN") {
@@ -333,80 +347,33 @@ export class ShopService {
       } else if (country === "US") {
         deliveryCharge = (firstBook as any)?.shippingUS ?? 0;
         totalAmount = taxableSubtotal + deliveryCharge;
-      } else if (country === "UK") {
+      } else if (country === "UK" || country === "GB") {
         deliveryCharge = (firstBook as any)?.shippingUK ?? 0;
+        totalAmount = taxableSubtotal + deliveryCharge;
+      } else {
+        deliveryCharge = (firstBook as any)?.shippingUS ?? 0;
         totalAmount = taxableSubtotal + deliveryCharge;
       }
 
-      // 4. Create payment session/order if needed
+      // 4. Create multi-currency Razorpay order
       let razorpayOrderId = null;
-      let stripeSessionUrl: string | undefined = undefined;
 
       if (data.paymentMethod === PaymentMethod.ONLINE) {
-        if (country === "US" || country === "UK") {
-          if (env.STRIPE_SECRET_KEY) {
-            const frontendUrl = env.ALLOWED_ORIGINS?.[0] || "http://localhost:3000";
-
-            const firstItemId = data.items[0]?.bookId || "";
-            const firstItemTitle = firstItemId ? (bookTitles[firstItemId] || "Gigi Book") : "Gigi Book";
-            const firstItemImageUrl = firstItemId ? (bookImageUrls[firstItemId] || "") : "";
-
-            // Construct success URL with all parameters for receipt display
-            const successUrl = `${frontendUrl}/purchase-success?transaction_id=${orderId}&session_id={CHECKOUT_SESSION_ID}`
-              + `&value=${totalAmount}&quantity=${data.items[0]?.quantity || 1}&item_id=${firstItemId}`
-              + `&item_name=${encodeURIComponent(firstItemTitle)}`
-              + `&price=${orderItems[0]?.price || 0}&discount=${discountAmount}&delivery=${deliveryCharge}`
-              + `&subtotal=${subtotal}&payment_method=ONLINE`
-              + `&image_url=${encodeURIComponent(firstItemImageUrl)}`;
-
-            const params = new URLSearchParams();
-            params.append("payment_method_types[0]", "card");
-            params.append("mode", "payment");
-            params.append("success_url", successUrl);
-            params.append("cancel_url", `${frontendUrl}/checkout`);
-            if (data.guestEmail) {
-              params.append("customer_email", data.guestEmail);
-            }
-            params.append("metadata[orderId]", orderId);
-
-            // Add line items using array params syntax
-            orderItems.forEach((item, idx) => {
-              params.append(`line_items[${idx}][price_data][currency]`, country === "US" ? "usd" : "gbp");
-              params.append(`line_items[${idx}][price_data][unit_amount]`, Math.round(item.price * 100).toString());
-              params.append(`line_items[${idx}][price_data][product_data][name]`, bookTitles[item.bookId] || "Gigi Book");
-              params.append(`line_items[${idx}][quantity]`, item.quantity.toString());
-            });
-
-            const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: params.toString(),
-            });
-
-            if (!stripeRes.ok) {
-              const errBody = await stripeRes.text();
-              logger.error(`[Stripe Checkout Session Error]: ${errBody}`);
-              throw new Error("Stripe checkout session initialization failed");
-            }
-
-            const session = await stripeRes.json() as any;
-            stripeSessionUrl = session.url || undefined;
-            razorpayOrderId = `STRIPE_${session.id}`;
-          } else {
-            razorpayOrderId = `INT_MOCK_${orderId}`;
+        const options = {
+          amount: Math.round(totalAmount * 100),
+          currency: resolvedCurrency,
+          receipt: `rcpt_${Date.now()}`,
+          notes: {
+            product_type: "physical_book",
+            hsn_code: "4901",
+            rbi_purpose_code: "P0102",
+            shipping_address: `${data.shippingAddress}, ${data.city}, ${data.state} - ${data.pincode}`,
+            customer_phone: data.guestPhone || "",
+            country: country,
           }
-        } else {
-          const options = {
-            amount: Math.round(totalAmount * 100),
-            currency: "INR",
-            receipt: `rcpt_${Date.now()}`,
-          };
-          const rpOrder = await razorpay.orders.create(options);
-          razorpayOrderId = rpOrder.id;
-        }
+        };
+        const rpOrder = await razorpay.orders.create(options);
+        razorpayOrderId = rpOrder.id;
       }
 
       // 5. Create Order record
@@ -417,6 +384,8 @@ export class ShopService {
           guestEmail: data.guestEmail,
           guestName: data.guestName,
           guestPhone: data.guestPhone,
+          country,
+          currency: resolvedCurrency,
           subtotal,
           taxableAmount,
           cgstAmount,
@@ -432,9 +401,9 @@ export class ShopService {
           pincode: data.pincode,
           razorpayOrderId,
           couponId,
-          orderStatus: data.paymentMethod === PaymentMethod.COD ? OrderStatus.PLACED : OrderStatus.PLACED,
+          orderStatus: OrderStatus.PLACED,
           gstNumber: data.gstNumber,
-          comments: data.comments ? JSON.parse(data.comments) : undefined,
+          comments: data.comments ? (typeof data.comments === "string" ? (() => { try { return JSON.parse(data.comments); } catch { return data.comments; } })() : data.comments) : undefined,
           items: {
             create: orderItems,
           },
@@ -444,7 +413,7 @@ export class ShopService {
         }
       });
 
-      // 6. Update User Profile if userId is present (as requested)
+      // 6. Update User Profile if userId is present
       if (resolvedUserId) {
         const updateData: any = {
           profile: {
@@ -473,7 +442,7 @@ export class ShopService {
         });
       }
 
-      // 7. Manage Inventory
+      // 7. Manage Inventory for COD
       if (data.paymentMethod === PaymentMethod.COD) {
         for (const item of orderItems) {
           await tx.book.update({
@@ -483,7 +452,7 @@ export class ShopService {
         }
       }
 
-      return { ...order, stripeSessionUrl, razorpayKeyId: env.RAZORPAY_KEY_ID || "" };
+      return { ...order, currency: resolvedCurrency, razorpayKeyId: env.RAZORPAY_KEY_ID || "" };
     }, {
       timeout: 20000
     });

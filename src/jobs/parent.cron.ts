@@ -36,7 +36,10 @@ export function initParentJobs() {
   });
 
   // Run every minute to check for expert sessions starting in 15 minutes
+  let isCheckingExpertSessions = false;
   cron.schedule("*/1 * * * *", async () => {
+    if (isCheckingExpertSessions) return;
+    isCheckingExpertSessions = true;
     try {
       const now = new Date();
       const fifteenMinutesFromNow = new Date(now.getTime() + 16 * 60 * 1000); // 16 minutes max window to catch it
@@ -144,8 +147,10 @@ export function initParentJobs() {
           }
         }
       }
-    } catch (error) {
-      logger.error({ err: error }, "[CRON] Error in Expert Session 15-Minute Reminders job");
+    } catch (error: any) {
+      logger.warn(`[ParentCron] Expert session check skipped/errored: ${error?.message || error}`);
+    } finally {
+      isCheckingExpertSessions = false;
     }
   });
 
