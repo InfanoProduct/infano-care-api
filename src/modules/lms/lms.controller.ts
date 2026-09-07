@@ -117,10 +117,16 @@ export class LmsController {
   static async updateModule(req: Request, res: Response) {
     try {
       const id = req.params.moduleId as string;
-      const { title, description, timeDuration, order } = req.body;
+      const { title, description, timeDuration, order, thumbnailUrl } = req.body;
       const moduleData = await prisma.lmsModule.update({
         where: { id },
-        data: { title, description, timeDuration: Number(timeDuration) || 0, order: Number(order) || 0 },
+        data: {
+          title,
+          description,
+          timeDuration: Number(timeDuration) || 0,
+          order: Number(order) || 0,
+          thumbnailUrl: thumbnailUrl !== undefined ? thumbnailUrl : undefined,
+        },
       });
       res.json(moduleData);
     } catch (error) {
@@ -143,11 +149,19 @@ export class LmsController {
   static async updateChapter(req: Request, res: Response) {
     try {
       const id = req.params.chapterId as string;
-      const { title, description, type, order, videoUrl, videoDuration, assessmentQuestions, passingScore, goodToKnowPoints, faqs } = req.body;
+      const { title, description, type, order, videoUrl, videoDuration, assessmentQuestions, passingScore, goodToKnowPoints, faqs, thumbnailUrl } = req.body;
 
       const chapter = await prisma.lmsChapter.update({
         where: { id },
-        data: { title, description, type, order: Number(order) || 0, goodToKnowPoints: goodToKnowPoints || [], faqs: faqs || [] },
+        data: {
+          title,
+          description,
+          type,
+          order: Number(order) || 0,
+          goodToKnowPoints: goodToKnowPoints || [],
+          faqs: faqs || [],
+          thumbnailUrl: thumbnailUrl !== undefined ? thumbnailUrl : undefined,
+        },
       });
 
       if (type === "VIDEO" && videoUrl) {
