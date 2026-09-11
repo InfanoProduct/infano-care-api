@@ -2,10 +2,26 @@ import { Request, Response, NextFunction } from 'express';
 import { ChatService } from './chat.service.js';
 import { chatRequestSchema, historyRequestSchema } from './chat.schema.js';
 import { logger } from '../../config/logger.js';
+import { StorageService } from '../../common/utils/storage.js';
 
 const chatService = new ChatService();
 
 export class ChatController {
+  /**
+   * Upload media/voice note for chat
+   */
+  static async uploadMedia(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        throw new Error('No file provided');
+      }
+      const { url } = await StorageService.uploadFile(req.file.path, 'chat');
+      res.status(200).json({ success: true, url, mediaUrl: url });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Send a message to Gigi
    */
