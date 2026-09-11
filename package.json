@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "seed:lms": "tsx --env-file=.env src/modules/lms/lms.seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

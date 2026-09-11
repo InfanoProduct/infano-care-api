@@ -21,13 +21,18 @@ export function initTrackerJobs() {
 
   // 2. Log Reminder & Streak Alert Check (Every minute)
   // Evaluates if any user needs a Daily Log Reminder or Streak At Risk Alert right now in their local timezone.
+  let isRunningTrackerCheck = false;
   cron.schedule("*/1 * * * *", async () => {
+    if (isRunningTrackerCheck) return;
+    isRunningTrackerCheck = true;
     try {
       await TrackerNotificationService.checkDailyLogReminders();
       await TrackerNotificationService.checkStreakAtRiskAlerts();
       await TrackerNotificationService.checkDailyCycleInsights();
-    } catch (error) {
-      logger.error({ err: error }, "Failed to run log/streak reminders");
+    } catch (error: any) {
+      logger.warn(`[TrackerCron] Background check skipped/errored: ${error?.message || error}`);
+    } finally {
+      isRunningTrackerCheck = false;
     }
   });
 }

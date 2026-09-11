@@ -110,8 +110,8 @@ export class ParentController {
       const userId = (req as any).userId;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-      const { expertId, scheduledAt } = req.body;
-      const order = await ParentService.bookExpertSession(userId, expertId, scheduledAt);
+      const { expertId, scheduledAt, currency, amount } = req.body;
+      const order = await ParentService.bookExpertSession(userId, expertId, scheduledAt, currency, amount);
       res.status(201).json(order);
     } catch (error: any) {
       res.status(400).json({ error: error.message || "Failed to initiate booking" });
@@ -285,8 +285,8 @@ export class ParentController {
 
   static async bookPublicExpertSession(req: Request, res: Response) {
     try {
-      const { expertId, scheduledAt, name, phone, email } = req.body;
-      const order = await ParentService.bookPublicExpertSession({ expertId, scheduledAt, name, phone, email });
+      const { expertId, scheduledAt, name, phone, email, currency, amount } = req.body;
+      const order = await ParentService.bookPublicExpertSession({ expertId, scheduledAt, name, phone, email, currency, amount });
       res.status(201).json(order);
     } catch (error: any) {
       res.status(400).json({ error: error.message || "Failed to initiate booking" });

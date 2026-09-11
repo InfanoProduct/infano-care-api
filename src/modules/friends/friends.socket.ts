@@ -47,10 +47,11 @@ export function setupFriendsSocket(io: Server) {
       socket.leave(`match_${matchId}`);
     });
 
-    socket.on('send_message', async (data: { matchId: string; content: string; clientId?: string }) => {
+    socket.on('send_message', async (data: { matchId: string; content?: string; mediaUrl?: string; messageType?: string; clientId?: string }) => {
       try {
         const uid = (socket as any).userId;
-        const result = await getChatService().createMessage(uid, data.matchId, data.content);
+        const messageContent = data.content || data.mediaUrl || '';
+        const result = await getChatService().createMessage(uid, data.matchId, messageContent);
 
         // Broadcast message to both users in the match room
         const { matchId: _mId, ...msgRest } = result.message;
@@ -58,6 +59,8 @@ export function setupFriendsSocket(io: Server) {
           type: 'message',
           matchId: data.matchId,
           clientId: data.clientId,
+          mediaUrl: data.mediaUrl,
+          messageType: data.messageType || (data.mediaUrl ? 'VOICE' : 'TEXT'),
           ...msgRest
         });
 

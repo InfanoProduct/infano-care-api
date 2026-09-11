@@ -1031,19 +1031,35 @@ export class ParentService {
     }));
   }
 
-  static async bookExpertSession(userId: string, expertId: string, scheduledAt: string) {
+  static async bookExpertSession(userId: string, expertId: string, scheduledAt: string, currency?: string, amount?: number) {
     const expert = await prisma.user.findUnique({
       where: { id: expertId },
       include: { profile: true }
     });
     if (!expert) throw new Error("Expert not found");
 
-    const price = expert.profile?.consultationPrice || 500;
+    const basePrice = expert.profile?.consultationPrice || 500;
+    const resolvedCurrency = (currency || "INR").toUpperCase();
+    let finalPrice = amount;
+    if (!finalPrice) {
+      if (resolvedCurrency === "USD") {
+        finalPrice = Math.round((basePrice / 83) * 100) / 100;
+      } else if (resolvedCurrency === "GBP") {
+        finalPrice = Math.round((basePrice / 105) * 100) / 100;
+      } else {
+        finalPrice = basePrice;
+      }
+    }
     
     const options = {
-      amount: Math.round(price * 100),
-      currency: "INR",
+      amount: Math.round(finalPrice * 100),
+      currency: resolvedCurrency,
       receipt: `rcpt_${Date.now()}_expert`,
+      notes: {
+        product_type: "expert_consultation",
+        rbi_purpose_code: "P1006",
+        expert_id: expertId,
+      }
     };
     
     const order = await razorpay.orders.create(options);
@@ -1718,7 +1734,7 @@ export class ParentService {
     return user;
   }
 
-  static async bookPublicExpertSession(data: { expertId: string; scheduledAt: string; name: string; phone: string; email: string; }) {
+  static async bookPublicExpertSession(data: { expertId: string; scheduledAt: string; name: string; phone: string; email: string; currency?: string; amount?: number; }) {
     if (!data.expertId || !data.scheduledAt || !data.name || !data.phone || !data.email) {
       throw new Error("Missing required fields for booking (expertId, scheduledAt, name, phone, email)");
     }
@@ -1731,12 +1747,29 @@ export class ParentService {
     });
     if (!expert) throw new Error("Expert not found");
 
-    const price = expert.profile?.consultationPrice || 500;
+    const basePrice = expert.profile?.consultationPrice || 500;
+    const resolvedCurrency = (data.currency || "INR").toUpperCase();
+    let finalPrice = data.amount;
+    if (!finalPrice) {
+      if (resolvedCurrency === "USD") {
+        finalPrice = Math.round((basePrice / 83) * 100) / 100;
+      } else if (resolvedCurrency === "GBP") {
+        finalPrice = Math.round((basePrice / 105) * 100) / 100;
+      } else {
+        finalPrice = basePrice;
+      }
+    }
     
     const options = {
-      amount: Math.round(price * 100),
-      currency: "INR",
+      amount: Math.round(finalPrice * 100),
+      currency: resolvedCurrency,
       receipt: `rcpt_${Date.now()}_expert`,
+      notes: {
+        product_type: "expert_consultation",
+        rbi_purpose_code: "P1006",
+        expert_id: data.expertId,
+        customer_phone: data.phone || "",
+      }
     };
     
     const order = await razorpay.orders.create(options);

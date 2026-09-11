@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ChatController } from './chat.controller.js';
 import { authenticate, optionalAuthenticate } from '../../common/middleware/auth.js';
+import { upload } from '../../common/middleware/upload.js';
 
 const router = Router();
 
@@ -10,6 +11,17 @@ const router = Router();
  *   name: Chat
  *   description: Gigi AI Assistant Chat services
  */
+
+/**
+ * @openapi
+ * /api/chat/media:
+ *   post:
+ *     summary: Upload voice note or media for chat
+ *     tags: [Chat]
+ *     security:
+ *       - BearerAuth: []
+ */
+router.post('/media', authenticate, upload.single('file'), ChatController.uploadMedia);
 
 /**
  * @openapi

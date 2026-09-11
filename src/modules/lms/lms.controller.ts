@@ -117,10 +117,16 @@ export class LmsController {
   static async updateModule(req: Request, res: Response) {
     try {
       const id = req.params.moduleId as string;
-      const { title, description, timeDuration, order } = req.body;
+      const { title, description, timeDuration, order, thumbnailUrl } = req.body;
       const moduleData = await prisma.lmsModule.update({
         where: { id },
-        data: { title, description, timeDuration: Number(timeDuration) || 0, order: Number(order) || 0 },
+        data: {
+          title,
+          description,
+          timeDuration: Number(timeDuration) || 0,
+          order: Number(order) || 0,
+          thumbnailUrl: thumbnailUrl !== undefined ? thumbnailUrl : undefined,
+        },
       });
       res.json(moduleData);
     } catch (error) {
@@ -143,11 +149,19 @@ export class LmsController {
   static async updateChapter(req: Request, res: Response) {
     try {
       const id = req.params.chapterId as string;
-      const { title, description, type, order, videoUrl, videoDuration, assessmentQuestions, passingScore, goodToKnowPoints, faqs } = req.body;
+      const { title, description, type, order, videoUrl, videoDuration, assessmentQuestions, passingScore, goodToKnowPoints, faqs, thumbnailUrl } = req.body;
 
       const chapter = await prisma.lmsChapter.update({
         where: { id },
-        data: { title, description, type, order: Number(order) || 0, goodToKnowPoints: goodToKnowPoints || [], faqs: faqs || [] },
+        data: {
+          title,
+          description,
+          type,
+          order: Number(order) || 0,
+          goodToKnowPoints: goodToKnowPoints || [],
+          faqs: faqs || [],
+          thumbnailUrl: thumbnailUrl !== undefined ? thumbnailUrl : undefined,
+        },
       });
 
       if (type === "VIDEO" && videoUrl) {
@@ -267,6 +281,18 @@ export class LmsController {
       let finalStatus = course.isFree ? "ACTIVE" : "PENDING";
       let rzpOrderDetails = null;
 
+      const resolvedCurrency = (req.body.currency || "INR").toUpperCase();
+      let finalPrice = req.body.amount;
+      if (!finalPrice) {
+        if (resolvedCurrency === "USD") {
+          finalPrice = Math.round((course.price / 83) * 100) / 100;
+        } else if (resolvedCurrency === "GBP") {
+          finalPrice = Math.round((course.price / 105) * 100) / 100;
+        } else {
+          finalPrice = course.price;
+        }
+      }
+
       if (!course.isFree) {
         const razorpay = new Razorpay({
           key_id: env.RAZORPAY_KEY_ID || "",
@@ -274,16 +300,22 @@ export class LmsController {
         });
 
         const options = {
-          amount: Math.round(course.price * 100),
-          currency: "INR",
+          amount: Math.round(finalPrice * 100),
+          currency: resolvedCurrency,
           receipt: `rcpt_lms_${Date.now()}`,
+          notes: {
+            product_type: "digital_course",
+            rbi_purpose_code: "P1006",
+            course_id: course.id,
+          }
         };
         const rpOrder = await razorpay.orders.create(options);
         razorpayOrderId = rpOrder.id;
         rzpOrderDetails = {
           orderId: razorpayOrderId,
           keyId: env.RAZORPAY_KEY_ID || "",
-          amount: course.price
+          amount: finalPrice,
+          currency: resolvedCurrency
         };
       }
 
@@ -295,6 +327,8 @@ export class LmsController {
           data: {
             status: finalStatus,
             razorpayOrderId,
+            currency: resolvedCurrency,
+            pricePaid: finalPrice,
           }
         });
       } else {
@@ -302,7 +336,8 @@ export class LmsController {
           data: {
             userId,
             courseId: id,
-            pricePaid: course.price,
+            pricePaid: finalPrice,
+            currency: resolvedCurrency,
             status: finalStatus,
             razorpayOrderId,
           },
@@ -470,6 +505,18 @@ export class LmsController {
       let finalStatus = course.isFree ? "ACTIVE" : "PENDING";
       let rzpOrderDetails = null;
 
+      const resolvedCurrency = (req.body.currency || "INR").toUpperCase();
+      let finalPrice = req.body.amount;
+      if (!finalPrice) {
+        if (resolvedCurrency === "USD") {
+          finalPrice = Math.round((course.price / 83) * 100) / 100;
+        } else if (resolvedCurrency === "GBP") {
+          finalPrice = Math.round((course.price / 105) * 100) / 100;
+        } else {
+          finalPrice = course.price;
+        }
+      }
+
       if (!course.isFree) {
         const razorpay = new Razorpay({
           key_id: env.RAZORPAY_KEY_ID || "",
@@ -477,16 +524,23 @@ export class LmsController {
         });
 
         const options = {
-          amount: Math.round(course.price * 100),
-          currency: "INR",
+          amount: Math.round(finalPrice * 100),
+          currency: resolvedCurrency,
           receipt: `rcpt_lms_pub_${Date.now()}`,
+          notes: {
+            product_type: "digital_course",
+            rbi_purpose_code: "P1006",
+            course_id: course.id,
+            customer_phone: phone || "",
+          }
         };
         const rpOrder = await razorpay.orders.create(options);
         razorpayOrderId = rpOrder.id;
         rzpOrderDetails = {
           orderId: razorpayOrderId,
           keyId: env.RAZORPAY_KEY_ID || "",
-          amount: course.price
+          amount: finalPrice,
+          currency: resolvedCurrency
         };
       }
 
@@ -497,6 +551,8 @@ export class LmsController {
           data: {
             status: finalStatus,
             razorpayOrderId,
+            currency: resolvedCurrency,
+            pricePaid: finalPrice,
           }
         });
       } else {
@@ -504,7 +560,8 @@ export class LmsController {
           data: {
             userId: user.id,
             courseId,
-            pricePaid: course.price,
+            pricePaid: finalPrice,
+            currency: resolvedCurrency,
             status: finalStatus,
             razorpayOrderId,
           },

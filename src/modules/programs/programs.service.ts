@@ -887,15 +887,21 @@ export class ProgramsService {
       }
     }
 
-    const demoPrice = 9; // ₹9 paid demo session fee
+    const resolvedCurrency = (data.currency || (data.country === 'US' ? 'USD' : (data.country === 'UK' || data.country === 'GB') ? 'GBP' : 'INR')).toUpperCase();
+    const demoPrice = data.amount || (resolvedCurrency === 'USD' ? 1 : (resolvedCurrency === 'GBP' ? 1 : 9));
     let razorpayOrderId: string | null = null;
 
     if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
       try {
         const rpOrder = await razorpay.orders.create({
           amount: Math.round(demoPrice * 100),
-          currency: "INR",
-          receipt: `rcpt_demo_${Date.now()}`
+          currency: resolvedCurrency,
+          receipt: `rcpt_demo_${Date.now()}`,
+          notes: {
+            product_type: "demo_session",
+            rbi_purpose_code: "P1006",
+            customer_phone: normalizedPhone,
+          }
         });
         razorpayOrderId = rpOrder.id;
       } catch (err) {
@@ -923,6 +929,7 @@ export class ProgramsService {
         slotTime: data.slotTime || null,
         status: "PENDING",
         amount: demoPrice,
+        currency: resolvedCurrency,
         paymentStatus: "PENDING",
         paymentMethod: "ONLINE",
         razorpayOrderId,
@@ -935,7 +942,7 @@ export class ProgramsService {
       razorpay: {
         orderId: razorpayOrderId,
         amount: demoPrice,
-        currency: "INR",
+        currency: resolvedCurrency,
         keyId: env.RAZORPAY_KEY_ID || ""
       }
     };
