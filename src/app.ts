@@ -35,6 +35,8 @@ import creativeJourneyRoutes from "./modules/creative-journey/creative-journey.r
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
+import { requestLogger } from "./common/middleware/requestLogger.js";
+
 const app = express();
 
 // Middleware
@@ -53,20 +55,9 @@ app.use(cors({ origin: "*" }));
 app.use(compression());
 app.use(express.json({ limit: "200mb" }));
 app.use(express.urlencoded({ limit: "200mb", extended: true }));
-// Clean, readable HTTP request/response logger
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    const status = res.statusCode;
-    const method = req.method;
-    const url = req.originalUrl || req.url;
-    const indicator = status >= 500 ? "🔴" : status >= 400 ? "🟡" : "🟢";
-    const time = new Date().toLocaleTimeString();
-    console.log(`[${time}] ${indicator} ${method.padEnd(6)} ${url} -> ${status} (${duration}ms)`);
-  });
-  next();
-});
+
+// Clear, formatted HTTP request & response logger with timing and error insights
+app.use(requestLogger);
 logger.info({ allowedOrigins: env.ALLOWED_ORIGINS }, "CORS configuration");
 
 // Swagger Documentation

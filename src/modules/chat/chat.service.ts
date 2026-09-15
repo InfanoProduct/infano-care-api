@@ -1,3 +1,5 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { prisma, ChatSender, EscalationLevel } from '../../db/client.js';
 import { logger } from '../../config/logger.js';
 import { AppError } from '../../common/middleware/errorHandler.js';
@@ -130,12 +132,163 @@ THREE-TRACK SAFETY ESCALATION:
 - Track 2 (Elevated): Persistent sadness, self-doubt. Offer warm companionship and gentle guidance.
 - Track 3 (Crisis): Self-harm, abuse, suicidal ideation. **IMMEDIATE SAFETY PRIORITY.** Comfort them and provide helpline numbers immediately (iCall: 9152987821, Vandrevala Foundation: 1860-2662-345).
 
+VOICE NOTES INTERACTION RULE:
+- When a user sends an audio voice note, it is transcribed for you as '[Voice Note from User]: "..."'. 
+- Respond directly to what they said in their voice note with warm, caring, empathetic sisterly guidance in pure text!
+- If the audio note was silent or untranscribable ('[The user sent an audio voice note message]'), acknowledge warmly: "I received your voice note! 💜 I'm right here listening to you. Tell me what's on your mind!"
+- You ALWAYS reply in friendly, comforting TEXT.
+
 [LINK TRIGGERING RULES]
 
 ETHICAL BOUNDARIES:
 - Never provide clinical medical advice, medication dosages, or psychological diagnoses.
 - Never validate self-harm or eating disorders.
 `.trim();
+
+  /**
+   * Extract voice URL from message content
+   */
+  private extractVoiceUrl(content: string): string | null {
+    if (content.startsWith('[VOICE:') && content.endsWith(']')) {
+      return content.substring(7, content.length - 1).trim();
+    }
+    const match = content.match(/\[VOICE:\s*([^\]]+?)\s*\]/);
+    if (match && match[1]) return match[1].trim();
+
+    if (content.startsWith('http://') || content.startsWith('https://') || content.startsWith('/uploads/')) {
+      const lower = content.toLowerCase();
+      if (lower.endsWith('.m4a') || lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.aac') || lower.includes('/uploads/')) {
+        return content.trim();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Transcribe an audio voice note using Groq Whisper (with OpenAI Whisper fallback)
+   */
+  async transcribeAudio(mediaUrlOrPath: string): Promise<string> {
+    try {
+      let fileBuffer: Buffer | null = null;
+      let fileName = 'voice_note.m4a';
+
+      // 1. Check if it's a relative /uploads/ path or absolute local path
+      let localPath = '';
+      if (mediaUrlOrPath.includes('/uploads/')) {
+        const relPath = mediaUrlOrPath.substring(mediaUrlOrPath.indexOf('/uploads/') + 9);
+        const cleanRelPath = relPath.split('?')[0]?.split('#')[0] || relPath;
+        localPath = path.join(process.cwd(), process.env.UPLOAD_PATH || 'uploads', cleanRelPath);
+      } else if (mediaUrlOrPath.startsWith('/') || mediaUrlOrPath.startsWith('C:\\') || mediaUrlOrPath.startsWith('D:\\')) {
+        localPath = mediaUrlOrPath.split('?')[0]?.split('#')[0] || mediaUrlOrPath;
+      }
+
+      if (localPath) {
+        try {
+          const stats = await fs.stat(localPath);
+          if (stats.isFile()) {
+            fileBuffer = await fs.readFile(localPath);
+            fileName = path.basename(localPath);
+            logger.info({ localPath, size: fileBuffer.length }, 'Loaded audio file from local disk for transcription');
+          }
+        } catch (fsErr) {
+          logger.warn({ fsErr, localPath }, 'Could not read audio file directly from local disk, will attempt HTTP fetch');
+        }
+      }
+
+      // 2. If not on local disk, fetch via HTTP
+      if (!fileBuffer && (mediaUrlOrPath.startsWith('http://') || mediaUrlOrPath.startsWith('https://'))) {
+        try {
+          const response = await fetch(mediaUrlOrPath);
+          if (response.ok) {
+            const arrayBuf = await response.arrayBuffer();
+            fileBuffer = Buffer.from(arrayBuf);
+            try {
+              fileName = path.basename(new URL(mediaUrlOrPath).pathname) || 'voice_note.m4a';
+            } catch (_) {}
+            logger.info({ mediaUrlOrPath, size: fileBuffer.length }, 'Fetched audio file via HTTP for transcription');
+          }
+        } catch (fetchErr) {
+          logger.error({ fetchErr, mediaUrlOrPath }, 'Failed to fetch remote audio file for transcription');
+        }
+      }
+
+      if (!fileBuffer || fileBuffer.length === 0) {
+        logger.warn({ mediaUrlOrPath }, 'Audio buffer is empty, transcription skipped');
+        return '';
+      }
+
+      // Determine audio mime type from filename
+      let mimeType = 'audio/m4a';
+      const ext = path.extname(fileName).toLowerCase();
+      if (ext === '.mp3') mimeType = 'audio/mp3';
+      else if (ext === '.wav') mimeType = 'audio/wav';
+      else if (ext === '.aac') mimeType = 'audio/aac';
+      else if (ext === '.ogg') mimeType = 'audio/ogg';
+
+      // 3. Call Groq Whisper API
+      if (process.env.GROQ_API_KEY) {
+        try {
+          const formData = new FormData();
+          const blob = new Blob([fileBuffer], { type: mimeType });
+          formData.append('file', blob, fileName);
+          formData.append('model', 'whisper-large-v3-turbo');
+          formData.append('response_format', 'json');
+
+          const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+            },
+            body: formData
+          });
+
+          if (whisperRes.ok) {
+            const data: any = await whisperRes.json();
+            const text = data.text?.trim() || '';
+            logger.info({ mediaUrlOrPath, text }, 'Voice note successfully transcribed by Groq Whisper');
+            return text;
+          } else {
+            const errText = await whisperRes.text();
+            logger.warn({ status: whisperRes.status, errText }, 'Groq Whisper transcription non-200');
+          }
+        } catch (groqErr) {
+          logger.error({ groqErr }, 'Error calling Groq Whisper');
+        }
+      }
+
+      // 4. Fallback to OpenAI Whisper API
+      if (process.env.OPENAI_API_KEY) {
+        try {
+          const formData = new FormData();
+          const blob = new Blob([fileBuffer], { type: 'audio/m4a' });
+          formData.append('file', blob, fileName);
+          formData.append('model', 'whisper-1');
+
+          const openAiRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: formData
+          });
+
+          if (openAiRes.ok) {
+            const data: any = await openAiRes.json();
+            const text = data.text?.trim() || '';
+            logger.info({ mediaUrlOrPath, text }, 'Voice note successfully transcribed by OpenAI Whisper');
+            return text;
+          }
+        } catch (openAiErr) {
+          logger.error({ openAiErr }, 'Error calling OpenAI Whisper fallback');
+        }
+      }
+
+      return '';
+    } catch (err) {
+      logger.error({ err, mediaUrlOrPath }, 'Unexpected error in transcribeAudio');
+      return '';
+    }
+  }
 
   /**
    * Main entry point for processing a user message
@@ -148,6 +301,16 @@ ETHICAL BOUNDARIES:
       const isSafe = await this.checkModeration(content);
       if (!isSafe) {
         return this.handleUnsafeInput(userId, content, sessionId);
+      }
+
+      // Extract and transcribe voice note if present
+      const voiceUrl = this.extractVoiceUrl(content);
+      let transcribedText = '';
+      if (voiceUrl) {
+        transcribedText = await this.transcribeAudio(voiceUrl);
+        if (transcribedText) {
+          logger.info({ voiceUrl, transcribedText }, 'Gigi transcribed incoming user voice note');
+        }
       }
 
       const contentLower = content.toLowerCase();
@@ -170,7 +333,7 @@ ETHICAL BOUNDARIES:
           allPrograms,
           allJourneys
         };
-        const gigiResponse = await this.callGroq(content, history, context, userPlatform);
+        const gigiResponse = await this.callGroq(content, history, context, userPlatform, transcribedText);
         let sanitizedResponse = this.sanitizeOutput(gigiResponse).trim();
         if (!sanitizedResponse) {
           sanitizedResponse = "Please login first to view your information. 💙";
@@ -555,7 +718,7 @@ ETHICAL BOUNDARIES:
         allJourneys
       };
 
-      const gigiResponse = await this.callGroq(content, history, context, userPlatform);
+      const gigiResponse = await this.callGroq(content, history, context, userPlatform, transcribedText);
 
       // 5. Layer 3: Post-LLM Output Filter & Distress Level update
       let sanitizedResponse = this.sanitizeOutput(gigiResponse).trim();
@@ -565,11 +728,12 @@ ETHICAL BOUNDARIES:
 
       // Simple distress detection for escalation tracking
       const distressWords = ['hurt', 'die', 'kill', 'suicide', 'abuse', 'safe', 'cutting'];
-      const isCrisis = distressWords.some(w => content.toLowerCase().includes(w));
+      const checkCrisisText = transcribedText ? `${content} ${transcribedText}` : content;
+      const isCrisis = distressWords.some(w => checkCrisisText.toLowerCase().includes(w));
       const currentLevel = isCrisis ? EscalationLevel.LEVEL_3 : EscalationLevel.LEVEL_0;
 
       // Real-time parent notification on suicide / self-harm distress
-      CrisisAlertService.checkAndNotifyCrisis(userId, content, 'GIGI_CHAT').catch((err) => {
+      CrisisAlertService.checkAndNotifyCrisis(userId, checkCrisisText, 'GIGI_CHAT').catch((err) => {
         logger.error({ err, userId }, 'Failed to check/notify crisis in Gigi chat');
       });
 
@@ -607,7 +771,7 @@ ETHICAL BOUNDARIES:
     return true;
   }
 
-  private async callGroq(userMsg: string, history: any[], context: any, platform: 'web' | 'mobile' = 'mobile'): Promise<string> {
+  private async callGroq(userMsg: string, history: any[], context: any, platform: 'web' | 'mobile' = 'mobile', transcribedText: string = ''): Promise<string> {
     const parseRetryAfter = (h: string | null) => {
       if (!h) return null;
       const raw = h.trim();
@@ -692,22 +856,44 @@ ABSOLUTE RULES — NO EXCEPTIONS:
           // Guest instructions go FIRST so they take maximum priority
           const prompt = `${guestInstructions}\n\n${contextStr}${databaseInfo}\n\n${basePrompt}`;
 
+          const formatContent = (c: string) => {
+            if (c.startsWith('[VOICE:') && c.endsWith(']')) {
+              return '[The user sent an audio voice note message]';
+            }
+            return c;
+          };
+
+          let userPromptMsg = userMsg;
+          if (transcribedText && transcribedText.trim().length > 0) {
+            userPromptMsg = `[Voice Note from User]: "${transcribedText.trim()}"`;
+          } else {
+            userPromptMsg = formatContent(userMsg);
+          }
+
+          let foundCurrent = false;
+          const mappedHistory = history.map((m, idx) => {
+            const isLast = idx === history.length - 1;
+            const isUser = m.sender === ChatSender.USER || m.sender === 'USER';
+            if (isLast && isUser && (m.content.trim() === userMsg.trim() || (userMsg.startsWith('[VOICE:') && m.content.startsWith('[VOICE:')))) {
+              foundCurrent = true;
+              return {
+                role: 'user',
+                content: userPromptMsg
+              };
+            }
+            return {
+              role: isUser ? 'user' : 'assistant',
+              content: formatContent(m.content)
+            };
+          });
+
           messages = [
             { role: 'system', content: prompt },
-            ...history.map(m => ({
-              role: m.sender === ChatSender.USER ? 'user' : 'assistant',
-              content: m.content
-            }))
+            ...mappedHistory
           ];
 
-          // If the last message in history is not the current user message, append it
-          const lastMsg = history[history.length - 1];
-          const isLastMsgUserCurrent = lastMsg && 
-            (lastMsg.sender === ChatSender.USER || lastMsg.sender === 'USER') && 
-            lastMsg.content.trim() === userMsg.trim();
-
-          if (!isLastMsgUserCurrent) {
-            messages.push({ role: 'user', content: userMsg });
+          if (!foundCurrent) {
+            messages.push({ role: 'user', content: userPromptMsg });
           }
 
           const response = await fetch(GROQ_API_URL, {
@@ -918,38 +1104,56 @@ ABSOLUTE RULES — NO EXCEPTIONS:
   }
 
   async getAggregatedChats(userId: string) {
-    const expertSessions = await prisma.expertChatSession.findMany({
-      where: { userId },
-      include: {
-        expert: { select: { profile: true } },
-        messages: { orderBy: { createdAt: 'desc' }, take: 1 }
-      }
-    });
-
-    const expertUnreadCounts = await Promise.all(
-      expertSessions.map(async (s) => {
-        const count = await prisma.expertChatMessage.count({
-          where: { sessionId: s.id, isRead: false, NOT: { senderId: userId } }
-        });
-        return { id: s.id, count };
-      })
-    );
-
-    const peerSessions = await prisma.peerLineSession.findMany({
-      where: {
-        OR: [{ menteeId: userId }, { mentorId: userId }],
-        NOT: {
-          AND: [{ menteeId: userId }, { mentorId: userId }]
+    // 1. Fetch Expert, Peer, and Gigi sessions in parallel
+    const [expertSessions, peerSessions, gigiSessionExisting] = await Promise.all([
+      prisma.expertChatSession.findMany({
+        where: { userId },
+        include: {
+          expert: { select: { profile: { select: { displayName: true, avatarUrl: true } } } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { content: true, createdAt: true } }
         }
-      },
-      include: {
-        mentor: { select: { profile: true } },
-        mentee: { select: { profile: true } },
-        PeerLineMessage: { orderBy: { sentAt: 'desc' }, take: 1 }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+      }),
+      prisma.peerLineSession.findMany({
+        where: {
+          OR: [{ menteeId: userId }, { mentorId: userId }],
+          NOT: {
+            AND: [{ menteeId: userId }, { mentorId: userId }]
+          }
+        },
+        include: {
+          mentor: { select: { profile: { select: { displayName: true, avatarUrl: true } } } },
+          mentee: { select: { profile: { select: { displayName: true, avatarUrl: true } } } },
+          PeerLineMessage: { orderBy: { sentAt: 'desc' }, take: 1, select: { content: true, sentAt: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.chatSession.findFirst({
+        where: { userId },
+        include: {
+          messages: { orderBy: { createdAt: "desc" }, take: 1, select: { content: true, createdAt: true } }
+        }
+      })
+    ]);
 
+    // 2. Batch expert unread counts
+    const expertSessionIds = expertSessions.map(s => s.id);
+    let expertUnreadMap = new Map<string, number>();
+    if (expertSessionIds.length > 0) {
+      const expertUnreadCounts = await prisma.expertChatMessage.groupBy({
+        by: ['sessionId'],
+        where: {
+          sessionId: { in: expertSessionIds },
+          isRead: false,
+          NOT: { senderId: userId }
+        },
+        _count: { id: true }
+      });
+      for (const row of expertUnreadCounts) {
+        expertUnreadMap.set(row.sessionId, row._count.id);
+      }
+    }
+
+    // 3. Process peer sessions
     const peerGroupsMap = new Map<string, typeof peerSessions>();
     for (const session of peerSessions) {
       const partnerId = session.menteeId === userId ? session.mentorId : session.menteeId;
@@ -960,54 +1164,56 @@ ABSOLUTE RULES — NO EXCEPTIONS:
       peerGroupsMap.get(partnerId)!.push(session);
     }
 
-    const peerAggregated = await Promise.all(
-      Array.from(peerGroupsMap.entries()).map(async ([partnerId, sessionsList]) => {
-        const activeSession = sessionsList.find(s => s.status === 'ACTIVE' || s.status === 'MATCHING');
-        const primarySession = activeSession || sessionsList[0];
-        if (!primarySession) return null;
-
-        const otherUser = primarySession.menteeId === userId ? primarySession.mentor : primarySession.mentee;
-        const sessionIds = sessionsList.map(s => s.id);
-
-        const totalUnreadCount = await prisma.peerLineMessage.count({
-          where: {
-            sessionId: { in: sessionIds },
-            isRead: false,
-            senderRole: primarySession.menteeId === userId ? 'mentor' : 'mentee'
-          }
-        });
-
-        const latestMessage = await prisma.peerLineMessage.findFirst({
-          where: { sessionId: { in: sessionIds } },
-          orderBy: { sentAt: 'desc' }
-        });
-
-        const isActive = Boolean(activeSession && (activeSession.status === 'ACTIVE' || activeSession.status === 'MATCHING'));
-        const isOnline = Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${partnerId}`)?.size);
-
-        return {
-          id: primarySession.id,
-          type: 'peer',
-          peerId: partnerId,
-          name: otherUser?.profile?.displayName || 'Peer',
-          avatarUrl: otherUser?.profile?.avatarUrl,
-          lastMessage: latestMessage?.content || 'Session started',
-          timestamp: latestMessage?.sentAt || primarySession.createdAt,
-          unreadCount: totalUnreadCount,
-          status: primarySession.status,
-          isActive,
-          isOnline
-        };
-      })
-    ).then(results => results.filter(Boolean));
-
-    // Ensure at least one Gigi session exists for the user
-    let gigiSession = await prisma.chatSession.findFirst({
-      where: { userId },
-      include: {
-        messages: { orderBy: { createdAt: "desc" }, take: 1 }
+    const allPeerSessionIds = peerSessions.map(s => s.id);
+    let peerUnreadCountsBySession = new Map<string, number>();
+    if (allPeerSessionIds.length > 0) {
+      const peerUnreads = await prisma.peerLineMessage.groupBy({
+        by: ['sessionId'],
+        where: {
+          sessionId: { in: allPeerSessionIds },
+          isRead: false
+        },
+        _count: { id: true }
+      });
+      for (const row of peerUnreads) {
+        peerUnreadCountsBySession.set(row.sessionId, row._count.id);
       }
-    });
+    }
+
+    const peerAggregated = Array.from(peerGroupsMap.entries()).map(([partnerId, sessionsList]) => {
+      const activeSession = sessionsList.find(s => s.status === 'ACTIVE' || s.status === 'MATCHING');
+      const primarySession = activeSession || sessionsList[0];
+      if (!primarySession) return null;
+
+      const otherUser = primarySession.menteeId === userId ? primarySession.mentor : primarySession.mentee;
+      const isMentee = primarySession.menteeId === userId;
+      
+      let totalUnreadCount = 0;
+      for (const s of sessionsList) {
+        totalUnreadCount += peerUnreadCountsBySession.get(s.id) || 0;
+      }
+
+      const latestMessage = primarySession.PeerLineMessage[0];
+      const isActive = Boolean(activeSession && (activeSession.status === 'ACTIVE' || activeSession.status === 'MATCHING'));
+      const isOnline = Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${partnerId}`)?.size);
+
+      return {
+        id: primarySession.id,
+        type: 'peer',
+        peerId: partnerId,
+        name: otherUser?.profile?.displayName || 'Peer',
+        avatarUrl: otherUser?.profile?.avatarUrl,
+        lastMessage: latestMessage?.content || 'Session started',
+        timestamp: latestMessage?.sentAt || primarySession.createdAt,
+        unreadCount: totalUnreadCount,
+        status: primarySession.status,
+        isActive,
+        isOnline
+      };
+    }).filter(Boolean);
+
+    // 4. Ensure Gigi session
+    let gigiSession = gigiSessionExisting;
     if (!gigiSession) {
       const newSession = await prisma.chatSession.create({
         data: { userId, title: 'Chat with Gigi' }
@@ -1040,7 +1246,7 @@ ABSOLUTE RULES — NO EXCEPTIONS:
         avatarUrl: s.expert?.profile?.avatarUrl,
         lastMessage: s.messages[0]?.content || 'Session started',
         timestamp: s.messages[0]?.createdAt || s.createdAt,
-        unreadCount: expertUnreadCounts.find(c => c.id === s.id)?.count || 0,
+        unreadCount: expertUnreadMap.get(s.id) || 0,
         status: s.status,
         isActive: s.status === 'ACTIVE' || s.status === 'IN_PROGRESS',
         isOnline: Boolean(peerlineNsp && peerlineNsp.adapter.rooms.get(`user_${s.expertId}`)?.size)

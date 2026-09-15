@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../../db/client.js";
+import { redis } from "../../db/redis.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { env } from "../../config/env.js";
@@ -200,10 +201,29 @@ export class LmsController {
 
   static async exploreCourses(req: Request, res: Response) {
     try {
+      res.setHeader("Cache-Control", "public, max-age=120, stale-while-revalidate=600");
+      const cacheKey = "lms:explore_courses";
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          res.json(JSON.parse(cached));
+          return;
+        }
+      } catch (e) {
+        // Redis fallback ignored
+      }
+
       const courses = await prisma.lmsCourse.findMany({
         where: { isActive: true },
         include: { modules: true },
       });
+
+      try {
+        await redis.setex(cacheKey, 600, JSON.stringify(courses));
+      } catch (e) {
+        // ignore
+      }
+
       res.json(courses);
     } catch (error) {
       console.error(error);
@@ -219,6 +239,17 @@ export class LmsController {
         return;
       }
 
+      const cacheKey = `lms:my_courses:${userId}`;
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          res.json(JSON.parse(cached));
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+
       const enrollments = await prisma.lmsEnrollment.findMany({
         where: { userId },
         include: {
@@ -226,6 +257,13 @@ export class LmsController {
           progress: true,
         },
       });
+
+      try {
+        await redis.setex(cacheKey, 180, JSON.stringify(enrollments));
+      } catch (e) {
+        // ignore
+      }
+
       res.json(enrollments);
     } catch (error) {
       console.error(error);
@@ -235,7 +273,20 @@ export class LmsController {
 
   static async getCourseDetails(req: Request, res: Response) {
     try {
+      res.setHeader("Cache-Control", "public, max-age=120, stale-while-revalidate=600");
       const id = req.params.id as string;
+
+      const cacheKey = `lms:course:${id}`;
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          res.json(JSON.parse(cached));
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+
       const course = await prisma.lmsCourse.findUnique({
         where: { id },
         include: {
@@ -246,6 +297,13 @@ export class LmsController {
         res.status(404).json({ error: "Course not found" });
         return;
       }
+
+      try {
+        await redis.setex(cacheKey, 600, JSON.stringify(course));
+      } catch (e) {
+        // ignore
+      }
+
       res.json(course);
     } catch (error) {
       console.error(error);
@@ -630,6 +688,17 @@ export class LmsController {
         return;
       }
 
+      const cacheKey = `lms:progress:${userId}:${courseId}`;
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          res.json(JSON.parse(cached));
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+
       const enrollment = await prisma.lmsEnrollment.findUnique({
         where: { userId_courseId: { userId, courseId } },
         include: { progress: true }
@@ -640,7 +709,14 @@ export class LmsController {
         return;
       }
 
-      res.json({ progress: (enrollment as any).progress });
+      const result = { progress: (enrollment as any).progress };
+      try {
+        await redis.setex(cacheKey, 120, JSON.stringify(result));
+      } catch (e) {
+        // ignore
+      }
+
+      res.json(result);
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Failed to fetch progress" });
@@ -718,6 +794,16 @@ export class LmsController {
         }
 
       });
+
+      // Invalidate caches
+      try {
+        await Promise.all([
+          redis.del(`lms:progress:${userId}:${courseId}`),
+          redis.del(`lms:my_courses:${userId}`),
+        ]);
+      } catch (e) {
+        // ignore
+      }
 
       res.json({ success: true, progress });
     } catch (error) {

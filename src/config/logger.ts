@@ -23,11 +23,13 @@ const getTransport = () => {
   }
 
   // If local development and not in a container, use pretty printing
-  if (!isProd && process.stdout.isTTY) {
+  if (!isProd) {
     return {
       target: "pino-pretty",
       options: {
         colorize: true,
+        translateTime: "SYS:HH:MM:ss",
+        ignore: "pid,hostname",
       },
     };
   }
