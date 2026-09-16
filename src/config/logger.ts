@@ -22,8 +22,13 @@ const getTransport = () => {
     };
   }
 
-  // If local development and not in a container, use pretty printing
-  if (!isProd) {
+  // If JSON logging is explicitly requested or running in production, use standard stdout
+  if (env.LOG_DRIVER === "json" || isProd) {
+    return undefined;
+  }
+
+  // If local development and not explicitly json, use pretty printing
+  try {
     return {
       target: "pino-pretty",
       options: {
@@ -32,13 +37,9 @@ const getTransport = () => {
         ignore: "pid,hostname",
       },
     };
+  } catch {
+    return undefined;
   }
-
-  // Default: Standard JSON logging to stdout
-  return {
-    target: "pino/file",
-    options: { destination: 1 },
-  };
 };
 
 export const logger = pino({
