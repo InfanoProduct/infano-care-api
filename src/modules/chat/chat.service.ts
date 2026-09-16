@@ -1165,10 +1165,10 @@ ABSOLUTE RULES — NO EXCEPTIONS:
     }
 
     const allPeerSessionIds = peerSessions.map(s => s.id);
-    let peerUnreadCountsBySession = new Map<string, number>();
+    let peerUnreadCounts = new Map<string, number>();
     if (allPeerSessionIds.length > 0) {
       const peerUnreads = await prisma.peerLineMessage.groupBy({
-        by: ['sessionId'],
+        by: ['sessionId', 'senderRole'],
         where: {
           sessionId: { in: allPeerSessionIds },
           isRead: false
@@ -1176,7 +1176,7 @@ ABSOLUTE RULES — NO EXCEPTIONS:
         _count: { id: true }
       });
       for (const row of peerUnreads) {
-        peerUnreadCountsBySession.set(row.sessionId, row._count.id);
+        peerUnreadCounts.set(`${row.sessionId}:${(row.senderRole || '').toLowerCase()}`, row._count.id);
       }
     }
 
@@ -1186,11 +1186,12 @@ ABSOLUTE RULES — NO EXCEPTIONS:
       if (!primarySession) return null;
 
       const otherUser = primarySession.menteeId === userId ? primarySession.mentor : primarySession.mentee;
-      const isMentee = primarySession.menteeId === userId;
       
       let totalUnreadCount = 0;
       for (const s of sessionsList) {
-        totalUnreadCount += peerUnreadCountsBySession.get(s.id) || 0;
+        const isMentee = s.menteeId === userId;
+        const incomingRole = isMentee ? 'mentor' : 'mentee';
+        totalUnreadCount += peerUnreadCounts.get(`${s.id}:${incomingRole}`) || 0;
       }
 
       const latestMessage = primarySession.PeerLineMessage[0];
