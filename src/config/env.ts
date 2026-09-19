@@ -40,6 +40,7 @@ const envSchema = z.object({
   PAYPAL_CLIENT_ID: z.string().optional(),
   PAYPAL_CLIENT_SECRET: z.string().optional(),
   PAYPAL_WEBHOOK_ID: z.string().optional(), // From PayPal Developer Dashboard after webhook registration
+  PAYPAL_MODE: z.enum(["sandbox", "live", "production"]).optional().default("sandbox"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 });
