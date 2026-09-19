@@ -129,6 +129,33 @@ router.post("/orders/verify", ShopController.verifyPayment);
 
 /**
  * @openapi
+ * /shop/orders/paypal-capture:
+ *   post:
+ *     summary: Capture an approved PayPal order (US/UK)
+ *     tags: [Shop]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [paypalOrderId]
+ *             properties:
+ *               paypalOrderId: { type: string, description: "PayPal Order ID returned from createOrder" }
+ *     responses:
+ *       200:
+ *         description: Payment captured and order completed
+ *       402:
+ *         description: PayPal capture was not successful
+ *       404:
+ *         description: Order not found
+ *       409:
+ *         description: Capture already in progress
+ */
+router.post("/orders/paypal-capture", ShopController.capturePaypalOrder);
+
+/**
+ * @openapi
  * /shop/webhook:
  *   post:
  *     summary: Razorpay Webhook
@@ -138,6 +165,25 @@ router.post("/orders/verify", ShopController.verifyPayment);
  *         description: Webhook received
  */
 router.post("/webhook", ShopController.webhook);
+
+/**
+ * @openapi
+ * /shop/webhook/paypal:
+ *   post:
+ *     summary: PayPal Webhook (US/UK order events)
+ *     tags: [Shop]
+ *     description: |
+ *       Receives PayPal PAYMENT.CAPTURE.COMPLETED / DENIED / DECLINED events.
+ *       Raw body is required for signature verification — route is mounted with
+ *       express.raw() middleware in app.ts before express.json().
+ *     responses:
+ *       200:
+ *         description: Webhook received
+ *       401:
+ *         description: Invalid PayPal signature
+ */
+router.post("/webhook/paypal", ShopController.paypalWebhook);
+
 
 // Admin Coupon Management Routes (Secure)
 import { authenticate } from "../../common/middleware/auth.js";

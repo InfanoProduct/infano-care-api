@@ -1,6 +1,6 @@
 import { prisma } from "../../db/client.js";
 import Razorpay from "razorpay";
-import { env } from "../../config/env.js";
+import { env, isProd } from "../../config/env.js";
 import crypto from "crypto";
 import { logger } from "../../config/logger.js";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
@@ -8,6 +8,14 @@ import { normalizePhone } from "../../common/utils/phone.js";
 import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail, sendWebinarConfirmationEmail } from "../../common/services/email.service.js";
 import { sendOrderConfirmationWhatsApp, sendOrderShippedWhatsApp, sendOrderDeliveredWhatsApp } from "../../common/services/whatsapp.service.js";
 import { v4 as uuidv4 } from "uuid";
+import {
+  CheckoutPaymentIntent,
+  OrderApplicationContextShippingPreference,
+  OrderApplicationContextUserAction,
+} from "@paypal/paypal-server-sdk";
+import { getPaypalOrdersController } from "../../config/paypal.js";
+import { verifyPaypalWebhookSignature } from "../../common/utils/paypal-webhook.js";
+import { AppError } from "../../common/middleware/errorHandler.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -398,25 +406,101 @@ export class ShopService {
         totalAmount = taxableSubtotal + deliveryCharge;
       }
 
-      // 4. Create multi-currency Razorpay order
-      let razorpayOrderId = null;
+      // 4. Create payment gateway order — Razorpay for India, PayPal for US/UK
+      let razorpayOrderId: string | null = null;
+      let paypalOrderId: string | null = null;
 
       if (data.paymentMethod === PaymentMethod.ONLINE) {
-        const options = {
-          amount: Math.round(totalAmount * 100),
-          currency: resolvedCurrency,
-          receipt: `rcpt_${Date.now()}`,
-          notes: {
-            product_type: "physical_book",
-            hsn_code: "4901",
-            rbi_purpose_code: "P0102",
-            shipping_address: `${data.shippingAddress}, ${data.city}, ${data.state} - ${data.pincode}`,
-            customer_phone: data.guestPhone || "",
-            country: country,
+        const isInternational = country === "US" || country === "UK" || country === "GB";
+
+        if (isInternational) {
+          // ── PayPal order (US / UK) ────────────────────────────────────────────
+          // Amount must be a string with exactly 2 decimal places per PayPal spec
+          const amountStr = (Math.round(totalAmount * 100) / 100).toFixed(2);
+          const ordersController = getPaypalOrdersController();
+
+          const nameParts = (data.guestName || "").trim().split(/\s+/);
+          const givenName = nameParts[0] || "Guest";
+          const surname = nameParts.slice(1).join(" ") || undefined;
+          const countryCode = country === "UK" || country === "GB" ? "GB" : "US";
+
+          let adminArea1 = (data.state || "").trim();
+          const stateCodeMatch = adminArea1.match(/\(([^)]+)\)/);
+          if (stateCodeMatch && stateCodeMatch[1]) {
+            adminArea1 = stateCodeMatch[1];
           }
-        };
-        const rpOrder = await razorpay.orders.create(options);
-        razorpayOrderId = rpOrder.id;
+
+          const ppResponse = await ordersController.createOrder({
+            body: {
+              intent: CheckoutPaymentIntent.Capture,
+              payer: {
+                emailAddress: data.guestEmail || undefined,
+                name: {
+                  givenName,
+                  surname,
+                },
+                address: {
+                  addressLine1: data.shippingAddress,
+                  adminArea2: data.city,
+                  adminArea1,
+                  postalCode: data.pincode,
+                  countryCode,
+                },
+              },
+              purchaseUnits: [{
+                amount: {
+                  currencyCode: resolvedCurrency, // "USD" or "GBP"
+                  value: amountStr,
+                },
+                description: "Gigi — The Awkward Age (Book)",
+                customId: orderId, // our internal Order UUID — used for webhook reconciliation
+                shipping: {
+                  name: {
+                    fullName: data.guestName,
+                  },
+                  address: {
+                    addressLine1: data.shippingAddress,
+                    adminArea2: data.city,
+                    adminArea1,
+                    postalCode: data.pincode,
+                    countryCode,
+                  },
+                },
+              }],
+              applicationContext: {
+                brandName: "Infano.Care",
+                locale: countryCode === "GB" ? "en-GB" : "en-US",
+                userAction: OrderApplicationContextUserAction.PayNow,
+                shippingPreference: OrderApplicationContextShippingPreference.SetProvidedAddress,
+              },
+            },
+            prefer: "return=representation",
+          });
+
+          if (ppResponse.result?.id) {
+            paypalOrderId = ppResponse.result.id;
+          } else {
+            logger.error({ ppResponse }, "[PAYPAL] createOrder returned no ID");
+            throw new Error("Failed to create PayPal order — no order ID returned");
+          }
+
+        } else {
+          // ── Razorpay order (India) ────────────────────────────────────────────
+          const rpOrder = await razorpay.orders.create({
+            amount: Math.round(totalAmount * 100),
+            currency: resolvedCurrency,
+            receipt: `rcpt_${Date.now()}`,
+            notes: {
+              product_type: "physical_book",
+              hsn_code: "4901",
+              rbi_purpose_code: "P0102",
+              shipping_address: `${data.shippingAddress}, ${data.city}, ${data.state} - ${data.pincode}`,
+              customer_phone: data.guestPhone || "",
+              country: country,
+            },
+          });
+          razorpayOrderId = rpOrder.id;
+        }
       }
 
       // 5. Create Order record
@@ -443,6 +527,7 @@ export class ShopService {
           state: data.state,
           pincode: data.pincode,
           razorpayOrderId,
+          paypalOrderId,
           couponId,
           orderStatus: OrderStatus.PLACED,
           gstNumber: data.gstNumber,
@@ -495,7 +580,13 @@ export class ShopService {
         }
       }
 
-      return { ...order, currency: resolvedCurrency, razorpayKeyId: env.RAZORPAY_KEY_ID || "" };
+      return {
+        ...order,
+        currency: resolvedCurrency,
+        razorpayKeyId: env.RAZORPAY_KEY_ID || "",
+        paypalOrderId: order.paypalOrderId || null,
+        paypalClientId: env.PAYPAL_CLIENT_ID || "",
+      };
     }, {
       timeout: 20000
     });
@@ -820,7 +911,272 @@ export class ShopService {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PayPal Methods (US / UK orders)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Captures an approved PayPal order.
+   *
+   * Safety guarantees:
+   *  1. Already-completed orders are returned immediately (idempotent).
+   *  2. Calls PayPal captureOrder to capture the authorized funds.
+   *  3. Completes the DB order, adjusts inventory, logs success.
+   */
+  static async capturePaypalOrder(paypalOrderId: string) {
+    // 1. Resolve the order
+    const order = await prisma.order.findUnique({
+      where: { paypalOrderId },
+      include: { items: { include: { book: true } } },
+    });
+    if (!order) throw new AppError("Order not found", 404);
+
+    // 2. Idempotency — already completed
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
+      logger.info({ paypalOrderId }, "[PAYPAL] capturePaypalOrder: already completed, returning early");
+      return order;
+    }
+
+    try {
+      // 3. Call PayPal capture API
+      const ordersController = getPaypalOrdersController();
+      const captureResponse = await ordersController.captureOrder({
+        id: paypalOrderId,
+        prefer: "return=representation",
+      });
+
+      const capture = captureResponse.result;
+      const captureUnit = capture?.purchaseUnits?.[0]?.payments?.captures?.[0];
+      const captureId: string | null = captureUnit?.id ?? null;
+      const captureStatus: string | undefined = captureUnit?.status;
+
+      logger.info(
+        { paypalOrderId, captureId, captureStatus },
+        "[PAYPAL] captureOrder API response"
+      );
+
+      if (captureStatus !== "COMPLETED") {
+        // PayPal returned a non-success status — mark as failed
+        await prisma.order.update({
+          where: { paypalOrderId },
+          data: { paymentStatus: PaymentStatus.FAILED },
+        });
+        throw new AppError(
+          `PayPal payment was not successful (status: ${captureStatus ?? "unknown"})`,
+          402
+        );
+      }
+
+      // 4. Complete the order (inventory, coupon, email)
+      return await this.completeOrderByPaypalOrderId(paypalOrderId, captureId);
+
+    } catch (err: any) {
+      throw err;
+    }
+  }
+
+  /**
+   * Completes an Order identified by its PayPal order ID:
+   * sets paymentStatus = COMPLETED, records captureId, decrements inventory,
+   * increments coupon usage, and sends confirmation emails.
+   *
+   * This is the PayPal equivalent of completeOrder() (which is keyed by razorpayOrderId).
+   */
+  static async completeOrderByPaypalOrderId(
+    paypalOrderId: string,
+    captureId: string | null
+  ) {
+    const order = await prisma.order.findUnique({
+      where: { paypalOrderId },
+      include: { items: { include: { book: true } } },
+    });
+    if (!order) throw new AppError("Order not found for paypalOrderId: " + paypalOrderId, 404);
+
+    // Guard: already completed (idempotent)
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
+      logger.info({ paypalOrderId }, "[PAYPAL] completeOrderByPaypalOrderId: order already completed");
+      return order;
+    }
+
+    // Resolve or sync user from guestPhone
+    let userId = order.userId;
+    if (!userId && order.guestPhone) {
+      const normalized = normalizePhone(order.guestPhone);
+      let user = await prisma.user.findUnique({ where: { phone: normalized } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            phone: normalized,
+            accountStatus: "PENDING_SETUP",
+            onboardingStep: 1,
+            role: "PARENT",
+            profile: {
+              create: {
+                displayName: order.guestName || "Parent",
+              },
+            },
+          },
+        });
+      }
+      userId = user.id;
+    }
+
+    // Update order to COMPLETED
+    const updatedOrder = await prisma.order.update({
+      where: { paypalOrderId },
+      data: {
+        paymentStatus: PaymentStatus.COMPLETED,
+        paypalCaptureId: captureId,
+        userId: userId ?? undefined,
+      },
+      include: { items: { include: { book: true } } },
+    });
+
+    // Decrement book stock
+    for (const item of order.items) {
+      await prisma.book.update({
+        where: { id: item.bookId },
+        data: { stock: { decrement: item.quantity } },
+      }).catch((err) => {
+        logger.error({ err, bookId: item.bookId }, "[PAYPAL] Failed to decrement stock");
+      });
+    }
+
+    // Increment coupon usage
+    if (order.couponId) {
+      await prisma.discountCoupon.update({
+        where: { id: order.couponId },
+        data: { usedCount: { increment: 1 } },
+      }).catch((err) => {
+        logger.error({ err, couponId: order.couponId }, "[PAYPAL] Failed to increment coupon usage");
+      });
+    }
+
+    // Send confirmation email (non-blocking)
+    if (order.guestEmail) {
+      this._sendPlacedEmail({ ...updatedOrder, paymentStatus: PaymentStatus.COMPLETED } as any);
+    }
+
+    logger.info(
+      { orderId: order.id, paypalOrderId, captureId },
+      "[PAYPAL] Order completed successfully"
+    );
+
+    return updatedOrder;
+  }
+
+  /**
+   * Handles incoming PayPal webhooks.
+   *
+   * Supports:
+   *  - PAYMENT.CAPTURE.COMPLETED  → complete the order
+   *  - PAYMENT.CAPTURE.DENIED     → mark order FAILED
+   *  - PAYMENT.CAPTURE.DECLINED   → mark order FAILED
+   *
+   * Always returns { received: true } so PayPal stops retrying.
+   * Never throws — logs errors and returns 200 to PayPal.
+   */
+  static async handlePaypalWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string | string[] | undefined>
+  ): Promise<{ received: boolean }> {
+    // 1. Verify signature
+    const isValid = await verifyPaypalWebhookSignature(rawBody, headers);
+    if (!isValid) {
+      throw new AppError("Invalid PayPal webhook signature", 401);
+    }
+
+    let event: any;
+    try {
+      event = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      logger.error("[PAYPAL_WEBHOOK] Failed to parse event JSON");
+      return { received: true }; // still 200 to PayPal
+    }
+
+    const eventType: string = event?.event_type ?? "";
+    logger.info({ eventType, eventId: event?.id }, "[PAYPAL_WEBHOOK] Processing event");
+
+    try {
+      if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
+        const captureId: string = event.resource?.id;
+        // PayPal supplies our customId (internal order UUID) in the capture resource
+        const customId: string | undefined = event.resource?.custom_id;
+        // Also attempt resolution via supplementary paypal order ID
+        const paypalOrderId: string | undefined =
+          event.resource?.supplementary_data?.related_ids?.order_id;
+
+        // Find the order (try by paypalOrderId first, fall back to our internal id)
+        let dbOrder = paypalOrderId
+          ? await prisma.order.findUnique({ where: { paypalOrderId } })
+          : null;
+
+        if (!dbOrder && customId) {
+          dbOrder = await prisma.order.findUnique({ where: { id: customId } });
+        }
+
+        if (!dbOrder) {
+          logger.warn(
+            { paypalOrderId, customId, captureId },
+            "[PAYPAL_WEBHOOK] PAYMENT.CAPTURE.COMPLETED — could not find matching order"
+          );
+          return { received: true };
+        }
+
+        if (dbOrder.paymentStatus !== PaymentStatus.COMPLETED) {
+          await this.completeOrderByPaypalOrderId(dbOrder.paypalOrderId!, captureId);
+          logger.info(
+            { orderId: dbOrder.id, paypalOrderId: dbOrder.paypalOrderId, captureId },
+            "[PAYPAL_WEBHOOK] Order completed via webhook"
+          );
+        } else {
+          logger.info(
+            { orderId: dbOrder.id },
+            "[PAYPAL_WEBHOOK] PAYMENT.CAPTURE.COMPLETED — order already completed, ignoring"
+          );
+        }
+
+      } else if (
+        eventType === "PAYMENT.CAPTURE.DENIED" ||
+        eventType === "PAYMENT.CAPTURE.DECLINED"
+      ) {
+        const paypalOrderId: string | undefined =
+          event.resource?.supplementary_data?.related_ids?.order_id;
+        const customId: string | undefined = event.resource?.custom_id;
+
+        if (paypalOrderId) {
+          await prisma.order.updateMany({
+            where: {
+              paypalOrderId,
+              paymentStatus: { not: PaymentStatus.COMPLETED },
+            },
+            data: { paymentStatus: PaymentStatus.FAILED },
+          });
+          logger.info({ paypalOrderId, eventType }, "[PAYPAL_WEBHOOK] Order marked FAILED");
+        } else if (customId) {
+          await prisma.order.updateMany({
+            where: {
+              id: customId,
+              paymentStatus: { not: PaymentStatus.COMPLETED },
+            },
+            data: { paymentStatus: PaymentStatus.FAILED },
+          });
+          logger.info({ customId, eventType }, "[PAYPAL_WEBHOOK] Order marked FAILED via customId");
+        }
+
+      } else {
+        logger.info({ eventType }, "[PAYPAL_WEBHOOK] Unhandled event type — ignoring");
+      }
+    } catch (err) {
+      // Log but do NOT rethrow — we always return 200 to PayPal to stop retries
+      logger.error({ err, eventType }, "[PAYPAL_WEBHOOK] Error processing webhook event");
+    }
+
+    return { received: true };
+  }
+
   static isValidTransition(current: OrderStatus, next: OrderStatus): boolean {
+
     const transitions: Record<OrderStatus, OrderStatus[]> = {
       [OrderStatus.PLACED]: [OrderStatus.PROCESSING, OrderStatus.ON_HOLD, OrderStatus.CANCELLED],
       [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.ON_HOLD, OrderStatus.CANCELLED],

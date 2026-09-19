@@ -170,5 +170,42 @@ export class ShopController {
       next(error);
     }
   }
+
+  /**
+   * POST /shop/orders/paypal-capture
+   * Called by the frontend after the PayPal user approves payment.
+   * Captures the PayPal order and completes the DB order.
+   */
+  static async capturePaypalOrder(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { paypalOrderId } = req.body;
+      if (!paypalOrderId || typeof paypalOrderId !== "string") {
+        return res.status(400).json({ message: "paypalOrderId is required" });
+      }
+      const result = await ShopService.capturePaypalOrder(paypalOrderId);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /shop/webhook/paypal
+   * Receives PayPal webhook events.
+   * Raw body is pre-captured in app.ts (before express.json()) and stored as req.rawBody.
+   */
+  static async paypalWebhook(req: Request, res: Response, next: NextFunction) {
+    try {
+      const rawBody: Buffer | undefined = (req as any).rawBody;
+      if (!rawBody || rawBody.length === 0) {
+        return res.status(400).json({ message: "Missing or empty request body" });
+      }
+      const result = await ShopService.handlePaypalWebhook(rawBody, req.headers);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
+
 
