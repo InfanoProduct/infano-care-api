@@ -33,7 +33,7 @@ import journalRoutes from "./modules/journal/journal.routes.js";
 import lmsRoutes from "./modules/lms/lms.routes.js";
 import creativeJourneyRoutes from "./modules/creative-journey/creative-journey.routes.js";
 import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./config/swagger.js";
+import { getSwaggerSpec } from "./config/swagger.js";
 
 import { requestLogger } from "./common/middleware/requestLogger.js";
 
@@ -72,10 +72,15 @@ app.use(express.urlencoded({ limit: "200mb", extended: true }));
 
 // Clear, formatted HTTP request & response logger with timing and error insights
 app.use(requestLogger);
-logger.info({ allowedOrigins: env.ALLOWED_ORIGINS }, "CORS configuration");
 
-// Swagger Documentation
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Swagger Documentation (lazy-loaded on first request to speed up server boot)
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    swaggerUi.setup(getSwaggerSpec())(req, res, next);
+  }
+);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);

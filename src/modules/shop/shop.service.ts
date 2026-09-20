@@ -314,6 +314,7 @@ export class ShopService {
       }
 
       const resolvedCurrency = (data.currency || (country === "US" ? "USD" : (country === "UK" || country === "GB") ? "GBP" : "INR")).toUpperCase();
+      const isInternational = country === "US" || country === "UK" || country === "GB";
 
       // Generate order ID
       const orderId = uuidv4();
@@ -419,34 +420,45 @@ export class ShopService {
           const amountStr = (Math.round(totalAmount * 100) / 100).toFixed(2);
           const ordersController = getPaypalOrdersController();
 
-          const nameParts = (data.guestName || "").trim().split(/\s+/);
-          const givenName = nameParts[0] || "Guest";
-          const surname = nameParts.slice(1).join(" ") || undefined;
           const countryCode = country === "UK" || country === "GB" ? "GB" : "US";
+          const hasUpfrontShipping = Boolean(data.shippingAddress && data.shippingAddress.trim() && data.city && data.state && data.pincode);
 
-          let adminArea1 = (data.state || "").trim();
-          const stateCodeMatch = adminArea1.match(/\(([^)]+)\)/);
-          if (stateCodeMatch && stateCodeMatch[1]) {
-            adminArea1 = stateCodeMatch[1];
+          let payer: any = undefined;
+          let shipping: any = undefined;
+
+          if (data.guestName || data.guestEmail) {
+            const nameParts = (data.guestName || "").trim().split(/\s+/);
+            const givenName = nameParts[0] || undefined;
+            const surname = nameParts.slice(1).join(" ") || undefined;
+            payer = {
+              emailAddress: data.guestEmail || undefined,
+              name: givenName ? { givenName, surname } : undefined,
+            };
+          }
+
+          if (hasUpfrontShipping) {
+            let adminArea1 = (data.state || "").trim();
+            const stateCodeMatch = adminArea1.match(/\(([^)]+)\)/);
+            if (stateCodeMatch && stateCodeMatch[1]) {
+              adminArea1 = stateCodeMatch[1];
+            }
+
+            shipping = {
+              name: data.guestName ? { fullName: data.guestName } : undefined,
+              address: {
+                addressLine1: data.shippingAddress,
+                adminArea2: data.city,
+                adminArea1,
+                postalCode: data.pincode,
+                countryCode,
+              },
+            };
           }
 
           const ppResponse = await ordersController.createOrder({
             body: {
               intent: CheckoutPaymentIntent.Capture,
-              payer: {
-                emailAddress: data.guestEmail || undefined,
-                name: {
-                  givenName,
-                  surname,
-                },
-                address: {
-                  addressLine1: data.shippingAddress,
-                  adminArea2: data.city,
-                  adminArea1,
-                  postalCode: data.pincode,
-                  countryCode,
-                },
-              },
+              payer,
               purchaseUnits: [{
                 amount: {
                   currencyCode: resolvedCurrency, // "USD" or "GBP"
@@ -454,24 +466,15 @@ export class ShopService {
                 },
                 description: "Gigi — The Awkward Age (Book)",
                 customId: orderId, // our internal Order UUID — used for webhook reconciliation
-                shipping: {
-                  name: {
-                    fullName: data.guestName,
-                  },
-                  address: {
-                    addressLine1: data.shippingAddress,
-                    adminArea2: data.city,
-                    adminArea1,
-                    postalCode: data.pincode,
-                    countryCode,
-                  },
-                },
+                shipping,
               }],
               applicationContext: {
                 brandName: "Infano.Care",
                 locale: countryCode === "GB" ? "en-GB" : "en-US",
                 userAction: OrderApplicationContextUserAction.PayNow,
-                shippingPreference: OrderApplicationContextShippingPreference.SetProvidedAddress,
+                shippingPreference: hasUpfrontShipping
+                  ? OrderApplicationContextShippingPreference.SetProvidedAddress
+                  : OrderApplicationContextShippingPreference.GetFromFile,
               },
             },
             prefer: "return=representation",
@@ -508,9 +511,9 @@ export class ShopService {
         data: {
           id: orderId,
           userId: resolvedUserId,
-          guestEmail: data.guestEmail,
-          guestName: data.guestName,
-          guestPhone: data.guestPhone,
+          guestEmail: data.guestEmail || (isInternational ? "pending_paypal@infano.care" : undefined),
+          guestName: data.guestName || (isInternational ? "PayPal Customer" : undefined),
+          guestPhone: data.guestPhone || (isInternational ? "" : undefined),
           country,
           currency: resolvedCurrency,
           subtotal,
@@ -522,10 +525,10 @@ export class ShopService {
           discountAmount,
           totalAmount,
           paymentMethod: data.paymentMethod,
-          shippingAddress: data.shippingAddress,
-          city: data.city,
-          state: data.state,
-          pincode: data.pincode,
+          shippingAddress: data.shippingAddress || (isInternational ? "Pending PayPal Checkout" : ""),
+          city: data.city || (isInternational ? "Pending" : ""),
+          state: data.state || (isInternational ? "Pending" : ""),
+          pincode: data.pincode || (isInternational ? "00000" : ""),
           razorpayOrderId,
           paypalOrderId,
           couponId,
@@ -967,8 +970,8 @@ export class ShopService {
         );
       }
 
-      // 4. Complete the order (inventory, coupon, email)
-      return await this.completeOrderByPaypalOrderId(paypalOrderId, captureId);
+      // 4. Complete the order (inventory, coupon, email, save verified address from PayPal)
+      return await this.completeOrderByPaypalOrderId(paypalOrderId, captureId, capture);
 
     } catch (err: any) {
       throw err;
@@ -978,13 +981,14 @@ export class ShopService {
   /**
    * Completes an Order identified by its PayPal order ID:
    * sets paymentStatus = COMPLETED, records captureId, decrements inventory,
-   * increments coupon usage, and sends confirmation emails.
+   * increments coupon usage, extracts verified shipping & payer data from PayPal, and sends confirmation emails.
    *
    * This is the PayPal equivalent of completeOrder() (which is keyed by razorpayOrderId).
    */
   static async completeOrderByPaypalOrderId(
     paypalOrderId: string,
-    captureId: string | null
+    captureId: string | null,
+    paypalDetails?: any
   ) {
     const order = await prisma.order.findUnique({
       where: { paypalOrderId },
@@ -998,10 +1002,44 @@ export class ShopService {
       return order;
     }
 
-    // Resolve or sync user from guestPhone
+    // Extract verified shipping and payer details from PayPal response
+    const shipping = paypalDetails?.purchaseUnits?.[0]?.shipping || paypalDetails?.shipping;
+    const payer = paypalDetails?.payer;
+    const address = shipping?.address;
+
+    const guestName =
+      shipping?.name?.fullName ||
+      (payer?.name?.givenName ? `${payer.name.givenName} ${payer.name.surname || ""}`.trim() : null) ||
+      (order.guestName && !order.guestName.startsWith("PayPal Customer") ? order.guestName : "Customer");
+
+    const guestEmail =
+      payer?.emailAddress ||
+      payer?.email_address ||
+      (order.guestEmail && !order.guestEmail.includes("pending_paypal") ? order.guestEmail : null);
+
+    const guestPhone =
+      payer?.phone?.phoneNumber?.nationalNumber ||
+      payer?.phone?.phone_number?.national_number ||
+      order.guestPhone ||
+      null;
+
+    let shippingAddress = order.shippingAddress;
+    if (address?.addressLine1 || address?.address_line_1) {
+      const line1 = address.addressLine1 || address.address_line_1;
+      const line2 = address.addressLine2 || address.address_line_2;
+      shippingAddress = [line1, line2].filter(Boolean).join(", ");
+    }
+
+    const city = address?.adminArea2 || address?.admin_area_2 || order.city;
+    const state = address?.adminArea1 || address?.admin_area_1 || order.state;
+    const pincode = address?.postalCode || address?.postal_code || order.pincode;
+    let country = address?.countryCode || address?.country_code || order.country || "US";
+    if (country === "GB") country = "UK";
+
+    // Resolve or sync user from guestPhone if available
     let userId = order.userId;
-    if (!userId && order.guestPhone) {
-      const normalized = normalizePhone(order.guestPhone);
+    if (!userId && guestPhone) {
+      const normalized = normalizePhone(guestPhone);
       let user = await prisma.user.findUnique({ where: { phone: normalized } });
       if (!user) {
         user = await prisma.user.create({
@@ -1012,7 +1050,7 @@ export class ShopService {
             role: "PARENT",
             profile: {
               create: {
-                displayName: order.guestName || "Parent",
+                displayName: guestName || "Parent",
               },
             },
           },
@@ -1021,13 +1059,40 @@ export class ShopService {
       userId = user.id;
     }
 
-    // Update order to COMPLETED
+    // Prepare comments with raw PayPal meta
+    let updatedComments: any = order.comments;
+    if (paypalDetails) {
+      const existingComments = Array.isArray(order.comments)
+        ? order.comments
+        : (order.comments ? [order.comments] : []);
+      updatedComments = [
+        ...existingComments,
+        {
+          source: "PAYPAL_EXPRESS",
+          capturedAt: new Date().toISOString(),
+          payerId: payer?.payerId || payer?.payer_id,
+          shipping: shipping || null,
+          payer: payer || null,
+        }
+      ];
+    }
+
+    // Update order to COMPLETED with verified PayPal details
     const updatedOrder = await prisma.order.update({
       where: { paypalOrderId },
       data: {
         paymentStatus: PaymentStatus.COMPLETED,
         paypalCaptureId: captureId,
         userId: userId ?? undefined,
+        guestName,
+        guestEmail,
+        guestPhone,
+        shippingAddress,
+        city,
+        state,
+        pincode,
+        country,
+        comments: updatedComments,
       },
       include: { items: { include: { book: true } } },
     });

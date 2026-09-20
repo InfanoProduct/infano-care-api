@@ -22,19 +22,19 @@ const getTransport = () => {
     };
   }
 
-  // If JSON logging is explicitly requested or running in production, use standard stdout
-  if (env.LOG_DRIVER === "json" || isProd) {
+  // If JSON logging is explicitly requested or running in production (and not set to pretty)
+  if (env.LOG_DRIVER === "json" || (isProd && env.LOG_DRIVER !== "pretty")) {
     return undefined;
   }
 
-  // If local development and not explicitly json, use pretty printing
+  // Use clean pretty printing without noisy pid, hostname, or timestamp metadata
   try {
     return {
       target: "pino-pretty",
       options: {
         colorize: true,
-        translateTime: "SYS:HH:MM:ss",
-        ignore: "pid,hostname",
+        ignore: "pid,hostname,time",
+        singleLine: true,
       },
     };
   } catch {
