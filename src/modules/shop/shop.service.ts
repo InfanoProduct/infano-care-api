@@ -1083,6 +1083,7 @@ export class ShopService {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        "PayPal-Request-Id": `infano-card-${orderId}-${Date.now()}`,
       },
       body: JSON.stringify(paypalPayload),
     });

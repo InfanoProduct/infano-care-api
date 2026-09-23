@@ -7,6 +7,7 @@ import crypto from "crypto";
 import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import { logger } from "../../config/logger.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -1131,12 +1132,15 @@ export class AdminService {
 
     if (filters?.status && filters.status !== 'ALL') {
       if (filters.status === 'FAILED') {
-        // Find explicitly FAILED or (ONLINE, no paymentId, not CANCELLED)
         andConditions.push({
           OR: [
+            { orderStatus: 'FAILED' },
+            { paymentStatus: 'FAILED' },
             {
               paymentMethod: 'ONLINE',
+              paymentStatus: { not: 'COMPLETED' },
               razorpayPaymentId: null,
+              paypalCaptureId: null,
               orderStatus: { not: 'CANCELLED' }
             }
           ]
@@ -1144,10 +1148,12 @@ export class AdminService {
       } else {
         const statusCond: any = { orderStatus: filters.status };
         if (filters.status === 'PLACED') {
-          // exclude FAILED logic
+          // exclude FAILED logic: only exclude if online, unpaid, and neither razorpay nor paypal capture ID exists
           statusCond.NOT = {
             paymentMethod: 'ONLINE',
-            razorpayPaymentId: null
+            paymentStatus: { not: 'COMPLETED' },
+            razorpayPaymentId: null,
+            paypalCaptureId: null
           };
         }
         andConditions.push(statusCond);
@@ -1157,27 +1163,60 @@ export class AdminService {
     if (filters?.country && filters.country !== 'ALL') {
       if (filters.country === 'IN') {
         andConditions.push({
-          NOT: [
+          OR: [
+            { country: 'IN' },
+            { country: null },
+            {
+              NOT: [
+                { country: { in: ['US', 'UK', 'GB'] } },
+                { currency: { in: ['USD', 'GBP'] } },
+                {
+                  comments: {
+                    path: ['country'],
+                    equals: 'US'
+                  }
+                },
+                {
+                  comments: {
+                    path: ['country'],
+                    equals: 'UK'
+                  }
+                }
+              ]
+            }
+          ]
+        });
+      } else if (filters.country === 'US') {
+        andConditions.push({
+          OR: [
+            { country: 'US' },
+            { currency: 'USD' },
             {
               comments: {
                 path: ['country'],
                 equals: 'US'
               }
-            },
+            }
+          ]
+        });
+      } else if (filters.country === 'UK' || filters.country === 'GB') {
+        andConditions.push({
+          OR: [
+            { country: { in: ['UK', 'GB'] } },
+            { currency: 'GBP' },
             {
               comments: {
                 path: ['country'],
                 equals: 'UK'
               }
+            },
+            {
+              comments: {
+                path: ['country'],
+                equals: 'GB'
+              }
             }
           ]
-        });
-      } else {
-        andConditions.push({
-          comments: {
-            path: ['country'],
-            equals: filters.country
-          }
         });
       }
     }
@@ -1206,7 +1245,12 @@ export class AdminService {
           totalAmount: true,
           orderStatus: true,
           paymentMethod: true,
-          razorpayPaymentId: true
+          paymentStatus: true,
+          razorpayPaymentId: true,
+          paypalOrderId: true,
+          paypalCaptureId: true,
+          country: true,
+          currency: true
         }
       })
     ]);
@@ -1231,7 +1275,8 @@ export class AdminService {
       const amount = Number(o.totalAmount) || 0;
       totalRevenue += amount;
 
-      if (o.paymentMethod === 'ONLINE' && !!o.razorpayPaymentId) {
+      const isPaidOnline = o.paymentMethod === 'ONLINE' && (o.paymentStatus === 'COMPLETED' || !!o.razorpayPaymentId || !!o.paypalCaptureId);
+      if (isPaidOnline) {
         onlineCount++;
         onlineRevenue += amount;
       } else if (o.paymentMethod === 'COD') {
@@ -1239,7 +1284,7 @@ export class AdminService {
         codRevenue += amount;
       }
 
-      const isFailed = (o.paymentMethod === 'ONLINE' && !o.razorpayPaymentId && o.orderStatus !== 'CANCELLED') || (o as any).orderStatus === 'FAILED';
+      const isFailed = (o.paymentMethod === 'ONLINE' && o.paymentStatus !== 'COMPLETED' && !o.razorpayPaymentId && !o.paypalCaptureId && o.orderStatus !== 'CANCELLED') || (o as any).orderStatus === 'FAILED' || o.paymentStatus === 'FAILED';
       const isCancelled = o.orderStatus === 'CANCELLED';
 
       if (isFailed) {
@@ -1409,6 +1454,28 @@ export class AdminService {
 
     if (!order) throw new AppError("Order not found", 404);
     if (order.paymentStatus === 'COMPLETED') throw new AppError("Order is already paid", 400);
+
+    const isPaypalOrder = !!order.paypalOrderId || order.country === 'US' || order.country === 'UK' || order.country === 'GB' || order.currency === 'USD' || order.currency === 'GBP';
+    const isRazorpayTxn = transactionId.startsWith('pay_');
+
+    if (isPaypalOrder && !isRazorpayTxn) {
+      const pOrderId = order.paypalOrderId || transactionId;
+      try {
+        const completedOrder = await ShopService.capturePaypalOrder(pOrderId);
+        return completedOrder;
+      } catch (paypalErr: any) {
+        logger.warn({ paypalErr: paypalErr.message, orderId }, "[ADMIN] PayPal capture failed, updating to completed directly");
+        return await prisma.order.update({
+          where: { id: orderId },
+          data: {
+            paymentStatus: 'COMPLETED',
+            paymentMethod: 'ONLINE',
+            paypalCaptureId: transactionId,
+            orderStatus: 'PLACED'
+          }
+        });
+      }
+    }
 
     try {
       const payment = await razorpay.payments.fetch(transactionId);
