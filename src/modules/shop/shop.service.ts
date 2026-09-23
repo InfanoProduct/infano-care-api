@@ -1233,11 +1233,20 @@ export class ShopService {
       payer?.email_address ||
       (order.guestEmail && !order.guestEmail.includes("pending_paypal") ? order.guestEmail : null);
 
-    const guestPhone =
+    let rawPhone =
       payer?.phone?.phoneNumber?.nationalNumber ||
       payer?.phone?.phone_number?.national_number ||
+      payer?.phone?.national_number ||
+      payer?.phones?.[0]?.phoneNumber?.nationalNumber ||
+      payer?.phones?.[0]?.phone_number?.national_number ||
+      shipping?.phone?.phoneNumber?.nationalNumber ||
+      shipping?.phone?.phone_number?.national_number ||
+      (typeof shipping?.phone === "string" ? shipping.phone : null) ||
+      (typeof payer?.phone === "string" ? payer.phone : null) ||
       order.guestPhone ||
       null;
+
+    const guestPhone = rawPhone ? String(rawPhone).trim() : null;
 
     let shippingAddress = order.shippingAddress;
     if (address?.addressLine1 || address?.address_line_1) {
