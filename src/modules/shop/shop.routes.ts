@@ -104,6 +104,7 @@ router.post("/coupons/validate", ShopController.validateCoupon);
  *         description: Order created
  */
 router.post("/orders", ShopController.createOrder);
+router.post("/orders/pay-card", ShopController.payWithCard);
 
 /**
  * @openapi

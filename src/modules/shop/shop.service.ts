@@ -13,7 +13,7 @@ import {
   OrderApplicationContextShippingPreference,
   OrderApplicationContextUserAction,
 } from "@paypal/paypal-server-sdk";
-import { getPaypalOrdersController } from "../../config/paypal.js";
+import { getPaypalOrdersController, getPaypalAccessToken, PAYPAL_API_BASE } from "../../config/paypal.js";
 import { verifyPaypalWebhookSignature } from "../../common/utils/paypal-webhook.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 
@@ -919,6 +919,221 @@ export class ShopService {
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
+   * Process Direct Credit/Debit Card Payment via PayPal REST API v2
+   * Completely bypasses frontend iframe / ACDC restrictions.
+   */
+  static async payWithCardDirect(data: {
+    userId?: string;
+    guestEmail: string;
+    guestName: string;
+    guestPhone?: string;
+    shippingAddress: string;
+    city: string;
+    state: string;
+    pincode: string;
+    items: { bookId: string; quantity: number }[];
+    country: string;
+    currency?: string;
+    card: {
+      number: string;
+      expiry: string;
+      cvv: string;
+      name?: string;
+    };
+  }) {
+    const { country, card } = data;
+    const resolvedCountry = country === "UK" || country === "GB" ? "UK" : "US";
+    const countryCode = resolvedCountry === "UK" ? "GB" : "US";
+    const resolvedCurrency = data.currency || (resolvedCountry === "UK" ? "GBP" : "USD");
+
+    // 1. Calculate subtotal & verify stock
+    let subtotal = 0;
+    const orderItems = [];
+    for (const item of data.items) {
+      const book = await prisma.book.findUnique({ where: { id: item.bookId } });
+      if (!book) throw new AppError(`Book not found: ${item.bookId}`, 404);
+      if (book.stock < item.quantity) throw new AppError(`Out of stock: ${book.title}`, 400);
+
+      let bookPrice = book.price;
+      if (resolvedCountry === "US") {
+        bookPrice = (book as any).priceUS != null
+          ? (book as any).priceUS
+          : Math.round((book.price / 83) * 100) / 100;
+      } else if (resolvedCountry === "UK") {
+        bookPrice = (book as any).priceUK != null
+          ? (book as any).priceUK
+          : Math.round((book.price / 105) * 100) / 100;
+      }
+
+      subtotal += bookPrice * item.quantity;
+      orderItems.push({
+        bookId: item.bookId,
+        quantity: item.quantity,
+        price: bookPrice,
+      });
+    }
+
+    const firstBook = await prisma.book.findUnique({ where: { id: data.items[0]?.bookId || "" } });
+    const deliveryCharge = resolvedCountry === "UK"
+      ? ((firstBook as any)?.shippingUK ?? 0)
+      : ((firstBook as any)?.shippingUS ?? 0);
+    const totalAmount = subtotal + deliveryCharge;
+    const amountStr = (Math.round(totalAmount * 100) / 100).toFixed(2);
+
+    // Format Expiry date to YYYY-MM
+    let cleanExpiry = card.expiry.trim();
+    if (cleanExpiry.includes("/")) {
+      const parts = cleanExpiry.split("/").map(s => s.trim());
+      const m = parts[0] || "01";
+      const y = parts[1] || "30";
+      const fullYear = y.length === 2 ? `20${y}` : y;
+      const fullMonth = m.padStart(2, "0");
+      cleanExpiry = `${fullYear}-${fullMonth}`;
+    }
+
+    // Format State code (e.g., "California (CA)" -> "CA")
+    let adminArea1 = (data.state || "").trim();
+    const stateMatch = adminArea1.match(/\(([^)]+)\)/);
+    if (stateMatch && stateMatch[1]) {
+      adminArea1 = stateMatch[1];
+    }
+
+    const cleanCardNumber = card.number.replace(/\D/g, "");
+    const cleanCvv = card.cvv.replace(/\D/g, "");
+
+    // 2. Create pending order record in DB
+    const orderId = uuidv4();
+    const order = await prisma.order.create({
+      data: {
+        id: orderId,
+        userId: data.userId,
+        guestEmail: data.guestEmail,
+        guestName: data.guestName,
+        guestPhone: data.guestPhone,
+        country: resolvedCountry,
+        currency: resolvedCurrency,
+        subtotal,
+        taxableAmount: subtotal,
+        deliveryCharge,
+        discountAmount: 0,
+        totalAmount,
+        paymentMethod: PaymentMethod.ONLINE,
+        shippingAddress: data.shippingAddress,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+        orderStatus: OrderStatus.PLACED,
+        paymentStatus: PaymentStatus.PENDING,
+        comments: {
+          flow: "DIRECT_CARD_REST_API",
+          gateway: "PAYPAL",
+        },
+        items: {
+          create: orderItems,
+        },
+      },
+      include: { items: { include: { book: true } } },
+    });
+
+    // 3. Call PayPal REST Orders API v2
+    const accessToken = await getPaypalAccessToken();
+    const paypalPayload = {
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: resolvedCurrency,
+            value: amountStr,
+          },
+          description: "Gigi — The Awkward Age (Book)",
+          custom_id: orderId,
+          shipping: {
+            name: { full_name: data.guestName },
+            address: {
+              address_line_1: data.shippingAddress,
+              admin_area_2: data.city,
+              admin_area_1: adminArea1,
+              postal_code: data.pincode,
+              country_code: countryCode,
+            },
+          },
+        },
+      ],
+      payment_source: {
+        card: {
+          name: card.name || data.guestName,
+          number: cleanCardNumber,
+          expiry: cleanExpiry,
+          security_code: cleanCvv,
+          billing_address: {
+            address_line_1: data.shippingAddress,
+            admin_area_2: data.city,
+            admin_area_1: adminArea1,
+            postal_code: data.pincode,
+            country_code: countryCode,
+          },
+        },
+      },
+    };
+
+    logger.info({ orderId, country: resolvedCountry, amount: amountStr }, "[PAYPAL] Calling direct card payment");
+
+    const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(paypalPayload),
+    });
+
+    const responseData: any = await response.json();
+
+    if (!response.ok) {
+      logger.error({ responseData, status: response.status }, "[PAYPAL] Direct card payment failed");
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { paymentStatus: PaymentStatus.FAILED },
+      });
+
+      const details = responseData.details?.[0];
+      let userMsg = "Card payment was declined by the bank. Please verify card number, expiration date, and CVV.";
+      if (details?.issue === "CARD_EXPIRED") {
+        userMsg = "Card has expired. Please enter a valid expiration date.";
+      } else if (details?.issue === "INVALID_SECURITY_CODE") {
+        userMsg = "Security code (CVV) is invalid.";
+      } else if (details?.issue === "PAYMENT_SOURCE_CANNOT_BE_USED" || details?.issue === "PAYMENT_SOURCE_DECLINED_BY_PROCESSOR") {
+        userMsg = "Card was declined. Please try another card or use PayPal Wallet.";
+      } else if (details?.description) {
+        userMsg = details.description;
+      } else if (responseData.message) {
+        userMsg = responseData.message;
+      }
+
+      throw new AppError(userMsg, 400);
+    }
+
+    const paypalOrderId = responseData.id;
+    const captureUnit = responseData.purchase_units?.[0]?.payments?.captures?.[0];
+    const captureId = captureUnit?.id || null;
+    const captureStatus = captureUnit?.status || responseData.status;
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { paypalOrderId },
+    });
+
+    if (captureStatus === "COMPLETED") {
+      return await this.completeOrderByPaypalOrderId(paypalOrderId, captureId, responseData);
+    } else {
+      return await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { items: { include: { book: true } } },
+      });
+    }
+  }
+
+  /**
    * Captures an approved PayPal order.
    *
    * Safety guarantees:
@@ -1033,8 +1248,20 @@ export class ShopService {
     const city = address?.adminArea2 || address?.admin_area_2 || order.city;
     const state = address?.adminArea1 || address?.admin_area_1 || order.state;
     const pincode = address?.postalCode || address?.postal_code || order.pincode;
-    let country = address?.countryCode || address?.country_code || order.country || "US";
-    if (country === "GB") country = "UK";
+    
+    // Validate that shipping country aligns with order region
+    let country = order.country || "US";
+    const rawCountryCode = (address?.countryCode || address?.country_code || "").toUpperCase();
+    if (rawCountryCode) {
+      const allowedCountryCodes = (order.country === "UK" || order.country === "GB") ? ["GB", "UK"] : [order.country || "US"];
+      if (!allowedCountryCodes.includes(rawCountryCode)) {
+        logger.warn(
+          { paypalOrderId, rawCountryCode, orderCountry: order.country },
+          "[PAYPAL] Shipping country mismatch: buyer selected an address outside the store region"
+        );
+      }
+      country = rawCountryCode === "GB" ? "UK" : rawCountryCode;
+    }
 
     // Resolve or sync user from guestPhone if available
     let userId = order.userId;
