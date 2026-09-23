@@ -1359,6 +1359,44 @@ export class ShopService {
       this._sendPlacedEmail({ ...updatedOrder, paymentStatus: PaymentStatus.COMPLETED } as any);
     }
 
+    // Clean up any uncaptured orphaned placeholder attempts in the last 2 hours
+    try {
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const orphanCondition: any = {
+        paymentStatus: PaymentStatus.PENDING,
+        paypalCaptureId: null,
+        paymentMethod: PaymentMethod.ONLINE,
+        createdAt: { gte: twoHoursAgo },
+        id: { not: order.id },
+      };
+
+      if (userId) {
+        orphanCondition.OR = [
+          { userId },
+          { guestEmail: "pending_paypal@infano.care" },
+          { guestEmail: guestEmail || undefined },
+        ];
+      } else if (guestEmail) {
+        orphanCondition.OR = [
+          { guestEmail: "pending_paypal@infano.care" },
+          { guestEmail },
+        ];
+      } else {
+        orphanCondition.guestEmail = "pending_paypal@infano.care";
+      }
+
+      await prisma.orderItem.deleteMany({
+        where: {
+          order: orphanCondition,
+        },
+      });
+      await prisma.order.deleteMany({
+        where: orphanCondition,
+      });
+    } catch (cleanErr) {
+      logger.warn({ cleanErr }, "[PAYPAL] Orphan placeholder order cleanup skipped");
+    }
+
     logger.info(
       { orderId: order.id, paypalOrderId, captureId },
       "[PAYPAL] Order completed successfully"
