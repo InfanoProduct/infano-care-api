@@ -76,6 +76,15 @@ router.post("/circles", AdminController.createCircle);
 router.patch("/circles/:id", AdminController.updateCircle);
 router.delete("/circles/:id", AdminController.deleteCircle);
 
+// Sanctuary Community & Room Management
+router.get("/sanctuary/communities", AdminController.getSanctuaryCommunities);
+router.post("/sanctuary/communities", AdminController.createSanctuaryCommunity);
+router.patch("/sanctuary/communities/:id", AdminController.updateSanctuaryCommunity);
+router.delete("/sanctuary/communities/:id", AdminController.deleteSanctuaryCommunity);
+router.post("/sanctuary/communities/:communityId/rooms", AdminController.createSanctuaryRoom);
+router.patch("/sanctuary/rooms/:roomId", AdminController.updateSanctuaryRoom);
+router.delete("/sanctuary/rooms/:roomId", AdminController.deleteSanctuaryRoom);
+
 // Enquiry Management
 router.get("/enquiries", AdminController.getEnquiries);
 router.get("/enquiries/:id", AdminController.getEnquiry);

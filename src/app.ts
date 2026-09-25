@@ -32,6 +32,7 @@ import schoolRoutes from "./modules/school/school.routes.js";
 import journalRoutes from "./modules/journal/journal.routes.js";
 import lmsRoutes from "./modules/lms/lms.routes.js";
 import creativeJourneyRoutes from "./modules/creative-journey/creative-journey.routes.js";
+import sanctuaryRoutes from "./modules/sanctuary/sanctuary.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { getSwaggerSpec } from "./config/swagger.js";
 
@@ -110,6 +111,8 @@ app.use("/api/school", schoolRoutes);
 app.use("/api/journal", journalRoutes);
 app.use("/api/lms", lmsRoutes);
 app.use("/api/creative-journey", creativeJourneyRoutes);
+app.use("/api/sanctuary", sanctuaryRoutes);
+app.use("/api/v2/sanctuary", sanctuaryRoutes);
 app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
 

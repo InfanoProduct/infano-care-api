@@ -501,6 +501,70 @@ export class AdminController {
     }
   }
 
+  // Sanctuary Community & Room Management
+  static async getSanctuaryCommunities(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const communities = await AdminService.getSanctuaryCommunities();
+      res.status(200).json(communities);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createSanctuaryCommunity(req: Request, res: Response, next: NextFunction) {
+    try {
+      const community = await AdminService.createSanctuaryCommunity(req.body);
+      res.status(201).json(community);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateSanctuaryCommunity(req: Request, res: Response, next: NextFunction) {
+    try {
+      const community = await AdminService.updateSanctuaryCommunity(req.params.id as string, req.body);
+      res.status(200).json(community);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteSanctuaryCommunity(req: Request, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteSanctuaryCommunity(req.params.id as string);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createSanctuaryRoom(req: Request, res: Response, next: NextFunction) {
+    try {
+      const room = await AdminService.createSanctuaryRoom(req.params.communityId as string, req.body);
+      res.status(201).json(room);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateSanctuaryRoom(req: Request, res: Response, next: NextFunction) {
+    try {
+      const room = await AdminService.updateSanctuaryRoom(req.params.roomId as string, req.body);
+      res.status(200).json(room);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteSanctuaryRoom(req: Request, res: Response, next: NextFunction) {
+    try {
+      await AdminService.deleteSanctuaryRoom(req.params.roomId as string);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getEnquiries(_req: Request, res: Response, next: NextFunction) {
     try {
       const enquiries = await AdminService.getEnquiries();

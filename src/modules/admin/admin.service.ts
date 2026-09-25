@@ -1839,6 +1839,75 @@ export class AdminService {
     return prisma.communityCircle.delete({ where: { id } });
   }
 
+  // Sanctuary Community & Room Admin Management
+  static async getSanctuaryCommunities() {
+    return prisma.sanctuaryCommunity.findMany({
+      include: {
+        rooms: {
+          orderBy: { sortOrder: "asc" },
+        },
+        _count: {
+          select: { memberships: true, rooms: true },
+        },
+      },
+      orderBy: { sortOrder: "asc" },
+    });
+  }
+
+  static async createSanctuaryCommunity(data: any) {
+    const { rooms, ...rest } = data;
+    return prisma.sanctuaryCommunity.create({
+      data: {
+        ...rest,
+        rooms: rooms && rooms.length > 0 ? {
+          create: rooms.map((r: any, idx: number) => ({
+            name: r.name,
+            topic: r.topic,
+            type: r.type || "TOPIC_ROOM",
+            allowAnonymous: r.allowAnonymous ?? false,
+            hasScreenshotDRM: r.hasScreenshotDRM ?? false,
+            sortOrder: idx + 1,
+          })),
+        } : undefined,
+      },
+      include: { rooms: true },
+    });
+  }
+
+  static async updateSanctuaryCommunity(id: string, data: any) {
+    return prisma.sanctuaryCommunity.update({
+      where: { id },
+      data,
+      include: { rooms: true },
+    });
+  }
+
+  static async deleteSanctuaryCommunity(id: string) {
+    return prisma.sanctuaryCommunity.delete({ where: { id } });
+  }
+
+  static async createSanctuaryRoom(communityId: string, data: any) {
+    const count = await prisma.sanctuaryRoom.count({ where: { communityId } });
+    return prisma.sanctuaryRoom.create({
+      data: {
+        ...data,
+        communityId,
+        sortOrder: count + 1,
+      },
+    });
+  }
+
+  static async updateSanctuaryRoom(roomId: string, data: any) {
+    return prisma.sanctuaryRoom.update({
+      where: { id: roomId },
+      data,
+    });
+  }
+
+  static async deleteSanctuaryRoom(roomId: string) {
+    return prisma.sanctuaryRoom.delete({ where: { id: roomId } });
+  }
+
   // Enquiry Management
   static async getEnquiries() {
     return prisma.enquiry.findMany({

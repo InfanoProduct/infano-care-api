@@ -101,6 +101,16 @@ model User {
   webinarRegistrations      WebinarRegistration[]
   joinedCircles             CommunityCircle[]        @relation("CircleMembers")
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
+  sanctuaryMemberships      CommunityMembership[]
+  sanctuaryMessages         RoomMessage[]
+  sanctuaryReactions        SanctuaryMessageReaction[]
+  storyLines                StoryLine[]
+  whisperQuestions          WhisperQuestion[]
+  whisperNotes              WhisperPeerNote[]
+  sproutLogs                SproutLog[]
+  constellationStars        ConstellationStar[]
+  sentTrellisLetters        TrellisLetter[]          @relation("SentLetters")
+  receivedTrellisLetters    TrellisLetter[]          @relation("ReceivedLetters")
 }
 
 model Profile {
@@ -973,21 +983,26 @@ model BlogComment {
 }
 
 model FriendProfile {
-  id              String        @id @default(uuid())
-  userId          String        @unique
-  nickname        String?
-  photoUrl        String?
-  vibeTags        String[]      @default([])
-  intent          String[]      @default([])
-  geohash         String?
-  discoveryRadius String        @default("city")
-  isActive        Boolean       @default(false)
-  status          String        @default("ACTIVE")
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  receivedMatches FriendMatch[] @relation("FriendMatchTarget")
-  sentMatches     FriendMatch[] @relation("FriendMatchUser")
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String          @id @default(uuid())
+  userId             String          @unique
+  nickname           String?
+  photoUrl           String?
+  vibeTags           String[]        @default([])
+  intent             String[]        @default([])
+  geohash            String?
+  discoveryRadius    String          @default("city")
+  isActive           Boolean         @default(false)
+  status             String          @default("ACTIVE")
+  faceMatchScore     Float?
+  isVerified         Boolean         @default(false)
+  livenessScore      Float?
+  verificationStatus String?         @default("UNVERIFIED")
+  verifiedAt         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  receivedMatches    FriendMatch[]   @relation("FriendMatchTarget")
+  sentMatches        FriendMatch[]   @relation("FriendMatchUser")
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FriendMatch {
@@ -2092,3 +2107,230 @@ enum LmsChapterType {
   VIDEO
   ASSESSMENT
 }
+
+// ==============================================================
+// INFANO SANCTUARY: COMMUNITIES & ROOMS ENGINE
+// ==============================================================
+
+enum AudienceRole {
+  TEEN
+  PARENT
+}
+
+enum SanctuaryRoomType {
+  TOPIC_ROOM
+  VOICE_LOUNGE
+  WHISPER_ROOM
+  STORY_THREAD
+  GREENHOUSE_STAGE
+  ANNOUNCEMENT
+}
+
+enum SanctuaryReactionType {
+  HUG
+  HELPFUL
+  WARMTH
+  SPARKLE
+}
+
+model SanctuaryCommunity {
+  id               String                 @id @default(uuid())
+  slug             String                 @unique
+  name             String
+  description      String?
+  iconEmoji        String                 @default("🌸")
+  bannerUrl        String?
+  accentColor      String                 @default("#6D28D9")
+  audience         AudienceRole
+  minAge           Int?
+  maxAge           Int?
+  isSystemDefault  Boolean                @default(false)
+  isActive         Boolean                @default(true)
+  sortOrder        Int                    @default(0)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  rooms            SanctuaryRoom[]
+  memberships      CommunityMembership[]
+  seasons          SanctuarySeason[]
+
+  @@index([audience, isActive])
+}
+
+model SanctuaryRoom {
+  id               String                 @id @default(uuid())
+  communityId      String
+  name             String
+  topic            String?
+  type             SanctuaryRoomType      @default(TOPIC_ROOM)
+  isPrivate        Boolean                @default(false)
+  allowAnonymous   Boolean                @default(false)
+  hasScreenshotDRM Boolean                @default(false)
+  sortOrder        Int                    @default(0)
+  createdById      String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  community        SanctuaryCommunity     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  messages         RoomMessage[]
+  storyThreads     StoryThread[]
+  whisperQuestions WhisperQuestion[]
+
+  @@index([communityId, sortOrder])
+}
+
+model CommunityMembership {
+  id               String                 @id @default(uuid())
+  communityId      String
+  userId           String
+  role             String                 @default("MEMBER")
+  pseudonym        String?
+  avatarSeed       String?
+  lastVisitedAt    DateTime               @default(now())
+  joinedAt         DateTime               @default(now())
+
+  community        SanctuaryCommunity     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([userId])
+}
+
+model RoomMessage {
+  id               String                     @id @default(uuid())
+  roomId           String
+  authorId         String
+  content          String
+  isAnonymous      Boolean                    @default(false)
+  parentMessageId  String?
+  imageUrl         String?
+  status           PostStatus                 @default(APPROVED)
+  crisisSeverity   CrisisSeverity             @default(NONE)
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  room             SanctuaryRoom              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  author           User                       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentMessage    RoomMessage?               @relation("ThreadedReplies", fields: [parentMessageId], references: [id])
+  replies          RoomMessage[]              @relation("ThreadedReplies")
+  reactions        SanctuaryMessageReaction[]
+
+  @@index([roomId, createdAt(sort: Desc)])
+}
+
+model SanctuaryMessageReaction {
+  id               String                 @id @default(uuid())
+  messageId        String
+  userId           String
+  reaction         SanctuaryReactionType
+  createdAt        DateTime               @default(now())
+
+  message          RoomMessage            @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, reaction])
+}
+
+model StoryThread {
+  id               String                 @id @default(uuid())
+  roomId           String
+  title            String
+  prompt           String
+  isCompleted      Boolean                @default(false)
+  maxLines         Int                    @default(15)
+  createdAt        DateTime               @default(now())
+
+  room             SanctuaryRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  lines            StoryLine[]
+}
+
+model StoryLine {
+  id               String                 @id @default(uuid())
+  threadId         String
+  authorId         String
+  lineText         String
+  lineNumber       Int
+  createdAt        DateTime               @default(now())
+
+  thread           StoryThread            @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author           User                   @relation(fields: [authorId], references: [id])
+
+  @@unique([threadId, lineNumber])
+}
+
+model WhisperQuestion {
+  id               String                 @id @default(uuid())
+  roomId           String
+  authorId         String
+  content          String
+  status           PostStatus             @default(PENDING_AI)
+  expertAnswer     String?
+  expertAuthorId   String?
+  expiresAt        DateTime
+  createdAt        DateTime               @default(now())
+
+  room             SanctuaryRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  author           User                   @relation(fields: [authorId], references: [id])
+  peerNotes        WhisperPeerNote[]
+}
+
+model WhisperPeerNote {
+  id               String                 @id @default(uuid())
+  questionId       String
+  authorId         String
+  noteText         String
+  createdAt        DateTime               @default(now())
+
+  question         WhisperQuestion        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  author           User                   @relation(fields: [authorId], references: [id])
+}
+
+model SproutLog {
+  id               String                 @id @default(uuid())
+  userId           String
+  promptContext    String
+  userResponse     String?
+  suggestedAction  String?
+  createdAt        DateTime               @default(now())
+
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ConstellationStar {
+  id               String                 @id @default(uuid())
+  userId           String
+  actionType       String
+  title            String
+  x                Float
+  y                Float
+  unlockedAt       DateTime               @default(now())
+
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TrellisLetter {
+  id               String                 @id @default(uuid())
+  senderDaughterId String
+  receiverMotherId String
+  message          String
+  cardTemplateId   String?
+  isRead           Boolean                @default(false)
+  sentAt           DateTime               @default(now())
+
+  sender           User                   @relation("SentLetters", fields: [senderDaughterId], references: [id])
+  receiver         User                   @relation("ReceivedLetters", fields: [receiverMotherId], references: [id])
+}
+
+model SanctuarySeason {
+  id               String                 @id @default(uuid())
+  communityId      String
+  title            String
+  goalPetals       Int
+  currentPetals    Int                    @default(0)
+  startDate        DateTime
+  endDate          DateTime
+  isActive         Boolean                @default(true)
+
+  community        SanctuaryCommunity     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+}
+
