@@ -43,6 +43,10 @@ const envSchema = z.object({
   PAYPAL_MODE: z.enum(["sandbox", "live", "production"]).optional().default("sandbox"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  ETSY_KEYSTRING: z.string().optional().default("t0jhgvjav59a781714rkp4sd"),
+  ETSY_SHARED_SECRET: z.string().optional(),
+  ETSY_SHOP_ID: z.string().optional(),
+  ETSY_GIGI_LISTING_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

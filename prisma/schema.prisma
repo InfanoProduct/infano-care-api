@@ -98,6 +98,7 @@ model User {
   userWeeklyChallenges      UserWeeklyChallenge[]
   coinLedger                CoinLedger[]
   userInventory             UserInventory[]
+  bookEntitlements          UserBookEntitlement[]
   webinarRegistrations      WebinarRegistration[]
   joinedCircles             CommunityCircle[]        @relation("CircleMembers")
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
@@ -1018,22 +1019,27 @@ model FriendMessage {
 }
 
 model Book {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  imageUrl    String?
-  stock       Int         @default(0)
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  priceUS     Float?
-  priceUK     Float?
-  shippingIN  Float       @default(0)
-  shippingUS  Float       @default(0)
-  shippingUK  Float       @default(0)
-  codChargeIN Float       @default(40)
-  orderItems  OrderItem[]
+  id              String                  @id @default(uuid())
+  slug            String?                 @unique
+  title           String
+  author          String                  @default("Infano Care")
+  description     String
+  price           Float
+  imageUrl        String?
+  stock           Int                     @default(0)
+  totalPages      Int                     @default(1)
+  chapters        Json?                   // Table of contents, encrypted chapter assets, and reader metadata
+  isActive        Boolean                 @default(true)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  priceUS         Float?
+  priceUK         Float?
+  shippingIN      Float                   @default(0)
+  shippingUS      Float                   @default(0)
+  shippingUK      Float                   @default(0)
+  codChargeIN     Float                   @default(40)
+  orderItems      OrderItem[]
+  entitlements    UserBookEntitlement[]
 }
 
 model Order {
@@ -2092,3 +2098,46 @@ enum LmsChapterType {
   VIDEO
   ASSESSMENT
 }
+
+// ─── EBOOK & LIBRARY MODULE ──────────────────────────────────────────────────
+
+model UserBookEntitlement {
+  id              String    @id @default(uuid())
+  userId          String
+  bookId          String
+  source          String    @default("etsy") // "etsy", "direct", "admin_grant"
+  orderReference  String?   // Etsy Receipt ID or platform Order ID
+  lastReadPage    Int       @default(1)
+  progressPercent Float     @default(0.0)
+  bookmarks       Json?     // [{ page: 5, note: "...", createdAt: "..." }]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book            Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([orderReference])
+  @@map("user_book_entitlements")
+}
+
+model EtsyOrderClaim {
+  id              String    @id @default(uuid())
+  receiptId       String    @unique // Etsy 10-digit receipt / order ID
+  buyerEmail      String?
+  buyerName       String?
+  listingId       String?
+  bookSlug        String    @default("gigi-the-book")
+  claimedByUserId String?
+  isClaimed       Boolean   @default(false)
+  claimedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([receiptId])
+  @@index([claimedByUserId])
+  @@map("etsy_order_claims")
+}
+
+
