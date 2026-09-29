@@ -34,17 +34,20 @@ async function connectWithRetry(attempt = 1): Promise<void> {
 
 async function bootstrap() {
   try {
-    // Test database connection with retry
-    await connectWithRetry();
-
-    // Initialize background jobs
-    initTrackerJobs();
-    initParentJobs();
-
+    // Start HTTP server immediately
     const server = app.listen(env.PORT, "0.0.0.0", () => {
       logger.info(`Server running on http://0.0.0.0:${env.PORT} (LAN accessible)`);
       logger.info(`Swagger docs available at http://localhost:${env.PORT}/api-docs`);
     });
+
+    // Test database connection in parallel with retry
+    connectWithRetry().catch((err) => {
+      logger.error({ err }, "Initial DB connection error");
+    });
+
+    // Initialize background jobs
+    initTrackerJobs();
+    initParentJobs();
 
     // Initialize Socket.io for Real-time Expert Chat
     const io = new Server(server, {
@@ -72,7 +75,6 @@ async function bootstrap() {
 
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
-    console.log("[HEARTBEAT] Server bootstrap completed successfully.");
   } catch (error) {
     logger.error({ err: error }, "Failed to start server:");
     process.exit(1);

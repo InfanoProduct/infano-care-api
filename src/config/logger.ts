@@ -22,21 +22,24 @@ const getTransport = () => {
     };
   }
 
-  // If local development and not in a container, use pretty printing
-  if (!isProd && process.stdout.isTTY) {
+  // If JSON logging is explicitly requested or running in production (and not set to pretty)
+  if (env.LOG_DRIVER === "json" || (isProd && env.LOG_DRIVER !== "pretty")) {
+    return undefined;
+  }
+
+  // Use clean pretty printing without noisy pid, hostname, or timestamp metadata
+  try {
     return {
       target: "pino-pretty",
       options: {
         colorize: true,
+        ignore: "pid,hostname,time",
+        singleLine: true,
       },
     };
+  } catch {
+    return undefined;
   }
-
-  // Default: Standard JSON logging to stdout
-  return {
-    target: "pino/file",
-    options: { destination: 1 },
-  };
 };
 
 export const logger = pino({

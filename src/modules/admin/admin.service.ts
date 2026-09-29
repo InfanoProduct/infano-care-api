@@ -7,6 +7,7 @@ import crypto from "crypto";
 import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import { logger } from "../../config/logger.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -116,7 +117,7 @@ export class AdminService {
     let currentStart = new Date();
     currentStart.setDate(currentStart.getDate() - 30);
     let currentEnd = new Date();
-    
+
     let previousStart = new Date();
     previousStart.setDate(previousStart.getDate() - 60);
     let previousEnd = new Date();
@@ -184,7 +185,7 @@ export class AdminService {
     const journeyGrowth = calculateGrowth(currJourneys, prevJourneys);
     const bookGrowth = calculateGrowth(currBooks, prevBooks);
     const orderGrowth = calculateGrowth(currOrders, prevOrders);
-    
+
     const currRev = currRevResult._sum.totalAmount || 0;
     const prevRev = prevRevResult._sum.totalAmount || 0;
     const revenueGrowth = calculateGrowth(currRev, prevRev);
@@ -195,7 +196,7 @@ export class AdminService {
 
     if (startDate && endDate) {
       const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       const [usersInRange, ordersInRange] = await Promise.all([
         prisma.user.findMany({
           where: {
@@ -420,15 +421,15 @@ export class AdminService {
   }
 
   static async getUsers(
-    page: number = 1, 
-    limit: number = 20, 
+    page: number = 1,
+    limit: number = 20,
     peerOnboarding?: boolean,
     role?: string,
     accountStatus?: string
   ) {
     const skip = (page - 1) * limit;
 
-    const whereClause: any = { 
+    const whereClause: any = {
       role: { in: ["TEEN", "PARENT", "PEER"] },
       accountStatus: { not: "DELETED" }
     };
@@ -591,8 +592,8 @@ export class AdminService {
         up => journeyEpisodeIds.has(up.episodeId)
       ).length;
       const totalEpisodes = journey.episodes.length;
-      const progressPercentage = totalEpisodes > 0 
-        ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) 
+      const progressPercentage = totalEpisodes > 0
+        ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100))
         : 0;
 
       return {
@@ -626,11 +627,11 @@ export class AdminService {
       }),
       linkedUser
         ? prisma.programEnrollment.findMany({
-            where: { userId: linkedUser.id },
-            include: {
-              program: true
-            }
-          })
+          where: { userId: linkedUser.id },
+          include: {
+            program: true
+          }
+        })
         : Promise.resolve([])
     ]);
 
@@ -739,7 +740,7 @@ export class AdminService {
     // Update the application status
     await prisma.peerApplication.update({
       where: { userId },
-      data: { 
+      data: {
         status: 'approved',
         certificationStatus: 'certified',
         certifiedAt: new Date()
@@ -1092,16 +1093,27 @@ export class AdminService {
     }
 
     if (filters?.search) {
-      andConditions.push({
-        OR: [
-          { id: { contains: filters.search, mode: 'insensitive' } },
-          { guestName: { contains: filters.search, mode: 'insensitive' } },
-          { guestEmail: { contains: filters.search, mode: 'insensitive' } },
-          { guestPhone: { contains: filters.search, mode: 'insensitive' } },
-          { user: { username: { contains: filters.search, mode: 'insensitive' } } },
-          { user: { phone: { contains: filters.search, mode: 'insensitive' } } }
-        ]
-      });
+      const rawSearch = filters.search.trim();
+      const strippedSearch = rawSearch.replace(/^ord[-_ ]?/i, '').trim();
+      const searchTerms = Array.from(new Set([rawSearch, strippedSearch].filter(Boolean)));
+
+      const orClauses: any[] = [];
+      for (const term of searchTerms) {
+        orClauses.push(
+          { id: { contains: term, mode: 'insensitive' } },
+          { guestName: { contains: term, mode: 'insensitive' } },
+          { guestEmail: { contains: term, mode: 'insensitive' } },
+          { guestPhone: { contains: term, mode: 'insensitive' } },
+          { razorpayOrderId: { contains: term, mode: 'insensitive' } },
+          { razorpayPaymentId: { contains: term, mode: 'insensitive' } },
+          { paypalOrderId: { contains: term, mode: 'insensitive' } },
+          { paypalCaptureId: { contains: term, mode: 'insensitive' } },
+          { awbNumber: { contains: term, mode: 'insensitive' } },
+          { user: { username: { contains: term, mode: 'insensitive' } } },
+          { user: { phone: { contains: term, mode: 'insensitive' } } }
+        );
+      }
+      andConditions.push({ OR: orClauses });
     }
 
     if (filters?.dateFrom || filters?.dateTo) {
@@ -1131,12 +1143,15 @@ export class AdminService {
 
     if (filters?.status && filters.status !== 'ALL') {
       if (filters.status === 'FAILED') {
-        // Find explicitly FAILED or (ONLINE, no paymentId, not CANCELLED)
         andConditions.push({
           OR: [
+            { orderStatus: 'FAILED' },
+            { paymentStatus: 'FAILED' },
             {
               paymentMethod: 'ONLINE',
+              paymentStatus: { not: 'COMPLETED' },
               razorpayPaymentId: null,
+              paypalCaptureId: null,
               orderStatus: { not: 'CANCELLED' }
             }
           ]
@@ -1144,10 +1159,12 @@ export class AdminService {
       } else {
         const statusCond: any = { orderStatus: filters.status };
         if (filters.status === 'PLACED') {
-          // exclude FAILED logic
+          // exclude FAILED logic: only exclude if online, unpaid, and neither razorpay nor paypal capture ID exists
           statusCond.NOT = {
             paymentMethod: 'ONLINE',
-            razorpayPaymentId: null
+            paymentStatus: { not: 'COMPLETED' },
+            razorpayPaymentId: null,
+            paypalCaptureId: null
           };
         }
         andConditions.push(statusCond);
@@ -1157,27 +1174,60 @@ export class AdminService {
     if (filters?.country && filters.country !== 'ALL') {
       if (filters.country === 'IN') {
         andConditions.push({
-          NOT: [
+          OR: [
+            { country: 'IN' },
+            { country: null },
+            {
+              NOT: [
+                { country: { in: ['US', 'UK', 'GB'] } },
+                { currency: { in: ['USD', 'GBP'] } },
+                {
+                  comments: {
+                    path: ['country'],
+                    equals: 'US'
+                  }
+                },
+                {
+                  comments: {
+                    path: ['country'],
+                    equals: 'UK'
+                  }
+                }
+              ]
+            }
+          ]
+        });
+      } else if (filters.country === 'US') {
+        andConditions.push({
+          OR: [
+            { country: 'US' },
+            { currency: 'USD' },
             {
               comments: {
                 path: ['country'],
                 equals: 'US'
               }
-            },
+            }
+          ]
+        });
+      } else if (filters.country === 'UK' || filters.country === 'GB') {
+        andConditions.push({
+          OR: [
+            { country: { in: ['UK', 'GB'] } },
+            { currency: 'GBP' },
             {
               comments: {
                 path: ['country'],
                 equals: 'UK'
               }
+            },
+            {
+              comments: {
+                path: ['country'],
+                equals: 'GB'
+              }
             }
           ]
-        });
-      } else {
-        andConditions.push({
-          comments: {
-            path: ['country'],
-            equals: filters.country
-          }
         });
       }
     }
@@ -1206,7 +1256,12 @@ export class AdminService {
           totalAmount: true,
           orderStatus: true,
           paymentMethod: true,
-          razorpayPaymentId: true
+          paymentStatus: true,
+          razorpayPaymentId: true,
+          paypalOrderId: true,
+          paypalCaptureId: true,
+          country: true,
+          currency: true
         }
       })
     ]);
@@ -1231,7 +1286,8 @@ export class AdminService {
       const amount = Number(o.totalAmount) || 0;
       totalRevenue += amount;
 
-      if (o.paymentMethod === 'ONLINE' && !!o.razorpayPaymentId) {
+      const isPaidOnline = o.paymentMethod === 'ONLINE' && (o.paymentStatus === 'COMPLETED' || !!o.razorpayPaymentId || !!o.paypalCaptureId);
+      if (isPaidOnline) {
         onlineCount++;
         onlineRevenue += amount;
       } else if (o.paymentMethod === 'COD') {
@@ -1239,7 +1295,7 @@ export class AdminService {
         codRevenue += amount;
       }
 
-      const isFailed = (o.paymentMethod === 'ONLINE' && !o.razorpayPaymentId && o.orderStatus !== 'CANCELLED') || (o as any).orderStatus === 'FAILED';
+      const isFailed = (o.paymentMethod === 'ONLINE' && o.paymentStatus !== 'COMPLETED' && !o.razorpayPaymentId && !o.paypalCaptureId && o.orderStatus !== 'CANCELLED') || (o as any).orderStatus === 'FAILED' || o.paymentStatus === 'FAILED';
       const isCancelled = o.orderStatus === 'CANCELLED';
 
       if (isFailed) {
@@ -1409,6 +1465,28 @@ export class AdminService {
 
     if (!order) throw new AppError("Order not found", 404);
     if (order.paymentStatus === 'COMPLETED') throw new AppError("Order is already paid", 400);
+
+    const isPaypalOrder = !!order.paypalOrderId || order.country === 'US' || order.country === 'UK' || order.country === 'GB' || order.currency === 'USD' || order.currency === 'GBP';
+    const isRazorpayTxn = transactionId.startsWith('pay_');
+
+    if (isPaypalOrder && !isRazorpayTxn) {
+      const pOrderId = order.paypalOrderId || transactionId;
+      try {
+        const completedOrder = await ShopService.capturePaypalOrder(pOrderId);
+        return completedOrder;
+      } catch (paypalErr: any) {
+        logger.warn({ paypalErr: paypalErr.message, orderId }, "[ADMIN] PayPal capture failed, updating to completed directly");
+        return await prisma.order.update({
+          where: { id: orderId },
+          data: {
+            paymentStatus: 'COMPLETED',
+            paymentMethod: 'ONLINE',
+            paypalCaptureId: transactionId,
+            orderStatus: 'PLACED'
+          }
+        });
+      }
+    }
 
     try {
       const payment = await razorpay.payments.fetch(transactionId);
@@ -1657,7 +1735,7 @@ export class AdminService {
         data.slug = crypto.randomUUID();
       }
     }
-    
+
     const existing = await prisma.webinar.findUnique({ where: { slug: data.slug } });
     if (existing) {
       data.slug = `${data.slug}-${Math.floor(Math.random() * 1000)}`;
@@ -1787,7 +1865,7 @@ export class AdminService {
     const { email, phone, displayName, specialisation, consultationPrice, bio, isTestNumber } = data;
     const finalPhone = normalizePhone(phone);
     const emailVal = email && email.trim() !== '' ? email.trim() : null;
-    
+
     // Generate default password and hash it
     const defaultPassword = "Expert@123";
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
@@ -1801,7 +1879,7 @@ export class AdminService {
       const existingPhone = await prisma.user.findFirst({ where: { phone: finalPhone } });
       if (existingPhone) throw new Error('An account with this phone number already exists.');
     }
-    
+
     // Create base user and profile in transaction
     return prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -1815,7 +1893,7 @@ export class AdminService {
           isTestNumber: isTestNumber === true || isTestNumber === 'true'
         }
       });
-      
+
       await tx.profile.create({
         data: {
           userId: user.id,
@@ -1826,7 +1904,7 @@ export class AdminService {
           ...(data.avatarUrl && { avatarUrl: data.avatarUrl })
         }
       });
-      
+
       return tx.user.findUnique({
         where: { id: user.id },
         include: { profile: true }
@@ -1848,7 +1926,7 @@ export class AdminService {
       const existingPhone = await prisma.user.findFirst({ where: { phone: finalPhone, id: { not: id } } });
       if (existingPhone) throw new Error('An account with this phone number already exists.');
     }
-    
+
     return prisma.$transaction(async (tx) => {
       const existingUser = await tx.user.findUnique({ where: { id } });
       const currentPhone = finalPhone || existingUser?.phone;
@@ -1864,7 +1942,7 @@ export class AdminService {
           ...(isTestNumber !== undefined && { isTestNumber: isTestNumber === true || isTestNumber === 'true' })
         }
       });
-      
+
       // Update Profile
       await tx.profile.update({
         where: { userId: id },
@@ -1876,7 +1954,7 @@ export class AdminService {
           ...(data.avatarUrl && { avatarUrl: data.avatarUrl })
         }
       });
-      
+
       return tx.user.findUnique({
         where: { id },
         include: { profile: true }

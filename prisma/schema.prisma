@@ -1058,6 +1058,8 @@ model Order {
   razorpayOrderId   String?         @unique
   razorpayPaymentId String?
   razorpaySignature String?
+  paypalOrderId     String?         @unique  // PayPal order ID (US/UK orders)
+  paypalCaptureId   String?                  // PayPal capture ID (set after payment is captured)
   couponId          String?
   gstNumber         String?
   createdAt         DateTime        @default(now())

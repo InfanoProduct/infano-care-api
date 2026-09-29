@@ -15,8 +15,9 @@ export class ChatController {
       if (!req.file) {
         throw new Error('No file provided');
       }
-      const { url } = await StorageService.uploadFile(req.file.path, 'chat');
-      res.status(200).json({ success: true, url, mediaUrl: url });
+      const { filename, url } = await StorageService.uploadFile(req.file.path, 'chat');
+      const mediaUrl = `/uploads/chat/${filename}`;
+      res.status(200).json({ success: true, url, mediaUrl, relativeUrl: mediaUrl });
     } catch (error) {
       next(error);
     }

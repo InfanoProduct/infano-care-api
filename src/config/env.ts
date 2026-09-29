@@ -29,7 +29,7 @@ const envSchema = z.object({
   TWOFACTOR_API_KEY: z.string().optional(),
   GRAYLOG_HOST: z.string().optional(),
   GRAYLOG_PORT: z.coerce.number().int().positive().optional().default(12201),
-  LOG_DRIVER: z.enum(["pretty", "gelf", "json"]).optional().default("json"),
+  LOG_DRIVER: z.enum(["pretty", "gelf", "json"]).optional().default("pretty"),
   CRYPTO_KEY: z.string().length(64).default("0".repeat(64)), // 32 bytes in hex
   JWT_ACCESS_SECRET: z.string().default("infano_access_secret_dev"),
   FIREBASE_SERVICE_ACCOUNT_PATH: z.string().optional(),
@@ -37,6 +37,10 @@ const envSchema = z.object({
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  PAYPAL_CLIENT_ID: z.string().optional(),
+  PAYPAL_CLIENT_SECRET: z.string().optional(),
+  PAYPAL_WEBHOOK_ID: z.string().optional(), // From PayPal Developer Dashboard after webhook registration
+  PAYPAL_MODE: z.enum(["sandbox", "live", "production"]).optional().default("sandbox"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 });

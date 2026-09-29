@@ -1,6 +1,6 @@
 import { prisma } from "../../db/client.js";
 import Razorpay from "razorpay";
-import { env } from "../../config/env.js";
+import { env, isProd } from "../../config/env.js";
 import crypto from "crypto";
 import { logger } from "../../config/logger.js";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
@@ -8,6 +8,14 @@ import { normalizePhone } from "../../common/utils/phone.js";
 import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail, sendWebinarConfirmationEmail } from "../../common/services/email.service.js";
 import { sendOrderConfirmationWhatsApp, sendOrderShippedWhatsApp, sendOrderDeliveredWhatsApp } from "../../common/services/whatsapp.service.js";
 import { v4 as uuidv4 } from "uuid";
+import {
+  CheckoutPaymentIntent,
+  OrderApplicationContextShippingPreference,
+  OrderApplicationContextUserAction,
+} from "@paypal/paypal-server-sdk";
+import { getPaypalOrdersController, getPaypalAccessToken, PAYPAL_API_BASE } from "../../config/paypal.js";
+import { verifyPaypalWebhookSignature } from "../../common/utils/paypal-webhook.js";
+import { AppError } from "../../common/middleware/errorHandler.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -306,6 +314,7 @@ export class ShopService {
       }
 
       const resolvedCurrency = (data.currency || (country === "US" ? "USD" : (country === "UK" || country === "GB") ? "GBP" : "INR")).toUpperCase();
+      const isInternational = country === "US" || country === "UK" || country === "GB";
 
       // Generate order ID
       const orderId = uuidv4();
@@ -398,25 +407,103 @@ export class ShopService {
         totalAmount = taxableSubtotal + deliveryCharge;
       }
 
-      // 4. Create multi-currency Razorpay order
-      let razorpayOrderId = null;
+      // 4. Create payment gateway order — Razorpay for India, PayPal for US/UK
+      let razorpayOrderId: string | null = null;
+      let paypalOrderId: string | null = null;
 
       if (data.paymentMethod === PaymentMethod.ONLINE) {
-        const options = {
-          amount: Math.round(totalAmount * 100),
-          currency: resolvedCurrency,
-          receipt: `rcpt_${Date.now()}`,
-          notes: {
-            product_type: "physical_book",
-            hsn_code: "4901",
-            rbi_purpose_code: "P0102",
-            shipping_address: `${data.shippingAddress}, ${data.city}, ${data.state} - ${data.pincode}`,
-            customer_phone: data.guestPhone || "",
-            country: country,
+        const isInternational = country === "US" || country === "UK" || country === "GB";
+
+        if (isInternational) {
+          // ── PayPal order (US / UK) ────────────────────────────────────────────
+          // Amount must be a string with exactly 2 decimal places per PayPal spec
+          const amountStr = (Math.round(totalAmount * 100) / 100).toFixed(2);
+          const ordersController = getPaypalOrdersController();
+
+          const countryCode = country === "UK" || country === "GB" ? "GB" : "US";
+          const hasUpfrontShipping = Boolean(data.shippingAddress && data.shippingAddress.trim() && data.city && data.state && data.pincode);
+
+          let payer: any = undefined;
+          let shipping: any = undefined;
+
+          if (data.guestName || data.guestEmail) {
+            const nameParts = (data.guestName || "").trim().split(/\s+/);
+            const givenName = nameParts[0] || undefined;
+            const surname = nameParts.slice(1).join(" ") || undefined;
+            payer = {
+              emailAddress: data.guestEmail || undefined,
+              name: givenName ? { givenName, surname } : undefined,
+            };
           }
-        };
-        const rpOrder = await razorpay.orders.create(options);
-        razorpayOrderId = rpOrder.id;
+
+          if (hasUpfrontShipping) {
+            let adminArea1 = (data.state || "").trim();
+            const stateCodeMatch = adminArea1.match(/\(([^)]+)\)/);
+            if (stateCodeMatch && stateCodeMatch[1]) {
+              adminArea1 = stateCodeMatch[1];
+            }
+
+            shipping = {
+              name: data.guestName ? { fullName: data.guestName } : undefined,
+              address: {
+                addressLine1: data.shippingAddress,
+                adminArea2: data.city,
+                adminArea1,
+                postalCode: data.pincode,
+                countryCode,
+              },
+            };
+          }
+
+          const ppResponse = await ordersController.createOrder({
+            body: {
+              intent: CheckoutPaymentIntent.Capture,
+              payer,
+              purchaseUnits: [{
+                amount: {
+                  currencyCode: resolvedCurrency, // "USD" or "GBP"
+                  value: amountStr,
+                },
+                description: "Gigi — The Awkward Age (Book)",
+                customId: orderId, // our internal Order UUID — used for webhook reconciliation
+                shipping,
+              }],
+              applicationContext: {
+                brandName: "Infano.Care",
+                locale: countryCode === "GB" ? "en-GB" : "en-US",
+                userAction: OrderApplicationContextUserAction.PayNow,
+                shippingPreference: hasUpfrontShipping
+                  ? OrderApplicationContextShippingPreference.SetProvidedAddress
+                  : OrderApplicationContextShippingPreference.GetFromFile,
+              },
+            },
+            prefer: "return=representation",
+          });
+
+          if (ppResponse.result?.id) {
+            paypalOrderId = ppResponse.result.id;
+          } else {
+            logger.error({ ppResponse }, "[PAYPAL] createOrder returned no ID");
+            throw new Error("Failed to create PayPal order — no order ID returned");
+          }
+
+        } else {
+          // ── Razorpay order (India) ────────────────────────────────────────────
+          const rpOrder = await razorpay.orders.create({
+            amount: Math.round(totalAmount * 100),
+            currency: resolvedCurrency,
+            receipt: `rcpt_${Date.now()}`,
+            notes: {
+              product_type: "physical_book",
+              hsn_code: "4901",
+              rbi_purpose_code: "P0102",
+              shipping_address: `${data.shippingAddress}, ${data.city}, ${data.state} - ${data.pincode}`,
+              customer_phone: data.guestPhone || "",
+              country: country,
+            },
+          });
+          razorpayOrderId = rpOrder.id;
+        }
       }
 
       // 5. Create Order record
@@ -424,9 +511,9 @@ export class ShopService {
         data: {
           id: orderId,
           userId: resolvedUserId,
-          guestEmail: data.guestEmail,
-          guestName: data.guestName,
-          guestPhone: data.guestPhone,
+          guestEmail: data.guestEmail || (isInternational ? "pending_paypal@infano.care" : undefined),
+          guestName: data.guestName || (isInternational ? "PayPal Customer" : undefined),
+          guestPhone: data.guestPhone || (isInternational ? "" : undefined),
           country,
           currency: resolvedCurrency,
           subtotal,
@@ -438,11 +525,12 @@ export class ShopService {
           discountAmount,
           totalAmount,
           paymentMethod: data.paymentMethod,
-          shippingAddress: data.shippingAddress,
-          city: data.city,
-          state: data.state,
-          pincode: data.pincode,
+          shippingAddress: data.shippingAddress || (isInternational ? "Pending PayPal Checkout" : ""),
+          city: data.city || (isInternational ? "Pending" : ""),
+          state: data.state || (isInternational ? "Pending" : ""),
+          pincode: data.pincode || (isInternational ? "00000" : ""),
           razorpayOrderId,
+          paypalOrderId,
           couponId,
           orderStatus: OrderStatus.PLACED,
           gstNumber: data.gstNumber,
@@ -495,7 +583,13 @@ export class ShopService {
         }
       }
 
-      return { ...order, currency: resolvedCurrency, razorpayKeyId: env.RAZORPAY_KEY_ID || "" };
+      return {
+        ...order,
+        currency: resolvedCurrency,
+        razorpayKeyId: env.RAZORPAY_KEY_ID || "",
+        paypalOrderId: order.paypalOrderId || null,
+        paypalClientId: env.PAYPAL_CLIENT_ID || "",
+      };
     }, {
       timeout: 20000
     });
@@ -820,7 +914,609 @@ export class ShopService {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PayPal Methods (US / UK orders)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Process Direct Credit/Debit Card Payment via PayPal REST API v2
+   * Completely bypasses frontend iframe / ACDC restrictions.
+   */
+  static async payWithCardDirect(data: {
+    userId?: string;
+    guestEmail: string;
+    guestName: string;
+    guestPhone?: string;
+    shippingAddress: string;
+    city: string;
+    state: string;
+    pincode: string;
+    items: { bookId: string; quantity: number }[];
+    country: string;
+    currency?: string;
+    card: {
+      number: string;
+      expiry: string;
+      cvv: string;
+      name?: string;
+    };
+  }) {
+    const { country, card } = data;
+    const resolvedCountry = country === "UK" || country === "GB" ? "UK" : "US";
+    const countryCode = resolvedCountry === "UK" ? "GB" : "US";
+    const resolvedCurrency = data.currency || (resolvedCountry === "UK" ? "GBP" : "USD");
+
+    // 1. Calculate subtotal & verify stock
+    let subtotal = 0;
+    const orderItems = [];
+    for (const item of data.items) {
+      const book = await prisma.book.findUnique({ where: { id: item.bookId } });
+      if (!book) throw new AppError(`Book not found: ${item.bookId}`, 404);
+      if (book.stock < item.quantity) throw new AppError(`Out of stock: ${book.title}`, 400);
+
+      let bookPrice = book.price;
+      if (resolvedCountry === "US") {
+        bookPrice = (book as any).priceUS != null
+          ? (book as any).priceUS
+          : Math.round((book.price / 83) * 100) / 100;
+      } else if (resolvedCountry === "UK") {
+        bookPrice = (book as any).priceUK != null
+          ? (book as any).priceUK
+          : Math.round((book.price / 105) * 100) / 100;
+      }
+
+      subtotal += bookPrice * item.quantity;
+      orderItems.push({
+        bookId: item.bookId,
+        quantity: item.quantity,
+        price: bookPrice,
+      });
+    }
+
+    const firstBook = await prisma.book.findUnique({ where: { id: data.items[0]?.bookId || "" } });
+    const deliveryCharge = resolvedCountry === "UK"
+      ? ((firstBook as any)?.shippingUK ?? 0)
+      : ((firstBook as any)?.shippingUS ?? 0);
+    const totalAmount = subtotal + deliveryCharge;
+    const amountStr = (Math.round(totalAmount * 100) / 100).toFixed(2);
+
+    // Format Expiry date to YYYY-MM
+    let cleanExpiry = card.expiry.trim();
+    if (cleanExpiry.includes("/")) {
+      const parts = cleanExpiry.split("/").map(s => s.trim());
+      const m = parts[0] || "01";
+      const y = parts[1] || "30";
+      const fullYear = y.length === 2 ? `20${y}` : y;
+      const fullMonth = m.padStart(2, "0");
+      cleanExpiry = `${fullYear}-${fullMonth}`;
+    }
+
+    // Format State code (e.g., "California (CA)" -> "CA")
+    let adminArea1 = (data.state || "").trim();
+    const stateMatch = adminArea1.match(/\(([^)]+)\)/);
+    if (stateMatch && stateMatch[1]) {
+      adminArea1 = stateMatch[1];
+    }
+
+    const cleanCardNumber = card.number.replace(/\D/g, "");
+    const cleanCvv = card.cvv.replace(/\D/g, "");
+
+    // 2. Create pending order record in DB
+    const orderId = uuidv4();
+    const order = await prisma.order.create({
+      data: {
+        id: orderId,
+        userId: data.userId,
+        guestEmail: data.guestEmail,
+        guestName: data.guestName,
+        guestPhone: data.guestPhone,
+        country: resolvedCountry,
+        currency: resolvedCurrency,
+        subtotal,
+        taxableAmount: subtotal,
+        deliveryCharge,
+        discountAmount: 0,
+        totalAmount,
+        paymentMethod: PaymentMethod.ONLINE,
+        shippingAddress: data.shippingAddress,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+        orderStatus: OrderStatus.PLACED,
+        paymentStatus: PaymentStatus.PENDING,
+        comments: {
+          flow: "DIRECT_CARD_REST_API",
+          gateway: "PAYPAL",
+        },
+        items: {
+          create: orderItems,
+        },
+      },
+      include: { items: { include: { book: true } } },
+    });
+
+    // 3. Call PayPal REST Orders API v2
+    const accessToken = await getPaypalAccessToken();
+    const paypalPayload = {
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: resolvedCurrency,
+            value: amountStr,
+          },
+          description: "Gigi — The Awkward Age (Book)",
+          custom_id: orderId,
+          shipping: {
+            name: { full_name: data.guestName },
+            address: {
+              address_line_1: data.shippingAddress,
+              admin_area_2: data.city,
+              admin_area_1: adminArea1,
+              postal_code: data.pincode,
+              country_code: countryCode,
+            },
+          },
+        },
+      ],
+      payment_source: {
+        card: {
+          name: card.name || data.guestName,
+          number: cleanCardNumber,
+          expiry: cleanExpiry,
+          security_code: cleanCvv,
+          billing_address: {
+            address_line_1: data.shippingAddress,
+            admin_area_2: data.city,
+            admin_area_1: adminArea1,
+            postal_code: data.pincode,
+            country_code: countryCode,
+          },
+        },
+      },
+    };
+
+    logger.info({ orderId, country: resolvedCountry, amount: amountStr }, "[PAYPAL] Calling direct card payment");
+
+    const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `infano-card-${orderId}-${Date.now()}`,
+      },
+      body: JSON.stringify(paypalPayload),
+    });
+
+    const responseData: any = await response.json();
+
+    if (!response.ok) {
+      logger.error({ responseData, status: response.status }, "[PAYPAL] Direct card payment failed");
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { paymentStatus: PaymentStatus.FAILED },
+      });
+
+      const details = responseData.details?.[0];
+      let userMsg = "Card payment was declined by the bank. Please verify card number, expiration date, and CVV.";
+      if (details?.issue === "CARD_EXPIRED") {
+        userMsg = "Card has expired. Please enter a valid expiration date.";
+      } else if (details?.issue === "INVALID_SECURITY_CODE") {
+        userMsg = "Security code (CVV) is invalid.";
+      } else if (details?.issue === "PAYMENT_SOURCE_CANNOT_BE_USED" || details?.issue === "PAYMENT_SOURCE_DECLINED_BY_PROCESSOR") {
+        userMsg = "Card was declined. Please try another card or use PayPal Wallet.";
+      } else if (details?.description) {
+        userMsg = details.description;
+      } else if (responseData.message) {
+        userMsg = responseData.message;
+      }
+
+      throw new AppError(userMsg, 400);
+    }
+
+    const paypalOrderId = responseData.id;
+    const captureUnit = responseData.purchase_units?.[0]?.payments?.captures?.[0];
+    const captureId = captureUnit?.id || null;
+    const captureStatus = captureUnit?.status || responseData.status;
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { paypalOrderId },
+    });
+
+    if (captureStatus === "COMPLETED") {
+      return await this.completeOrderByPaypalOrderId(paypalOrderId, captureId, responseData);
+    } else {
+      return await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { items: { include: { book: true } } },
+      });
+    }
+  }
+
+  /**
+   * Captures an approved PayPal order.
+   *
+   * Safety guarantees:
+   *  1. Already-completed orders are returned immediately (idempotent).
+   *  2. Calls PayPal captureOrder to capture the authorized funds.
+   *  3. Completes the DB order, adjusts inventory, logs success.
+   */
+  static async capturePaypalOrder(paypalOrderId: string) {
+    // 1. Resolve the order
+    const order = await prisma.order.findUnique({
+      where: { paypalOrderId },
+      include: { items: { include: { book: true } } },
+    });
+    if (!order) throw new AppError("Order not found", 404);
+
+    // 2. Idempotency — already completed
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
+      logger.info({ paypalOrderId }, "[PAYPAL] capturePaypalOrder: already completed, returning early");
+      return order;
+    }
+
+    try {
+      // 3. Call PayPal capture API
+      const ordersController = getPaypalOrdersController();
+      const captureResponse = await ordersController.captureOrder({
+        id: paypalOrderId,
+        prefer: "return=representation",
+      });
+
+      const capture = captureResponse.result;
+      const captureUnit = capture?.purchaseUnits?.[0]?.payments?.captures?.[0];
+      const captureId: string | null = captureUnit?.id ?? null;
+      const captureStatus: string | undefined = captureUnit?.status;
+
+      logger.info(
+        { paypalOrderId, captureId, captureStatus },
+        "[PAYPAL] captureOrder API response"
+      );
+
+      if (captureStatus !== "COMPLETED") {
+        // PayPal returned a non-success status — mark as failed
+        await prisma.order.update({
+          where: { paypalOrderId },
+          data: { paymentStatus: PaymentStatus.FAILED },
+        });
+        throw new AppError(
+          `PayPal payment was not successful (status: ${captureStatus ?? "unknown"})`,
+          402
+        );
+      }
+
+      // 4. Complete the order (inventory, coupon, email, save verified address from PayPal)
+      return await this.completeOrderByPaypalOrderId(paypalOrderId, captureId, capture);
+
+    } catch (err: any) {
+      throw err;
+    }
+  }
+
+  /**
+   * Completes an Order identified by its PayPal order ID:
+   * sets paymentStatus = COMPLETED, records captureId, decrements inventory,
+   * increments coupon usage, extracts verified shipping & payer data from PayPal, and sends confirmation emails.
+   *
+   * This is the PayPal equivalent of completeOrder() (which is keyed by razorpayOrderId).
+   */
+  static async completeOrderByPaypalOrderId(
+    paypalOrderId: string,
+    captureId: string | null,
+    paypalDetails?: any
+  ) {
+    const order = await prisma.order.findUnique({
+      where: { paypalOrderId },
+      include: { items: { include: { book: true } } },
+    });
+    if (!order) throw new AppError("Order not found for paypalOrderId: " + paypalOrderId, 404);
+
+    // Guard: already completed (idempotent)
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
+      logger.info({ paypalOrderId }, "[PAYPAL] completeOrderByPaypalOrderId: order already completed");
+      return order;
+    }
+
+    // Extract verified shipping and payer details from PayPal response
+    const shipping = paypalDetails?.purchaseUnits?.[0]?.shipping || paypalDetails?.shipping;
+    const payer = paypalDetails?.payer;
+    const address = shipping?.address;
+
+    const guestName =
+      shipping?.name?.fullName ||
+      (payer?.name?.givenName ? `${payer.name.givenName} ${payer.name.surname || ""}`.trim() : null) ||
+      (order.guestName && !order.guestName.startsWith("PayPal Customer") ? order.guestName : "Customer");
+
+    const guestEmail =
+      payer?.emailAddress ||
+      payer?.email_address ||
+      (order.guestEmail && !order.guestEmail.includes("pending_paypal") ? order.guestEmail : null);
+
+    let rawPhone =
+      payer?.phone?.phoneNumber?.nationalNumber ||
+      payer?.phone?.phone_number?.national_number ||
+      payer?.phone?.national_number ||
+      payer?.phones?.[0]?.phoneNumber?.nationalNumber ||
+      payer?.phones?.[0]?.phone_number?.national_number ||
+      shipping?.phone?.phoneNumber?.nationalNumber ||
+      shipping?.phone?.phone_number?.national_number ||
+      (typeof shipping?.phone === "string" ? shipping.phone : null) ||
+      (typeof payer?.phone === "string" ? payer.phone : null) ||
+      order.guestPhone ||
+      null;
+
+    const guestPhone = rawPhone ? String(rawPhone).trim() : null;
+
+    let shippingAddress = order.shippingAddress;
+    if (address?.addressLine1 || address?.address_line_1) {
+      const line1 = address.addressLine1 || address.address_line_1;
+      const line2 = address.addressLine2 || address.address_line_2;
+      shippingAddress = [line1, line2].filter(Boolean).join(", ");
+    }
+
+    const city = address?.adminArea2 || address?.admin_area_2 || order.city;
+    const state = address?.adminArea1 || address?.admin_area_1 || order.state;
+    const pincode = address?.postalCode || address?.postal_code || order.pincode;
+    
+    // Validate that shipping country aligns with order region
+    let country = order.country || "US";
+    const rawCountryCode = (address?.countryCode || address?.country_code || "").toUpperCase();
+    if (rawCountryCode) {
+      const allowedCountryCodes = (order.country === "UK" || order.country === "GB") ? ["GB", "UK"] : [order.country || "US"];
+      if (!allowedCountryCodes.includes(rawCountryCode)) {
+        logger.warn(
+          { paypalOrderId, rawCountryCode, orderCountry: order.country },
+          "[PAYPAL] Shipping country mismatch: buyer selected an address outside the store region"
+        );
+      }
+      country = rawCountryCode === "GB" ? "UK" : rawCountryCode;
+    }
+
+    // Resolve or sync user from guestPhone if available
+    let userId = order.userId;
+    if (!userId && guestPhone) {
+      const normalized = normalizePhone(guestPhone);
+      let user = await prisma.user.findUnique({ where: { phone: normalized } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            phone: normalized,
+            accountStatus: "PENDING_SETUP",
+            onboardingStep: 1,
+            role: "PARENT",
+            profile: {
+              create: {
+                displayName: guestName || "Parent",
+              },
+            },
+          },
+        });
+      }
+      userId = user.id;
+    }
+
+    // Prepare comments with raw PayPal meta
+    let updatedComments: any = order.comments;
+    if (paypalDetails) {
+      const existingComments = Array.isArray(order.comments)
+        ? order.comments
+        : (order.comments ? [order.comments] : []);
+      updatedComments = [
+        ...existingComments,
+        {
+          source: "PAYPAL_EXPRESS",
+          capturedAt: new Date().toISOString(),
+          payerId: payer?.payerId || payer?.payer_id,
+          shipping: shipping || null,
+          payer: payer || null,
+        }
+      ];
+    }
+
+    // Update order to COMPLETED with verified PayPal details
+    const updatedOrder = await prisma.order.update({
+      where: { paypalOrderId },
+      data: {
+        paymentStatus: PaymentStatus.COMPLETED,
+        paypalCaptureId: captureId,
+        userId: userId ?? undefined,
+        guestName,
+        guestEmail,
+        guestPhone,
+        shippingAddress,
+        city,
+        state,
+        pincode,
+        country,
+        comments: updatedComments,
+      },
+      include: { items: { include: { book: true } } },
+    });
+
+    // Decrement book stock
+    for (const item of order.items) {
+      await prisma.book.update({
+        where: { id: item.bookId },
+        data: { stock: { decrement: item.quantity } },
+      }).catch((err) => {
+        logger.error({ err, bookId: item.bookId }, "[PAYPAL] Failed to decrement stock");
+      });
+    }
+
+    // Increment coupon usage
+    if (order.couponId) {
+      await prisma.discountCoupon.update({
+        where: { id: order.couponId },
+        data: { usedCount: { increment: 1 } },
+      }).catch((err) => {
+        logger.error({ err, couponId: order.couponId }, "[PAYPAL] Failed to increment coupon usage");
+      });
+    }
+
+    // Send confirmation email (non-blocking)
+    if (order.guestEmail) {
+      this._sendPlacedEmail({ ...updatedOrder, paymentStatus: PaymentStatus.COMPLETED } as any);
+    }
+
+    // Clean up any uncaptured orphaned placeholder attempts in the last 2 hours
+    try {
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const orphanCondition: any = {
+        paymentStatus: PaymentStatus.PENDING,
+        paypalCaptureId: null,
+        paymentMethod: PaymentMethod.ONLINE,
+        createdAt: { gte: twoHoursAgo },
+        id: { not: order.id },
+      };
+
+      if (userId) {
+        orphanCondition.OR = [
+          { userId },
+          { guestEmail: "pending_paypal@infano.care" },
+          { guestEmail: guestEmail || undefined },
+        ];
+      } else if (guestEmail) {
+        orphanCondition.OR = [
+          { guestEmail: "pending_paypal@infano.care" },
+          { guestEmail },
+        ];
+      } else {
+        orphanCondition.guestEmail = "pending_paypal@infano.care";
+      }
+
+      await prisma.orderItem.deleteMany({
+        where: {
+          order: orphanCondition,
+        },
+      });
+      await prisma.order.deleteMany({
+        where: orphanCondition,
+      });
+    } catch (cleanErr) {
+      logger.warn({ cleanErr }, "[PAYPAL] Orphan placeholder order cleanup skipped");
+    }
+
+    logger.info(
+      { orderId: order.id, paypalOrderId, captureId },
+      "[PAYPAL] Order completed successfully"
+    );
+
+    return updatedOrder;
+  }
+
+  /**
+   * Handles incoming PayPal webhooks.
+   *
+   * Supports:
+   *  - PAYMENT.CAPTURE.COMPLETED  → complete the order
+   *  - PAYMENT.CAPTURE.DENIED     → mark order FAILED
+   *  - PAYMENT.CAPTURE.DECLINED   → mark order FAILED
+   *
+   * Always returns { received: true } so PayPal stops retrying.
+   * Never throws — logs errors and returns 200 to PayPal.
+   */
+  static async handlePaypalWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string | string[] | undefined>
+  ): Promise<{ received: boolean }> {
+    // 1. Verify signature
+    const isValid = await verifyPaypalWebhookSignature(rawBody, headers);
+    if (!isValid) {
+      throw new AppError("Invalid PayPal webhook signature", 401);
+    }
+
+    let event: any;
+    try {
+      event = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      logger.error("[PAYPAL_WEBHOOK] Failed to parse event JSON");
+      return { received: true }; // still 200 to PayPal
+    }
+
+    const eventType: string = event?.event_type ?? "";
+    logger.info({ eventType, eventId: event?.id }, "[PAYPAL_WEBHOOK] Processing event");
+
+    try {
+      if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
+        const captureId: string = event.resource?.id;
+        // PayPal supplies our customId (internal order UUID) in the capture resource
+        const customId: string | undefined = event.resource?.custom_id;
+        // Also attempt resolution via supplementary paypal order ID
+        const paypalOrderId: string | undefined =
+          event.resource?.supplementary_data?.related_ids?.order_id;
+
+        // Find the order (try by paypalOrderId first, fall back to our internal id)
+        let dbOrder = paypalOrderId
+          ? await prisma.order.findUnique({ where: { paypalOrderId } })
+          : null;
+
+        if (!dbOrder && customId) {
+          dbOrder = await prisma.order.findUnique({ where: { id: customId } });
+        }
+
+        if (!dbOrder) {
+          logger.warn(
+            { paypalOrderId, customId, captureId },
+            "[PAYPAL_WEBHOOK] PAYMENT.CAPTURE.COMPLETED — could not find matching order"
+          );
+          return { received: true };
+        }
+
+        if (dbOrder.paymentStatus !== PaymentStatus.COMPLETED) {
+          await this.completeOrderByPaypalOrderId(dbOrder.paypalOrderId!, captureId);
+          logger.info(
+            { orderId: dbOrder.id, paypalOrderId: dbOrder.paypalOrderId, captureId },
+            "[PAYPAL_WEBHOOK] Order completed via webhook"
+          );
+        } else {
+          logger.info(
+            { orderId: dbOrder.id },
+            "[PAYPAL_WEBHOOK] PAYMENT.CAPTURE.COMPLETED — order already completed, ignoring"
+          );
+        }
+
+      } else if (
+        eventType === "PAYMENT.CAPTURE.DENIED" ||
+        eventType === "PAYMENT.CAPTURE.DECLINED"
+      ) {
+        const paypalOrderId: string | undefined =
+          event.resource?.supplementary_data?.related_ids?.order_id;
+        const customId: string | undefined = event.resource?.custom_id;
+
+        if (paypalOrderId) {
+          await prisma.order.updateMany({
+            where: {
+              paypalOrderId,
+              paymentStatus: { not: PaymentStatus.COMPLETED },
+            },
+            data: { paymentStatus: PaymentStatus.FAILED },
+          });
+          logger.info({ paypalOrderId, eventType }, "[PAYPAL_WEBHOOK] Order marked FAILED");
+        } else if (customId) {
+          await prisma.order.updateMany({
+            where: {
+              id: customId,
+              paymentStatus: { not: PaymentStatus.COMPLETED },
+            },
+            data: { paymentStatus: PaymentStatus.FAILED },
+          });
+          logger.info({ customId, eventType }, "[PAYPAL_WEBHOOK] Order marked FAILED via customId");
+        }
+
+      } else {
+        logger.info({ eventType }, "[PAYPAL_WEBHOOK] Unhandled event type — ignoring");
+      }
+    } catch (err) {
+      // Log but do NOT rethrow — we always return 200 to PayPal to stop retries
+      logger.error({ err, eventType }, "[PAYPAL_WEBHOOK] Error processing webhook event");
+    }
+
+    return { received: true };
+  }
+
   static isValidTransition(current: OrderStatus, next: OrderStatus): boolean {
+
     const transitions: Record<OrderStatus, OrderStatus[]> = {
       [OrderStatus.PLACED]: [OrderStatus.PROCESSING, OrderStatus.ON_HOLD, OrderStatus.CANCELLED],
       [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.ON_HOLD, OrderStatus.CANCELLED],

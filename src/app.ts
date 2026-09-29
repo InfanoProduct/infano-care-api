@@ -33,7 +33,9 @@ import journalRoutes from "./modules/journal/journal.routes.js";
 import lmsRoutes from "./modules/lms/lms.routes.js";
 import creativeJourneyRoutes from "./modules/creative-journey/creative-journey.routes.js";
 import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./config/swagger.js";
+import { getSwaggerSpec } from "./config/swagger.js";
+
+import { requestLogger } from "./common/middleware/requestLogger.js";
 
 const app = express();
 
@@ -50,27 +52,35 @@ app.use(
   })
 );
 app.use(cors({ origin: "*" }));
+// ── Raw-body capture for PayPal webhooks ──────────────────────────────────────
+// IMPORTANT: Must be registered BEFORE express.json() so the raw Buffer is
+// preserved for PayPal's signature verification API call.
+// Only applies to the PayPal webhook path.
+app.use(
+  "/api/shop/webhook/paypal",
+  express.raw({ type: "application/json" }),
+  (req: any, _res: any, next: any) => {
+    req.rawBody = req.body as Buffer; // Buffer from express.raw()
+    req.body = {};                    // reset so downstream code sees empty object
+    next();
+  }
+);
+
 app.use(compression());
 app.use(express.json({ limit: "200mb" }));
 app.use(express.urlencoded({ limit: "200mb", extended: true }));
-// Clean, readable HTTP request/response logger
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    const status = res.statusCode;
-    const method = req.method;
-    const url = req.originalUrl || req.url;
-    const indicator = status >= 500 ? "🔴" : status >= 400 ? "🟡" : "🟢";
-    const time = new Date().toLocaleTimeString();
-    console.log(`[${time}] ${indicator} ${method.padEnd(6)} ${url} -> ${status} (${duration}ms)`);
-  });
-  next();
-});
-logger.info({ allowedOrigins: env.ALLOWED_ORIGINS }, "CORS configuration");
 
-// Swagger Documentation
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Clear, formatted HTTP request & response logger with timing and error insights
+app.use(requestLogger);
+
+// Swagger Documentation (lazy-loaded on first request to speed up server boot)
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    swaggerUi.setup(getSwaggerSpec())(req, res, next);
+  }
+);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
