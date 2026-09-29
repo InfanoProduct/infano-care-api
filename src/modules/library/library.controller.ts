@@ -120,4 +120,41 @@ export class LibraryController {
       next(error);
     }
   }
+
+  /**
+   * POST /api/library/etsy-webhook
+   * Ingest incoming Etsy order payload from Zapier / Make / Webhook & dispatch Email #1
+   */
+  static async handleEtsyWebhook(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { EtsySyncService } = await import("./etsy.sync.js");
+      const record = await EtsySyncService.ingestEtsyOrder(req.body);
+      return res.status(200).json({
+        success: true,
+        message: "Etsy order ingested successfully",
+        data: record
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/library/sync-etsy
+   * Trigger batch sync from Etsy OpenAPI v3 (Admin / Cron)
+   */
+  static async syncEtsyOrders(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { EtsySyncService } = await import("./etsy.sync.js");
+      const lookbackHours = req.query.hours ? parseInt(String(req.query.hours), 10) : 24;
+      const result = await EtsySyncService.syncRecentOrdersFromEtsy(lookbackHours);
+      return res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
+

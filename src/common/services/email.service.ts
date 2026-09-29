@@ -208,4 +208,176 @@ export const sendProgramEnrolledEmail = async (to: string, data: {
   return sendEmail(to, subject, html);
 };
 
+/**
+ * Email #1: Dispatched upon Etsy purchase to deliver the Redeem link & Order ID
+ */
+export const sendEtsyPurchaseEmail = async (to: string, data: {
+  buyer_name: string;
+  order_id: string;
+  item_title?: string;
+  redeem_url?: string;
+}) => {
+  const subject = `🌸 Your Gigi the Book Access Code (Etsy Order #${data.order_id})`;
+  const redeemUrl = data.redeem_url || `https://infanocare.com/redeem?order_id=${encodeURIComponent(data.order_id)}`;
+  const itemTitle = data.item_title || "Gigi the Book: A Journey of Growing Up (Cloud eBook Edition)";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; padding: 30px 15px;">
+        <tr>
+          <td align="center">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #F1F5F9;">
+              <!-- Header -->
+              <tr>
+                <td align="center" style="background: linear-gradient(135deg, #9333EA 0%, #E11D48 100%); padding: 35px 20px; text-align: center;">
+                  <h1 style="color: #FFFFFF; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Welcome to Gigi the Book! 🌸</h1>
+                  <p style="color: #FCE7F3; margin: 8px 0 0 0; font-size: 14px;">Your digital eBook is ready to unlock</p>
+                </td>
+              </tr>
+              <!-- Body -->
+              <tr>
+                <td style="padding: 35px 30px;">
+                  <p style="font-size: 16px; color: #1E293B; margin: 0 0 16px 0; font-weight: 600;">Hi ${data.buyer_name || "there"},</p>
+                  <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 24px 0;">
+                    Thank you for purchasing <strong>${itemTitle}</strong> on Etsy! Your order has been registered in our system.
+                  </p>
+
+                  <!-- Order Card -->
+                  <div style="background-color: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 14px; padding: 20px; margin-bottom: 28px;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 12px; color: #7E22CE; font-weight: 700; text-transform: uppercase; padding-bottom: 4px;">Etsy Order / Receipt #</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 22px; color: #581C87; font-weight: 800; font-family: monospace; letter-spacing: 1px;">#${data.order_id}</td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <!-- CTA Button -->
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 28px;">
+                    <tr>
+                      <td align="center">
+                        <a href="${redeemUrl}" style="display: inline-block; background: #9333EA; color: #FFFFFF; font-weight: 700; font-size: 15px; padding: 14px 32px; text-decoration: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(147,51,234,0.3);">
+                          1-Click Unlock & Start Reading &rarr;
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Instructions -->
+                  <div style="background-color: #F8FAFC; border-radius: 12px; padding: 18px; font-size: 13px; color: #64748B; line-height: 1.6;">
+                    <strong style="color: #334155;">How it works:</strong>
+                    <ol style="margin: 8px 0 0 0; padding-left: 20px;">
+                      <li>Click the button above or visit <a href="https://infanocare.com/redeem" style="color: #9333EA; text-decoration: none; font-weight: 600;">infanocare.com/redeem</a></li>
+                      <li>Log in or verify with your mobile number (quick SMS OTP)</li>
+                      <li>Read instantly with night mode, bookmarks, and mobile app sync!</li>
+                    </ol>
+                  </div>
+                </td>
+              </tr>
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #F8FAFC; padding: 20px 30px; text-align: center; border-top: 1px solid #F1F5F9; font-size: 12px; color: #94A3B8;">
+                  Infano Care • Empowering Young Teens & Families • <a href="mailto:connect@infano.care" style="color: #9333EA; text-decoration: none;">connect@infano.care</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(to, subject, html);
+};
+
+/**
+ * Email #2: Dispatched after the user redeems the eBook on Infano
+ */
+export const sendBookUnlockedEmail = async (to: string, data: {
+  user_name: string;
+  book_title?: string;
+  read_url?: string;
+}) => {
+  const bookTitle = data.book_title || "Gigi the Book: A Journey of Growing Up";
+  const subject = `🎉 ${bookTitle} is now unlocked in your Library!`;
+  const readUrl = data.read_url || "https://infanocare.com/dashboard/library/gigi-the-book/read";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; padding: 30px 15px;">
+        <tr>
+          <td align="center">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #F1F5F9;">
+              <!-- Header -->
+              <tr>
+                <td align="center" style="background: linear-gradient(135deg, #059669 0%, #10B981 100%); padding: 35px 20px; text-align: center;">
+                  <h1 style="color: #FFFFFF; margin: 0; font-size: 24px; font-weight: 800;">Your eBook is Ready! 📖</h1>
+                  <p style="color: #D1FAE5; margin: 8px 0 0 0; font-size: 14px;">Lifetime cloud reading access activated</p>
+                </td>
+              </tr>
+              <!-- Body -->
+              <tr>
+                <td style="padding: 35px 30px;">
+                  <p style="font-size: 16px; color: #1E293B; margin: 0 0 16px 0; font-weight: 600;">Hi ${data.user_name || "there"},</p>
+                  <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 24px 0;">
+                    Congratulations! <strong>${bookTitle}</strong> has been successfully linked to your Infano account. You can now read it anytime across all your devices.
+                  </p>
+
+                  <!-- CTA Button -->
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 28px;">
+                    <tr>
+                      <td align="center">
+                        <a href="${readUrl}" style="display: inline-block; background: #059669; color: #FFFFFF; font-weight: 700; font-size: 15px; padding: 14px 32px; text-decoration: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(5,150,105,0.3);">
+                          Launch eBook Reader &rarr;
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Features highlight -->
+                  <div style="background-color: #F8FAFC; border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="font-size: 13px; color: #334155; margin: 0 0 12px 0; text-transform: uppercase; font-weight: 700;">Reader Features:</h3>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #64748B; line-height: 1.8;">
+                      <li>✨ <strong>Cloud Sync:</strong> Automatically saves your page and bookmarks.</li>
+                      <li>📖 <strong>Reading Themes:</strong> Choose Sepia, Light, or Night Mode.</li>
+                      <li>📱 <strong>Mobile App:</strong> Read on the go with the Infano Care App.</li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #F8FAFC; padding: 20px 30px; text-align: center; border-top: 1px solid #F1F5F9; font-size: 12px; color: #94A3B8;">
+                  Infano Care • <a href="https://infanocare.com/dashboard/library" style="color: #059669; text-decoration: none; font-weight: 600;">My Library</a> • <a href="mailto:connect@infano.care" style="color: #059669; text-decoration: none;">connect@infano.care</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(to, subject, html);
+};
+
+
 

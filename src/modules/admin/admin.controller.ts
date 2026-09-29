@@ -416,6 +416,57 @@ export class AdminController {
     }
   }
 
+  static async uploadEpub(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ message: "Please select an .epub file to upload" });
+      }
+      const { EpubService } = await import("../library/epub.service.js");
+      const slug = (req.body.slug as string) || "gigi-the-book";
+      const book = await EpubService.importEpubToBook(req.file.buffer, slug);
+      res.status(200).json({
+        success: true,
+        message: "EPUB parsed and chapters imported successfully",
+        data: book
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getEtsyOrders(req: Request, res: Response, next: NextFunction) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const search = (req.query.search as string) || "";
+      const orders = await AdminService.getEtsyOrders({ page, limit, search });
+      res.status(200).json(orders);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async grantEtsyOrder(req: Request, res: Response, next: NextFunction) {
+    try {
+      const receiptId = req.params.receiptId as string;
+      const { targetUserId } = req.body;
+      const result = await AdminService.grantEtsyOrderAccess(receiptId, targetUserId);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async resendEtsyEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const receiptId = req.params.receiptId as string;
+      const result = await AdminService.resendEtsyAccessEmail(receiptId);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getWebinars(_req: Request, res: Response, next: NextFunction) {
     try {
       const webinars = await AdminService.getWebinars();

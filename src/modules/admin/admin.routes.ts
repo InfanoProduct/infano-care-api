@@ -60,8 +60,14 @@ router.post("/orders/:id/convert-to-cod", AdminController.convertToCod);
 // Book Management
 router.get("/books", AdminController.getBooks);
 router.post("/books", AdminController.createBook);
+router.post("/books/upload-epub", upload.single("file"), AdminController.uploadEpub);
 router.patch("/books/:id", AdminController.updateBook);
 router.delete("/books/:id", AdminController.deleteBook);
+
+// Etsy Orders & Claims Management
+router.get("/etsy-orders", AdminController.getEtsyOrders);
+router.post("/etsy-orders/:receiptId/grant", AdminController.grantEtsyOrder);
+router.post("/etsy-orders/:receiptId/resend-email", AdminController.resendEtsyEmail);
 
 // Webinar Management
 router.get("/webinars", AdminController.getWebinars);

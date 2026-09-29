@@ -4,6 +4,7 @@ import { logger } from "./config/logger.js";
 import { prisma } from "./db/client.js";
 import { initTrackerJobs } from "./jobs/tracker.cron.js";
 import { initParentJobs } from "./jobs/parent.cron.js";
+import { initEtsyCronJobs } from "./jobs/etsy.cron.js";
 import { Server } from "socket.io";
 import { setupExpertSocket } from "./modules/expert/socket.service.js";
 import { setupPeerLineSocket } from "./modules/peerline/peerline.socket.js";
@@ -48,6 +49,7 @@ async function bootstrap() {
     // Initialize background jobs
     initTrackerJobs();
     initParentJobs();
+    initEtsyCronJobs();
 
     // Initialize Socket.io for Real-time Expert Chat
     const io = new Server(server, {

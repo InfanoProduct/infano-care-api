@@ -2,6 +2,7 @@ import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { EtsyService } from "./etsy.service.js";
 import { logger } from "../../config/logger.js";
+import { sendBookUnlockedEmail } from "../../common/services/email.service.js";
 
 // Default seed data for "Gigi the Book" eBook
 const DEFAULT_GIGI_BOOK = {
@@ -256,6 +257,84 @@ export class LibraryService {
     });
 
     logger.info({ userId, receiptId: cleanReceiptId }, "[LibraryService] Successfully unlocked Gigi the Book from Etsy order");
+
+    // 5. In-app notification creation
+    try {
+      await prisma.notificationHistory.create({
+        data: {
+          userId,
+          type: "BOOK_UNLOCKED",
+          title: "Gigi the Book Unlocked! 🎉",
+          body: "Your Etsy purchase has been verified. You can now read Gigi the Book on Web and Mobile.",
+          deepLink: "/library",
+          payload: { receiptId: cleanReceiptId, bookSlug: book.slug || "gigi-the-book" },
+          sentAt: new Date()
+        }
+      });
+    } catch (notifErr) {
+      logger.warn({ notifErr }, "[LibraryService] Non-blocking notification failure");
+    }
+
+    // 6. Automatic Family Sharing for linked Parent & Teen accounts
+    try {
+      const familyLinks = await prisma.parentLink.findMany({
+        where: {
+          OR: [
+            { parentId: userId, status: "ACTIVE" },
+            { teenId: userId, status: "ACTIVE" }
+          ]
+        }
+      });
+
+      for (const link of familyLinks) {
+        const familyMemberId = link.parentId === userId ? link.teenId : link.parentId;
+        if (familyMemberId) {
+          await prisma.userBookEntitlement.upsert({
+            where: {
+              userId_bookId: {
+                userId: familyMemberId,
+                bookId: book.id
+              }
+            },
+            create: {
+              userId: familyMemberId,
+              bookId: book.id,
+              source: "family_share",
+              orderReference: cleanReceiptId,
+              lastReadPage: 1,
+              progressPercent: 0.0
+            },
+            update: {
+              orderReference: cleanReceiptId,
+              source: "family_share"
+            }
+          });
+          logger.info({ familyMemberId, bookId: book.id }, "[LibraryService] Granted family share eBook entitlement");
+        }
+      }
+    } catch (familyErr) {
+      logger.warn({ familyErr }, "[LibraryService] Non-blocking family share sync failure");
+    }
+
+    // 7. Dispatch Email #2 (Book Unlocked Confirmation)
+    try {
+      const claimingUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, username: true, phone: true }
+      });
+
+      const recipientEmail = claimingUser?.email || verification.buyerEmail;
+      if (recipientEmail) {
+        await sendBookUnlockedEmail(recipientEmail, {
+          user_name: claimingUser?.username || verification.buyerName || "Reader",
+          book_title: book.title,
+          read_url: `https://infanocare.com/dashboard/library/${book.slug || "gigi-the-book"}/read`
+        });
+        logger.info({ userId, recipientEmail }, "[LibraryService] Dispatched Email #2 (Book Unlocked) to user");
+      }
+    } catch (emailErr) {
+      logger.warn({ emailErr, userId }, "[LibraryService] Non-blocking Email #2 failure");
+    }
 
     return {
       message: "Congratulations! Gigi the Book has been unlocked in your Library.",

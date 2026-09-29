@@ -2043,4 +2043,125 @@ export class AdminService {
 
     return updated;
   }
+
+  static async getEtsyOrders({ page = 1, limit = 20, search = "" }: { page?: number; limit?: number; search?: string }) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { receiptId: { contains: search, mode: "insensitive" } },
+        { buyerEmail: { contains: search, mode: "insensitive" } },
+        { buyerName: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const [total, claims] = await Promise.all([
+      prisma.etsyOrderClaim.count({ where }),
+      prisma.etsyOrderClaim.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    // Attach user profile info if claimed
+    const userIds = claims.map((c) => c.claimedByUserId).filter(Boolean) as string[];
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, phone: true, email: true, username: true },
+    });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const enriched = claims.map((c) => ({
+      ...c,
+      claimedUser: c.claimedByUserId ? userMap.get(c.claimedByUserId) || null : null,
+    }));
+
+    return {
+      data: enriched,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  static async grantEtsyOrderAccess(receiptId: string, targetUserId?: string) {
+    const claim = await prisma.etsyOrderClaim.findUnique({
+      where: { receiptId },
+    });
+
+    if (!claim) {
+      throw new Error("Etsy order claim not found");
+    }
+
+    const book = await prisma.book.findFirst({
+      where: {
+        OR: [{ slug: claim.bookSlug }, { slug: "gigi-the-book" }],
+      },
+    });
+
+    if (!book) throw new Error("eBook not found in database");
+
+    // If targetUserId is provided, assign and create entitlement
+    if (targetUserId) {
+      await prisma.$transaction([
+        prisma.userBookEntitlement.upsert({
+          where: {
+            userId_bookId: {
+              userId: targetUserId,
+              bookId: book.id,
+            },
+          },
+          create: {
+            userId: targetUserId,
+            bookId: book.id,
+            source: "admin_grant",
+            orderReference: receiptId,
+            lastReadPage: 1,
+            progressPercent: 0.0,
+          },
+          update: {
+            source: "admin_grant",
+            orderReference: receiptId,
+          },
+        }),
+        prisma.etsyOrderClaim.update({
+          where: { receiptId },
+          data: {
+            isClaimed: true,
+            claimedByUserId: targetUserId,
+            claimedAt: new Date(),
+          },
+        }),
+      ]);
+    }
+
+    return { success: true, receiptId, bookId: book.id };
+  }
+
+  static async resendEtsyAccessEmail(receiptId: string) {
+    const claim = await prisma.etsyOrderClaim.findUnique({
+      where: { receiptId },
+    });
+
+    if (!claim || !claim.buyerEmail) {
+      throw new Error("Order not found or no buyer email associated");
+    }
+
+    const { sendEtsyPurchaseEmail } = await import("../../common/services/email.service.js");
+    await sendEtsyPurchaseEmail(claim.buyerEmail, {
+      buyer_name: claim.buyerName || "Valued Reader",
+      order_id: receiptId,
+      item_title: "Gigi the Book: A Journey of Growing Up",
+      redeem_url: `https://infanocare.com/redeem?order_id=${encodeURIComponent(receiptId)}`,
+    });
+
+    return { success: true, sentTo: claim.buyerEmail };
+  }
 }
+
