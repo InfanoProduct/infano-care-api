@@ -1615,13 +1615,27 @@ export class AdminService {
   static async createBook(data: any) {
     const { promo, id, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
 
-    // Ensure numeric types for pricing fields
+    const format = bookData.format || (bookData.stock && Number(bookData.stock) < 900000 ? "PHYSICAL_BOOK" : "DIGITAL_EBOOK");
+    bookData.format = format;
+
+    // Ensure numeric types for pricing and digital fields
     if (bookData.priceUS !== undefined) bookData.priceUS = bookData.priceUS === '' || bookData.priceUS === null ? null : Number(bookData.priceUS);
     if (bookData.priceUK !== undefined) bookData.priceUK = bookData.priceUK === '' || bookData.priceUK === null ? null : Number(bookData.priceUK);
     if (bookData.shippingIN !== undefined) bookData.shippingIN = Number(bookData.shippingIN);
     if (bookData.shippingUS !== undefined) bookData.shippingUS = Number(bookData.shippingUS);
     if (bookData.shippingUK !== undefined) bookData.shippingUK = Number(bookData.shippingUK);
     if (bookData.codChargeIN !== undefined) bookData.codChargeIN = Number(bookData.codChargeIN);
+    if (bookData.totalPages !== undefined) bookData.totalPages = bookData.totalPages ? parseInt(String(bookData.totalPages), 10) : 1;
+    
+    if (format === "DIGITAL_EBOOK") {
+      bookData.shippingIN = 0;
+      bookData.shippingUS = 0;
+      bookData.shippingUK = 0;
+      bookData.codChargeIN = 0;
+      if (bookData.stock === undefined || bookData.stock === 0) bookData.stock = 999999;
+    } else {
+      bookData.stock = bookData.stock !== undefined ? Number(bookData.stock) : 50;
+    }
 
     const book = await prisma.book.create({
       data: bookData
@@ -1663,13 +1677,15 @@ export class AdminService {
   static async updateBook(id: string, data: any) {
     const { promo, id: _, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
 
-    // Ensure numeric types for pricing fields
+    // Ensure numeric types for pricing and digital fields
     if (bookData.priceUS !== undefined) bookData.priceUS = bookData.priceUS === '' || bookData.priceUS === null ? null : Number(bookData.priceUS);
     if (bookData.priceUK !== undefined) bookData.priceUK = bookData.priceUK === '' || bookData.priceUK === null ? null : Number(bookData.priceUK);
     if (bookData.shippingIN !== undefined) bookData.shippingIN = Number(bookData.shippingIN);
     if (bookData.shippingUS !== undefined) bookData.shippingUS = Number(bookData.shippingUS);
     if (bookData.shippingUK !== undefined) bookData.shippingUK = Number(bookData.shippingUK);
     if (bookData.codChargeIN !== undefined) bookData.codChargeIN = Number(bookData.codChargeIN);
+    if (bookData.totalPages !== undefined) bookData.totalPages = bookData.totalPages ? parseInt(String(bookData.totalPages), 10) : 1;
+    if (bookData.stock !== undefined) bookData.stock = Number(bookData.stock);
 
     const book = await prisma.book.update({
       where: { id },

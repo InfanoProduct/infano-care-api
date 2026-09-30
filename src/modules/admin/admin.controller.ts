@@ -418,12 +418,20 @@ export class AdminController {
 
   static async uploadEpub(req: Request, res: Response, next: NextFunction) {
     try {
-      if (!req.file || !req.file.buffer) {
+      if (!req.file) {
         return res.status(400).json({ message: "Please select an .epub file to upload" });
+      }
+      let buffer = req.file.buffer;
+      if (!buffer && req.file.path) {
+        const fs = await import("fs");
+        buffer = fs.readFileSync(req.file.path);
+      }
+      if (!buffer) {
+        return res.status(400).json({ message: "Could not read uploaded file content" });
       }
       const { EpubService } = await import("../library/epub.service.js");
       const slug = (req.body.slug as string) || "gigi-the-book";
-      const book = await EpubService.importEpubToBook(req.file.buffer, slug);
+      const book = await EpubService.importEpubToBook(buffer, slug);
       res.status(200).json({
         success: true,
         message: "EPUB parsed and chapters imported successfully",

@@ -871,6 +871,39 @@ export class ShopService {
       }
     }
 
+    // 3. Automatically grant digital eBook entitlement if ordered item is a digital eBook
+    if (userId) {
+      for (const item of order.items) {
+        const book = item.book as any;
+        if (!book) continue;
+        if (book.format === "DIGITAL_EBOOK" || (!book.format && book.slug)) {
+          await prisma.userBookEntitlement.upsert({
+            where: {
+              userId_bookId: {
+                userId,
+                bookId: book.id
+              }
+            },
+            create: {
+              userId,
+              bookId: book.id,
+              source: "direct_purchase",
+              orderReference: order.id,
+              lastReadPage: 1,
+              progressPercent: 0.0
+            },
+            update: {
+              orderReference: order.id,
+              source: "direct_purchase"
+            }
+          }).catch((entErr) => {
+            logger.warn({ entErr, userId, bookId: book.id }, "[ShopService] Entitlement grant warning");
+          });
+          logger.info({ userId, bookId: book.id }, "[ShopService] Successfully granted digital eBook entitlement for direct purchase");
+        }
+      }
+    }
+
     return updatedOrder;
   }
 
@@ -1395,6 +1428,39 @@ export class ShopService {
       });
     } catch (cleanErr) {
       logger.warn({ cleanErr }, "[PAYPAL] Orphan placeholder order cleanup skipped");
+    }
+
+    // Grant digital eBook entitlement if ordered item is a digital eBook
+    if (userId) {
+      for (const item of order.items) {
+        const book = item.book as any;
+        if (!book) continue;
+        if (book.format === "DIGITAL_EBOOK" || (!book.format && book.slug)) {
+          await prisma.userBookEntitlement.upsert({
+            where: {
+              userId_bookId: {
+                userId,
+                bookId: book.id
+              }
+            },
+            create: {
+              userId,
+              bookId: book.id,
+              source: "direct_purchase",
+              orderReference: order.id,
+              lastReadPage: 1,
+              progressPercent: 0.0
+            },
+            update: {
+              orderReference: order.id,
+              source: "direct_purchase"
+            }
+          }).catch((entErr) => {
+            logger.warn({ entErr, userId, bookId: book.id }, "[ShopService] Entitlement grant warning for PayPal order");
+          });
+          logger.info({ userId, bookId: book.id }, "[ShopService] Successfully granted digital eBook entitlement for PayPal purchase");
+        }
+      }
     }
 
     logger.info(

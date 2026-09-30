@@ -1025,6 +1025,7 @@ model Book {
   author          String                  @default("Infano Care")
   description     String
   price           Float
+  format          String                  @default("PHYSICAL_BOOK") // DIGITAL_EBOOK | PHYSICAL_BOOK | BUNDLE
   imageUrl        String?
   stock           Int                     @default(0)
   totalPages      Int                     @default(1)
