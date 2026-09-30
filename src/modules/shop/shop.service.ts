@@ -1124,7 +1124,7 @@ export class ShopService {
       data: { paypalOrderId },
     });
 
-    if (captureStatus === "COMPLETED") {
+    if (captureStatus === "COMPLETED" || captureStatus === "PENDING") {
       return await this.completeOrderByPaypalOrderId(paypalOrderId, captureId, responseData);
     } else {
       return await prisma.order.findUnique({
@@ -1166,15 +1166,19 @@ export class ShopService {
 
       const capture = captureResponse.result;
       const captureUnit = capture?.purchaseUnits?.[0]?.payments?.captures?.[0];
-      const captureId: string | null = captureUnit?.id ?? null;
-      const captureStatus: string | undefined = captureUnit?.status;
+      const captureId: string | null = captureUnit?.id ?? capture?.id ?? null;
+      const captureStatus: string | undefined = captureUnit?.status ?? capture?.status;
 
       logger.info(
         { paypalOrderId, captureId, captureStatus },
         "[PAYPAL] captureOrder API response"
       );
 
-      if (captureStatus !== "COMPLETED") {
+      // In PayPal (especially for international/multi-currency accounts like GBP),
+      // statuses COMPLETED and PENDING indicate the payment was authorized and captured/held.
+      const isSuccessfulStatus = captureStatus === "COMPLETED" || captureStatus === "PENDING";
+
+      if (!isSuccessfulStatus) {
         // PayPal returned a non-success status — mark as failed
         await prisma.order.update({
           where: { paypalOrderId },
@@ -1461,7 +1465,7 @@ export class ShopService {
     logger.info({ eventType, eventId: event?.id }, "[PAYPAL_WEBHOOK] Processing event");
 
     try {
-      if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
+      if (eventType === "PAYMENT.CAPTURE.COMPLETED" || eventType === "PAYMENT.CAPTURE.PENDING") {
         const captureId: string = event.resource?.id;
         // PayPal supplies our customId (internal order UUID) in the capture resource
         const customId: string | undefined = event.resource?.custom_id;
