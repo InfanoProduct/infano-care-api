@@ -74,18 +74,21 @@ export const sendGigiBookOrderPlacedEmail = async (to: string, data: {
   order_date: string;
   shipping_address: { name: string; full_address: string; };
   payment_method: string;
-  order_items: { title: string; quantity: number; price: string }[];
+  order_items: { title: string; quantity: number; price: string; unit_price?: string; image_url?: string }[];
   subtotal: string;
-  discount: string;
+  discount?: string;
+  has_discount?: boolean;
   total: string;
   delivery_charge: string;
+  has_delivery_charge?: boolean;
+  is_free_delivery?: boolean;
   track_order_url: string;
   view_order_url?: string;
 }) => {
   const subject = `Order #${data.order_id} - Your Gigi-Book is on its way to making a difference! 🌸`;
   const preheaderText = "Order confirmed. Here's what happens next.";
 
-  const isCOD = data.payment_method === 'COD';
+  const isCOD = data.payment_method === 'COD' || data.payment_method === 'Cash on Delivery' || data.payment_method.toLowerCase().includes('cash on delivery');
   const total = data.total;
 
   const html = await compileEmailTemplate('order-placed', { 
@@ -105,7 +108,7 @@ export const sendGigiBookOrderShippedEmail = async (to: string, data: {
   tracking_id: string;
   delivery_date: string;
   shipping_address: { name: string; full_address: string; };
-  order_items: { title: string; quantity: number }[];
+  order_items: { title: string; quantity: number; image_url?: string }[];
   track_order_url: string;
   tracking_url: string;
 }) => {
@@ -119,7 +122,7 @@ export const sendGigiBookOrderDeliveredEmail = async (to: string, data: {
   parent_name: string;
   order_id: string;
   delivery_date: string;
-  order_items: { title: string; quantity: number }[];
+  order_items: { title: string; quantity: number; image_url?: string }[];
   view_order_url: string;
   explore_url: string;
 }) => {

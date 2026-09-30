@@ -46,12 +46,12 @@
       {{#each order_items}}
       <tr>
         <td style="padding: 16px 0; border-bottom: 1px solid #F3F4F6; width: 64px;">
-          <img src="https://api.infano.care/uploads/assets/Page-1.png" alt="{{this.title}}"
-            style="width: 48px; height: auto; border-radius: 6px; border: 1px solid #E5E7EB; display: block;">
+          <img src="{{#if this.image_url}}{{this.image_url}}{{else}}https://infano.care/Page-1.png{{/if}}" alt="{{this.title}}"
+            style="width: 48px; height: auto; border-radius: 6px; border: 1px solid #E5E7EB; display: block;" onerror="this.src='https://infano.care/Page-1.png';">
         </td>
         <td style="padding: 16px 12px; border-bottom: 1px solid #F3F4F6; vertical-align: middle;">
           <p style="margin: 0; font-weight: 600; color: #1F2937; font-size: 14px; line-height: 1.4;">{{this.title}}</p>
-          <p style="margin: 4px 0 0 0; font-size: 12px; color: #6B7280; font-weight: 500;">Qty: {{this.quantity}}</p>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #6B7280; font-weight: 500;">Qty: {{this.quantity}}{{#if this.unit_price}} &bull; {{this.unit_price}} each{{/if}}</p>
         </td>
         <td
           style="padding: 16px 0; border-bottom: 1px solid #F3F4F6; vertical-align: middle; text-align: right; font-weight: 600; color: #111827; font-size: 14px;">
@@ -66,21 +66,21 @@
         <td style="padding: 16px 0 8px 0; text-align: right; font-weight: 500; color: #374151; font-size: 13px;">
           {{subtotal}}</td>
       </tr>
-      {{#if isCOD}}
-      <tr>
-        <td colspan="2"
-          style="padding: 4px 12px 8px 12px; text-align: right; color: #6B7280; font-size: 13px; font-weight: 500;">
-          Cash on Delivery Charges</td>
-        <td style="padding: 4px 0 8px 0; text-align: right; font-weight: 600; color: #374151; font-size: 13px;">
-          {{delivery_charge}}</td>
-      </tr>
-      {{/if}}
+      {{#if has_discount}}
       <tr>
         <td colspan="2"
           style="padding: 4px 12px 8px 12px; text-align: right; color: #6B7280; font-size: 13px; font-weight: 500;">
           Discount</td>
         <td style="padding: 4px 0 8px 0; text-align: right; font-weight: 600; color: #10B981; font-size: 13px;">
-          {{discount}}</td>
+          -{{discount}}</td>
+      </tr>
+      {{/if}}
+      <tr>
+        <td colspan="2"
+          style="padding: 4px 12px 8px 12px; text-align: right; color: #6B7280; font-size: 13px; font-weight: 500;">
+          {{#if isCOD}}Shipping & COD Charges{{else}}Shipping Charge{{/if}}</td>
+        <td style="padding: 4px 0 8px 0; text-align: right; font-weight: 600; color: {{#if is_free_delivery}}#10B981{{else}}#374151{{/if}}; font-size: 13px;">
+          {{delivery_charge}}</td>
       </tr>
       <tr>
         <td colspan="2"

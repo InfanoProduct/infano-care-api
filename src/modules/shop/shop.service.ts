@@ -1769,11 +1769,24 @@ export class ShopService {
 
       const sym = this.getCurrencySymbol(order.currency, order.country);
 
-      const items = order.items.map((i: any) => ({
-        title: i.book?.title || "Gigi Book",
-        quantity: i.quantity,
-        price: `${sym}${i.price}`
-      }));
+      const items = (order.items || []).map((i: any) => {
+        let imageUrl = i.book?.imageUrl || "";
+        if (!imageUrl) {
+          imageUrl = "https://infano.care/Page-1.png";
+        } else if (imageUrl.startsWith("/")) {
+          imageUrl = `https://infano.care${imageUrl}`;
+        }
+        const itemPrice = Number(i.price) || 0;
+        const qty = Number(i.quantity) || 1;
+        const itemTotal = itemPrice * qty;
+        return {
+          title: i.book?.title || "The Awkward Age",
+          quantity: qty,
+          unit_price: qty > 1 ? `${sym}${itemPrice}` : undefined,
+          price: `${sym}${itemTotal}`,
+          image_url: imageUrl,
+        };
+      });
 
       const isUS = order.country === "US" || order.currency === "USD";
       const isUK = order.country === "UK" || order.country === "GB" || order.currency === "GBP";
@@ -1783,16 +1796,28 @@ export class ShopService {
         ? "https://infano.care/en-uk/login"
         : "https://infano.care/login";
 
+      const deliveryChargeNum = Number(order.deliveryCharge) || 0;
+      const discountAmountNum = Number(order.discountAmount) || 0;
+      const isCOD = order.paymentMethod === 'COD';
+      const paymentMethodDisplay = isCOD
+        ? "Cash on Delivery"
+        : order.paymentMethod === "ONLINE"
+        ? (order.paypalOrderId || order.paypalCaptureId ? "PayPal (Online)" : "Online Payment")
+        : (order.paymentMethod || "Online Payment");
+
       const res = await sendGigiBookOrderPlacedEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
         order_id: order.id.slice(0, 8).toUpperCase(),
         order_date: orderDate,
         shipping_address: address,
-        payment_method: order.paymentMethod,
+        payment_method: paymentMethodDisplay,
         order_items: items,
         subtotal: `${sym}${order.subtotal}`,
-        discount: order.discountAmount > 0 ? `${sym}${order.discountAmount}` : `${sym}0`,
-        delivery_charge: `${sym}${order.deliveryCharge}`,
+        discount: discountAmountNum > 0 ? `${sym}${discountAmountNum}` : "",
+        has_discount: discountAmountNum > 0,
+        delivery_charge: deliveryChargeNum > 0 ? `${sym}${deliveryChargeNum}` : "Free",
+        has_delivery_charge: deliveryChargeNum > 0,
+        is_free_delivery: deliveryChargeNum === 0,
         total: `${sym}${order.totalAmount}`,
         track_order_url: "https://infano.care/store/track",
         view_order_url: viewOrderUrl
@@ -1805,7 +1830,7 @@ export class ShopService {
 
     try {
       if (order.guestPhone) {
-        const bookTitle = order.items.map((i: any) => i.book?.title || "Gigi Book").join(", ");
+        const bookTitle = (order.items || []).map((i: any) => i.book?.title || "Gigi Book").join(", ");
         const fullAddress = `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`;
         await sendOrderConfirmationWhatsApp(order.guestPhone, {
           customerName: order.guestName || "Parent",
@@ -1828,10 +1853,19 @@ export class ShopService {
         full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
       };
 
-      const items = order.items.map((i: any) => ({
-        title: i.book?.title || "Gigi Book",
-        quantity: i.quantity
-      }));
+      const items = (order.items || []).map((i: any) => {
+        let imageUrl = i.book?.imageUrl || "";
+        if (!imageUrl) {
+          imageUrl = "https://infano.care/Page-1.png";
+        } else if (imageUrl.startsWith("/")) {
+          imageUrl = `https://infano.care${imageUrl}`;
+        }
+        return {
+          title: i.book?.title || "The Awkward Age",
+          quantity: i.quantity,
+          image_url: imageUrl,
+        };
+      });
 
       const courierName = "Delhivery";
       const deliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -1886,10 +1920,19 @@ export class ShopService {
     try {
       logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Delivered email");
 
-      const items = order.items.map((i: any) => ({
-        title: i.book?.title || "Gigi Book",
-        quantity: i.quantity
-      }));
+      const items = (order.items || []).map((i: any) => {
+        let imageUrl = i.book?.imageUrl || "";
+        if (!imageUrl) {
+          imageUrl = "https://infano.care/Page-1.png";
+        } else if (imageUrl.startsWith("/")) {
+          imageUrl = `https://infano.care${imageUrl}`;
+        }
+        return {
+          title: i.book?.title || "The Awkward Age",
+          quantity: i.quantity,
+          image_url: imageUrl,
+        };
+      });
 
       const deliveryDate = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 

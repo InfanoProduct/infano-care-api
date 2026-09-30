@@ -100,8 +100,8 @@
       {{#each order_items}}
       <tr>
         <td style="padding: 16px 0; border-bottom: 1px solid #F3F4F6; width: 64px;">
-          <img src="https://api.infano.care/uploads/assets/Page-1.png" alt="{{this.title}}"
-            style="width: 48px; height: auto; border-radius: 6px; border: 1px solid #E5E7EB; display: block;">
+          <img src="{{#if this.image_url}}{{this.image_url}}{{else}}https://infano.care/Page-1.png{{/if}}" alt="{{this.title}}"
+            style="width: 48px; height: auto; border-radius: 6px; border: 1px solid #E5E7EB; display: block;" onerror="this.src='https://infano.care/Page-1.png';">
         </td>
         <td style="padding: 16px 12px; border-bottom: 1px solid #F3F4F6; vertical-align: middle;">
           <p style="margin: 0; font-weight: 600; color: #1F2937; font-size: 14px; line-height: 1.4;">{{this.title}}</p>
