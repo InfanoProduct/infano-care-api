@@ -1273,27 +1273,50 @@ export class ShopService {
       country = rawCountryCode === "GB" ? "UK" : rawCountryCode;
     }
 
-    // Resolve or sync user from guestPhone if available
+    // Resolve or sync user from guestPhone or guestEmail
     let userId = order.userId;
-    if (!userId && guestPhone) {
-      const normalized = normalizePhone(guestPhone);
-      let user = await prisma.user.findUnique({ where: { phone: normalized } });
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            phone: normalized,
-            accountStatus: "PENDING_SETUP",
-            onboardingStep: 1,
-            role: "PARENT",
-            profile: {
-              create: {
-                displayName: guestName || "Parent",
+    if (!userId) {
+      let existingUser = null;
+      if (guestPhone) {
+        try {
+          const normalized = normalizePhone(guestPhone);
+          existingUser = await prisma.user.findUnique({ where: { phone: normalized } });
+        } catch {
+          // ignore phone parse error
+        }
+      }
+      if (!existingUser && guestEmail && !guestEmail.includes("pending_paypal")) {
+        existingUser = await prisma.user.findFirst({ where: { email: guestEmail } });
+      }
+
+      if (existingUser) {
+        userId = existingUser.id;
+      } else if (guestEmail && !guestEmail.includes("pending_paypal")) {
+        let cleanPhone: string | undefined = undefined;
+        if (guestPhone) {
+          try { cleanPhone = normalizePhone(guestPhone); } catch {}
+        }
+        try {
+          const newUser = await prisma.user.create({
+            data: {
+              email: guestEmail,
+              phone: cleanPhone,
+              accountStatus: "PENDING_SETUP",
+              onboardingStep: 1,
+              role: "PARENT",
+              profile: {
+                create: {
+                  displayName: guestName || "Parent",
+                  totalPoints: 0,
+                },
               },
             },
-          },
-        });
+          });
+          userId = newUser.id;
+        } catch (createErr) {
+          logger.error({ createErr, guestEmail }, "[PAYPAL] Could not create user for international order");
+        }
       }
-      userId = user.id;
     }
 
     // Prepare comments with raw PayPal meta
@@ -1618,13 +1641,23 @@ export class ShopService {
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { phone: true }
+        select: { phone: true, email: true }
       });
+      const syncConditions: any[] = [];
       if (user?.phone) {
-        const normalizedPhone = normalizePhone(user.phone);
+        try {
+          const normalizedPhone = normalizePhone(user.phone);
+          syncConditions.push({ guestPhone: normalizedPhone });
+        } catch {}
+      }
+      if (user?.email) {
+        syncConditions.push({ guestEmail: user.email });
+      }
+
+      if (syncConditions.length > 0) {
         await prisma.order.updateMany({
           where: {
-            guestPhone: normalizedPhone,
+            OR: syncConditions,
             userId: { not: userId }
           },
           data: {
@@ -1633,7 +1666,7 @@ export class ShopService {
         });
         await prisma.webinarRegistration.updateMany({
           where: {
-            guestPhone: normalizedPhone,
+            OR: syncConditions,
             userId: { not: userId }
           },
           data: {
@@ -1712,6 +1745,18 @@ export class ShopService {
     return razorpay.payments.all(options);
   }
 
+  private static getCurrencySymbol(currency?: string | null, country?: string | null): string {
+    const c = (country || "").toUpperCase();
+    const curr = (currency || "").toUpperCase();
+    if (curr === "USD" || c === "US") return "$";
+    if (curr === "GBP" || c === "UK" || c === "GB") return "£";
+    if (curr === "EUR" || c === "EU") return "€";
+    if (curr === "CAD") return "CA$";
+    if (curr === "AUD") return "A$";
+    if (curr === "AED") return "AED ";
+    return "₹";
+  }
+
   private static async _sendPlacedEmail(order: any) {
     try {
       logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Placed email");
@@ -1722,11 +1767,21 @@ export class ShopService {
         full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
       };
 
+      const sym = this.getCurrencySymbol(order.currency, order.country);
+
       const items = order.items.map((i: any) => ({
         title: i.book?.title || "Gigi Book",
         quantity: i.quantity,
-        price: `₹${i.price}`
+        price: `${sym}${i.price}`
       }));
+
+      const isUS = order.country === "US" || order.currency === "USD";
+      const isUK = order.country === "UK" || order.country === "GB" || order.currency === "GBP";
+      const viewOrderUrl = isUS
+        ? "https://infano.care/en-us/login"
+        : isUK
+        ? "https://infano.care/en-uk/login"
+        : "https://infano.care/login";
 
       const res = await sendGigiBookOrderPlacedEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
@@ -1735,11 +1790,12 @@ export class ShopService {
         shipping_address: address,
         payment_method: order.paymentMethod,
         order_items: items,
-        subtotal: `₹${order.subtotal}`,
-        discount: order.discountAmount > 0 ? `₹${order.discountAmount}` : "₹0",
-        delivery_charge: `₹${order.deliveryCharge}`,
-        total: `₹${order.totalAmount}`,
-        track_order_url: "https://infano.care/store/track"
+        subtotal: `${sym}${order.subtotal}`,
+        discount: order.discountAmount > 0 ? `${sym}${order.discountAmount}` : `${sym}0`,
+        delivery_charge: `${sym}${order.deliveryCharge}`,
+        total: `${sym}${order.totalAmount}`,
+        track_order_url: "https://infano.care/store/track",
+        view_order_url: viewOrderUrl
       });
 
       logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Placed email sent successfully");

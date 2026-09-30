@@ -15,6 +15,15 @@ export const verifyOtpSchema = z.object({
   otp:   z.string().length(4).regex(/^\d{4}$/, "OTP must be 4 digits"),
 });
 
+export const sendEmailOtpSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+export const verifyEmailOtpSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  otp:   z.string().length(4).regex(/^\d{4}$/, "OTP must be 4 digits"),
+});
+
 export const refreshSchema = z.object({
   refreshToken: z.string().min(10),
 });
@@ -23,3 +32,4 @@ export const adminLoginSchema = z.object({
   username: z.string().min(3),
   password: z.string().min(6),
 });
+

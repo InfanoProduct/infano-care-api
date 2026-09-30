@@ -80,6 +80,7 @@ export const sendGigiBookOrderPlacedEmail = async (to: string, data: {
   total: string;
   delivery_charge: string;
   track_order_url: string;
+  view_order_url?: string;
 }) => {
   const subject = `Order #${data.order_id} - Your Gigi-Book is on its way to making a difference! 🌸`;
   const preheaderText = "Order confirmed. Here's what happens next.";
@@ -207,5 +208,37 @@ export const sendProgramEnrolledEmail = async (to: string, data: {
   });
   return sendEmail(to, subject, html);
 };
+
+export const sendAuthOtpEmail = async (to: string, otp: string) => {
+  const subject = `${otp} is your Infano.Care login code`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF8FD; margin: 0; padding: 30px 10px; color: #1F2937;">
+        <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #F3E8FF; padding: 36px 28px; box-shadow: 0 4px 20px rgba(123, 31, 162, 0.05); text-align: center;">
+          <div style="margin-bottom: 24px;">
+            <img src="https://api.infano.care/uploads/assets/infano-logo-light.png" alt="Infano Care" style="height: 38px; width: auto;" />
+          </div>
+          <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 12px 0;">Your Verification Code</h2>
+          <p style="font-size: 14px; color: #4B5563; line-height: 1.5; margin: 0 0 28px 0;">Use this single-use code to securely sign in to your Infano account and access your dashboard.</p>
+          <div style="background: #FAF8FD; border: 2px dashed #9C27B0; border-radius: 12px; padding: 18px 24px; margin: 0 auto 28px auto; display: inline-block;">
+            <span style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 800; letter-spacing: 10px; color: #7B1FA2; display: block; margin-left: 10px;">${otp}</span>
+          </div>
+          <p style="font-size: 12px; color: #9CA3AF; margin: 0 0 8px 0;">This code is valid for 10 minutes. If you did not request this code, please ignore this email.</p>
+          <div style="border-top: 1px solid #F3F4F6; margin-top: 24px; padding-top: 18px;">
+            <p style="font-size: 11px; color: #9CA3AF; margin: 0;">&copy; ${new Date().getFullYear()} Infano Care. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+  return sendEmail(to, subject, html, `Your Infano verification code is: ${otp}. It expires in 10 minutes.`);
+};
+
 
 

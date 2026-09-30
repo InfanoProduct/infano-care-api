@@ -142,7 +142,7 @@
   </div>
 
   <div style="margin: 30px 0 40px; text-align: center;">
-    <a href="https://infano.care/login" class="button">View Order Details</a>
+    <a href="{{#if view_order_url}}{{view_order_url}}{{else}}https://infano.care/login{{/if}}" class="button">View Order Details</a>
   </div>
 
   <!-- Delivery & Payment Cards -->
