@@ -389,6 +389,16 @@ export class AdminController {
     }
   }
 
+  static async getBook(req: Request, res: Response, next: NextFunction) {
+    try {
+      const book = await AdminService.getBook(req.params.id as string);
+      if (!book) return res.status(404).json({ message: "Book not found" });
+      res.status(200).json(book);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async createBook(req: Request, res: Response, next: NextFunction) {
     try {
       const book = await AdminService.createBook(req.body);

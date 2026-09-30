@@ -1612,19 +1612,44 @@ export class AdminService {
     return books.map(book => ({ ...book, coupon }));
   }
 
+  static async getBook(id: string) {
+    const book = await prisma.book.findUnique({
+      where: { id },
+    });
+    if (!book) return null;
+    const coupon = await prisma.discountCoupon.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    return { ...book, coupon };
+  }
+
   static async createBook(data: any) {
     const { promo, id, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
 
-    // Ensure numeric types for pricing fields
+    // Ensure numeric types for pricing and inventory fields
+    if (bookData.price !== undefined && bookData.price !== null) bookData.price = Number(bookData.price);
     if (bookData.priceUS !== undefined) bookData.priceUS = bookData.priceUS === '' || bookData.priceUS === null ? null : Number(bookData.priceUS);
     if (bookData.priceUK !== undefined) bookData.priceUK = bookData.priceUK === '' || bookData.priceUK === null ? null : Number(bookData.priceUK);
     if (bookData.shippingIN !== undefined) bookData.shippingIN = Number(bookData.shippingIN);
     if (bookData.shippingUS !== undefined) bookData.shippingUS = Number(bookData.shippingUS);
     if (bookData.shippingUK !== undefined) bookData.shippingUK = Number(bookData.shippingUK);
     if (bookData.codChargeIN !== undefined) bookData.codChargeIN = Number(bookData.codChargeIN);
+    if (bookData.stock !== undefined) bookData.stock = Number(bookData.stock);
+
+    const allowedFields = [
+      'title', 'description', 'price', 'imageUrl', 'stock', 'isActive',
+      'priceUS', 'priceUK', 'shippingIN', 'shippingUS', 'shippingUK', 'codChargeIN'
+    ];
+    const sanitizedData: any = {};
+    if (id) sanitizedData.id = id;
+    for (const key of allowedFields) {
+      if (key in bookData) {
+        sanitizedData[key] = bookData[key];
+      }
+    }
 
     const book = await prisma.book.create({
-      data: bookData
+      data: sanitizedData
     });
 
     if (promo) {
@@ -1663,17 +1688,30 @@ export class AdminService {
   static async updateBook(id: string, data: any) {
     const { promo, id: _, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
 
-    // Ensure numeric types for pricing fields
+    // Ensure numeric types for pricing and inventory fields
+    if (bookData.price !== undefined && bookData.price !== null) bookData.price = Number(bookData.price);
     if (bookData.priceUS !== undefined) bookData.priceUS = bookData.priceUS === '' || bookData.priceUS === null ? null : Number(bookData.priceUS);
     if (bookData.priceUK !== undefined) bookData.priceUK = bookData.priceUK === '' || bookData.priceUK === null ? null : Number(bookData.priceUK);
     if (bookData.shippingIN !== undefined) bookData.shippingIN = Number(bookData.shippingIN);
     if (bookData.shippingUS !== undefined) bookData.shippingUS = Number(bookData.shippingUS);
     if (bookData.shippingUK !== undefined) bookData.shippingUK = Number(bookData.shippingUK);
     if (bookData.codChargeIN !== undefined) bookData.codChargeIN = Number(bookData.codChargeIN);
+    if (bookData.stock !== undefined) bookData.stock = Number(bookData.stock);
+
+    const allowedFields = [
+      'title', 'description', 'price', 'imageUrl', 'stock', 'isActive',
+      'priceUS', 'priceUK', 'shippingIN', 'shippingUS', 'shippingUK', 'codChargeIN'
+    ];
+    const sanitizedData: any = {};
+    for (const key of allowedFields) {
+      if (key in bookData) {
+        sanitizedData[key] = bookData[key];
+      }
+    }
 
     const book = await prisma.book.update({
       where: { id },
-      data: bookData
+      data: sanitizedData
     });
 
     if (promo === null) {
