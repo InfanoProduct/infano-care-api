@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "./auth.service.js";
-import { sendOtpSchema, verifyOtpSchema, refreshSchema, adminLoginSchema } from "./auth.schema.js";
+import { sendOtpSchema, verifyOtpSchema, sendEmailOtpSchema, verifyEmailOtpSchema, refreshSchema, adminLoginSchema } from "./auth.schema.js";
 
 export class AuthController {
   static async sendOtp(req: Request, res: Response, next: NextFunction) {
@@ -18,6 +18,24 @@ export class AuthController {
     try {
       const { phone, otp } = verifyOtpSchema.parse(req.body);
       const result = await AuthService.verifyOtp(phone, otp);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async sendEmailOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email } = sendEmailOtpSchema.parse(req.body);
+      await AuthService.sendEmailOtp(email);
+      res.status(200).json({ 
+        message: "Verification code sent to your email successfully."
+      });
+    } catch (e) { next(e); }
+  }
+
+  static async verifyEmailOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, otp } = verifyEmailOtpSchema.parse(req.body);
+      const result = await AuthService.verifyEmailOtp(email, otp);
       res.status(200).json(result);
     } catch (e) { next(e); }
   }

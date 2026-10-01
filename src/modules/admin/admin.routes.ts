@@ -59,6 +59,7 @@ router.post("/orders/:id/convert-to-cod", AdminController.convertToCod);
 
 // Book Management
 router.get("/books", AdminController.getBooks);
+router.get("/books/:id", AdminController.getBook);
 router.post("/books", AdminController.createBook);
 router.patch("/books/:id", AdminController.updateBook);
 router.delete("/books/:id", AdminController.deleteBook);

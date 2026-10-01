@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../../db/client.js";
 import { redis } from "../../db/redis.js";
 import { smsProvider } from "./sms.service.js";
+import { sendAuthOtpEmail } from "../../common/services/email.service.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { logger } from "../../config/logger.js";
 import { normalizePhone } from "../../common/utils/phone.js";
@@ -277,6 +278,155 @@ export class AuthService {
       isNewUser: !isFullyOnboarded,
       onboardingStep: finalUser.onboardingStep,
       onboardingStage: finalUser.onboardingStep, // Frontend expects onboardingStage
+      accountStatus: finalUser.accountStatus,
+      isOnboardingCompleted: isFullyOnboarded,
+      role: finalUser.role,
+      userId: finalUser.id,
+      peerApplicationStatus: finalUser.peerApplication?.status || 'none',
+      profile: finalUser.profile ?? null,
+      contentTier: finalUser.contentTier ?? null
+    };
+  }
+
+  // ── 1b. Send Email OTP (International / Email flow) ────────────────────────
+  static async sendEmailOtp(email: string): Promise<void> {
+    const finalEmail = email.trim().toLowerCase();
+    logger.info({ email: finalEmail }, "[AUTH] sendEmailOtp request received");
+
+    // Rate limiting via Redis (max 5 requests per 15 min window)
+    const rateKey = `otp:email:rate:${finalEmail}`;
+    const attempts = await redis.incr(rateKey);
+    if (attempts === 1) {
+      await redis.expire(rateKey, OTP_RATE_WINDOW_SEC);
+    }
+    if (attempts > 5) {
+      throw new AppError("Too many verification requests. Please try again after 15 minutes.", 429);
+    }
+
+    const otp = generateOtp();
+    await redis.setex(`otp:email:${finalEmail}`, OTP_TTL_SECONDS, hashOtp(otp));
+
+    try {
+      await sendAuthOtpEmail(finalEmail, otp);
+    } catch (err: any) {
+      logger.error({ err, email: finalEmail }, "[AUTH] Failed to send email OTP");
+      throw new AppError("Failed to send verification code to email. Please check your email address and try again.", 500);
+    }
+
+    logger.info({ email: finalEmail }, "[AUTH] Email OTP sent successfully");
+  }
+
+  // ── 2b. Verify Email OTP ──────────────────────────────────────────────────
+  static async verifyEmailOtp(email: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string; profile?: any; contentTier?: string | null }> {
+    const finalEmail = email.trim().toLowerCase();
+    logger.info({ email: finalEmail }, "[AUTH] verifyEmailOtp request received");
+
+    const storedHash = await redis.get(`otp:email:${finalEmail}`);
+    if (!storedHash || storedHash !== hashOtp(otp)) {
+      if (process.env.SMS_PROVIDER !== "mock" || otp !== "1234") {
+        throw new AppError("Invalid or expired verification code. Please try again.", 400);
+      }
+    }
+
+    await redis.del(`otp:email:${finalEmail}`);
+
+    const user = await prisma.user.findFirst({
+      where: { email: finalEmail },
+      select: {
+        id: true,
+        isTestNumber: true,
+        accountStatus: true,
+        onboardingStep: true,
+        contentTier: true,
+        onboardingCompletedAt: true,
+        role: true,
+        peerApplication: { select: { status: true } },
+        profile: { select: { displayName: true, pronouns: true, totalPoints: true, totalCoins: true, avatarUrl: true } }
+      }
+    });
+
+    let finalUser: any = user;
+    if (!finalUser) {
+      finalUser = await prisma.user.create({
+        data: {
+          email: finalEmail,
+          accountStatus: "PENDING_SETUP",
+          onboardingStep: 1,
+          role: "PARENT",
+          profile: {
+            create: {
+              displayName: "",
+              totalPoints: 0,
+            }
+          }
+        },
+        select: {
+          id: true,
+          isTestNumber: true,
+          accountStatus: true,
+          onboardingStep: true,
+          contentTier: true,
+          onboardingCompletedAt: true,
+          role: true,
+          peerApplication: { select: { status: true } },
+          profile: { select: { displayName: true, pronouns: true, totalPoints: true, totalCoins: true, avatarUrl: true } }
+        }
+      });
+      logger.info({ userId: finalUser.id, email: finalEmail }, "Created new user via Email OTP verify");
+    }
+
+    // Link guest orders and webinar registrations to this user
+    try {
+      await prisma.order.updateMany({
+        where: {
+          guestEmail: finalEmail,
+          userId: { not: finalUser.id }
+        },
+        data: {
+          userId: finalUser.id
+        }
+      });
+      await prisma.webinarRegistration.updateMany({
+        where: {
+          guestEmail: finalEmail,
+          userId: { not: finalUser.id }
+        },
+        data: {
+          userId: finalUser.id
+        }
+      });
+      logger.info({ userId: finalUser.id, email: finalEmail }, "Linked guest orders/registrations to user by email");
+    } catch (linkErr) {
+      logger.error({ err: linkErr, userId: finalUser.id }, "Failed to link guest orders/registrations during verifyEmailOtp");
+    }
+
+    const jti = crypto.randomUUID();
+    const tokenPayloadBase = {
+      sub: finalUser.id,
+      role: finalUser.role,
+      contentTier: finalUser.contentTier,
+      accountStatus: finalUser.accountStatus,
+      obStep: finalUser.onboardingStep
+    };
+
+    const accessToken = signAccessToken(tokenPayloadBase);
+    const refreshToken = signRefreshToken(tokenPayloadBase, jti);
+
+    await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, finalUser.id);
+
+    const isFullyOnboarded = Boolean(
+      finalUser.accountStatus === "ACTIVE" ||
+      finalUser.onboardingCompletedAt !== null ||
+      (finalUser.profile?.displayName && finalUser.profile.displayName.trim().length > 0)
+    );
+
+    return {
+      accessToken,
+      refreshToken,
+      tempToken: accessToken,
+      isNewUser: !isFullyOnboarded,
+      onboardingStep: finalUser.onboardingStep,
+      onboardingStage: finalUser.onboardingStep,
       accountStatus: finalUser.accountStatus,
       isOnboardingCompleted: isFullyOnboarded,
       role: finalUser.role,

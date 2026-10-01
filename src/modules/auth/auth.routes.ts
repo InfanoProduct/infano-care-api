@@ -44,11 +44,13 @@ const otpLimiter = rateLimit({
  *       400:
  *         description: Invalid phone number.
  */
-router.post("/otp/send",    otpLimiter, AuthController.sendOtp);
-router.post("/otp/verify",  otpLimiter, AuthController.verifyOtp);
-router.post("/login",       AuthController.login);
-router.post("/admin/login", AuthController.adminLogin);
-router.post("/refresh",     AuthController.refresh);
+router.post("/otp/send",          otpLimiter, AuthController.sendOtp);
+router.post("/otp/verify",        otpLimiter, AuthController.verifyOtp);
+router.post("/otp/send-email",    otpLimiter, AuthController.sendEmailOtp);
+router.post("/otp/verify-email",  otpLimiter, AuthController.verifyEmailOtp);
+router.post("/login",             AuthController.login);
+router.post("/admin/login",       AuthController.adminLogin);
+router.post("/refresh",           AuthController.refresh);
 
 router.post("/check-user",             AuthController.checkUser);
 router.post("/logout",                 AuthController.logout);

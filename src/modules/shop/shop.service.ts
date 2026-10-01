@@ -1124,7 +1124,7 @@ export class ShopService {
       data: { paypalOrderId },
     });
 
-    if (captureStatus === "COMPLETED") {
+    if (captureStatus === "COMPLETED" || captureStatus === "PENDING") {
       return await this.completeOrderByPaypalOrderId(paypalOrderId, captureId, responseData);
     } else {
       return await prisma.order.findUnique({
@@ -1166,15 +1166,19 @@ export class ShopService {
 
       const capture = captureResponse.result;
       const captureUnit = capture?.purchaseUnits?.[0]?.payments?.captures?.[0];
-      const captureId: string | null = captureUnit?.id ?? null;
-      const captureStatus: string | undefined = captureUnit?.status;
+      const captureId: string | null = captureUnit?.id ?? capture?.id ?? null;
+      const captureStatus: string | undefined = captureUnit?.status ?? capture?.status;
 
       logger.info(
         { paypalOrderId, captureId, captureStatus },
         "[PAYPAL] captureOrder API response"
       );
 
-      if (captureStatus !== "COMPLETED") {
+      // In PayPal (especially for international/multi-currency accounts like GBP),
+      // statuses COMPLETED and PENDING indicate the payment was authorized and captured/held.
+      const isSuccessfulStatus = captureStatus === "COMPLETED" || captureStatus === "PENDING";
+
+      if (!isSuccessfulStatus) {
         // PayPal returned a non-success status — mark as failed
         await prisma.order.update({
           where: { paypalOrderId },
@@ -1273,27 +1277,50 @@ export class ShopService {
       country = rawCountryCode === "GB" ? "UK" : rawCountryCode;
     }
 
-    // Resolve or sync user from guestPhone if available
+    // Resolve or sync user from guestPhone or guestEmail
     let userId = order.userId;
-    if (!userId && guestPhone) {
-      const normalized = normalizePhone(guestPhone);
-      let user = await prisma.user.findUnique({ where: { phone: normalized } });
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            phone: normalized,
-            accountStatus: "PENDING_SETUP",
-            onboardingStep: 1,
-            role: "PARENT",
-            profile: {
-              create: {
-                displayName: guestName || "Parent",
+    if (!userId) {
+      let existingUser = null;
+      if (guestPhone) {
+        try {
+          const normalized = normalizePhone(guestPhone);
+          existingUser = await prisma.user.findUnique({ where: { phone: normalized } });
+        } catch {
+          // ignore phone parse error
+        }
+      }
+      if (!existingUser && guestEmail && !guestEmail.includes("pending_paypal")) {
+        existingUser = await prisma.user.findFirst({ where: { email: guestEmail } });
+      }
+
+      if (existingUser) {
+        userId = existingUser.id;
+      } else if (guestEmail && !guestEmail.includes("pending_paypal")) {
+        let cleanPhone: string | undefined = undefined;
+        if (guestPhone) {
+          try { cleanPhone = normalizePhone(guestPhone); } catch {}
+        }
+        try {
+          const newUser = await prisma.user.create({
+            data: {
+              email: guestEmail,
+              phone: cleanPhone,
+              accountStatus: "PENDING_SETUP",
+              onboardingStep: 1,
+              role: "PARENT",
+              profile: {
+                create: {
+                  displayName: guestName || "Parent",
+                  totalPoints: 0,
+                },
               },
             },
-          },
-        });
+          });
+          userId = newUser.id;
+        } catch (createErr) {
+          logger.error({ createErr, guestEmail }, "[PAYPAL] Could not create user for international order");
+        }
       }
-      userId = user.id;
     }
 
     // Prepare comments with raw PayPal meta
@@ -1438,7 +1465,7 @@ export class ShopService {
     logger.info({ eventType, eventId: event?.id }, "[PAYPAL_WEBHOOK] Processing event");
 
     try {
-      if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
+      if (eventType === "PAYMENT.CAPTURE.COMPLETED" || eventType === "PAYMENT.CAPTURE.PENDING") {
         const captureId: string = event.resource?.id;
         // PayPal supplies our customId (internal order UUID) in the capture resource
         const customId: string | undefined = event.resource?.custom_id;
@@ -1618,13 +1645,23 @@ export class ShopService {
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { phone: true }
+        select: { phone: true, email: true }
       });
+      const syncConditions: any[] = [];
       if (user?.phone) {
-        const normalizedPhone = normalizePhone(user.phone);
+        try {
+          const normalizedPhone = normalizePhone(user.phone);
+          syncConditions.push({ guestPhone: normalizedPhone });
+        } catch {}
+      }
+      if (user?.email) {
+        syncConditions.push({ guestEmail: user.email });
+      }
+
+      if (syncConditions.length > 0) {
         await prisma.order.updateMany({
           where: {
-            guestPhone: normalizedPhone,
+            OR: syncConditions,
             userId: { not: userId }
           },
           data: {
@@ -1633,7 +1670,7 @@ export class ShopService {
         });
         await prisma.webinarRegistration.updateMany({
           where: {
-            guestPhone: normalizedPhone,
+            OR: syncConditions,
             userId: { not: userId }
           },
           data: {
@@ -1712,6 +1749,18 @@ export class ShopService {
     return razorpay.payments.all(options);
   }
 
+  private static getCurrencySymbol(currency?: string | null, country?: string | null): string {
+    const c = (country || "").toUpperCase();
+    const curr = (currency || "").toUpperCase();
+    if (curr === "USD" || c === "US") return "$";
+    if (curr === "GBP" || c === "UK" || c === "GB") return "£";
+    if (curr === "EUR" || c === "EU") return "€";
+    if (curr === "CAD") return "CA$";
+    if (curr === "AUD") return "A$";
+    if (curr === "AED") return "AED ";
+    return "₹";
+  }
+
   private static async _sendPlacedEmail(order: any) {
     try {
       logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Placed email");
@@ -1722,24 +1771,60 @@ export class ShopService {
         full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
       };
 
-      const items = order.items.map((i: any) => ({
-        title: i.book?.title || "Gigi Book",
-        quantity: i.quantity,
-        price: `₹${i.price}`
-      }));
+      const sym = this.getCurrencySymbol(order.currency, order.country);
+
+      const items = (order.items || []).map((i: any) => {
+        let imageUrl = i.book?.imageUrl || "";
+        if (!imageUrl) {
+          imageUrl = "https://infano.care/Page-1.png";
+        } else if (imageUrl.startsWith("/")) {
+          imageUrl = `https://infano.care${imageUrl}`;
+        }
+        const itemPrice = Number(i.price) || 0;
+        const qty = Number(i.quantity) || 1;
+        const itemTotal = itemPrice * qty;
+        return {
+          title: i.book?.title || "The Awkward Age",
+          quantity: qty,
+          unit_price: qty > 1 ? `${sym}${itemPrice}` : undefined,
+          price: `${sym}${itemTotal}`,
+          image_url: imageUrl,
+        };
+      });
+
+      const isUS = order.country === "US" || order.currency === "USD";
+      const isUK = order.country === "UK" || order.country === "GB" || order.currency === "GBP";
+      const viewOrderUrl = isUS
+        ? "https://infano.care/en-us/login"
+        : isUK
+        ? "https://infano.care/en-uk/login"
+        : "https://infano.care/login";
+
+      const deliveryChargeNum = Number(order.deliveryCharge) || 0;
+      const discountAmountNum = Number(order.discountAmount) || 0;
+      const isCOD = order.paymentMethod === 'COD';
+      const paymentMethodDisplay = isCOD
+        ? "Cash on Delivery"
+        : order.paymentMethod === "ONLINE"
+        ? (order.paypalOrderId || order.paypalCaptureId ? "PayPal (Online)" : "Online Payment")
+        : (order.paymentMethod || "Online Payment");
 
       const res = await sendGigiBookOrderPlacedEmail(order.guestEmail || "", {
         parent_name: order.guestName || "Parent",
         order_id: order.id.slice(0, 8).toUpperCase(),
         order_date: orderDate,
         shipping_address: address,
-        payment_method: order.paymentMethod,
+        payment_method: paymentMethodDisplay,
         order_items: items,
-        subtotal: `₹${order.subtotal}`,
-        discount: order.discountAmount > 0 ? `₹${order.discountAmount}` : "₹0",
-        delivery_charge: `₹${order.deliveryCharge}`,
-        total: `₹${order.totalAmount}`,
-        track_order_url: "https://infano.care/store/track"
+        subtotal: `${sym}${order.subtotal}`,
+        discount: discountAmountNum > 0 ? `${sym}${discountAmountNum}` : "",
+        has_discount: discountAmountNum > 0,
+        delivery_charge: deliveryChargeNum > 0 ? `${sym}${deliveryChargeNum}` : "Free",
+        has_delivery_charge: deliveryChargeNum > 0,
+        is_free_delivery: deliveryChargeNum === 0,
+        total: `${sym}${order.totalAmount}`,
+        track_order_url: "https://infano.care/store/track",
+        view_order_url: viewOrderUrl
       });
 
       logger.info({ orderId: order.id, messageId: res?.messageId }, "[EMAIL] Placed email sent successfully");
@@ -1749,7 +1834,7 @@ export class ShopService {
 
     try {
       if (order.guestPhone) {
-        const bookTitle = order.items.map((i: any) => i.book?.title || "Gigi Book").join(", ");
+        const bookTitle = (order.items || []).map((i: any) => i.book?.title || "Gigi Book").join(", ");
         const fullAddress = `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`;
         await sendOrderConfirmationWhatsApp(order.guestPhone, {
           customerName: order.guestName || "Parent",
@@ -1772,10 +1857,19 @@ export class ShopService {
         full_address: `${order.shippingAddress}, ${order.city}, ${order.state} - ${order.pincode}`
       };
 
-      const items = order.items.map((i: any) => ({
-        title: i.book?.title || "Gigi Book",
-        quantity: i.quantity
-      }));
+      const items = (order.items || []).map((i: any) => {
+        let imageUrl = i.book?.imageUrl || "";
+        if (!imageUrl) {
+          imageUrl = "https://infano.care/Page-1.png";
+        } else if (imageUrl.startsWith("/")) {
+          imageUrl = `https://infano.care${imageUrl}`;
+        }
+        return {
+          title: i.book?.title || "The Awkward Age",
+          quantity: i.quantity,
+          image_url: imageUrl,
+        };
+      });
 
       const courierName = "Delhivery";
       const deliveryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -1830,10 +1924,19 @@ export class ShopService {
     try {
       logger.info({ orderId: order.id, to: order.guestEmail }, "[EMAIL] Attempting to send Delivered email");
 
-      const items = order.items.map((i: any) => ({
-        title: i.book?.title || "Gigi Book",
-        quantity: i.quantity
-      }));
+      const items = (order.items || []).map((i: any) => {
+        let imageUrl = i.book?.imageUrl || "";
+        if (!imageUrl) {
+          imageUrl = "https://infano.care/Page-1.png";
+        } else if (imageUrl.startsWith("/")) {
+          imageUrl = `https://infano.care${imageUrl}`;
+        }
+        return {
+          title: i.book?.title || "The Awkward Age",
+          quantity: i.quantity,
+          image_url: imageUrl,
+        };
+      });
 
       const deliveryDate = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
