@@ -1,0 +1,63 @@
+name: UAT Deployment
+
+on:
+  push:
+    branches: [ "uat" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker registry
+      uses: docker/login-action@v3
+      with:
+        registry: registry.infano.care
+        username: ${{ secrets.REGISTRY_UNAME }}
+        password: ${{ secrets.REGISTRY_PWD }}
+        
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: registry.infano.care/infano.api:uat-latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        provenance: false
+
+    - name: Copy docker-compose file
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SSH_SERVER_IP }}
+        username: root
+        password: ${{ secrets.SSH_SERVER_PWD }}
+        port: 22
+        source: "docker-compose.uat.yml"
+        target: "/data/docker/infano-uat/"
+
+    - name: deploy api to server
+      uses: appleboy/ssh-action@v1.2.0
+      with:
+        host: ${{ secrets.SSH_SERVER_IP }}
+        username: root
+        password: ${{ secrets.SSH_SERVER_PWD }}
+        port: 22
+        script: |
+          echo "${{ secrets.REGISTRY_PWD }}" | docker login registry.infano.care -u "${{ secrets.REGISTRY_UNAME }}" --password-stdin
+          docker pull registry.infano.care/infano.api:uat-latest
+          mkdir -p /data/docker/infano-uat
+          cd /data/docker/infano-uat
+          
+          # Clean up any existing/conflicting containers to prevent recreation/rename errors
+          docker rm -f infano-api-uat || true
+          docker rm -f $(docker ps -a -q --filter "name=_infano-api-uat") 2>/dev/null || true
+          
+          docker compose -f docker-compose.uat.yml up -d

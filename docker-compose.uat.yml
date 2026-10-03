@@ -1,0 +1,29 @@
+services:
+  uat-api:
+    image: registry.infano.care/infano.api:uat-latest
+    container_name: infano-api-uat
+    restart: always
+    ports:
+      - "8087:4000"
+    # Unified environment management via .env file on the VPS
+    env_file:
+      - .env
+    networks:
+      - portal_network
+    volumes:
+      - ./uploads:/app/uploads
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://109.199.120.104:12201"
+        tag: "infano-api-uat"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:4000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  portal_network:
+    external: true
+    name: docker_default
