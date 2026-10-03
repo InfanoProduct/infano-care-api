@@ -8,6 +8,7 @@ import Razorpay from "razorpay";
 import { env } from "../../config/env.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { logger } from "../../config/logger.js";
+import { PageStreamingService } from "../library/page-streaming.service.js";
 
 const razorpay = new Razorpay({
   key_id: env.RAZORPAY_KEY_ID || "",
@@ -1618,6 +1619,11 @@ export class AdminService {
     const format = bookData.format || (bookData.stock && Number(bookData.stock) < 900000 ? "PHYSICAL_BOOK" : "DIGITAL_EBOOK");
     bookData.format = format;
 
+    // Ensure slug is clean or null
+    if (bookData.slug !== undefined) {
+      bookData.slug = (typeof bookData.slug === 'string' && bookData.slug.trim()) ? bookData.slug.trim() : null;
+    }
+
     // Ensure numeric types for pricing and digital fields
     if (bookData.priceUS !== undefined) bookData.priceUS = bookData.priceUS === '' || bookData.priceUS === null ? null : Number(bookData.priceUS);
     if (bookData.priceUK !== undefined) bookData.priceUK = bookData.priceUK === '' || bookData.priceUK === null ? null : Number(bookData.priceUK);
@@ -1671,11 +1677,17 @@ export class AdminService {
     });
 
     invalidateShopCache();
+    PageStreamingService.purgeRenderCache(book.slug || book.id);
     return { ...book, coupon: latestCoupon };
   }
 
   static async updateBook(id: string, data: any) {
     const { promo, id: _, createdAt, updatedAt, coupon, couponId, orderItems, ...bookData } = data;
+
+    // Ensure slug is clean or null
+    if (bookData.slug !== undefined) {
+      bookData.slug = (typeof bookData.slug === 'string' && bookData.slug.trim()) ? bookData.slug.trim() : null;
+    }
 
     // Ensure numeric types for pricing and digital fields
     if (bookData.priceUS !== undefined) bookData.priceUS = bookData.priceUS === '' || bookData.priceUS === null ? null : Number(bookData.priceUS);
@@ -1727,11 +1739,16 @@ export class AdminService {
     });
 
     invalidateShopCache();
+    PageStreamingService.purgeRenderCache(book.slug || book.id);
     return { ...book, coupon: latestCoupon };
   }
 
   static async deleteBook(id: string) {
     invalidateShopCache();
+    const existing = await prisma.book.findUnique({ where: { id } }).catch(() => null);
+    if (existing) {
+      PageStreamingService.purgeRenderCache(existing.slug || existing.id);
+    }
     return prisma.book.delete({ where: { id } });
   }
 

@@ -13,10 +13,13 @@ router.post("/etsy-webhook", LibraryController.handleEtsyWebhook);
 // Admin / Cron: Sync recent orders directly from Etsy Open API
 router.post("/sync-etsy", LibraryController.syncEtsyOrders);
 
-// Authenticated: Library operations
+// Authenticated & Stream operations
 router.get("/my-books", authenticate, LibraryController.getMyBooks);
 router.post("/claim-etsy", authenticate, LibraryController.claimEtsyOrder);
 router.get("/books/:id", authenticate, LibraryController.getBookDetails);
+router.get("/books/:id/manifest", LibraryController.getBookManifest);
+router.get("/books/:id/page/:pageNumber", LibraryController.streamBookPage);
+router.get("/books/:id/pdf", LibraryController.streamBookPdf);
 router.get("/books/:id/chapters/:chapterIndex", authenticate, LibraryController.getChapterContent);
 router.post("/books/:id/progress", authenticate, LibraryController.updateProgress);
 

@@ -114,8 +114,8 @@ export class EtsySyncService {
     const shopId = env.ETSY_SHOP_ID || process.env.ETSY_SHOP_ID;
     const accessToken = process.env.ETSY_ACCESS_TOKEN;
 
-    if (!keystring || !shopId) {
-      logger.warn("[EtsySyncService] ETSY_KEYSTRING or ETSY_SHOP_ID missing. Skipping live sync.");
+    if (!keystring || !shopId || shopId.includes("your_etsy") || (accessToken && accessToken.includes("your_oauth"))) {
+      logger.info("[EtsySyncService] ETSY credentials are in placeholder mode. Skipping live sync.");
       return { synced: 0, message: "Etsy credentials not configured" };
     }
 

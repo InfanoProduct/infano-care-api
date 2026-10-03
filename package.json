@@ -16,6 +16,7 @@
     "seed:lms": "tsx --env-file=.env src/modules/lms/lms.seed.ts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.10",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "@prisma/client": "^6.4.1",
     "@types/nodemailer": "^7.0.11",
@@ -35,6 +36,7 @@
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.3",
+    "pdfjs-dist": "^6.3.289",
     "pg": "^8.16.3",
     "pino": "^9.9.0",
     "pino-gelf": "^3.0.0",

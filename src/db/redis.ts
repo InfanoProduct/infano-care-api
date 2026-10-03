@@ -55,7 +55,11 @@ class MockRedis {
 const globalForRedis = globalThis as unknown as { redis: any | undefined };
 
 function createRedisInstance() {
-  const isMemoryMode = process.env.REDIS_URL === "memory" || process.env.NODE_ENV === "test";
+  const isMemoryMode = 
+    process.env.REDIS_URL === "memory" || 
+    !process.env.REDIS_URL || 
+    process.env.NODE_ENV === "test";
+
   let client: any;
   let useFallback = isMemoryMode;
   const mock = new MockRedis();
@@ -63,21 +67,24 @@ function createRedisInstance() {
   if (!isMemoryMode) {
     try {
       client = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
-        maxRetriesPerRequest: 1, 
+        maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
+        connectTimeout: 2000,
+        commandTimeout: 2000,
         lazyConnect: true,
         retryStrategy: (times) => {
-          if (times > 3) {
+          if (times > 2) {
             logger.error("Redis connection failed. Falling back to memory storage.");
             useFallback = true;
             return null; // stop retrying
           }
-          return Math.min(times * 100, 3000);
+          return Math.min(times * 100, 1000);
         }
       });
 
       client.on("error", (err: any) => {
-        // Only log warning, the retryStrategy handles the permanent fallback
-        logger.warn({ err: err.message }, "Redis connection issue.");
+        logger.warn({ err: err.message }, "Redis connection issue. Using in-memory fallback.");
+        useFallback = true;
       });
 
       client.on("end", () => {

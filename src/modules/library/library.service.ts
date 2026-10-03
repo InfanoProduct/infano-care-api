@@ -113,19 +113,19 @@ export class LibraryService {
           price: DEFAULT_GIGI_BOOK.price,
           stock: DEFAULT_GIGI_BOOK.stock,
           totalPages: DEFAULT_GIGI_BOOK.totalPages,
+          pdfUrl: "/uploads/books/3110-house-nordic-SS26-1791013289879-908021241.pdf",
           chapters: DEFAULT_GIGI_BOOK.chapters,
           isActive: true
         }
       });
       logger.info({ bookId: book.id }, "[LibraryService] Seeded default Gigi the Book eBook");
-    } else if (!book.slug || !book.chapters) {
-      // Update existing record with chapters and slug
+    } else if (!book.slug || !book.pdfUrl) {
+      // Update existing record with slug and default pdfUrl if missing
       book = await prisma.book.update({
         where: { id: book.id },
         data: {
-          slug: DEFAULT_GIGI_BOOK.slug,
-          totalPages: DEFAULT_GIGI_BOOK.totalPages,
-          chapters: DEFAULT_GIGI_BOOK.chapters
+          slug: book.slug || DEFAULT_GIGI_BOOK.slug,
+          pdfUrl: book.pdfUrl || "/uploads/books/3110-house-nordic-SS26-1791013289879-908021241.pdf",
         }
       });
     }
@@ -350,37 +350,143 @@ export class LibraryService {
   }
 
   /**
-   * Get full book metadata and chapter list (authenticated)
+   * Helper to find book by ID, slug, or fallback
    */
-  static async getBookReaderMetadata(userId: string, bookIdOrSlug: string) {
-    const book = await prisma.book.findFirst({
+  public static async findBookByIdOrSlug(bookIdOrSlug: string) {
+    const cleanQuery = (bookIdOrSlug || "").trim();
+    if (!cleanQuery) return null;
+
+    let book = await prisma.book.findFirst({
       where: {
         OR: [
-          { id: bookIdOrSlug },
-          { slug: bookIdOrSlug }
+          { id: cleanQuery },
+          { slug: cleanQuery },
+          { slug: cleanQuery.toLowerCase() },
+          ...(cleanQuery.includes("gigi")
+            ? [
+                { slug: "gigi-the-book" },
+                { slug: "gigi-the-ebook" },
+                { title: { contains: "Gigi", mode: "insensitive" as const } }
+              ]
+            : [])
         ]
       }
     });
 
     if (!book) {
-      throw new AppError("Book not found", 404);
+      // Fallback to default / first active digital ebook
+      book = await prisma.book.findFirst({
+        where: {
+          OR: [
+            { format: "DIGITAL_EBOOK" },
+            { slug: "gigi-the-book" },
+            { slug: "gigi-the-ebook" }
+          ]
+        },
+        orderBy: { createdAt: "desc" }
+      });
     }
 
-    // Verify entitlement
-    const entitlement = await prisma.userBookEntitlement.findUnique({
+    return book;
+  }
+
+  /**
+   * Helper to get or auto-grant entitlement for admin preview, dev testing, or verified orders
+   */
+  private static async getOrCreateEntitlement(userId: string, bookId: string) {
+    if (!userId) return null;
+
+    let entitlement = await prisma.userBookEntitlement.findUnique({
       where: {
         userId_bookId: {
           userId,
-          bookId: book.id
+          bookId
         }
       }
     });
 
     if (!entitlement) {
+      const isDev = process.env.NODE_ENV !== "production";
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true }
+      });
+
+      const isAdmin = user?.role === "ADMIN";
+
+      // Check if user paid for this book in web checkout
+      let hasPaidOrder = false;
+      try {
+        const paidOrder = await prisma.order.findFirst({
+          where: {
+            userId,
+            paymentStatus: "PAID" as any,
+            items: {
+              some: {
+                bookId
+              }
+            }
+          }
+        });
+        hasPaidOrder = !!paidOrder;
+      } catch (err) {
+        // non-blocking
+      }
+
+      // Auto-grant access in development, for admins, or verified buyers
+      if (isAdmin || isDev || hasPaidOrder) {
+        entitlement = await prisma.userBookEntitlement.upsert({
+          where: {
+            userId_bookId: {
+              userId,
+              bookId
+            }
+          },
+          create: {
+            userId,
+            bookId,
+            source: isAdmin ? "admin_preview" : isDev ? "dev_auto_grant" : "order_purchase",
+            lastReadPage: 1,
+            progressPercent: 0.0
+          },
+          update: {}
+        });
+      }
+    }
+
+    return entitlement;
+  }
+
+  /**
+   * Get full book metadata and chapter list (authenticated)
+   */
+  static async getBookReaderMetadata(userId: string, bookIdOrSlug: string) {
+    await this.ensureDefaultBook();
+    const book = await this.findBookByIdOrSlug(bookIdOrSlug);
+
+    if (!book) {
+      throw new AppError("Book not found", 404);
+    }
+
+    // Verify entitlement or auto-grant for admin
+    const entitlement = await this.getOrCreateEntitlement(userId, book.id);
+
+    if (!entitlement) {
       throw new AppError("You do not have access to this book. Please claim your Etsy order or purchase access.", 403);
     }
 
-    const chapters = (book.chapters as any[]) || [];
+    let chapters = book.chapters as any[];
+    if (typeof chapters === "string") {
+      try {
+        chapters = JSON.parse(chapters);
+      } catch {
+        chapters = [];
+      }
+    }
+    if (!Array.isArray(chapters)) {
+      chapters = chapters ? [chapters] : [];
+    }
+
     // Strip full text in metadata view for performance, returning table of contents
     const tableOfContents = chapters.map((ch: any, idx: number) => ({
       index: idx,
@@ -394,17 +500,18 @@ export class LibraryService {
     return {
       book: {
         id: book.id,
-        slug: book.slug,
+        slug: book.slug || "gigi-the-book",
         title: book.title,
         author: book.author,
         description: book.description,
         coverImageUrl: book.imageUrl,
-        totalPages: book.totalPages,
+        pdfUrl: (book as any).pdfUrl || null,
+        totalPages: book.totalPages || (tableOfContents.length > 0 ? tableOfContents.length * 10 : 1),
         tableOfContents
       },
       readingState: {
-        lastReadPage: entitlement.lastReadPage,
-        progressPercent: entitlement.progressPercent,
+        lastReadPage: entitlement.lastReadPage || 1,
+        progressPercent: entitlement.progressPercent || 0,
         bookmarks: entitlement.bookmarks || [],
         lastAccessedAt: entitlement.updatedAt
       }
@@ -415,34 +522,31 @@ export class LibraryService {
    * Get single chapter content for authenticated reader streaming
    */
   static async getChapterContent(userId: string, bookIdOrSlug: string, chapterIndex: number) {
-    const book = await prisma.book.findFirst({
-      where: {
-        OR: [
-          { id: bookIdOrSlug },
-          { slug: bookIdOrSlug }
-        ]
-      }
-    });
+    const book = await this.findBookByIdOrSlug(bookIdOrSlug);
 
     if (!book) {
       throw new AppError("Book not found", 404);
     }
 
     // Verify access
-    const entitlement = await prisma.userBookEntitlement.findUnique({
-      where: {
-        userId_bookId: {
-          userId,
-          bookId: book.id
-        }
-      }
-    });
+    const entitlement = await this.getOrCreateEntitlement(userId, book.id);
 
     if (!entitlement) {
       throw new AppError("Access denied. Please unlock this book to read.", 403);
     }
 
-    const chapters = (book.chapters as any[]) || [];
+    let chapters = book.chapters as any[];
+    if (typeof chapters === "string") {
+      try {
+        chapters = JSON.parse(chapters);
+      } catch {
+        chapters = [];
+      }
+    }
+    if (!Array.isArray(chapters)) {
+      chapters = chapters ? [chapters] : [];
+    }
+
     if (chapterIndex < 0 || chapterIndex >= chapters.length) {
       throw new AppError("Chapter not found", 404);
     }
@@ -453,7 +557,7 @@ export class LibraryService {
       chapterIndex,
       totalChapters: chapters.length,
       chapter: {
-        id: chapter.id,
+        id: chapter.id || `ch-${chapterIndex + 1}`,
         title: chapter.title,
         pageStart: chapter.pageStart,
         pageEnd: chapter.pageEnd,
@@ -470,27 +574,13 @@ export class LibraryService {
     bookIdOrSlug: string,
     data: { lastReadPage?: number; progressPercent?: number; bookmark?: { page: number; note?: string } }
   ) {
-    const book = await prisma.book.findFirst({
-      where: {
-        OR: [
-          { id: bookIdOrSlug },
-          { slug: bookIdOrSlug }
-        ]
-      }
-    });
+    const book = await this.findBookByIdOrSlug(bookIdOrSlug);
 
     if (!book) {
       throw new AppError("Book not found", 404);
     }
 
-    const existingEntitlement = await prisma.userBookEntitlement.findUnique({
-      where: {
-        userId_bookId: {
-          userId,
-          bookId: book.id
-        }
-      }
-    });
+    const existingEntitlement = await this.getOrCreateEntitlement(userId, book.id);
 
     if (!existingEntitlement) {
       throw new AppError("Entitlement not found", 403);

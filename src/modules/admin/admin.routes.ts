@@ -61,6 +61,7 @@ router.post("/orders/:id/convert-to-cod", AdminController.convertToCod);
 router.get("/books", AdminController.getBooks);
 router.post("/books", AdminController.createBook);
 router.post("/books/upload-epub", upload.single("file"), AdminController.uploadEpub);
+router.post("/books/upload-ebook", upload.single("file"), AdminController.uploadEpub);
 router.patch("/books/:id", AdminController.updateBook);
 router.delete("/books/:id", AdminController.deleteBook);
 

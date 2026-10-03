@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import path from "path";
 import { LibraryService } from "./library.service.js";
 import { EtsyService } from "./etsy.service.js";
 
@@ -73,6 +74,82 @@ export class LibraryController {
         success: true,
         data: result
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/library/books/:id/page/:pageNumber
+   * Stream a single rendered WebP page tile (~40KB - 70KB) with long-term caching
+   */
+  static async streamBookPage(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id || "");
+      const pageNum = parseInt(String(req.params.pageNumber || "1"), 10);
+      const { PageStreamingService } = await import("./page-streaming.service.js");
+      const { filePath, buffer } = await PageStreamingService.getPageImage(id, isNaN(pageNum) ? 1 : pageNum);
+
+      res.setHeader("Content-Type", "image/webp");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      if (buffer) {
+        return res.send(buffer);
+      }
+      return res.sendFile(filePath);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/library/books/:id/manifest
+   * Get metadata and total page count for tile streaming reader
+   */
+  static async getBookManifest(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id || "");
+      const { PageStreamingService } = await import("./page-streaming.service.js");
+      const manifest = await PageStreamingService.getBookManifest(id);
+      return res.status(200).json({
+        success: true,
+        data: manifest,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/library/books/:id/pdf
+   * Stream book PDF with CORS and frame-ancestors headers
+   */
+  static async streamBookPdf(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id || "");
+      const book = await LibraryService.findBookByIdOrSlug(id);
+      if (!book || !book.pdfUrl) {
+        return res.status(404).json({ message: "PDF not found for this book" });
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", 'inline; filename="book.pdf"');
+      res.setHeader("X-Frame-Options", "ALLOWALL");
+      res.setHeader("Content-Security-Policy", "frame-ancestors *");
+
+      if (book.pdfUrl.startsWith("http://") || book.pdfUrl.startsWith("https://")) {
+        const upstream = await fetch(book.pdfUrl);
+        if (!upstream.ok) {
+          return res.status(upstream.status).send("Failed to stream upstream PDF");
+        }
+        const buffer = await upstream.arrayBuffer();
+        return res.send(Buffer.from(buffer));
+      } else {
+        const localPath = path.resolve(book.pdfUrl.startsWith("/") ? book.pdfUrl.substring(1) : book.pdfUrl);
+        return res.sendFile(localPath);
+      }
     } catch (error) {
       next(error);
     }

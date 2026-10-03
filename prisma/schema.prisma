@@ -1027,6 +1027,7 @@ model Book {
   price           Float
   format          String                  @default("PHYSICAL_BOOK") // DIGITAL_EBOOK | PHYSICAL_BOOK | BUNDLE
   imageUrl        String?
+  pdfUrl          String?
   stock           Int                     @default(0)
   totalPages      Int                     @default(1)
   chapters        Json?                   // Table of contents, encrypted chapter assets, and reader metadata
