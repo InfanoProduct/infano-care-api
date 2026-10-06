@@ -72,7 +72,7 @@ export const createOrderBodySchema = z.object({
   items: z.array(orderItemSchema).min(1, "Order must contain at least one item"),
   couponCode: z.string().trim().max(50, "Invalid coupon code").optional().or(z.literal("")).nullable(),
   gstNumber: z.string().trim().max(20, "Invalid GST number").optional().or(z.literal("")).nullable(),
-  comments: z.string().max(500).optional().or(z.literal("")).nullable(),
+  comments: z.union([z.string().max(500), z.record(z.any())]).optional().nullable(),
   currency: z.string().trim().max(10).optional().nullable(),
   country: z.string().trim().max(10).optional().nullable(),
 }).superRefine((data, ctx) => {
@@ -91,8 +91,8 @@ export const createOrderBodySchema = z.object({
 
   // Validate Phone if provided
   if (data.guestPhone && data.guestPhone.trim().length > 0) {
-    const cleanPhone = data.guestPhone.replace(/[\s\-]/g, "");
-    const isIndia = country === "IN" || cleanPhone.startsWith("+91") || (cleanPhone.length === 10 && /^\d+$/.test(cleanPhone));
+    const cleanPhone = data.guestPhone.replace(/[\s\-\(\)\.]/g, "");
+    const isIndia = country === "IN" || (cleanPhone.startsWith("+91") && country !== "US" && country !== "UK" && country !== "GB");
     
     if (isIndia) {
       if (!IN_PHONE_REGEX.test(cleanPhone)) {
@@ -103,7 +103,7 @@ export const createOrderBodySchema = z.object({
         });
       }
     } else {
-      if (!GLOBAL_PHONE_REGEX.test(cleanPhone)) {
+      if (!GLOBAL_PHONE_REGEX.test(cleanPhone) && !/^\d{7,15}$/.test(cleanPhone)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Invalid phone number",
