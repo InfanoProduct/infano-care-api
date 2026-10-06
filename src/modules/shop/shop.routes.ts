@@ -1,7 +1,33 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { ShopController } from "./shop.controller.js";
+import { validate } from "../../common/middleware/validate.js";
+import {
+  createOrderSchema,
+  payCardSchema,
+  verifyPaymentSchema,
+  paypalCaptureSchema,
+} from "./shop.schema.js";
 
 const router = Router();
+
+// Rate limiter for order creations (20 attempts per IP per 15 minutes)
+const orderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Too many order requests from this IP. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for coupon validations (30 checks per IP per 15 minutes)
+const couponLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: "Too many coupon validation attempts. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @openapi
@@ -68,7 +94,7 @@ router.get("/recent-purchases", ShopController.getRecentPurchases);
  *       400:
  *         description: Invalid coupon
  */
-router.post("/coupons/validate", ShopController.validateCoupon);
+router.post("/coupons/validate", couponLimiter, ShopController.validateCoupon);
 
 /**
  * @openapi
@@ -103,8 +129,8 @@ router.post("/coupons/validate", ShopController.validateCoupon);
  *       201:
  *         description: Order created
  */
-router.post("/orders", ShopController.createOrder);
-router.post("/orders/pay-card", ShopController.payWithCard);
+router.post("/orders", orderLimiter, validate(createOrderSchema), ShopController.createOrder);
+router.post("/orders/pay-card", orderLimiter, validate(payCardSchema), ShopController.payWithCard);
 
 /**
  * @openapi
@@ -126,7 +152,7 @@ router.post("/orders/pay-card", ShopController.payWithCard);
  *       200:
  *         description: Payment verified
  */
-router.post("/orders/verify", ShopController.verifyPayment);
+router.post("/orders/verify", validate(verifyPaymentSchema), ShopController.verifyPayment);
 
 /**
  * @openapi
@@ -153,7 +179,7 @@ router.post("/orders/verify", ShopController.verifyPayment);
  *       409:
  *         description: Capture already in progress
  */
-router.post("/orders/paypal-capture", ShopController.capturePaypalOrder);
+router.post("/orders/paypal-capture", validate(paypalCaptureSchema), ShopController.capturePaypalOrder);
 
 /**
  * @openapi

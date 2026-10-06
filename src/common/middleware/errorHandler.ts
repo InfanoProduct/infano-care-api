@@ -35,8 +35,14 @@ export const errorHandler = (
   }
 
   if (err instanceof ZodError) {
+    const errorMessages = err.errors.map((e) => e.message).filter(Boolean);
+    const firstMessage = errorMessages[0] || "Validation failed";
+    const combinedMessage = errorMessages.join(". ");
+
     return res.status(400).json({
-      error: "Validation failed",
+      error: firstMessage,
+      message: firstMessage,
+      fullError: combinedMessage,
       details: err.errors.map((e) => ({
         path: e.path.join("."),
         message: e.message,
