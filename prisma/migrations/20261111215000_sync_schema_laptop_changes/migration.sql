@@ -1,0 +1,2 @@
+﻿-- Migration already applied directly to database from laptop
+-- Fields added: parentPin, parentConsent, learningStyle, whatsappWeeklySummary, whatsappLessonNudge, whatsappNudgeTime
