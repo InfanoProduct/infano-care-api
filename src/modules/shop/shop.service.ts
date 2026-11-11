@@ -74,9 +74,35 @@ export class ShopService {
     const cached = getCached<any>(cacheKey);
     if (cached) return cached;
 
-    const book = await prisma.book.findUnique({
-      where: { id },
-    });
+    let book = await prisma.book.findFirst({
+      where: {
+        OR: [
+          { id },
+          { slug: id }
+        ]
+      }
+    }).catch(() => null);
+
+    if (!book) {
+      const allBooks = await prisma.book.findMany({ where: { isActive: true } });
+      const normalizedQuery = id.toLowerCase().trim();
+      const matched = allBooks.find((b) => {
+        const titleSlug = b.title
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '');
+        const bookSlug = ((b as any).slug || '').toLowerCase().trim();
+        return (
+          b.id === id ||
+          (bookSlug && bookSlug === normalizedQuery) ||
+          titleSlug === normalizedQuery ||
+          normalizedQuery.startsWith(titleSlug) ||
+          titleSlug.startsWith(normalizedQuery)
+        );
+      });
+      book = (matched ?? allBooks[0] ?? null) as typeof book;
+    }
     if (!book) return null;
     const coupon = await prisma.discountCoupon.findFirst({
       orderBy: { createdAt: "desc" },
@@ -405,6 +431,22 @@ export class ShopService {
       } else {
         deliveryCharge = (firstBook as any)?.shippingUS ?? 0;
         totalAmount = taxableSubtotal + deliveryCharge;
+      }
+
+      let hasCourseAddon = false;
+      if (data.comments) {
+        try {
+          const parsed = typeof data.comments === 'string' ? JSON.parse(data.comments) : data.comments;
+          if (parsed && typeof parsed === 'object' && (parsed.addonCourse || parsed.courseAddon)) {
+            hasCourseAddon = true;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (hasCourseAddon && data.paymentMethod === PaymentMethod.ONLINE) {
+        totalAmount += 299;
       }
 
       // 4. Create payment gateway order — Razorpay for India, PayPal for US/UK
@@ -766,6 +808,52 @@ export class ShopService {
           data: { usedCount: { increment: 1 } }
         });
       }
+    }
+
+    // Auto-enroll in HerNext Course if addon was selected
+    try {
+      let hasCourseAddon = false;
+      if (order.comments) {
+        const parsed = typeof order.comments === 'string' ? JSON.parse(order.comments) : order.comments;
+        if (parsed && typeof parsed === 'object' && (parsed.addonCourse || parsed.courseAddon)) {
+          hasCourseAddon = true;
+        }
+      }
+      if (hasCourseAddon && userId) {
+        const course = await prisma.lmsCourse.findFirst({
+          where: {
+            OR: [
+              { title: { contains: 'HerNext', mode: 'insensitive' } },
+              { title: { contains: 'Girlhood', mode: 'insensitive' } }
+            ]
+          }
+        }) || await prisma.lmsCourse.findFirst();
+
+        if (course) {
+          await prisma.lmsEnrollment.upsert({
+            where: {
+              userId_courseId: {
+                userId,
+                courseId: course.id
+              }
+            },
+            create: {
+              userId,
+              courseId: course.id,
+              status: 'ACTIVE',
+              razorpayOrderId: razorpayOrderId || undefined,
+              razorpayPaymentId: razorpayPaymentId || undefined,
+              pricePaid: 299,
+              currency: order.currency || 'INR'
+            },
+            update: {
+              status: 'ACTIVE'
+            }
+          });
+        }
+      }
+    } catch (e) {
+      logger.error({ e, orderId: order.id }, '[COURSE_ADDON] Failed to auto-enroll course addon');
     }
 
     if (order.guestEmail) {

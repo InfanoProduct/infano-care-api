@@ -1635,9 +1635,15 @@ export class AdminService {
     if (bookData.shippingUK !== undefined) bookData.shippingUK = Number(bookData.shippingUK);
     if (bookData.codChargeIN !== undefined) bookData.codChargeIN = Number(bookData.codChargeIN);
     if (bookData.stock !== undefined) bookData.stock = Number(bookData.stock);
+    if (bookData.slug !== undefined && bookData.slug !== null) {
+      const cleanSlug = typeof bookData.slug === 'string' ? bookData.slug.toLowerCase().trim().replace(/[^a-z0-9-]+/g, '') : '';
+      bookData.slug = cleanSlug || (bookData.title ? bookData.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : null);
+    } else if (bookData.title) {
+      bookData.slug = bookData.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
 
     const allowedFields = [
-      'title', 'description', 'price', 'imageUrl', 'stock', 'isActive',
+      'slug', 'title', 'description', 'price', 'imageUrl', 'stock', 'isActive',
       'priceUS', 'priceUK', 'shippingIN', 'shippingUS', 'shippingUK', 'codChargeIN'
     ];
     const sanitizedData: any = {};
@@ -1697,9 +1703,15 @@ export class AdminService {
     if (bookData.shippingUK !== undefined) bookData.shippingUK = Number(bookData.shippingUK);
     if (bookData.codChargeIN !== undefined) bookData.codChargeIN = Number(bookData.codChargeIN);
     if (bookData.stock !== undefined) bookData.stock = Number(bookData.stock);
+    if (bookData.slug !== undefined && bookData.slug !== null) {
+      const cleanSlug = typeof bookData.slug === 'string' ? bookData.slug.toLowerCase().trim().replace(/[^a-z0-9-]+/g, '') : '';
+      bookData.slug = cleanSlug || (bookData.title ? bookData.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : null);
+    } else if (bookData.title) {
+      bookData.slug = bookData.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
 
     const allowedFields = [
-      'title', 'description', 'price', 'imageUrl', 'stock', 'isActive',
+      'slug', 'title', 'description', 'price', 'imageUrl', 'stock', 'isActive',
       'priceUS', 'priceUK', 'shippingIN', 'shippingUS', 'shippingUK', 'codChargeIN'
     ];
     const sanitizedData: any = {};

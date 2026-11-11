@@ -118,4 +118,15 @@ router.post("/journey-name",    OnboardingController.saveJourneyName);
  */
 router.post("/complete",        OnboardingController.completeOnboarding);
 
+// Parent & Daughter Onboarding Routes
+router.get("/status",            OnboardingController.getOnboardingStatus);
+router.post("/parent-consent",   OnboardingController.saveParentConsent);
+router.post("/daughter-profile", OnboardingController.saveDaughterProfile);
+router.post("/parent-space",     OnboardingController.saveParentSpace);
+router.post("/verify-pin",       OnboardingController.verifyParentPin);
+router.post("/reset-pin/request",  OnboardingController.requestPinReset);
+router.post("/reset-pin/confirm",  OnboardingController.confirmPinReset);
+router.get("/learners",          OnboardingController.getLearners);
+router.post("/learners",         OnboardingController.addLearner);
+
 export default router;

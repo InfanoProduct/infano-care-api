@@ -69,7 +69,80 @@ export class OnboardingController {
 
   static async completeOnboarding(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await OnboardingService.completeOnboarding((req as any).userId);
+      const result = await OnboardingService.completeOnboarding((req as any).user?.id || (req as any).userId);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async saveParentConsent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await OnboardingService.saveParentConsent(userId, req.body);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async saveDaughterProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await OnboardingService.saveDaughterProfile(userId, req.body);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async saveParentSpace(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await OnboardingService.saveParentSpace(userId, req.body);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async verifyParentPin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const { pin } = req.body;
+      const result = await OnboardingService.verifyParentPin(userId, pin);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async getLearners(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await OnboardingService.getLearners(userId);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async addLearner(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await OnboardingService.addLearner(userId, req.body);
+      res.status(201).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async getOnboardingStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await OnboardingService.getOnboardingStatus(userId);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async requestPinReset(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await OnboardingService.requestPinReset(userId);
+      res.status(200).json(result);
+    } catch (e) { next(e); }
+  }
+
+  static async confirmPinReset(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id || (req as any).userId;
+      const result = await OnboardingService.confirmPinReset(userId, req.body);
       res.status(200).json(result);
     } catch (e) { next(e); }
   }

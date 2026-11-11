@@ -10,6 +10,7 @@ router.get("/explore", LmsController.exploreCourses);
 router.get("/my-courses", authenticate, LmsController.myCourses);
 router.get("/:id", LmsController.getCourseDetails);
 router.post("/public/check-enrollment", LmsController.publicCheckEnrollment);
+router.post("/public/check-reader-status", LmsController.publicCheckReaderStatus);
 router.post("/public/purchase", LmsController.publicPurchaseCourse);
 router.post("/public/verify-purchase", LmsController.publicVerifyPurchase);
 router.post("/:id/purchase", authenticate, LmsController.purchaseCourse);

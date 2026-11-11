@@ -38,6 +38,13 @@ model User {
   peerOnboarding            Boolean                  @default(false)
   email                     String?                  @unique
   schoolId                  String?
+  parentPin                 String?
+  parentConsent             Boolean                  @default(false)
+  learningStyle             String?                  @default("side_by_side")
+  whatsappWeeklySummary     Boolean                  @default(true)
+  whatsappLessonNudge       Boolean                  @default(true)
+  whatsappNudgeTime         String?                  @default("6:30 PM")
+  learners                  LearnerProfile[]         @relation("ParentLearners")
   tempPasswordExpiresAt     DateTime?
   articleBookmarks          ArticleBookmark[]
   chatSessions              ChatSession[]
@@ -124,6 +131,42 @@ model Profile {
   specialisation         String?
   avatarUrl              String?
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LearnerProfile {
+  id               String    @id @default(uuid())
+  parentId         String
+  name             String
+  age              String    @default("11")
+  periodStatus     String?
+  worries          String[]  @default([])
+  avatar           String?
+  flowersCount     Int       @default(0)
+  petalsCount      Int       @default(0)
+  streakDays       Int       @default(0)
+  completedLessons String[]  @default([])
+  lastActiveAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  parent           User      @relation("ParentLearners", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
+}
+
+model EtsyOrderClaim {
+  id              String    @id @default(uuid())
+  bookSlug        String?
+  buyerEmail      String?
+  buyerName       String?
+  claimedAt       DateTime?
+  claimedByUserId String?
+  createdAt       DateTime  @default(now())
+  isClaimed       Boolean   @default(false)
+  listingId       String?
+  receiptId       String?
+  updatedAt       DateTime  @updatedAt
+
+  @@map("etsy_order_claims")
 }
 
 model PersonalizationProfile {
@@ -1019,8 +1062,12 @@ model FriendMessage {
 
 model Book {
   id          String      @id @default(uuid())
+  slug        String?     @unique
   title       String
   description String
+  author      String?
+  format      String?
+  totalPages  Int?
   price       Float
   imageUrl    String?
   stock       Int         @default(0)

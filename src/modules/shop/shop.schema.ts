@@ -91,11 +91,13 @@ export const createOrderBodySchema = z.object({
 
   // Validate Phone if provided
   if (data.guestPhone && data.guestPhone.trim().length > 0) {
-    const cleanPhone = data.guestPhone.replace(/[\s\-\(\)\.]/g, "");
+    let cleanPhone = data.guestPhone.replace(/[\s\-\(\)\.]/g, "");
+    if (cleanPhone.startsWith("0") && cleanPhone.length === 11) { cleanPhone = cleanPhone.slice(1); }
     const isIndia = country === "IN" || (cleanPhone.startsWith("+91") && country !== "US" && country !== "UK" && country !== "GB");
     
     if (isIndia) {
-      if (!IN_PHONE_REGEX.test(cleanPhone)) {
+      const validIndian = IN_PHONE_REGEX.test(cleanPhone) || /^\d{10}$/.test(cleanPhone) || /^(\+91|91)?[6-9]\d{9}$/.test(cleanPhone);
+      if (!validIndian) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Invalid mobile number",

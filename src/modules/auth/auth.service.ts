@@ -137,7 +137,7 @@ export class AuthService {
   }
 
   // ── 2. Verify OTP ───────────────────────────────────────────────────────────
-  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string; profile?: any; contentTier?: string | null }> {
+  static async verifyOtp(phone: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string; profile?: any; contentTier?: string | null; hasParentPin?: boolean; learners?: any[] }> {
     const finalPhone = normalizePhone(phone);
 
     // Select all potential fields to satisfy type requirements across logical paths
@@ -155,6 +155,23 @@ export class AuthService {
         role: true,
         birthMonth: true,
         birthYear: true,
+        parentPin: true,
+        parentConsent: true,
+        learningStyle: true,
+        learners: {
+          select: {
+            id: true,
+            name: true,
+            age: true,
+            periodStatus: true,
+            worries: true,
+            flowersCount: true,
+            petalsCount: true,
+            streakDays: true,
+            completedLessons: true,
+            lastActiveAt: true
+          }
+        },
         peerApplication: { select: { status: true } },
         profile: { select: { displayName: true, pronouns: true, totalPoints: true, totalCoins: true, avatarUrl: true } }
       }
@@ -202,11 +219,12 @@ export class AuthService {
         data: {
           phone: finalPhone,
           isTestNumber: false,
+          role: "PARENT",
           accountStatus: "PENDING_SETUP",
           onboardingStep: 1,
           profile: {
             create: {
-              displayName: "",
+              displayName: "Parent",
               totalPoints: 0,
             }
           }
@@ -220,7 +238,12 @@ export class AuthService {
           onboardingCompletedAt: true,
           otpSendOn: true,
           otpRetryCount: true,
-          role: true
+          role: true,
+          parentPin: true,
+          parentConsent: true,
+          learningStyle: true,
+          learners: true,
+          profile: true
         }
       });
       logger.info({ userId: finalUser.id }, "Created new user via OTP verify");
@@ -266,9 +289,8 @@ export class AuthService {
     await redis.setex(`rt:${jti}`, 30 * 24 * 60 * 60, finalUser.id);
 
     const isFullyOnboarded = Boolean(
-      finalUser.accountStatus === "ACTIVE" ||
-      finalUser.onboardingCompletedAt !== null ||
-      (finalUser.profile?.displayName && finalUser.profile.displayName.trim().length > 0)
+      (finalUser.accountStatus === "ACTIVE" || finalUser.onboardingCompletedAt !== null) &&
+      (finalUser.learners && finalUser.learners.length > 0)
     );
 
     return {
@@ -282,6 +304,8 @@ export class AuthService {
       isOnboardingCompleted: isFullyOnboarded,
       role: finalUser.role,
       userId: finalUser.id,
+      hasParentPin: Boolean(finalUser.parentPin),
+      learners: finalUser.learners || [],
       peerApplicationStatus: finalUser.peerApplication?.status || 'none',
       profile: finalUser.profile ?? null,
       contentTier: finalUser.contentTier ?? null
@@ -317,7 +341,7 @@ export class AuthService {
   }
 
   // ── 2b. Verify Email OTP ──────────────────────────────────────────────────
-  static async verifyEmailOtp(email: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string; profile?: any; contentTier?: string | null }> {
+  static async verifyEmailOtp(email: string, otp: string): Promise<{ accessToken: string; refreshToken: string; isNewUser: boolean; onboardingStep: number; onboardingStage: number; accountStatus: string; isOnboardingCompleted: boolean; role: string | null; userId: string; tempToken: string; peerApplicationStatus: string; profile?: any; contentTier?: string | null; hasParentPin?: boolean; learners?: any[] }> {
     const finalEmail = email.trim().toLowerCase();
     logger.info({ email: finalEmail }, "[AUTH] verifyEmailOtp request received");
 
@@ -670,5 +694,48 @@ export class AuthService {
       tempPassword: rawTempPassword,
       message: "A new temporary password has been generated successfully.",
     };
+  }
+
+  /**
+   * Verify phone OTP without issuing tokens — used for PIN reset identity check.
+   */
+  static async verifyOtpOnly(phone: string, otp: string): Promise<void> {
+    const finalPhone = normalizePhone(phone);
+    const isTest = (await prisma.user.findUnique({ where: { phone: finalPhone }, select: { isTestNumber: true } }))?.isTestNumber === true;
+
+    if (isTest) return; // Test numbers bypass OTP
+
+    if (process.env.SMS_PROVIDER === "mock") {
+      const storedHash = await redis.get(`otp:${finalPhone}`);
+      if (!storedHash || storedHash !== hashOtp(otp)) {
+        throw new AppError("Invalid or expired verification code.", 400);
+      }
+    } else {
+      const apiKey = process.env.TWOFACTOR_API_KEY || "29813cba-6fdc-11ef-8b17-0200cd936042";
+      const mobile = finalPhone.replace("+", "");
+      const encodedPhone = encodeURIComponent(mobile);
+      const verifyUrl = `https://2factor.in/API/V1/${apiKey}/SMS/VERIFY3/${encodedPhone}/${otp}`;
+      const res = await fetch(verifyUrl);
+      const data = await res.json() as any;
+      if (data.Status !== "Success") {
+        throw new AppError("Invalid or expired verification code.", 400);
+      }
+    }
+
+    await redis.del(`otp:${finalPhone}`);
+  }
+
+  /**
+   * Verify email OTP without issuing tokens — used for PIN reset identity check.
+   */
+  static async verifyEmailOtpOnly(email: string, otp: string): Promise<void> {
+    const finalEmail = email.trim().toLowerCase();
+    const storedHash = await redis.get(`otp:email:${finalEmail}`);
+    if (!storedHash || storedHash !== hashOtp(otp)) {
+      if (process.env.SMS_PROVIDER !== "mock" || otp !== "1234") {
+        throw new AppError("Invalid or expired verification code.", 400);
+      }
+    }
+    await redis.del(`otp:email:${finalEmail}`);
   }
 }

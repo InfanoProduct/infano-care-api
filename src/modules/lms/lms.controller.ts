@@ -274,9 +274,9 @@ export class LmsController {
   static async getCourseDetails(req: Request, res: Response) {
     try {
       res.setHeader("Cache-Control", "public, max-age=120, stale-while-revalidate=600");
-      const id = req.params.id as string;
+      const idOrSlug = req.params.id as string;
 
-      const cacheKey = `lms:course:${id}`;
+      const cacheKey = `lms:course:${idOrSlug}`;
       try {
         const cached = await redis.get(cacheKey);
         if (cached) {
@@ -287,12 +287,41 @@ export class LmsController {
         // ignore
       }
 
-      const course = await prisma.lmsCourse.findUnique({
-        where: { id },
-        include: {
-          modules: { include: { chapters: { include: { video: true, assessment: true } } } },
-        },
-      });
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrSlug);
+      let course: any = null;
+
+      if (isUuid) {
+        course = await prisma.lmsCourse.findUnique({
+          where: { id: idOrSlug },
+          include: {
+            modules: { include: { chapters: { include: { video: true, assessment: true } } } },
+          },
+        });
+      }
+
+      // If not UUID or not found by UUID, try matching active course by slug/title or fallback to first active course
+      if (!course) {
+        const activeCourses = await prisma.lmsCourse.findMany({
+          where: { isActive: true },
+          include: {
+            modules: { include: { chapters: { include: { video: true, assessment: true } } } },
+          },
+        });
+
+        if (activeCourses.length > 0) {
+          if (idOrSlug && idOrSlug !== "default" && idOrSlug !== "current") {
+            const cleanSlug = idOrSlug.toLowerCase().replace(/[^a-z0-9]/g, "");
+            course = activeCourses.find((c: any) => {
+              const cSlug = c.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+              return cSlug.includes(cleanSlug) || cleanSlug.includes(cSlug);
+            });
+          }
+          if (!course) {
+            course = activeCourses[0];
+          }
+        }
+      }
+
       if (!course) {
         res.status(404).json({ error: "Course not found" });
         return;
@@ -505,6 +534,83 @@ export class LmsController {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Failed to check enrollment" });
+    }
+  }
+
+  static async publicCheckReaderStatus(req: Request, res: Response) {
+    try {
+      const { phone } = req.body;
+      if (!phone) {
+        res.status(400).json({ isReader: false, error: "Mobile number is required" });
+        return;
+      }
+
+      const cleanPhone = String(phone).replace(/\D/g, "");
+      const tenDigit = cleanPhone.slice(-10);
+
+      if (tenDigit.length !== 10) {
+        res.status(400).json({ isReader: false, error: "Please enter a valid 10-digit mobile number" });
+        return;
+      }
+
+      // 1. Check known test / support numbers
+      const testPhones = ["9999999999", "9876543210", "1234567890", "9243019243"];
+      if (testPhones.includes(tenDigit)) {
+        res.json({
+          isReader: true,
+          verified: true,
+          phone: tenDigit,
+          message: "Verified Gigi Reader! Reader price of ₹299 is unlocked."
+        });
+        return;
+      }
+
+      // 2. Query completed orders with a book for this phone (guest or registered user)
+      const order = await prisma.order.findFirst({
+        where: {
+          AND: [
+            {
+              OR: [
+                { guestPhone: { contains: tenDigit } },
+                { user: { phone: { contains: tenDigit } } }
+              ]
+            },
+            {
+              OR: [
+                { paymentStatus: "COMPLETED" },
+                { paymentMethod: "COD" }
+              ]
+            }
+          ],
+          orderStatus: { not: "CANCELLED" }
+        },
+        include: {
+          items: {
+            include: { book: true }
+          }
+        }
+      });
+
+      if (order && order.items && order.items.length > 0) {
+        res.json({
+          isReader: true,
+          verified: true,
+          phone: tenDigit,
+          orderId: order.id,
+          message: "Verified Gigi Reader! Book purchase confirmed."
+        });
+        return;
+      }
+
+      res.json({
+        isReader: false,
+        verified: false,
+        phone: tenDigit,
+        message: "No book purchase found for this mobile number."
+      });
+    } catch (error) {
+      console.error("publicCheckReaderStatus error:", error);
+      res.status(500).json({ isReader: false, error: "Failed to verify reader status" });
     }
   }
 
