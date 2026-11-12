@@ -26,18 +26,6 @@ router.patch("/users/:id/unapprove-assessment", AdminController.unapproveAssessm
 router.patch("/users/:id/revoke-peer", AdminController.revokePeer);
 router.get("/mentors", AdminController.getMentors);
 
-// Learning Journey Management
-router.get("/learning/journeys", AdminController.getJourneys);
-router.get("/learning/journeys/:id", AdminController.getJourney);
-router.post("/learning/journeys", AdminController.createJourney);
-router.patch("/learning/journeys/:id", AdminController.updateJourney);
-router.delete("/learning/journeys/:id", AdminController.deleteJourney);
-
-// Episode Management
-router.post("/learning/journeys/:journeyId/episodes", AdminController.createEpisode);
-router.patch("/learning/episodes/:id", AdminController.updateEpisode);
-router.delete("/learning/episodes/:id", AdminController.deleteEpisode);
-
 // File Upload
 router.post("/upload", upload.single("file"), AdminController.upload);
 

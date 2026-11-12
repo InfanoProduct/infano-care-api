@@ -179,5 +179,144 @@ export class CourseController {
       next(e);
     }
   }
+
+  // ── Catalog, Public Checkout & Enrollments ─────────────────────────────────
+
+  static async getCatalog(_req: Request, res: Response, next: NextFunction) {
+    try {
+      res.setHeader("Cache-Control", "public, max-age=120, stale-while-revalidate=600");
+      const data = await CourseService.getCatalog();
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async getCourseDetail(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.setHeader("Cache-Control", "public, max-age=120, stale-while-revalidate=600");
+      const data = await CourseService.getCourseDetailByIdOrSlug(req.params.idOrSlug as string);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async getMyEnrollments(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).userId as string;
+      const data = await CourseService.getMyEnrollments(userId);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async checkPublicEnrollment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, phone, courseId } = req.body;
+      const data = await CourseService.checkPublicEnrollment(email, phone, courseId);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async checkReaderStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.checkReaderStatus(req.body?.phone);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async publicPurchaseCourse(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.publicPurchaseCourse(req.body);
+      res.status(201).json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async publicVerifyPurchase(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.publicVerifyPurchase(req.body);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  // ── Admin Course Management ────────────────────────────────────────────────
+
+  static async adminGetOverview(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.adminGetOverview();
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async adminUpdateCourse(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.adminUpdateCourse(req.params.courseId as string, req.body);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async adminUpdateChapter(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.adminUpdateChapter(req.params.chapterId as string, req.body);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async adminUpdateLesson(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.adminUpdateLesson(req.params.lessonId as string, req.body);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async adminUpdateCheckin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.adminUpdateCheckin(req.params.checkinId as string, req.body);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async adminGrantEnrollment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await CourseService.adminGrantEnrollment({
+        identifier: String(req.body?.identifier || ""),
+        plan: req.body?.plan ? String(req.body.plan) : undefined,
+        amountPaid: req.body?.amountPaid !== undefined ? Number(req.body.amountPaid) : undefined,
+      });
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  static async adminUpdateEnrollmentStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const status = String(req.body?.status || "").toUpperCase() === "REVOKED" ? "REVOKED" : "ACTIVE";
+      const data = await CourseService.adminUpdateEnrollmentStatus(req.params.enrollmentId as string, status);
+      res.json(data);
+    } catch (e) {
+      next(e);
+    }
+  }
 }
 

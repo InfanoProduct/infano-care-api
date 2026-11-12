@@ -124,10 +124,19 @@ export class OnboardingService {
       update: { totalPoints: { increment: 45 } },
     });
 
-    // First-pass journey recommendations
-    const allJourneys = await prisma.creativeJourney.findMany();
-    const ranked: JourneyScore[] = allJourneys
-      .map((j) => ({ id: j.id, title: j.title, description: j.description, score: scoreJourney(j, { interestTopics: data.interestTopics, goals: data.goals, periodStatus: data.periodStatus, periodContentTone: tone }, String(user.contentTier)) }))
+    // First-pass chapter recommendations from HerNext course
+    const chapters = await prisma.courseChapter.findMany({ orderBy: { sortOrder: "asc" } });
+    const ranked: JourneyScore[] = chapters
+      .map((ch) => ({
+        id: ch.id,
+        title: ch.worldName,
+        description: ch.theme,
+        score: scoreJourney(
+          { title: ch.worldName, description: ch.theme, ageBand: "teen" },
+          { interestTopics: data.interestTopics, goals: data.goals, periodStatus: data.periodStatus, periodContentTone: tone },
+          String(user.contentTier)
+        ),
+      }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
 

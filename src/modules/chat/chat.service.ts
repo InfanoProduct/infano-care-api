@@ -45,15 +45,16 @@ export class ChatService {
     }
 
     try {
-      const [allPrograms, allJourneys] = await Promise.all([
+      const [allPrograms, allChapters] = await Promise.all([
         prisma.program.findMany({ where: { isActive: true }, select: { title: true, tagline: true, description: true, duration: true } }),
-        prisma.creativeJourney.findMany({ where: { isActive: true }, select: { title: true, description: true } })
+        prisma.courseChapter.findMany({ orderBy: { sortOrder: "asc" }, select: { worldName: true, theme: true } })
       ]);
 
+      const formattedChapters = allChapters.map((c) => ({ title: c.worldName, description: c.theme }));
       ChatService.cachedPrograms = allPrograms;
-      ChatService.cachedJourneys = allJourneys;
+      ChatService.cachedJourneys = formattedChapters;
       ChatService.lastCacheTime = now;
-      return [allPrograms, allJourneys];
+      return [allPrograms, formattedChapters];
     } catch (err) {
       logger.error(err, 'Failed to fetch active programs/journeys, falling back to empty/stale cache');
       return [ChatService.cachedPrograms || [], ChatService.cachedJourneys || []];
@@ -65,7 +66,7 @@ Provide a [link:/path] shortcut ONLY when the user explicitly asks where to go, 
 - If the user asks about cycle tracking, cramps log, or their main dashboard: [link:/dashboard]
 - If the user asks about changing profile, account settings, or goals: [link:/dashboard/profile]
 - If the user asks about enrolled courses or session schedules: [link:/dashboard/enrolled-programs]
-- If the user asks about interactive learning journeys or episodes: [link:/dashboard/learning-journeys]
+- If the user asks about interactive learning chapters or lessons: [link:/dashboard/journey]
 - If the user asks for reading articles, resources, or the library: [link:/dashboard/resources]
 - If a guest (not logged in) asks to login, sign up, or access personal account: [link:/login]
 - If a user asks how/where to buy the physical book: [link:/gigi-the-awkward-age-book] or [link:/checkout]
@@ -85,7 +86,7 @@ Provide a [link:/path] shortcut ONLY when the user explicitly asks where to go, 
 - If the user asks about account settings or profile: [link:/account]
 - If the user asks about their goals: [link:/onboarding/goals]
 - If the user asks about enrolled programs: [link:/dashboard/enrolled-programs]
-- If the user asks about learning journeys: [link:/dashboard/learning-journeys]
+- If the user asks about interactive learning chapters or lessons: [link:/dashboard/journey]
 
 CRITICAL NAVIGATION RULE:
 - NEVER add links to simple greetings, casual chat, emotional sharing, or everyday conversation.
@@ -414,11 +415,11 @@ ETHICAL BOUNDARIES:
             where: { userId, status: "ACTIVE", program: { isActive: true } },
             include: { program: true }
           }),
-          prisma.creativeNodeProgress.findFirst({
-            where: { userId: userId },
+          prisma.learnerLessonProgress.findFirst({
+            where: { learner: { parentId: userId } },
             orderBy: { updatedAt: "desc" },
             include: {
-              episode: { include: { journey: true } }
+              lesson: { include: { chapter: true } }
             }
           }),
           prisma.expertSessionSchedule.findFirst({
@@ -433,18 +434,18 @@ ETHICAL BOUNDARIES:
 
         userNextSession = userNextSessionResult;
 
-        // Resolve own learning journey completion %
-        if (userActiveProgress?.episode?.journey) {
-          const journeyId = userActiveProgress.episode.journeyId;
-          const [totalEpisodes, completedCount] = await Promise.all([
-            prisma.creativeEpisode.count({ where: { journeyId } }),
-            prisma.creativeNodeProgress.count({
-              where: { userId, episode: { journeyId }, status: "COMPLETED" }
+        // Resolve own course chapter completion %
+        if (userActiveProgress?.lesson?.chapter) {
+          const chapterId = userActiveProgress.lesson.chapterId;
+          const [totalLessons, completedCount] = await Promise.all([
+            prisma.courseLesson.count({ where: { chapterId } }),
+            prisma.learnerLessonProgress.count({
+              where: { learnerId: userActiveProgress.learnerId, lesson: { chapterId }, completedAt: { not: null } }
             })
           ]);
-          const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
+          const percentComplete = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
           userActiveJourney = {
-            name: userActiveProgress.episode.journey.title,
+            name: userActiveProgress.lesson.chapter.worldName,
             percentComplete
           };
         }
@@ -537,10 +538,10 @@ ETHICAL BOUNDARIES:
               const parentId = p.id;
 
               const [parentActiveProgress, parentNextSession, parentEnrollments] = await Promise.all([
-                prisma.creativeNodeProgress.findFirst({
-                  where: { userId: parentId },
+                prisma.learnerLessonProgress.findFirst({
+                  where: { learner: { parentId } },
                   orderBy: { updatedAt: 'desc' },
-                  include: { episode: { include: { journey: true } } }
+                  include: { lesson: { include: { chapter: true } } }
                 }),
                 prisma.expertSessionSchedule.findFirst({
                   where: { userId: parentId, scheduledAt: { gte: new Date() }, status: 'SCHEDULED' },
@@ -550,14 +551,14 @@ ETHICAL BOUNDARIES:
               ]);
 
               let activeJourney = null;
-              if (parentActiveProgress?.episode?.journey) {
-                const journeyId = parentActiveProgress.episode.journeyId;
-                const [totalEpisodes, completedCount] = await Promise.all([
-                  prisma.creativeEpisode.count({ where: { journeyId } }),
-                  prisma.creativeNodeProgress.count({ where: { userId: parentId, episode: { journeyId }, status: "COMPLETED" } })
+              if (parentActiveProgress?.lesson?.chapter) {
+                const chapterId = parentActiveProgress.lesson.chapterId;
+                const [totalLessons, completedCount] = await Promise.all([
+                  prisma.courseLesson.count({ where: { chapterId } }),
+                  prisma.learnerLessonProgress.count({ where: { learnerId: parentActiveProgress.learnerId, lesson: { chapterId }, completedAt: { not: null } } })
                 ]);
-                const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
-                activeJourney = { name: parentActiveProgress.episode.journey.title, percentComplete };
+                const percentComplete = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
+                activeJourney = { name: parentActiveProgress.lesson.chapter.worldName, percentComplete };
               }
 
               const parentProgramsProgress = await Promise.all(
@@ -612,11 +613,11 @@ ETHICAL BOUNDARIES:
             const teenId = link.teen.id;
 
             const [activeProgress, nextSession, recentLogs, teenEnrollments] = await Promise.all([
-              prisma.creativeNodeProgress.findFirst({
-                where: { userId: teenId },
+              prisma.learnerLessonProgress.findFirst({
+                where: { learner: { parentId: teenId } },
                 orderBy: { updatedAt: "desc" },
                 include: {
-                  episode: { include: { journey: true } }
+                  lesson: { include: { chapter: true } }
                 }
               }),
               prisma.expertSessionSchedule.findFirst({
@@ -642,17 +643,17 @@ ETHICAL BOUNDARIES:
             ]);
 
             let activeJourney = null;
-            if (activeProgress?.episode?.journey) {
-              const journeyId = activeProgress.episode.journeyId;
-              const [totalEpisodes, completedCount] = await Promise.all([
-                prisma.creativeEpisode.count({ where: { journeyId } }),
-                prisma.creativeNodeProgress.count({
-                  where: { userId: teenId, episode: { journeyId }, status: "COMPLETED" }
+            if (activeProgress?.lesson?.chapter) {
+              const chapterId = activeProgress.lesson.chapterId;
+              const [totalLessons, completedCount] = await Promise.all([
+                prisma.courseLesson.count({ where: { chapterId } }),
+                prisma.learnerLessonProgress.count({
+                  where: { learnerId: activeProgress.learnerId, lesson: { chapterId }, completedAt: { not: null } }
                 })
               ]);
-              const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
+              const percentComplete = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
               activeJourney = {
-                name: activeProgress.episode.journey.title,
+                name: activeProgress.lesson.chapter.worldName,
                 percentComplete
               };
             }

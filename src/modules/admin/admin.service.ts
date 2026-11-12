@@ -33,8 +33,8 @@ export class AdminService {
     ] = await prisma.$transaction([
       prisma.user.count({ where: { role: { in: ["TEEN", "PARENT", "GUARDIAN", "PEER"] } } }),
       prisma.expertSessionSchedule.count({ where: { status: "SCHEDULED", programId: null } }),
-      prisma.creativeJourney.count(),
-      prisma.creativeEpisode.count(),
+      prisma.courseChapter.count(),
+      prisma.courseLesson.count(),
       prisma.enquiry.count(),
       prisma.program.count(),
       prisma.book.count(),
@@ -159,9 +159,9 @@ export class AdminService {
       // Programs
       prisma.program.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
       prisma.program.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
-      // Journeys
-      prisma.creativeJourney.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
-      prisma.creativeJourney.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
+      // Chapters / Course Worlds
+      prisma.courseChapter.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
+      prisma.courseChapter.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
       // Books
       prisma.book.count({ where: { createdAt: { gte: currentStart, lte: currentEnd } } }),
       prisma.book.count({ where: { createdAt: { gte: previousStart, lt: currentStart } } }),
@@ -530,23 +530,19 @@ export class AdminService {
     if (!user) throw new Error('User not found');
 
     // Run independent database queries in parallel
-    const [userProgress, journeys, enquiries, parentLink, demoSessions] = await Promise.all([
-      prisma.creativeNodeProgress.findMany({
-        where: { userId, status: "COMPLETED" },
+    const [learners, chapters, enquiries, parentLink, demoSessions] = await Promise.all([
+      prisma.learnerProfile.findMany({
+        where: { parentId: userId },
         include: {
-          episode: {
-            include: {
-              journey: true
-            }
-          }
-        }
+          lessonProgress: { include: { lesson: true } },
+          badgeAwards: { include: { badge: true } }
+        },
+        orderBy: { createdAt: 'asc' }
       }),
-      prisma.creativeJourney.findMany({
-        where: { isActive: true },
+      prisma.courseChapter.findMany({
+        orderBy: { sortOrder: 'asc' },
         include: {
-          episodes: {
-            where: { isActive: true }
-          }
+          lessons: { orderBy: { sortOrder: 'asc' } }
         }
       }),
       prisma.enquiry.findMany({
@@ -585,23 +581,28 @@ export class AdminService {
       })
     ]);
 
-    // Calculate learning journey progress
-    const journeysWithProgress = journeys.map(journey => {
-      const journeyEpisodeIds = new Set(journey.episodes.map(e => e.id));
-      const completedCount = userProgress.filter(
-        up => journeyEpisodeIds.has(up.episodeId)
-      ).length;
-      const totalEpisodes = journey.episodes.length;
-      const progressPercentage = totalEpisodes > 0
-        ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100))
+    // Calculate HerNext chapter progress across user's learner profile(s)
+    const primaryLearner = learners[0] || null;
+    const completedLessonSet = new Set<string>(primaryLearner?.completedLessons || []);
+    if (primaryLearner) {
+      for (const lp of primaryLearner.lessonProgress) {
+        if (lp.completedAt) completedLessonSet.add(lp.lessonId);
+      }
+    }
+
+    const journeysWithProgress = chapters.map(ch => {
+      const totalLessons = ch.lessons.length;
+      const completedCount = ch.lessons.filter(l => completedLessonSet.has(l.id)).length;
+      const progressPercentage = totalLessons > 0
+        ? Math.min(100, Math.round((completedCount / totalLessons) * 100))
         : 0;
 
       return {
-        id: journey.id,
-        title: journey.title,
-        description: journey.description,
+        id: ch.id,
+        title: ch.worldName,
+        description: ch.theme,
         thumbnailUrl: null,
-        totalEpisodes,
+        totalEpisodes: totalLessons,
         completedEpisodesCount: completedCount,
         progressPercentage
       };
@@ -891,63 +892,6 @@ export class AdminService {
     }
 
     return { success: true, message: 'Peer status completely revoked (Application pending, Certification pending, Role TEEN).' };
-  }
-
-  static async getJourneys() {
-    const journeys = await prisma.creativeJourney.findMany({
-      include: {
-        _count: {
-          select: { episodes: true }
-        },
-        episodes: true
-      },
-      orderBy: { createdAt: "asc" }
-    });
-
-    return journeys.map(journey => ({
-      ...journey,
-      freeEpisodesCount: journey.episodes.length,
-      premiumEpisodesCount: 0,
-    }));
-  }
-
-  static async getJourneyById(id: string) {
-    return prisma.creativeJourney.findFirst({
-      where: { id },
-      include: { episodes: { orderBy: { order: "asc" } } }
-    });
-  }
-
-  static async createJourney(data: any) {
-    return prisma.creativeJourney.create({ data });
-  }
-
-  static async updateJourney(id: string, data: any) {
-    return prisma.creativeJourney.update({
-      where: { id },
-      data
-    });
-  }
-
-  static async deleteJourney(id: string) {
-    return prisma.creativeJourney.delete({ where: { id } });
-  }
-
-  static async createEpisode(journeyId: string, data: any) {
-    return prisma.creativeEpisode.create({
-      data: { ...data, journeyId }
-    });
-  }
-
-  static async updateEpisode(id: string, data: any) {
-    return prisma.creativeEpisode.update({
-      where: { id },
-      data
-    });
-  }
-
-  static async deleteEpisode(id: string) {
-    return prisma.creativeEpisode.delete({ where: { id } });
   }
 
   // Order Management

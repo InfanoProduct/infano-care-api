@@ -178,8 +178,8 @@ export class ParentService {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
       // 1. Progress score (up to 30 points)
-      const progressCount = await prisma.creativeNodeProgress.count({
-        where: { userId: teenId }
+      const progressCount = await prisma.learnerLessonProgress.count({
+        where: { learner: { parentId: teenId }, completedAt: { not: null } }
       });
       const progressScore = Math.min(Math.round((progressCount / 10) * 30), 30);
 
@@ -436,35 +436,34 @@ export class ParentService {
 
     const teenId = link.teenId;
 
-    // 2. Active Journey (latest CreativeNodeProgress)
-    const activeProgress = await prisma.creativeNodeProgress.findFirst({
-      where: { userId: teenId },
+    // 2. Active Course Chapter (latest LearnerLessonProgress)
+    const activeProgress = await prisma.learnerLessonProgress.findFirst({
+      where: { learner: { parentId: teenId } },
       orderBy: { updatedAt: "desc" },
       include: {
-        episode: {
+        lesson: {
           include: {
-            journey: true
+            chapter: true
           }
         }
       }
     });
 
     let activeJourney = null;
-    if (activeProgress && activeProgress.episode && activeProgress.episode.journey) {
-      const journeyId = activeProgress.episode.journeyId;
-      // Calculate completion based on completed nodes
-      const totalEpisodes = await prisma.creativeEpisode.count({ where: { journeyId } });
-      const completedCount = await prisma.creativeNodeProgress.count({
+    if (activeProgress && activeProgress.lesson && activeProgress.lesson.chapter) {
+      const chapterId = activeProgress.lesson.chapterId;
+      const totalLessons = await prisma.courseLesson.count({ where: { chapterId } });
+      const completedCount = await prisma.learnerLessonProgress.count({
         where: {
-          userId: teenId,
-          episode: { journeyId },
-          status: "COMPLETED"
+          learnerId: activeProgress.learnerId,
+          lesson: { chapterId },
+          completedAt: { not: null }
         }
       });
-      const percentComplete = totalEpisodes > 0 ? Math.min(100, Math.round((completedCount / (totalEpisodes * 5)) * 100)) : 0;
-      
+      const percentComplete = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
+
       activeJourney = {
-        name: activeProgress.episode.journey.title,
+        name: activeProgress.lesson.chapter.worldName,
         percentComplete,
         thumbnailUrl: null
       };
@@ -552,8 +551,8 @@ export class ParentService {
     const [
       cycleProfile,
       recentCycleLogs,
-      creativeProgresses,
-      askGigiEntries,
+      lessonProgresses,
+      courseJournalEntries,
       enrollments,
       expertSessions,
       wellnessScore,
@@ -566,18 +565,18 @@ export class ParentService {
         orderBy: { date: "desc" },
         take: 30
       }),
-      prisma.creativeNodeProgress.findMany({
-        where: { userId: teenId },
+      prisma.learnerLessonProgress.findMany({
+        where: { learner: { parentId: teenId } },
         include: {
-          episode: {
-            include: { journey: true }
-          }
+          lesson: {
+            include: { chapter: true }
+          },
+          learner: { select: { petalsCount: true } }
         },
         orderBy: { updatedAt: "desc" }
       }),
-      prisma.creativeAskGigiEntry.findMany({
-        where: { userId: teenId },
-        include: { episode: true },
+      prisma.learnerJournalEntry.findMany({
+        where: { learner: { parentId: teenId } },
         orderBy: { createdAt: "desc" },
         take: 10
       }),
@@ -622,14 +621,14 @@ export class ParentService {
       trackerDaysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
     }
 
-    const firstProgress = creativeProgresses[0];
+    const firstProgress = lessonProgresses[0];
     let journeyDaysInactive = 5;
     if (firstProgress && firstProgress.updatedAt) {
       const diffMs = now.getTime() - new Date(firstProgress.updatedAt).getTime();
       journeyDaysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
     }
 
-    const firstGigi = askGigiEntries[0];
+    const firstGigi = courseJournalEntries[0];
     let journalDaysInactive = 5;
     if (firstGigi && firstGigi.createdAt) {
       const diffMs = now.getTime() - new Date(firstGigi.createdAt).getTime();
@@ -670,8 +669,8 @@ export class ParentService {
 
     // Today's Live Activity
     const loggedTrackerToday = recentCycleLogs.some(l => new Date(l.date) >= todayStart);
-    const completedLearningToday = creativeProgresses.some(p => new Date(p.updatedAt) >= todayStart && p.status === "COMPLETED");
-    const checkinCompletedToday = askGigiEntries.some(g => new Date(g.createdAt) >= todayStart) || journalEntries.some(j => new Date(j.createdAt) >= todayStart);
+    const completedLearningToday = lessonProgresses.some(p => new Date(p.updatedAt) >= todayStart && p.completedAt !== null);
+    const checkinCompletedToday = courseJournalEntries.some(g => new Date(g.createdAt) >= todayStart) || journalEntries.some(j => new Date(j.createdAt) >= todayStart);
 
     const todayActivity = {
       loggedTrackerToday,
@@ -763,19 +762,19 @@ export class ParentService {
       }))
     };
 
-    // 4. Learning Journey Data
-    const completedNodesCount = creativeProgresses.filter(p => p.status === "COMPLETED").length;
-    const todayNodesCount = creativeProgresses.filter(p => new Date(p.updatedAt) >= todayStart && p.status === "COMPLETED").length;
-    const totalXpEarned = creativeProgresses.reduce((acc, curr) => acc + (curr.xpEarned || 0), 0);
-    const totalCoinsEarned = creativeProgresses.reduce((acc, curr) => acc + (curr.coinsEarned || 0), 0);
+    // 4. Learning Course Data
+    const completedNodesCount = lessonProgresses.filter(p => p.completedAt !== null).length;
+    const todayNodesCount = lessonProgresses.filter(p => new Date(p.updatedAt) >= todayStart && p.completedAt !== null).length;
+    const totalXpEarned = lessonProgresses[0]?.learner?.petalsCount || 0;
+    const totalCoinsEarned = 0;
 
-    const activeProgress = creativeProgresses[0];
-    let activeJourneyTitle = "Creative Journey";
+    const activeProgress = lessonProgresses[0];
+    let activeJourneyTitle = "HerNext Course";
     let activeEpisodeTitle = null;
-    if (activeProgress && activeProgress.episode) {
-      activeEpisodeTitle = activeProgress.episode.title;
-      if (activeProgress.episode.journey) {
-        activeJourneyTitle = activeProgress.episode.journey.title;
+    if (activeProgress && activeProgress.lesson) {
+      activeEpisodeTitle = activeProgress.lesson.title;
+      if (activeProgress.lesson.chapter) {
+        activeJourneyTitle = activeProgress.lesson.chapter.worldName;
       }
     }
 
@@ -853,18 +852,18 @@ export class ParentService {
       }))
     };
 
-    // 7. Recent Reflections / Ask Gigi Entries
-    const reflections = askGigiEntries.slice(0, 5).map(entry => ({
+    // 7. Recent Reflections / Journal Entries (teen privacy-safe summary metadata)
+    const reflections = courseJournalEntries.slice(0, 5).map(entry => ({
       id: entry.id,
-      promptText: entry.episode?.title || "Journal Reflection",
-      entryText: entry.entryText,
+      promptText: entry.lessonId ? `Lesson ${entry.lessonId} Reflection` : "Journal Reflection",
+      entryText: entry.prompt ? `${entry.prompt} (Private entry saved)` : "Private reflection saved",
       createdAt: entry.createdAt
     }));
 
     // 8. Weekly Summary Card Synthesis
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const logsThisWeek = recentCycleLogs.filter(l => new Date(l.date) >= sevenDaysAgo);
-    const activeNodesThisWeek = creativeProgresses.filter(p => new Date(p.updatedAt) >= sevenDaysAgo && p.status === "COMPLETED");
+    const activeNodesThisWeek = lessonProgresses.filter(p => new Date(p.updatedAt) >= sevenDaysAgo && p.completedAt !== null);
 
     let weeklyGrade = "Balanced";
     if (wellnessScore >= 80) weeklyGrade = "Thriving";

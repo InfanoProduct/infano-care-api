@@ -1,6 +1,9 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { ensureCourseSeeded } from "./course.seed.js";
+import { env } from "../../config/env.js";
+import Razorpay from "razorpay";
+import crypto from "crypto";
 
 const COURSE_ID = "hernext-foundation";
 
@@ -109,6 +112,36 @@ export class CourseService {
     };
   }
 
+  private static async hasActiveCourseAccess(userId?: string): Promise<boolean> {
+    const course = await prisma.course.findUnique({
+      where: { id: COURSE_ID },
+      select: { isFree: true },
+    });
+    if (course?.isFree) return true;
+    if (!userId) return false;
+
+    const enrollment = await prisma.courseEnrollment.findUnique({
+      where: { userId_courseId: { userId, courseId: COURSE_ID } },
+      select: { status: true },
+    });
+    return enrollment?.status === "ACTIVE";
+  }
+
+  private static async assertCourseAccess(userId?: string, message?: string): Promise<void> {
+    const hasAccess = await this.hasActiveCourseAccess(userId);
+    if (!hasAccess) {
+      throw new AppError(message || "Please enroll in HerNext to unlock the full course.", 403);
+    }
+  }
+
+  private static async assertLessonAccess(
+    userId: string | undefined,
+    lesson: { freePreview: boolean }
+  ): Promise<void> {
+    if (lesson.freePreview) return;
+    await this.assertCourseAccess(userId, "Please enroll in HerNext to unlock this lesson.");
+  }
+
   static async getLearnerState(learnerId: string, parentUserId: string) {
     await ensureCourseSeeded();
     const learner = await assertLearnerOwnership(learnerId, parentUserId);
@@ -156,30 +189,45 @@ export class CourseService {
     const completedSet = new Set<string>(learner.completedLessons || []);
     for (const p of progressRows) {
       progressMap[p.lessonId] = p;
-      if (p.completedAt) completedSet.add(p.lessonId);
+      const allStepsDone =
+        Array.isArray(p.stepsDone) &&
+        ["watch", "play", "discover", "reflect"].every((s) => p.stepsDone.includes(s));
+      if (p.completedAt || allStepsDone) {
+        completedSet.add(p.lessonId);
+      }
     }
 
     const passedCheckins = new Set<string>();
     const bestCheckinScores: Record<string, number> = {};
     for (const att of checkinRows) {
       if (att.passed) passedCheckins.add(att.checkinId);
-      if (bestCheckinScores[att.checkinId] === undefined || att.score > bestCheckinScores[att.checkinId]) {
+      const prevBest = bestCheckinScores[att.checkinId];
+      if (prevBest === undefined || att.score > prevBest) {
         bestCheckinScores[att.checkinId] = att.score;
       }
     }
 
-    // Compute chapter and lesson unlocks sequentially
+    const isEnrolled = await this.hasActiveCourseAccess(parentUserId);
+
+    // Compute chapter and lesson unlocks sequentially (gated by enrollment for paid lessons)
     const unlockedChapters: string[] = [];
     const unlockedLessons: string[] = [];
+    const readyCheckins: string[] = [];
     let nextLessonId: string | null = null;
+    let pendingCheckinId: string | null = null;
+    let pendingCheckinChapterId: string | null = null;
 
     for (const ch of chapters) {
       let chUnlocked = false;
-      if (!ch.unlockRequires) {
+      if (!isEnrolled) {
+        chUnlocked = ch.lessons.some((l) => l.freePreview);
+      } else if (!ch.unlockRequires) {
         chUnlocked = true;
       } else if (ch.unlockRequires.endsWith("_passed")) {
         const reqCheckinId = ch.unlockRequires.replace(/_passed$/, "");
         chUnlocked = passedCheckins.has(reqCheckinId);
+      } else {
+        chUnlocked = passedCheckins.has(ch.unlockRequires);
       }
 
       if (chUnlocked) {
@@ -188,14 +236,26 @@ export class CourseService {
 
       for (let i = 0; i < ch.lessons.length; i++) {
         const l = ch.lessons[i];
+        if (!l) continue;
         let lessonUnlocked = false;
-        if (chUnlocked) {
-          if (!l.unlockRequires) {
+        if (!isEnrolled) {
+          lessonUnlocked = Boolean(l.freePreview);
+        } else if (chUnlocked) {
+          if (!l.unlockRequires || i === 0) {
             lessonUnlocked = true;
-          } else if (completedSet.has(l.unlockRequires)) {
-            lessonUnlocked = true;
-          } else if (i === 0) {
-            // First lesson of an unlocked chapter is unlocked
+          } else if (l.unlockRequires.endsWith("_completed")) {
+            const reqLessonId = l.unlockRequires.replace(/_completed$/, "");
+            lessonUnlocked = completedSet.has(reqLessonId);
+          } else if (l.unlockRequires.endsWith("_passed")) {
+            const reqCheckinId = l.unlockRequires.replace(/_passed$/, "");
+            lessonUnlocked = passedCheckins.has(reqCheckinId);
+          } else {
+            lessonUnlocked = completedSet.has(l.unlockRequires);
+          }
+
+          // Sequential safety net within an unlocked chapter
+          const prevLessonInChapter = i > 0 ? ch.lessons[i - 1] : undefined;
+          if (!lessonUnlocked && prevLessonInChapter && completedSet.has(prevLessonInChapter.id)) {
             lessonUnlocked = true;
           }
         }
@@ -206,12 +266,28 @@ export class CourseService {
           }
         }
       }
+
+      if (isEnrolled && chUnlocked && ch.checkinId) {
+        const allChLessonsDone =
+          ch.lessons.length > 0 && ch.lessons.every((l) => completedSet.has(l.id));
+        if (allChLessonsDone || passedCheckins.has(ch.checkinId)) {
+          readyCheckins.push(ch.checkinId);
+        }
+        if (allChLessonsDone && !passedCheckins.has(ch.checkinId) && !pendingCheckinId) {
+          pendingCheckinId = ch.checkinId;
+          pendingCheckinChapterId = ch.id;
+        }
+      }
     }
 
     const totalPetals = Math.max(learner.petalsCount || 0, ledgerSum._sum.delta || 0);
     const completedLessonsList = Array.from(completedSet);
+    const fallbackNextLessonId = isEnrolled
+      ? (completedLessonsList.length > 0 ? completedLessonsList[completedLessonsList.length - 1] : "l1-1")
+      : (unlockedLessons[0] || "l1-1");
 
     return {
+      isEnrolled,
       learner: {
         id: learner.id,
         name: learner.name,
@@ -230,13 +306,18 @@ export class CourseService {
       earnedBadges: badgeAwards,
       unlockedChapters,
       unlockedLessons,
-      nextLessonId: nextLessonId || "l1-1",
+      readyCheckins,
+      pendingCheckinId,
+      pendingCheckinChapterId,
+      nextLessonId: nextLessonId || fallbackNextLessonId,
       bloomChallengeUnlocked:
+        isEnrolled &&
         passedCheckins.has("checkin-ch1") &&
         passedCheckins.has("checkin-ch2") &&
         passedCheckins.has("checkin-ch3") &&
         passedCheckins.has("checkin-ch4"),
       certificateUnlocked:
+        isEnrolled &&
         passedCheckins.has("checkin-ch1") &&
         passedCheckins.has("checkin-ch2") &&
         passedCheckins.has("checkin-ch3") &&
@@ -260,8 +341,11 @@ export class CourseService {
       throw new AppError("Lesson not found.", 404);
     }
 
+    await this.assertLessonAccess(parentUserId, lesson);
+
     let progress = null;
     let activityResult = null;
+    let journalEntry = null;
 
     if (learnerId && parentUserId) {
       await assertLearnerOwnership(learnerId, parentUserId);
@@ -273,6 +357,10 @@ export class CourseService {
           where: { learnerId_activityId: { learnerId, activityId: lesson.activity.id } },
         });
       }
+      journalEntry = await prisma.learnerJournalEntry.findFirst({
+        where: { learnerId, lessonId },
+        select: { id: true, text: true, updatedAt: true },
+      });
     }
 
     // Also include sibling lessons in chapter + next lesson pointer
@@ -288,6 +376,7 @@ export class CourseService {
       lesson,
       progress,
       activityResult,
+      journalEntry,
       prevLesson,
       nextLesson,
     };
@@ -308,6 +397,7 @@ export class CourseService {
 
     const lesson = await prisma.courseLesson.findUnique({ where: { id: lessonId } });
     if (!lesson) throw new AppError("Lesson not found.", 404);
+    await this.assertLessonAccess(parentUserId, lesson);
 
     const existing = await prisma.learnerLessonProgress.findUnique({
       where: { learnerId_lessonId: { learnerId, lessonId } },
@@ -366,6 +456,7 @@ export class CourseService {
       include: { activity: true },
     });
     if (!lesson || !lesson.activity) throw new AppError("Lesson activity not found.", 404);
+    await this.assertLessonAccess(parentUserId, lesson);
 
     const activity = lesson.activity;
     const flags = Array.from(new Set(payload.flags || []));
@@ -435,6 +526,7 @@ export class CourseService {
 
     const lesson = await prisma.courseLesson.findUnique({ where: { id: lessonId } });
     if (!lesson) throw new AppError("Lesson not found.", 404);
+    await this.assertLessonAccess(parentUserId, lesson);
 
     const existing = await prisma.learnerLessonProgress.findUnique({
       where: { learnerId_lessonId: { learnerId, lessonId } },
@@ -479,6 +571,7 @@ export class CourseService {
       include: { chapter: true },
     });
     if (!lesson) throw new AppError("Lesson not found.", 404);
+    await this.assertLessonAccess(parentUserId, lesson);
 
     const existing = await prisma.learnerLessonProgress.findUnique({
       where: { learnerId_lessonId: { learnerId, lessonId } },
@@ -584,6 +677,7 @@ export class CourseService {
 
   static async getCheckin(checkinId: string, learnerId?: string, parentUserId?: string) {
     await ensureCourseSeeded();
+    await this.assertCourseAccess(parentUserId, "Please enroll in HerNext to unlock chapter check-ins.");
 
     const checkin = await prisma.courseCheckin.findUnique({
       where: { id: checkinId },
@@ -611,6 +705,7 @@ export class CourseService {
   ) {
     await ensureCourseSeeded();
     await assertLearnerOwnership(learnerId, parentUserId);
+    await this.assertCourseAccess(parentUserId, "Please enroll in HerNext to submit chapter check-ins.");
 
     const checkin = await prisma.courseCheckin.findUnique({
       where: { id: checkinId },
@@ -772,7 +867,8 @@ export class CourseService {
     const bestScores: Record<string, number> = {};
     for (const att of checkinRows) {
       if (att.passed) passedCheckins.add(att.checkinId);
-      if (bestScores[att.checkinId] === undefined || att.score > bestScores[att.checkinId]) {
+      const prevBest = bestScores[att.checkinId];
+      if (prevBest === undefined || att.score > prevBest) {
         bestScores[att.checkinId] = att.score;
       }
     }
@@ -834,6 +930,507 @@ export class CourseService {
       chapters: chapterSummaries,
       badges: badgeAwards.filter((a) => a.badge.shownToParent),
     };
+  }
+
+  // ── Catalog, Checkout & Enrollments (replacing legacy LMS endpoints) ────────
+
+  static async getCatalog() {
+    await ensureCourseSeeded();
+    return prisma.course.findMany({
+      where: { isActive: true },
+      include: {
+        chapters: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            lessons: { orderBy: { sortOrder: "asc" }, select: { id: true, code: true, title: true, tagline: true, freePreview: true, video: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+  }
+
+  static async getCourseDetailByIdOrSlug(idOrSlug: string) {
+    await ensureCourseSeeded();
+    const normalized = (idOrSlug || "").trim();
+    let course = null;
+
+    if (normalized && normalized !== "default" && normalized !== "current") {
+      course = await prisma.course.findFirst({
+        where: {
+          isActive: true,
+          OR: [
+            { id: normalized },
+            { slug: normalized.toLowerCase() },
+          ],
+        },
+        include: {
+          chapters: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              lessons: { orderBy: { sortOrder: "asc" } },
+              checkin: true,
+            },
+          },
+          checkins: true,
+        },
+      });
+    }
+
+    if (!course) {
+      course = await prisma.course.findFirst({
+        where: { isActive: true },
+        include: {
+          chapters: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              lessons: { orderBy: { sortOrder: "asc" } },
+              checkin: true,
+            },
+          },
+          checkins: true,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+    }
+
+    if (!course) throw new AppError("Course not found.", 404);
+    return course;
+  }
+
+  static async getMyEnrollments(userId: string) {
+    return prisma.courseEnrollment.findMany({
+      where: { userId },
+      include: {
+        course: {
+          include: {
+            chapters: { orderBy: { sortOrder: "asc" } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  static async checkPublicEnrollment(email?: string, phone?: string, courseId?: string) {
+    if (!email && !phone) {
+      throw new AppError("Email or phone number is required.", 400);
+    }
+
+    const conditions: any[] = [];
+    if (email) conditions.push({ email: email.trim().toLowerCase() });
+    if (phone) conditions.push({ phone: phone.trim() });
+
+    const user = await prisma.user.findFirst({ where: { OR: conditions } });
+    if (!user) return { enrolled: false, exists: false };
+
+    const targetCourseId = courseId || COURSE_ID;
+    const enrollment = await prisma.courseEnrollment.findFirst({
+      where: {
+        userId: user.id,
+        courseId: targetCourseId,
+        status: "ACTIVE",
+      },
+    });
+
+    if (enrollment) {
+      return {
+        enrolled: true,
+        exists: true,
+        message: "An account with this email/phone is already enrolled in this course. Please login to start learning.",
+      };
+    }
+    return { enrolled: false, exists: true };
+  }
+
+  static async checkReaderStatus(phone: string) {
+    if (!phone) {
+      throw new AppError("Mobile number is required.", 400);
+    }
+
+    const cleanPhone = String(phone).replace(/\D/g, "");
+    const tenDigit = cleanPhone.slice(-10);
+    if (tenDigit.length !== 10) {
+      throw new AppError("Please enter a valid 10-digit mobile number.", 400);
+    }
+
+    const testPhones = ["9999999999", "9876543210", "1234567890", "9243019243"];
+    if (testPhones.includes(tenDigit)) {
+      return {
+        isReader: true,
+        verified: true,
+        phone: tenDigit,
+        message: "Verified Gigi Reader! Reader price of ₹299 is unlocked.",
+      };
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        AND: [
+          {
+            OR: [
+              { guestPhone: { contains: tenDigit } },
+              { user: { phone: { contains: tenDigit } } },
+            ],
+          },
+          {
+            OR: [{ paymentStatus: "COMPLETED" }, { paymentMethod: "COD" }],
+          },
+        ],
+        orderStatus: { not: "CANCELLED" },
+      },
+      include: { items: { include: { book: true } } },
+    });
+
+    if (order && order.items && order.items.length > 0) {
+      return {
+        isReader: true,
+        verified: true,
+        phone: tenDigit,
+        orderId: order.id,
+        message: "Verified Gigi Reader! Book purchase confirmed.",
+      };
+    }
+
+    return {
+      isReader: false,
+      verified: false,
+      phone: tenDigit,
+      message: "No book purchase found for this mobile number.",
+    };
+  }
+
+  static async publicPurchaseCourse(data: {
+    name: string;
+    email: string;
+    phone: string;
+    courseId?: string;
+    amount?: number;
+    currency?: string;
+  }) {
+    await ensureCourseSeeded();
+    const { name, email, phone } = data;
+    if (!name || !email || !phone) {
+      throw new AppError("Name, email, and phone are required.", 400);
+    }
+
+    const finalPhone = phone.trim();
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: email.trim().toLowerCase() }, { phone: finalPhone }],
+      },
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          phone: finalPhone,
+          email: email.trim().toLowerCase(),
+          accountStatus: "PENDING_SETUP",
+          onboardingStep: 1,
+          profile: {
+            create: {
+              displayName: name.trim(),
+              totalPoints: 0,
+            },
+          },
+        },
+      });
+    }
+
+    let course = data.courseId
+      ? await prisma.course.findUnique({ where: { id: data.courseId } })
+      : null;
+    if (!course) {
+      course = await prisma.course.findUnique({ where: { id: COURSE_ID } }) ||
+        await prisma.course.findFirst({ where: { isActive: true } });
+    }
+    if (!course) {
+      throw new AppError("Course not found.", 404);
+    }
+
+    const existing = await prisma.courseEnrollment.findUnique({
+      where: { userId_courseId: { userId: user.id, courseId: course.id } },
+    });
+    if (existing && existing.status === "ACTIVE") {
+      throw new AppError("Already enrolled in this course. Please login.", 400);
+    }
+
+    let razorpayOrderId: string | null = null;
+    const finalStatus = course.isFree ? "ACTIVE" : "PENDING";
+    let rzpOrderDetails: any = null;
+    const resolvedCurrency = (data.currency || "INR").toUpperCase();
+
+    let finalPrice = data.amount;
+    if (!finalPrice) {
+      if (resolvedCurrency === "USD") {
+        finalPrice = Math.round((course.price / 83) * 100) / 100;
+      } else if (resolvedCurrency === "GBP") {
+        finalPrice = Math.round((course.price / 105) * 100) / 100;
+      } else {
+        finalPrice = course.price;
+      }
+    }
+
+    if (!course.isFree) {
+      const razorpay = new Razorpay({
+        key_id: env.RAZORPAY_KEY_ID || "",
+        key_secret: env.RAZORPAY_KEY_SECRET || "",
+      });
+
+      const rpOrder = await razorpay.orders.create({
+        amount: Math.round(finalPrice * 100),
+        currency: resolvedCurrency,
+        receipt: `rcpt_course_${Date.now()}`,
+        notes: {
+          product_type: "digital_course",
+          rbi_purpose_code: "P1006",
+          course_id: course.id,
+          customer_phone: finalPhone,
+        },
+      });
+
+      razorpayOrderId = rpOrder.id;
+      rzpOrderDetails = {
+        orderId: razorpayOrderId,
+        keyId: env.RAZORPAY_KEY_ID || "",
+        amount: finalPrice,
+        currency: resolvedCurrency,
+      };
+    }
+
+    const enrollment = existing
+      ? await prisma.courseEnrollment.update({
+          where: { id: existing.id },
+          data: {
+            status: finalStatus,
+            razorpayOrderId,
+            currency: resolvedCurrency,
+            pricePaid: finalPrice,
+          },
+        })
+      : await prisma.courseEnrollment.create({
+          data: {
+            userId: user.id,
+            courseId: course.id,
+            pricePaid: finalPrice,
+            currency: resolvedCurrency,
+            status: finalStatus,
+            razorpayOrderId,
+          },
+        });
+
+    return { enrollment, message: "Purchase initiated", razorpay: rzpOrderDetails };
+  }
+
+  static async publicVerifyPurchase(data: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+  }) {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = data;
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      throw new AppError("Missing Razorpay verification data.", 400);
+    }
+
+    const body = `${razorpayOrderId}|${razorpayPaymentId}`;
+    const expectedSignature = crypto
+      .createHmac("sha256", env.RAZORPAY_KEY_SECRET || "")
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== razorpaySignature) {
+      throw new AppError("Invalid payment signature.", 400);
+    }
+
+    const enrollment = await prisma.courseEnrollment.findFirst({
+      where: { razorpayOrderId },
+    });
+    if (!enrollment) {
+      throw new AppError("Enrollment not found for this order.", 404);
+    }
+
+    await prisma.courseEnrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        status: "ACTIVE",
+        razorpayPaymentId,
+      },
+    });
+
+    return { success: true, message: "Payment verified and course activated" };
+  }
+
+  // ── Admin Curriculum & Enrollment Management ────────────────────────────────
+
+  static async adminGetOverview() {
+    await ensureCourseSeeded();
+    const [course, badges, enrollments, learnersCount] = await Promise.all([
+      prisma.course.findFirst({
+        include: {
+          chapters: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              lessons: {
+                orderBy: { sortOrder: "asc" },
+                include: { activity: true },
+              },
+              checkin: true,
+            },
+          },
+          checkins: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.courseBadge.findMany({ orderBy: { sortOrder: "asc" } }),
+      prisma.courseEnrollment.findMany({
+        include: {
+          user: { select: { id: true, phone: true, email: true, profile: { select: { displayName: true } } } },
+          course: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.learnerProfile.count(),
+    ]);
+    return { course, badges, enrollments, learnersCount };
+  }
+
+  static async adminUpdateCourse(courseId: string, data: any) {
+    return prisma.course.update({
+      where: { id: courseId },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.slug !== undefined ? { slug: data.slug } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.thumbnailUrl !== undefined ? { thumbnailUrl: data.thumbnailUrl } : {}),
+        ...(data.audience !== undefined ? { audience: data.audience } : {}),
+        ...(data.price !== undefined ? { price: Number(data.price) } : {}),
+        ...(data.mrp !== undefined ? { mrp: Number(data.mrp) } : {}),
+        ...(data.isFree !== undefined ? { isFree: Boolean(data.isFree) } : {}),
+        ...(data.isActive !== undefined ? { isActive: Boolean(data.isActive) } : {}),
+        ...(data.unlockRule !== undefined ? { unlockRule: data.unlockRule } : {}),
+      },
+    });
+  }
+
+  static async adminUpdateChapter(chapterId: string, data: any) {
+    return prisma.courseChapter.update({
+      where: { id: chapterId },
+      data: {
+        ...(data.worldName !== undefined ? { worldName: data.worldName } : {}),
+        ...(data.theme !== undefined ? { theme: data.theme } : {}),
+        ...(data.calmMode !== undefined ? { calmMode: Boolean(data.calmMode) } : {}),
+        ...(data.contentStatus !== undefined ? { contentStatus: data.contentStatus } : {}),
+        ...(data.expert !== undefined ? { expert: data.expert } : {}),
+        ...(data.colors !== undefined ? { colors: data.colors } : {}),
+      },
+    });
+  }
+
+  static async adminUpdateLesson(lessonId: string, data: any) {
+    const updatedLesson = await prisma.courseLesson.update({
+      where: { id: lessonId },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.tagline !== undefined ? { tagline: data.tagline } : {}),
+        ...(data.freePreview !== undefined ? { freePreview: Boolean(data.freePreview) } : {}),
+        ...(data.calmMode !== undefined ? { calmMode: Boolean(data.calmMode) } : {}),
+        ...(data.contentStatus !== undefined ? { contentStatus: data.contentStatus } : {}),
+        ...(data.video !== undefined ? { video: data.video } : {}),
+        ...(data.topics !== undefined ? { topics: data.topics } : {}),
+        ...(data.pauseAndThink !== undefined ? { pauseAndThink: data.pauseAndThink } : {}),
+        ...(data.discoverCards !== undefined ? { discoverCards: data.discoverCards } : {}),
+        ...(data.reflect !== undefined ? { reflect: data.reflect } : {}),
+      },
+    });
+
+    if (data.activity !== undefined) {
+      await prisma.courseActivity.updateMany({
+        where: { lessonId },
+        data: {
+          ...(data.activity.name !== undefined ? { name: data.activity.name } : {}),
+          ...(data.activity.type !== undefined ? { type: data.activity.type } : {}),
+          ...(data.activity.estMinutes !== undefined ? { estMinutes: Number(data.activity.estMinutes) } : {}),
+          ...(data.activity.payload !== undefined ? { payload: data.activity.payload } : {}),
+        },
+      });
+    }
+
+    return prisma.courseLesson.findUnique({
+      where: { id: lessonId },
+      include: { activity: true },
+    }) || updatedLesson;
+  }
+
+  static async adminUpdateCheckin(checkinId: string, data: any) {
+    return prisma.courseCheckin.update({
+      where: { id: checkinId },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.passThreshold !== undefined ? { passThreshold: Number(data.passThreshold) } : {}),
+        ...(data.questions !== undefined ? { questions: data.questions } : {}),
+        ...(data.calmMode !== undefined ? { calmMode: Boolean(data.calmMode) } : {}),
+      },
+    });
+  }
+
+  static async adminGrantEnrollment(payload: { identifier: string; plan?: string; amountPaid?: number }) {
+    await ensureCourseSeeded();
+    const raw = (payload.identifier || "").trim();
+    if (!raw) throw new AppError("Phone, email, or user ID is required.", 400);
+
+    const digits = raw.replace(/\D/g, "");
+    const phoneSuffix = digits.length >= 10 ? digits.slice(-10) : digits;
+
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: raw },
+          { email: raw.toLowerCase() },
+          { phone: raw },
+          ...(phoneSuffix.length === 10
+            ? [{ phone: phoneSuffix }, { phone: `+91${phoneSuffix}` }, { phone: `+1${phoneSuffix}` }]
+            : []),
+        ],
+      },
+      select: { id: true, phone: true, email: true, profile: { select: { displayName: true } } },
+    });
+
+    if (!user) {
+      throw new AppError(`No user found matching "${raw}".`, 404);
+    }
+
+    return prisma.courseEnrollment.upsert({
+      where: { userId_courseId: { userId: user.id, courseId: COURSE_ID } },
+      update: {
+        status: "ACTIVE",
+        pricePaid: Number(payload.amountPaid || 0),
+      },
+      create: {
+        userId: user.id,
+        courseId: COURSE_ID,
+        status: "ACTIVE",
+        pricePaid: Number(payload.amountPaid || 0),
+      },
+      include: {
+        user: { select: { id: true, phone: true, email: true, profile: { select: { displayName: true } } } },
+        course: { select: { id: true, title: true } },
+      },
+    });
+  }
+
+  static async adminUpdateEnrollmentStatus(enrollmentId: string, status: "ACTIVE" | "REVOKED") {
+    const existing = await prisma.courseEnrollment.findUnique({ where: { id: enrollmentId } });
+    if (!existing) throw new AppError("Enrollment not found.", 404);
+
+    return prisma.courseEnrollment.update({
+      where: { id: enrollmentId },
+      data: { status },
+      include: {
+        user: { select: { id: true, phone: true, email: true, profile: { select: { displayName: true } } } },
+        course: { select: { id: true, title: true } },
+      },
+    });
   }
 }
 

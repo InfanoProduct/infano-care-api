@@ -314,16 +314,15 @@ export class QuestService {
         await this.evaluateCompletion(userId, { type: "post_created" });
       }
 
-      // Check if a creative journey node has been completed today to auto-complete Explore Episode / Complete Node
-      const todayCreativeNode = await prisma.creativeNodeProgress.findFirst({
+      // Check if a course lesson has been worked on today to auto-complete Explore Episode / Complete Node
+      const todayLessonProgress = await prisma.learnerLessonProgress.findFirst({
         where: {
-          userId,
-          status: "COMPLETED",
+          learner: { parentId: userId },
           updatedAt: { gte: startOfToday }
         }
       });
 
-      if (todayCreativeNode) {
+      if (todayLessonProgress) {
         await this.evaluateCompletion(userId, { type: "node_completed" });
         await this.evaluateCompletion(userId, { type: "episode_started" });
       }
@@ -965,85 +964,33 @@ export class QuestService {
     let activeEpisodeTitle = "the current episode";
     let sequenceState: "read" | "quiz" | "reflection" = "read";
 
-    const latestProgress = await prisma.creativeNodeProgress.findFirst({
-      where: { userId },
+    const latestProgress = await prisma.learnerLessonProgress.findFirst({
+      where: { learner: { parentId: userId } },
       orderBy: { updatedAt: "desc" },
-      include: { episode: { include: { journey: true } } },
+      include: { lesson: { include: { chapter: true } } },
     });
 
-    let activeJourneyId: string | null = null;
-    let activeEpisode: any = null;
+    const firstChapter = await prisma.courseChapter.findFirst({
+      orderBy: { sortOrder: "asc" },
+      include: { lessons: { orderBy: { sortOrder: "asc" }, take: 1 } },
+    });
 
-    if (latestProgress) {
-      activeJourneyId = latestProgress.episode.journeyId;
-      activeJourneyTitle = latestProgress.episode.journey.title;
-
-      const incompleteEpisode = await prisma.creativeEpisode.findFirst({
-        where: {
-          journeyId: activeJourneyId,
-          isActive: true,
-          nodeProgresses: {
-            none: { userId, status: "COMPLETED" }
-          }
-        },
-        orderBy: { order: "asc" }
-      });
-
-      if (incompleteEpisode) {
-        activeEpisode = incompleteEpisode;
-      } else {
-        const nextJourney = await prisma.creativeJourney.findFirst({
-          where: {
-            isActive: true,
-            id: { not: activeJourneyId }
-          },
-          orderBy: { createdAt: "asc" }
-        });
-        if (nextJourney) {
-          activeJourneyId = nextJourney.id;
-          activeJourneyTitle = nextJourney.title;
-          activeEpisode = await prisma.creativeEpisode.findFirst({
-            where: { journeyId: activeJourneyId, isActive: true },
-            orderBy: { order: "asc" }
-          });
-        }
-      }
-    } else {
-      const firstJourney = await prisma.creativeJourney.findFirst({
-        where: { isActive: true },
-        orderBy: { createdAt: "asc" }
-      });
-      if (firstJourney) {
-        activeJourneyId = firstJourney.id;
-        activeJourneyTitle = firstJourney.title;
-        activeEpisode = await prisma.creativeEpisode.findFirst({
-          where: { journeyId: activeJourneyId, isActive: true },
-          orderBy: { order: "asc" }
-        });
-      }
+    if (latestProgress?.lesson) {
+      activeJourneyTitle = latestProgress.lesson.chapter.worldName;
+      activeEpisodeTitle = latestProgress.lesson.title;
+      const doneSteps = Array.isArray(latestProgress.stepsDone) ? latestProgress.stepsDone.length : 0;
+      if (doneSteps >= 3) sequenceState = "reflection";
+      else if (doneSteps >= 1) sequenceState = "quiz";
+      else sequenceState = "read";
+      return { activeEpisodeTitle, activeJourneyTitle, sequenceState, isEpisodeStarted: doneSteps > 0 };
     }
 
-    let isEpisodeStarted = false;
-    if (activeEpisode) {
-      activeEpisodeTitle = activeEpisode.title;
-      const completedNodeCount = await prisma.creativeNodeProgress.count({
-        where: { userId, episodeId: activeEpisode.id, status: "COMPLETED" }
-      });
-
-      if (completedNodeCount > 0) {
-        isEpisodeStarted = true;
-      }
-
-      if (completedNodeCount >= 4) {
-        sequenceState = "reflection";
-      } else if (completedNodeCount >= 2) {
-        sequenceState = "quiz";
-      } else {
-        sequenceState = "read";
-      }
+    if (firstChapter) {
+      activeJourneyTitle = firstChapter.worldName;
+      activeEpisodeTitle = firstChapter.lessons[0]?.title || activeEpisodeTitle;
     }
 
-    return { activeEpisodeTitle, activeJourneyTitle, sequenceState, isEpisodeStarted };
+    return { activeEpisodeTitle, activeJourneyTitle, sequenceState, isEpisodeStarted: false };
   }
 
   static async formatUserQuest(userId: string, q: any) {

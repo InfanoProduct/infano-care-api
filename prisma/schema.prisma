@@ -57,8 +57,7 @@ model User {
   posts                     CommunityPost[]          @relation("UserPosts")
   replies                   CommunityReply[]         @relation("UserReplies")
   consentRequests           ConsentRequest[]
-  CreativeAskGigiEntry      CreativeAskGigiEntry[]
-  CreativeNodeProgress      CreativeNodeProgress[]
+  courseEnrollments         CourseEnrollment[]
   cycleLogs                 CycleLog[]
   cycleProfile              CycleProfile?
   cycleRecords              CycleRecord[]
@@ -73,9 +72,6 @@ model User {
   friendProfile             FriendProfile?
   journalEntries            JournalEntry[]
   journalStreak             JournalStreak?
-  LmsChapterLike            LmsChapterLike[]
-  LmsComment                LmsComment[]
-  lmsEnrollments            LmsEnrollment[]
   ModerationAppeal          ModerationAppeal[]
   ModerationLog             ModerationLog[]
   notificationHistory       NotificationHistory[]
@@ -306,71 +302,6 @@ model CycleRecord {
 }
 
 
-
-// ── Creative Learning Journey v2 ─────────────────────────────────────────────
-
-model CreativeJourney {
-  id          String            @id @default(uuid())
-  title       String
-  description String
-  ageBand     String?
-  icon        String?
-  isActive    Boolean           @default(true)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  episodes    CreativeEpisode[]
-}
-
-model CreativeEpisode {
-  id              String                 @id @default(uuid())
-  journeyId       String
-  title           String
-  description     String?
-  episodeIcon     String?
-  order           Int                    @default(0)
-  nodes           Json                   @default("[]")
-  totalXP         Int                    @default(145)
-  totalCoins      Int                    @default(83)
-  unlockCondition Json                   @default("{}")
-  isActive        Boolean                @default(true)
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
-  journey         CreativeJourney        @relation(fields: [journeyId], references: [id], onDelete: Cascade)
-  nodeProgresses  CreativeNodeProgress[]
-  gigiEntries     CreativeAskGigiEntry[]
-}
-
-model CreativeNodeProgress {
-  id         String          @id @default(uuid())
-  userId     String
-  episodeId  String
-  nodeId     String
-  status     String          @default("LOCKED")
-  xpEarned   Int             @default(0)
-  coinsEarned Int             @default(0)
-  lastScreen String?
-  nodeOrder  Json?
-  updatedAt  DateTime        @updatedAt
-  episode    CreativeEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, episodeId, nodeId])
-  @@index([userId, episodeId])
-}
-
-model CreativeAskGigiEntry {
-  id        String          @id @default(uuid())
-  userId    String
-  episodeId String
-  nodeId    String
-  entryText String
-  createdAt DateTime        @default(now())
-  episode   CreativeEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, episodeId])
-}
 
 model QuestTemplate {
   id                  String           @id @default(uuid())
@@ -1800,142 +1731,6 @@ model UserSosPreference {
 
 
 
-model LmsCourse {
-  id           String          @id @default(uuid())
-  title        String
-  description  String
-  timeDuration Int
-  thumbnailUrl String?
-  price        Float           @default(0)
-  isFree       Boolean         @default(true)
-  isActive     Boolean         @default(true)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  highlights   String[]        @default([])
-  category     String?
-  enrollments  LmsEnrollment[]
-  modules      LmsModule[]
-}
-
-model LmsModule {
-  id           String       @id @default(uuid())
-  courseId     String
-  title        String
-  description  String?
-  timeDuration Int?
-  thumbnailUrl String?
-  order        Int          @default(0)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  chapters     LmsChapter[]
-  course       LmsCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  @@index([courseId])
-}
-
-model LmsChapter {
-  id               String         @id @default(uuid())
-  moduleId         String
-  title            String
-  description      String?
-  thumbnailUrl     String?
-  type             LmsChapterType
-  order            Int            @default(0)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  faqs             Json           @default("[]")
-  goodToKnowPoints String[]       @default([])
-  assessment       LmsAssessment?
-  module           LmsModule      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  progress         LmsProgress[]
-  video            LmsVideo?
-
-  @@index([moduleId])
-}
-
-model LmsVideo {
-  id        String     @id @default(uuid())
-  chapterId String     @unique
-  videoUrl  String
-  duration  Int
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  chapter   LmsChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-}
-
-model LmsAssessment {
-  id           String     @id @default(uuid())
-  chapterId    String     @unique
-  questions    Json       @default("[]")
-  passingScore Int        @default(80)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  chapter      LmsChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-}
-
-model LmsEnrollment {
-  id                String        @id @default(uuid())
-  userId            String
-  courseId          String
-  status            String        @default("ACTIVE")
-  razorpayOrderId   String?
-  razorpayPaymentId String?
-  pricePaid         Float         @default(0)
-  currency          String        @default("INR")
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  course            LmsCourse     @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  progress          LmsProgress[]
-
-  @@unique([userId, courseId])
-  @@index([userId])
-}
-
-model LmsProgress {
-  id           String        @id @default(uuid())
-  enrollmentId String
-  chapterId    String
-  isCompleted  Boolean       @default(false)
-  score        Int?
-  watchTime    Int?
-  completedAt  DateTime?
-  updatedAt    DateTime      @updatedAt
-  answers      Json?
-  chapter      LmsChapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  enrollment   LmsEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-
-  @@unique([enrollmentId, chapterId])
-}
-
-model LmsChapterLike {
-  id        String   @id @default(uuid())
-  chapterId String
-  userId    String
-  createdAt DateTime @default(now())
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([chapterId, userId])
-  @@index([chapterId])
-}
-
-model LmsComment {
-  id             String   @id @default(uuid())
-  chapterId      String
-  authorId       String
-  authorName     String
-  authorInitials String
-  text           String
-  likes          Int      @default(0)
-  likedUsers     String[] @default([])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  User           User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([chapterId])
-}
-
-
 enum MessageType {
   TEXT
   VOICE
@@ -2145,32 +1940,54 @@ enum SosStatus {
   RESOLVED
 }
 
-enum LmsChapterType {
-  VIDEO
-  ASSESSMENT
-}
-
 // ── Interactive HerNext Course Module (Seeded + Runtime Progress) ─────────────
 
 model Course {
-  id                String          @id
+  id                String             @id
+  slug              String?            @unique
   title             String
+  description       String             @default("")
+  thumbnailUrl      String?
   audience          String
-  videoLanguage     String          @default("Hinglish")
-  captionLanguage   String          @default("en")
-  activityLanguage  String          @default("en")
-  chapterCount      Int             @default(4)
-  lessonCount       Int             @default(15)
-  unlockRule        String          @default("sequential")
-  parentPreview     String          @default("all_lessons")
-  lessonSteps       Json            @default("[]")
-  playUnlockRule    Json            @default("{}")
-  certificateConfig Json            @default("{}")
-  version           String          @default("2026-11-11")
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  price             Float              @default(999)
+  mrp               Float              @default(1998)
+  isFree            Boolean            @default(false)
+  isActive          Boolean            @default(true)
+  videoLanguage     String             @default("Hinglish")
+  captionLanguage   String             @default("en")
+  activityLanguage  String             @default("en")
+  chapterCount      Int                @default(4)
+  lessonCount       Int                @default(15)
+  unlockRule        String             @default("sequential")
+  parentPreview     String             @default("all_lessons")
+  lessonSteps       Json               @default("[]")
+  playUnlockRule    Json               @default("{}")
+  certificateConfig Json               @default("{}")
+  version           String             @default("2026-11-11")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   chapters          CourseChapter[]
   checkins          CourseCheckin[]
+  enrollments       CourseEnrollment[]
+}
+
+model CourseEnrollment {
+  id                String   @id @default(uuid())
+  userId            String
+  courseId          String
+  status            String   @default("ACTIVE")
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  pricePaid         Float    @default(0)
+  currency          String   @default("INR")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  course            Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
 }
 
 model CourseChapter {

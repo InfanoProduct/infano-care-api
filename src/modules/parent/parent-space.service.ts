@@ -11,13 +11,13 @@ function generateRef(prefix: string): string {
 
 export class ParentSpaceService {
   static async getOrdersSummary(userId: string) {
-    const [orders, lmsEnrollments, programEnrollments, refunds, issueReports, learners] = await Promise.all([
+    const [orders, courseEnrollments, programEnrollments, refunds, issueReports, learners] = await Promise.all([
       prisma.order.findMany({
         where: { userId, isActive: true },
         include: { items: { include: { book: true } } },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.lmsEnrollment.findMany({
+      prisma.courseEnrollment.findMany({
         where: { userId },
         include: { course: true },
         orderBy: { createdAt: "desc" },
@@ -48,8 +48,9 @@ export class ParentSpaceService {
     }
     const issuesByOrder: Record<string, any[]> = {};
     for (const ir of issueReports) {
-      if (!issuesByOrder[ir.orderId]) issuesByOrder[ir.orderId] = [];
-      issuesByOrder[ir.orderId].push(ir);
+      const arr = issuesByOrder[ir.orderId] || [];
+      arr.push(ir);
+      issuesByOrder[ir.orderId] = arr;
     }
 
     return {
@@ -58,7 +59,8 @@ export class ParentSpaceService {
         refundRequest: refundByOrder[o.id] || null,
         issueReports: issuesByOrder[o.id] || [],
       })),
-      lmsEnrollments,
+      courseEnrollments,
+      lmsEnrollments: courseEnrollments,
       programEnrollments,
       refunds,
       learners,
@@ -79,20 +81,20 @@ export class ParentSpaceService {
 
     // Order can be a physical Book Order or an Enrollment ID
     const order = await prisma.order.findFirst({ where: { id: orderId, userId } });
-    const lms = !order ? await prisma.lmsEnrollment.findFirst({ where: { id: orderId, userId } }) : null;
-    const prog = !order && !lms ? await prisma.programEnrollment.findFirst({ where: { id: orderId, userId } }) : null;
+    const courseEnr = !order ? await prisma.courseEnrollment.findFirst({ where: { id: orderId, userId } }) : null;
+    const prog = !order && !courseEnr ? await prisma.programEnrollment.findFirst({ where: { id: orderId, userId } }) : null;
 
-    if (!order && !lms && !prog) {
+    if (!order && !courseEnr && !prog) {
       throw new AppError("Order not found.", 404);
     }
 
-    const createdAt = (order?.createdAt || lms?.createdAt || prog?.createdAt) as Date;
+    const createdAt = (order?.createdAt || courseEnr?.createdAt || prog?.createdAt) as Date;
     const daysSince = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
     if (daysSince > 7) {
       throw new AppError("The 7-day happiness promise window has closed for this order.", 400);
     }
 
-    const amount = order ? order.totalAmount : lms ? lms.pricePaid : (prog?.pricePaid || 0);
+    const amount = order ? order.totalAmount : courseEnr ? courseEnr.pricePaid : (prog?.pricePaid || 0);
 
     const refund = await prisma.orderRefundRequest.create({
       data: {

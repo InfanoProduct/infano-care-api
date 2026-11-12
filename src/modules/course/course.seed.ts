@@ -30,7 +30,11 @@ export async function seedHerNextCourse(): Promise<{
   await prisma.course.upsert({
     where: { id: c.id },
     update: {
+      slug: c.slug || "girlhood-hernext",
       title: c.title,
+      description:
+        c.description ||
+        "A doctor-reviewed, interactive puberty & growing-up foundation course for girls aged 9-14.",
       audience: c.audience,
       videoLanguage: c.video_language || "Hinglish",
       captionLanguage: c.caption_language || "en",
@@ -46,8 +50,16 @@ export async function seedHerNextCourse(): Promise<{
     },
     create: {
       id: c.id,
+      slug: c.slug || "girlhood-hernext",
       title: c.title,
+      description:
+        c.description ||
+        "A doctor-reviewed, interactive puberty & growing-up foundation course for girls aged 9-14.",
       audience: c.audience,
+      price: 999,
+      mrp: 1998,
+      isFree: false,
+      isActive: true,
       videoLanguage: c.video_language || "Hinglish",
       captionLanguage: c.caption_language || "en",
       activityLanguage: c.activity_language || "en",

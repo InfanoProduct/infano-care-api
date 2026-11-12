@@ -820,17 +820,18 @@ export class ShopService {
         }
       }
       if (hasCourseAddon && userId) {
-        const course = await prisma.lmsCourse.findFirst({
+        const course = await prisma.course.findFirst({
           where: {
             OR: [
+              { id: 'hernext-foundation' },
               { title: { contains: 'HerNext', mode: 'insensitive' } },
               { title: { contains: 'Girlhood', mode: 'insensitive' } }
             ]
           }
-        }) || await prisma.lmsCourse.findFirst();
+        }) || await prisma.course.findFirst();
 
         if (course) {
-          await prisma.lmsEnrollment.upsert({
+          await prisma.courseEnrollment.upsert({
             where: {
               userId_courseId: {
                 userId,
