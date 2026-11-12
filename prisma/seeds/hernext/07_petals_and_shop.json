@@ -1,0 +1,336 @@
+{
+  "petal_rules": [
+    {
+      "id": "lesson_step",
+      "event": "lesson_step_completed",
+      "petals": 10,
+      "note": "Watch, Play, Discover, Reflect: 10 each"
+    },
+    {
+      "id": "lesson_bonus",
+      "event": "lesson_completed",
+      "petals": 20,
+      "note": "bonus on top of the 4 steps"
+    },
+    {
+      "id": "checkin_pass",
+      "event": "checkin_passed",
+      "petals": 50
+    },
+    {
+      "id": "checkin_perfect",
+      "event": "checkin_score_10",
+      "petals": 20,
+      "note": "bonus"
+    },
+    {
+      "id": "myth_of_the_day",
+      "event": "myth_of_the_day_answered",
+      "petals": 5,
+      "daily_cap": 1
+    },
+    {
+      "id": "journal_entry",
+      "event": "journal_entry_saved",
+      "petals": 10,
+      "daily_cap": 1
+    },
+    {
+      "id": "diary_checkin",
+      "event": "diary_checkin_saved",
+      "petals": 5,
+      "daily_cap": 1
+    }
+  ],
+  "shop_items": [
+    {
+      "id": "deco-swing",
+      "category": "garden_decoration",
+      "name": "Wooden swing",
+      "price_petals": 120,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": true,
+      "image_id": null,
+      "sort_order": 1
+    },
+    {
+      "id": "deco-lantern",
+      "category": "garden_decoration",
+      "name": "Moon lantern",
+      "price_petals": 100,
+      "requires_badge_id": "badge-cycle-explorer",
+      "free_on_signup": false,
+      "placeable_in_garden": true,
+      "image_id": null,
+      "sort_order": 2
+    },
+    {
+      "id": "deco-bath",
+      "category": "garden_decoration",
+      "name": "Bird bath",
+      "price_petals": 90,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": true,
+      "image_id": null,
+      "sort_order": 3
+    },
+    {
+      "id": "deco-lights",
+      "category": "garden_decoration",
+      "name": "Fairy lights",
+      "price_petals": 80,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": true,
+      "image_id": null,
+      "sort_order": 4
+    },
+    {
+      "id": "deco-butterfly",
+      "category": "garden_decoration",
+      "name": "Butterfly",
+      "price_petals": 60,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": true,
+      "image_id": null,
+      "sort_order": 5
+    },
+    {
+      "id": "deco-bunny",
+      "category": "garden_decoration",
+      "name": "Bunny friend",
+      "price_petals": 110,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": true,
+      "image_id": null,
+      "sort_order": 6
+    },
+    {
+      "id": "deco-mat",
+      "category": "garden_decoration",
+      "name": "Picnic mat",
+      "price_petals": 70,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": true,
+      "image_id": null,
+      "sort_order": 7
+    },
+    {
+      "id": "deco-rainbow",
+      "category": "garden_decoration",
+      "name": "Rainbow arch",
+      "price_petals": 150,
+      "requires_badge_id": "badge-full-bloom",
+      "free_on_signup": false,
+      "placeable_in_garden": true,
+      "image_id": null,
+      "sort_order": 8
+    },
+    {
+      "id": "pot-starter",
+      "category": "pot",
+      "name": "Starter pot",
+      "price_petals": 0,
+      "requires_badge_id": null,
+      "free_on_signup": true,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 9
+    },
+    {
+      "id": "pot-polka",
+      "category": "pot",
+      "name": "Polka-dot pot",
+      "price_petals": 30,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 10
+    },
+    {
+      "id": "pot-teacup",
+      "category": "pot",
+      "name": "Teacup pot",
+      "price_petals": 50,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 11
+    },
+    {
+      "id": "pot-rangoli",
+      "category": "pot",
+      "name": "Rangoli pot",
+      "price_petals": 60,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 12
+    },
+    {
+      "id": "pot-cloud",
+      "category": "pot",
+      "name": "Cloud pot",
+      "price_petals": 40,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 13
+    },
+    {
+      "id": "pot-star",
+      "category": "pot",
+      "name": "Star pot",
+      "price_petals": 45,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 14
+    },
+    {
+      "id": "pot-lotus",
+      "category": "pot",
+      "name": "Lotus pot",
+      "price_petals": 60,
+      "requires_badge_id": "badge-body-listener",
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 15
+    },
+    {
+      "id": "avatar-glasses",
+      "category": "avatar_accessory",
+      "name": "Round glasses",
+      "price_petals": 40,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 16
+    },
+    {
+      "id": "avatar-clip",
+      "category": "avatar_accessory",
+      "name": "Flower hair clip",
+      "price_petals": 40,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 17
+    },
+    {
+      "id": "avatar-hat",
+      "category": "avatar_accessory",
+      "name": "Bucket hat",
+      "price_petals": 60,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 18
+    },
+    {
+      "id": "avatar-hijab",
+      "category": "avatar_accessory",
+      "name": "Lavender hijab",
+      "price_petals": 50,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 19
+    },
+    {
+      "id": "avatar-dupatta",
+      "category": "avatar_accessory",
+      "name": "Pastel dupatta",
+      "price_petals": 60,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 20
+    },
+    {
+      "id": "avatar-band",
+      "category": "avatar_accessory",
+      "name": "Headband",
+      "price_petals": 40,
+      "requires_badge_id": null,
+      "free_on_signup": false,
+      "placeable_in_garden": false,
+      "image_id": null,
+      "sort_order": 21
+    }
+  ],
+  "avatar_options": {
+    "note": "Diverse options from day 1; all free unless sold in the shop",
+    "categories": [
+      {
+        "id": "skin_tone",
+        "options": [
+          "[6 to 8 skin tones from the art bible]"
+        ]
+      },
+      {
+        "id": "hair",
+        "options": [
+          "straight",
+          "wavy",
+          "curly",
+          "coily",
+          "braids",
+          "two buns",
+          "short bob",
+          "ponytail"
+        ]
+      },
+      {
+        "id": "hair_color",
+        "options": [
+          "black",
+          "dark brown",
+          "brown"
+        ]
+      },
+      {
+        "id": "head_cover",
+        "options": [
+          "none",
+          "hijab"
+        ]
+      },
+      {
+        "id": "glasses",
+        "options": [
+          "none",
+          "round",
+          "square"
+        ]
+      },
+      {
+        "id": "outfit_color",
+        "options": [
+          "rose",
+          "sky",
+          "mint",
+          "peach",
+          "lavender",
+          "butter"
+        ]
+      }
+    ]
+  }
+}

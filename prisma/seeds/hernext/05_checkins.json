@@ -1,0 +1,1202 @@
+{
+  "chapter_checkins": [
+    {
+      "id": "checkin-ch1",
+      "chapter_id": "ch1",
+      "title": "The Moon Quiz",
+      "question_count": 10,
+      "pass_mark": 7,
+      "timer": false,
+      "lives": false,
+      "hints_reduce_petals": false,
+      "badge_on_pass": "badge-cycle-explorer",
+      "perfect_score_badge": "badge-quiz-whiz",
+      "fail_title": "Almost there!",
+      "review_links": [
+        {
+          "label": "The four phases of the cycle",
+          "target_screen": "L11-Watch"
+        },
+        {
+          "label": "Puberty changes",
+          "target_screen": "L12-Play"
+        },
+        {
+          "label": "When to tell a grown-up",
+          "target_screen": "L13-Play"
+        }
+      ],
+      "extra_unscored": [],
+      "questions": [
+        {
+          "id": "ch1-q1",
+          "type": "single_choice",
+          "prompt": "What is a period?",
+          "options": [
+            {
+              "id": "a",
+              "text": "The uterus lining leaving the body"
+            },
+            {
+              "id": "b",
+              "text": "An illness"
+            },
+            {
+              "id": "c",
+              "text": "Blood from the stomach"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "The lining leaves gently, and a new cycle begins.",
+          "hint": "Think of the cosy lining from the video.",
+          "skill_tag": "what a period is"
+        },
+        {
+          "id": "ch1-q2",
+          "type": "single_choice",
+          "prompt": "For most teens, how long is a cycle?",
+          "options": [
+            {
+              "id": "a",
+              "text": "About 5 days"
+            },
+            {
+              "id": "b",
+              "text": "21 to 45 days"
+            },
+            {
+              "id": "c",
+              "text": "About 100 days"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "21 to 45 days is common for teens.",
+          "hint": "It’s a few weeks, and can vary.",
+          "skill_tag": "cycle length"
+        },
+        {
+          "id": "ch1-q3",
+          "type": "single_choice",
+          "prompt": "Which hormone builds the lining?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Oestrogen"
+            },
+            {
+              "id": "b",
+              "text": "Adrenaline"
+            },
+            {
+              "id": "c",
+              "text": "Insulin"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Oestrogen builds it; progesterone keeps it ready.",
+          "hint": "It rises in the first half of the cycle.",
+          "skill_tag": "hormones"
+        },
+        {
+          "id": "ch1-q4",
+          "type": "single_choice",
+          "prompt": "Which organ releases an egg?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Ovary"
+            },
+            {
+              "id": "b",
+              "text": "Uterus"
+            },
+            {
+              "id": "c",
+              "text": "Stomach"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "The ovary releases an egg around the middle of the cycle.",
+          "hint": "Its name sounds a bit like “oval”.",
+          "skill_tag": "the ovary"
+        },
+        {
+          "id": "ch1-q5",
+          "type": "single_choice",
+          "prompt": "What is menarche?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A girl’s first period"
+            },
+            {
+              "id": "b",
+              "text": "Her last period"
+            },
+            {
+              "id": "c",
+              "text": "A type of pad"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Menarche is the very first period.",
+          "hint": "It was the first stamp in your passport story.",
+          "skill_tag": "menarche"
+        },
+        {
+          "id": "ch1-q6",
+          "type": "true_false",
+          "prompt": "Every girl starts puberty at exactly the same age.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False. Everyone has her own timing.",
+          "hint": "Remember the Puberty Passport?",
+          "skill_tag": "everyone’s timing differs"
+        },
+        {
+          "id": "ch1-q7",
+          "type": "true_false",
+          "prompt": "Periods can be irregular in the first year or two.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "True, and that’s completely normal.",
+          "hint": "Your body is still finding its rhythm.",
+          "skill_tag": "irregular is normal at first"
+        },
+        {
+          "id": "ch1-q8",
+          "type": "single_choice",
+          "prompt": "How much blood is lost in a whole period, usually?",
+          "options": [
+            {
+              "id": "a",
+              "text": "About a cup"
+            },
+            {
+              "id": "b",
+              "text": "2 to 3 tablespoons"
+            },
+            {
+              "id": "c",
+              "text": "A litre"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "Usually just 2 to 3 tablespoons in total.",
+          "hint": "It’s less than it looks!",
+          "skill_tag": "how much flow is normal"
+        },
+        {
+          "id": "ch1-q9",
+          "type": "single_choice",
+          "prompt": "Which is a sign to tell a grown-up?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Mild cramps on day 1"
+            },
+            {
+              "id": "b",
+              "text": "A period lasting more than 7 days"
+            },
+            {
+              "id": "c",
+              "text": "Feeling a little tired"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "Bleeding for more than 7 days is worth checking with a doctor.",
+          "hint": "Think of the Flow Detective cases.",
+          "skill_tag": "when to ask for help"
+        },
+        {
+          "id": "ch1-q10",
+          "type": "single_choice",
+          "prompt": "Which can delay a period?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Stress"
+            },
+            {
+              "id": "b",
+              "text": "Wearing blue"
+            },
+            {
+              "id": "c",
+              "text": "Eating curd"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Stress, illness and big weight changes can shift the cycle.",
+          "hint": "Remember Anu’s exam week?",
+          "skill_tag": "what shifts a cycle"
+        }
+      ]
+    },
+    {
+      "id": "checkin-ch2",
+      "chapter_id": "ch2",
+      "title": "The Care Quiz",
+      "question_count": 10,
+      "pass_mark": 7,
+      "timer": false,
+      "lives": false,
+      "hints_reduce_petals": false,
+      "badge_on_pass": "badge-care-captain",
+      "perfect_score_badge": "badge-quiz-whiz",
+      "fail_title": "Almost there!",
+      "review_links": [
+        {
+          "label": "Pad timing and wiping",
+          "target_screen": "L21-Play"
+        },
+        {
+          "label": "Choosing products",
+          "target_screen": "L22-Play"
+        },
+        {
+          "label": "Wrap it right",
+          "target_screen": "L23-Play"
+        }
+      ],
+      "extra_unscored": [],
+      "questions": [
+        {
+          "id": "ch2-q1",
+          "type": "single_choice",
+          "prompt": "How often should you change a pad?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Every 4 to 6 hours"
+            },
+            {
+              "id": "b",
+              "text": "Once a day"
+            },
+            {
+              "id": "c",
+              "text": "Once a week"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Every 4 to 6 hours, sooner if full.",
+          "hint": "Check your Care Clock.",
+          "skill_tag": "pad timing"
+        },
+        {
+          "id": "ch2-q2",
+          "type": "single_choice",
+          "prompt": "Which way should you wipe?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Front to back"
+            },
+            {
+              "id": "b",
+              "text": "Back to front"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Front to back keeps germs away.",
+          "hint": "Think: away from the front.",
+          "skill_tag": "wiping"
+        },
+        {
+          "id": "ch2-q3",
+          "type": "single_choice",
+          "prompt": "What do you need to wash outside the vagina?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Plain water"
+            },
+            {
+              "id": "b",
+              "text": "Perfume"
+            },
+            {
+              "id": "c",
+              "text": "Strong soap inside"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Plain water outside is enough.",
+          "hint": "The vagina cleans itself.",
+          "skill_tag": "gentle washing"
+        },
+        {
+          "id": "ch2-q4",
+          "type": "single_choice",
+          "prompt": "Which products can be reused?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Cups and cloth pads"
+            },
+            {
+              "id": "b",
+              "text": "Disposable pads"
+            },
+            {
+              "id": "c",
+              "text": "Tampons"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Cups and cloth pads can be washed and reused.",
+          "hint": "Meher’s match!",
+          "skill_tag": "reusable products"
+        },
+        {
+          "id": "ch2-q5",
+          "type": "single_choice",
+          "prompt": "A tampon should never stay in longer than…",
+          "options": [
+            {
+              "id": "a",
+              "text": "8 hours"
+            },
+            {
+              "id": "b",
+              "text": "2 days"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "8 hours at most.",
+          "hint": "Less than one school day plus a bit.",
+          "skill_tag": "tampon safety"
+        },
+        {
+          "id": "ch2-q6",
+          "type": "true_false",
+          "prompt": "Pads can be flushed down the toilet.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False. Wrap and bin.",
+          "hint": "What did Wrap It Right say?",
+          "skill_tag": "disposal"
+        },
+        {
+          "id": "ch2-q7",
+          "type": "single_choice",
+          "prompt": "Where should cloth pads dry?",
+          "options": [
+            {
+              "id": "a",
+              "text": "In sunlight"
+            },
+            {
+              "id": "b",
+              "text": "In a dark corner"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Sunlight helps kill germs.",
+          "hint": "Something bright and warm…",
+          "skill_tag": "cloth pad care"
+        },
+        {
+          "id": "ch2-q8",
+          "type": "single_choice",
+          "prompt": "What goes in a school-day kit?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Pads, disposal bag, spare underwear"
+            },
+            {
+              "id": "b",
+              "text": "Only a phone"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "A small pouch keeps you ready.",
+          "hint": "Remember Aanya’s pouch?",
+          "skill_tag": "your kit"
+        },
+        {
+          "id": "ch2-q9",
+          "type": "single_choice",
+          "prompt": "Which product works for swimming?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A tampon or cup"
+            },
+            {
+              "id": "b",
+              "text": "A disposable pad"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Pads don’t work in water.",
+          "hint": "Diya’s swim meet.",
+          "skill_tag": "products for activities"
+        },
+        {
+          "id": "ch2-q10",
+          "type": "true_false",
+          "prompt": "Periods are something to hide and be ashamed of.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False! Periods are natural.",
+          "hint": "Think of Menstrual Hygiene Day.",
+          "skill_tag": "breaking stigma"
+        }
+      ]
+    },
+    {
+      "id": "checkin-ch3",
+      "chapter_id": "ch3",
+      "title": "The Comfort Quiz",
+      "question_count": 10,
+      "pass_mark": 7,
+      "timer": false,
+      "lives": false,
+      "hints_reduce_petals": false,
+      "badge_on_pass": "badge-body-listener",
+      "perfect_score_badge": "badge-quiz-whiz",
+      "fail_title": "Almost there!",
+      "review_links": [
+        {
+          "label": "Easing discomfort",
+          "target_screen": "L31-Play"
+        },
+        {
+          "label": "Signs that need a doctor",
+          "target_screen": "L32-Play"
+        },
+        {
+          "label": "Germ Defender habits",
+          "target_screen": "L33-Play"
+        }
+      ],
+      "extra_unscored": [],
+      "questions": [
+        {
+          "id": "ch3-q1",
+          "type": "single_choice",
+          "prompt": "What makes the uterus squeeze during a period?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Prostaglandins"
+            },
+            {
+              "id": "b",
+              "text": "Ice cream"
+            },
+            {
+              "id": "c",
+              "text": "Homework"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Prostaglandins cause the squeezing cramps.",
+          "hint": "A long word starting with “pro”.",
+          "skill_tag": "why cramps happen"
+        },
+        {
+          "id": "ch3-q2",
+          "type": "single_choice",
+          "prompt": "Which can ease cramps?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A warm water bottle"
+            },
+            {
+              "id": "b",
+              "text": "Skipping meals"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Warmth relaxes the muscles.",
+          "hint": "Your Comfort Toolbox.",
+          "skill_tag": "easing cramps"
+        },
+        {
+          "id": "ch3-q3",
+          "type": "single_choice",
+          "prompt": "What helps a bloated belly?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Water and fewer salty snacks"
+            },
+            {
+              "id": "b",
+              "text": "More chips"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Water and less salt help.",
+          "hint": "The Bloated belly spot.",
+          "skill_tag": "bloating"
+        },
+        {
+          "id": "ch3-q4",
+          "type": "single_choice",
+          "prompt": "Pain that makes you miss school every month means…",
+          "options": [
+            {
+              "id": "a",
+              "text": "See a doctor"
+            },
+            {
+              "id": "b",
+              "text": "Just put up with it"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Strong pain deserves a doctor’s help.",
+          "hint": "Symptom Sorter said…",
+          "skill_tag": "when pain needs a doctor"
+        },
+        {
+          "id": "ch3-q5",
+          "type": "single_choice",
+          "prompt": "Which can be a sign of PCOS?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Very irregular periods with acne"
+            },
+            {
+              "id": "b",
+              "text": "A short haircut"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "A doctor can check and help manage PCOS.",
+          "hint": "Hormones out of balance.",
+          "skill_tag": "PCOS"
+        },
+        {
+          "id": "ch3-q6",
+          "type": "single_choice",
+          "prompt": "Menorrhagia means…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Very heavy bleeding"
+            },
+            {
+              "id": "b",
+              "text": "No periods"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Very heavy or long bleeding.",
+          "hint": "“Men-o-rrhagia”: lots of flow.",
+          "skill_tag": "menorrhagia"
+        },
+        {
+          "id": "ch3-q7",
+          "type": "single_choice",
+          "prompt": "Amenorrhea means…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Periods not coming"
+            },
+            {
+              "id": "b",
+              "text": "Very heavy periods"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "No periods by 15, or 3 missed in a row.",
+          "hint": "“A-” means without.",
+          "skill_tag": "amenorrhea"
+        },
+        {
+          "id": "ch3-q8",
+          "type": "single_choice",
+          "prompt": "Some clear or white discharge is…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Normal"
+            },
+            {
+              "id": "b",
+              "text": "Always an infection"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Healthy discharge keeps the vagina clean.",
+          "hint": "Lactobacilli at work.",
+          "skill_tag": "normal discharge"
+        },
+        {
+          "id": "ch3-q9",
+          "type": "single_choice",
+          "prompt": "Itching and thick white discharge can mean…",
+          "options": [
+            {
+              "id": "a",
+              "text": "A yeast infection"
+            },
+            {
+              "id": "b",
+              "text": "A growth spurt"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "A doctor can treat it easily.",
+          "hint": "The itchy one.",
+          "skill_tag": "yeast infections"
+        },
+        {
+          "id": "ch3-q10",
+          "type": "single_choice",
+          "prompt": "If you notice signs of an infection, you should…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Tell a grown-up and see a doctor"
+            },
+            {
+              "id": "b",
+              "text": "Use a scented wash"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Telling is the fastest way to feel better.",
+          "hint": "Germ Defender’s last tip.",
+          "skill_tag": "what to do"
+        }
+      ]
+    },
+    {
+      "id": "checkin-ch4",
+      "chapter_id": "ch4",
+      "title": "The Brave Heart Check-in",
+      "question_count": 10,
+      "pass_mark": 7,
+      "timer": false,
+      "lives": false,
+      "hints_reduce_petals": false,
+      "badge_on_pass": "badge-brave-heart",
+      "perfect_score_badge": "badge-quiz-whiz",
+      "fail_title": "Let’s look again together",
+      "review_links": [
+        {
+          "label": "Being an upstander",
+          "target_screen": "L41-Play"
+        },
+        {
+          "label": "No, Go, Tell",
+          "target_screen": "L42-Play"
+        },
+        {
+          "label": "Your rights",
+          "target_screen": "L43-Play"
+        }
+      ],
+      "extra_unscored": [
+        {
+          "id": "safe-circle",
+          "prompt": "Who is in your Safe Circle?",
+          "saves_to_safe_circle": true
+        }
+      ],
+      "questions": [
+        {
+          "id": "ch4-q1",
+          "type": "single_choice",
+          "prompt": "Bullying is…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Hurting someone again and again on purpose"
+            },
+            {
+              "id": "b",
+              "text": "One friendly joke"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Repeated, on purpose and hurtful.",
+          "hint": "Three parts: again, on purpose, hurts.",
+          "skill_tag": "what bullying is"
+        },
+        {
+          "id": "ch4-q2",
+          "type": "single_choice",
+          "prompt": "An upstander…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Helps safely and tells an adult"
+            },
+            {
+              "id": "b",
+              "text": "Watches and laughs"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Upstanders include, don’t join in, and tell.",
+          "hint": "Remember Riya’s group chat.",
+          "skill_tag": "being an upstander"
+        },
+        {
+          "id": "ch4-q3",
+          "type": "single_choice",
+          "prompt": "A stranger online asks for your photo. You…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Don’t reply, block and tell"
+            },
+            {
+              "id": "b",
+              "text": "Send it"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Never share photos with strangers.",
+          "hint": "The online game moment.",
+          "skill_tag": "online safety"
+        },
+        {
+          "id": "ch4-q4",
+          "type": "single_choice",
+          "prompt": "Private parts are the parts covered by…",
+          "options": [
+            {
+              "id": "a",
+              "text": "A swimsuit"
+            },
+            {
+              "id": "b",
+              "text": "A hat"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "The swimsuit rule.",
+          "hint": "Think of the beach.",
+          "skill_tag": "the swimsuit rule"
+        },
+        {
+          "id": "ch4-q5",
+          "type": "single_choice",
+          "prompt": "No, Go, …",
+          "options": [
+            {
+              "id": "a",
+              "text": "Tell"
+            },
+            {
+              "id": "b",
+              "text": "Hide"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "No, Go, Tell, and keep telling.",
+          "hint": "The third step is about your Safe Circle.",
+          "skill_tag": "No, Go, Tell"
+        },
+        {
+          "id": "ch4-q6",
+          "type": "single_choice",
+          "prompt": "A touch that someone asks you to keep secret should be…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Told to a trusted adult"
+            },
+            {
+              "id": "b",
+              "text": "Kept secret"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Touch should never be a secret.",
+          "hint": "Surprise or secret?",
+          "skill_tag": "secrets vs surprises"
+        },
+        {
+          "id": "ch4-q7",
+          "type": "single_choice",
+          "prompt": "POCSO protects every child under…",
+          "options": [
+            {
+              "id": "a",
+              "text": "18"
+            },
+            {
+              "id": "b",
+              "text": "12"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Every child under 18, any gender.",
+          "hint": "The age you become an adult.",
+          "skill_tag": "POCSO"
+        },
+        {
+          "id": "ch4-q8",
+          "type": "single_choice",
+          "prompt": "India’s free Child Helpline number is…",
+          "options": [
+            {
+              "id": "a",
+              "text": "1098"
+            },
+            {
+              "id": "b",
+              "text": "100"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "1098, open day and night (112 for emergencies).",
+          "hint": "Ten, nine, eight.",
+          "skill_tag": "who can help"
+        },
+        {
+          "id": "ch4-q9",
+          "type": "single_choice",
+          "prompt": "Which is an assertive message?",
+          "options": [
+            {
+              "id": "a",
+              "text": "“I feel hurt when… I need…”"
+            },
+            {
+              "id": "b",
+              "text": "“You’re the worst!”"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "“I feel… when… I need…”",
+          "hint": "Green Flag, Red Flag outro.",
+          "skill_tag": "speaking up"
+        },
+        {
+          "id": "ch4-q10",
+          "type": "single_choice",
+          "prompt": "A good first step with a big feeling is…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Name it"
+            },
+            {
+              "id": "b",
+              "text": "Hide it"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Naming a feeling makes it smaller.",
+          "hint": "Mood Garden’s first step.",
+          "skill_tag": "handling feelings"
+        }
+      ]
+    }
+  ],
+  "bloom_challenge": {
+    "id": "bloom-challenge",
+    "title": "Bloom Challenge",
+    "theme": "garden festival",
+    "question_count": 12,
+    "pass_mark": null,
+    "unlock": "checkin-ch4_passed",
+    "badge_on_complete": "badge-festival-star",
+    "status": "draft: 3 questions per chapter drawn from the check-ins; replace with fresh questions if preferred",
+    "questions": [
+      {
+        "id": "bloom-q1",
+        "type": "single_choice",
+        "prompt": "What is a period?",
+        "options": [
+          {
+            "id": "a",
+            "text": "The uterus lining leaving the body"
+          },
+          {
+            "id": "b",
+            "text": "An illness"
+          },
+          {
+            "id": "c",
+            "text": "Blood from the stomach"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "The lining leaves gently, and a new cycle begins.",
+        "hint": "Think of the cosy lining from the video.",
+        "skill_tag": "what a period is"
+      },
+      {
+        "id": "bloom-q2",
+        "type": "single_choice",
+        "prompt": "What is menarche?",
+        "options": [
+          {
+            "id": "a",
+            "text": "A girl’s first period"
+          },
+          {
+            "id": "b",
+            "text": "Her last period"
+          },
+          {
+            "id": "c",
+            "text": "A type of pad"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Menarche is the very first period.",
+        "hint": "It was the first stamp in your passport story.",
+        "skill_tag": "menarche"
+      },
+      {
+        "id": "bloom-q3",
+        "type": "single_choice",
+        "prompt": "Which is a sign to tell a grown-up?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Mild cramps on day 1"
+          },
+          {
+            "id": "b",
+            "text": "A period lasting more than 7 days"
+          },
+          {
+            "id": "c",
+            "text": "Feeling a little tired"
+          }
+        ],
+        "correct_option_id": "b",
+        "explanation": "Bleeding for more than 7 days is worth checking with a doctor.",
+        "hint": "Think of the Flow Detective cases.",
+        "skill_tag": "when to ask for help"
+      },
+      {
+        "id": "bloom-q4",
+        "type": "single_choice",
+        "prompt": "How often should you change a pad?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Every 4 to 6 hours"
+          },
+          {
+            "id": "b",
+            "text": "Once a day"
+          },
+          {
+            "id": "c",
+            "text": "Once a week"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Every 4 to 6 hours, sooner if full.",
+        "hint": "Check your Care Clock.",
+        "skill_tag": "pad timing"
+      },
+      {
+        "id": "bloom-q5",
+        "type": "single_choice",
+        "prompt": "Which products can be reused?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Cups and cloth pads"
+          },
+          {
+            "id": "b",
+            "text": "Disposable pads"
+          },
+          {
+            "id": "c",
+            "text": "Tampons"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Cups and cloth pads can be washed and reused.",
+        "hint": "Meher’s match!",
+        "skill_tag": "reusable products"
+      },
+      {
+        "id": "bloom-q6",
+        "type": "true_false",
+        "prompt": "Pads can be flushed down the toilet.",
+        "options": [
+          {
+            "id": "a",
+            "text": "True"
+          },
+          {
+            "id": "b",
+            "text": "False"
+          }
+        ],
+        "correct_option_id": "b",
+        "explanation": "False. Wrap and bin.",
+        "hint": "What did Wrap It Right say?",
+        "skill_tag": "disposal"
+      },
+      {
+        "id": "bloom-q7",
+        "type": "single_choice",
+        "prompt": "What makes the uterus squeeze during a period?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Prostaglandins"
+          },
+          {
+            "id": "b",
+            "text": "Ice cream"
+          },
+          {
+            "id": "c",
+            "text": "Homework"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Prostaglandins cause the squeezing cramps.",
+        "hint": "A long word starting with “pro”.",
+        "skill_tag": "why cramps happen"
+      },
+      {
+        "id": "bloom-q8",
+        "type": "single_choice",
+        "prompt": "Pain that makes you miss school every month means…",
+        "options": [
+          {
+            "id": "a",
+            "text": "See a doctor"
+          },
+          {
+            "id": "b",
+            "text": "Just put up with it"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Strong pain deserves a doctor’s help.",
+        "hint": "Symptom Sorter said…",
+        "skill_tag": "when pain needs a doctor"
+      },
+      {
+        "id": "bloom-q9",
+        "type": "single_choice",
+        "prompt": "If you notice signs of an infection, you should…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Tell a grown-up and see a doctor"
+          },
+          {
+            "id": "b",
+            "text": "Use a scented wash"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Telling is the fastest way to feel better.",
+        "hint": "Germ Defender’s last tip.",
+        "skill_tag": "what to do"
+      },
+      {
+        "id": "bloom-q10",
+        "type": "single_choice",
+        "prompt": "An upstander…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Helps safely and tells an adult"
+          },
+          {
+            "id": "b",
+            "text": "Watches and laughs"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Upstanders include, don’t join in, and tell.",
+        "hint": "Remember Riya’s group chat.",
+        "skill_tag": "being an upstander"
+      },
+      {
+        "id": "bloom-q11",
+        "type": "single_choice",
+        "prompt": "Private parts are the parts covered by…",
+        "options": [
+          {
+            "id": "a",
+            "text": "A swimsuit"
+          },
+          {
+            "id": "b",
+            "text": "A hat"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "The swimsuit rule.",
+        "hint": "Think of the beach.",
+        "skill_tag": "the swimsuit rule"
+      },
+      {
+        "id": "bloom-q12",
+        "type": "single_choice",
+        "prompt": "India’s free Child Helpline number is…",
+        "options": [
+          {
+            "id": "a",
+            "text": "1098"
+          },
+          {
+            "id": "b",
+            "text": "100"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "1098, open day and night (112 for emergencies).",
+        "hint": "Ten, nine, eight.",
+        "skill_tag": "who can help"
+      }
+    ]
+  }
+}

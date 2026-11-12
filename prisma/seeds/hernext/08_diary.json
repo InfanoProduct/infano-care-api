@@ -1,0 +1,144 @@
+{
+  "moods": [
+    {
+      "id": "happy",
+      "label": "Happy",
+      "color": "#FFE08A"
+    },
+    {
+      "id": "calm",
+      "label": "Calm",
+      "color": "#A8D8BE"
+    },
+    {
+      "id": "tired",
+      "label": "Tired",
+      "color": "#C2B0E6"
+    },
+    {
+      "id": "crampy",
+      "label": "Crampy",
+      "color": "#F7CDAA"
+    },
+    {
+      "id": "worried",
+      "label": "Worried",
+      "color": "#B7D8EF",
+      "shows_support_card": true
+    },
+    {
+      "id": "grumpy",
+      "label": "Grumpy",
+      "color": "#F4A3B4",
+      "shows_support_card": true
+    }
+  ],
+  "energy": [
+    {
+      "id": "low",
+      "label": "Low"
+    },
+    {
+      "id": "okay",
+      "label": "Okay"
+    },
+    {
+      "id": "full",
+      "label": "Full"
+    }
+  ],
+  "flow": [
+    {
+      "id": "none",
+      "label": "Not today"
+    },
+    {
+      "id": "spotting",
+      "label": "Spotting"
+    },
+    {
+      "id": "light",
+      "label": "Light"
+    },
+    {
+      "id": "medium",
+      "label": "Medium"
+    },
+    {
+      "id": "heavy",
+      "label": "Heavy"
+    }
+  ],
+  "body_notes": [
+    "cramps",
+    "headache",
+    "bloating",
+    "acne",
+    "tender chest",
+    "back ache",
+    "none"
+  ],
+  "period_log": {
+    "fields": [
+      "start_date",
+      "end_date",
+      "flow_per_day",
+      "products_used",
+      "what_helped"
+    ],
+    "products": [
+      "Sanitary pad",
+      "Cloth pad",
+      "Period underwear",
+      "Tampon",
+      "Menstrual cup"
+    ],
+    "what_helped": [
+      "Warm water bottle",
+      "Gentle stretch",
+      "Rest",
+      "Water",
+      "Short walk",
+      "Talking to someone"
+    ]
+  },
+  "support_card": {
+    "trigger_moods": [
+      "worried",
+      "grumpy"
+    ],
+    "options": [
+      "worry_jar",
+      "breathing_flower",
+      "talk_to_someone"
+    ]
+  },
+  "tell_a_grown_up_rules": [
+    {
+      "id": "long_period",
+      "rule": "period_length_days > 7"
+    },
+    {
+      "id": "heavy_streak",
+      "rule": "heavy_flow_consecutive_days >= 3"
+    },
+    {
+      "id": "missed",
+      "rule": "no_period_days >= 90 AND has_logged_period_before"
+    }
+  ],
+  "tell_a_grown_up_card": {
+    "title": "Worth telling a grown-up",
+    "body": "This is a good thing to talk about with Mom, Dad or another grown-up you trust. A doctor can help.",
+    "notifies_anyone": false
+  },
+  "insight_templates": [
+    "Your last period started {days} days ago.",
+    "Cycles in the first 1 to 2 years can change a lot, and that’s normal."
+  ],
+  "privacy": {
+    "visible_to": "learner_only",
+    "parent_can_see": false,
+    "sharing_option": false
+  }
+}

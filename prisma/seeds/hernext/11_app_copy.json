@@ -1,0 +1,140 @@
+{
+  "gigi_messages": [
+    "Your garden’s growing nicely. See you soon!",
+    "Your Breathing Flower missed you.",
+    "Chapter {n} is open!",
+    "Start here!"
+  ],
+  "empty_states": {
+    "journey": "Only Moon Meadow is clear; Gigi waves from stone 1: \"Start here!\"",
+    "badges": "Your shelf is waiting to fill up",
+    "diary": "Tap today to say how you feel. It takes 20 seconds.",
+    "journal": "A blank notebook with the first prompt ready, and Safe Circle as \"Add later in Chapter 4\"",
+    "garden_shop": "Seedling petals plus a free starter pot"
+  },
+  "settings_defaults": {
+    "music": true,
+    "sound_effects": true,
+    "volume": "very_low",
+    "gigi_voice": true,
+    "captions": true,
+    "text_size": "normal",
+    "reduce_motion": false,
+    "journal_lock": false
+  },
+  "guardrails": [
+    "No leaderboards or comparing with other girls",
+    "No rewards tied to her body, her period or her diary contents",
+    "No paid currency, ads or pressure tactics",
+    "Parents see badges and petal totals, never what she bought or wrote",
+    "No push notifications to her; reminders go to the parent",
+    "No offers or prices in her space"
+  ],
+  "myth_of_the_day_pool": [
+    {
+      "id": "myth-l1-1",
+      "source_lesson_id": "l1-1",
+      "statement": "“You shouldn’t exercise or play during your period.”",
+      "verdict": "Myth!",
+      "explanation": "Gentle movement often eases cramps. Dance, play, stretch, whatever feels good for you."
+    },
+    {
+      "id": "myth-l1-2",
+      "source_lesson_id": "l1-2",
+      "statement": "“Once your periods start, you stop growing taller.”",
+      "verdict": "Myth!",
+      "explanation": "Growth slows down, but most girls still grow a few more centimetres after their first period."
+    },
+    {
+      "id": "myth-l1-3",
+      "source_lesson_id": "l1-3",
+      "statement": "“During your period you’ll spoil pickle if you touch it.”",
+      "verdict": "Myth!",
+      "explanation": "Periods can’t spoil food. This belief has no science behind it at all."
+    },
+    {
+      "id": "myth-l2-1",
+      "source_lesson_id": "l2-1",
+      "statement": "“You shouldn’t bathe or wash your hair during your period.”",
+      "verdict": "Myth!",
+      "explanation": "A warm bath keeps you fresh and can even ease cramps."
+    },
+    {
+      "id": "myth-l2-2",
+      "source_lesson_id": "l2-2",
+      "statement": "“Girls can’t use tampons or cups until they’re grown up.”",
+      "verdict": "Myth!",
+      "explanation": "Teens can use them too, when they feel ready and know how. Many girls start with pads first."
+    },
+    {
+      "id": "myth-l2-3",
+      "source_lesson_id": "l2-3",
+      "statement": "“It’s fine to flush a pad if you’re in a hurry.”",
+      "verdict": "Myth!",
+      "explanation": "Pads swell up and block pipes. Always wrap and bin, even in a hurry."
+    },
+    {
+      "id": "myth-l2-4",
+      "source_lesson_id": "l2-4",
+      "statement": "“Boys shouldn’t learn about periods.”",
+      "verdict": "Myth!",
+      "explanation": "When everyone understands periods, there’s less teasing and more support."
+    },
+    {
+      "id": "myth-l3-1",
+      "source_lesson_id": "l3-1",
+      "statement": "“Pain that makes you miss school every month is just normal.”",
+      "verdict": "Myth!",
+      "explanation": "Strong pain is worth checking with a doctor. You don’t have to just put up with it."
+    },
+    {
+      "id": "myth-l3-2",
+      "source_lesson_id": "l3-2",
+      "statement": "“If you have a menstrual disorder, you did something wrong.”",
+      "verdict": "Myth!",
+      "explanation": "These conditions are nobody’s fault. Doctors can help you feel better."
+    },
+    {
+      "id": "myth-l3-3",
+      "source_lesson_id": "l3-3",
+      "statement": "“Only girls who aren’t clean get infections.”",
+      "verdict": "Myth!",
+      "explanation": "Anyone can get one. Infections are common, treatable and nothing to be ashamed of."
+    },
+    {
+      "id": "myth-l4-1",
+      "source_lesson_id": "l4-1",
+      "statement": "“Telling an adult about bullying is snitching.”",
+      "verdict": "Myth!",
+      "explanation": "Telling is getting help. Adults can do things kids can’t."
+    },
+    {
+      "id": "myth-l4-2",
+      "source_lesson_id": "l4-2",
+      "statement": "“Only strangers can hurt children.”",
+      "verdict": "Myth!",
+      "explanation": "Sometimes it can be someone a child knows. That’s why every child can say no and tell, about anyone."
+    },
+    {
+      "id": "myth-l4-3",
+      "source_lesson_id": "l4-3",
+      "statement": "“Only the police can report abuse.”",
+      "verdict": "Myth!",
+      "explanation": "Anyone can report, including a child, a parent or a teacher."
+    },
+    {
+      "id": "myth-l4-4",
+      "source_lesson_id": "l4-4",
+      "statement": "“Good friends never fight.”",
+      "verdict": "Myth!",
+      "explanation": "Even best friends disagree. What matters is how you sort it out."
+    },
+    {
+      "id": "myth-l4-5",
+      "source_lesson_id": "l4-5",
+      "statement": "“Strong girls don’t cry.”",
+      "verdict": "Myth!",
+      "explanation": "Crying is a healthy way to let feelings out. Brave people feel things too."
+    }
+  ]
+}

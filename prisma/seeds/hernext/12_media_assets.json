@@ -1,0 +1,384 @@
+{
+  "style_block": "Soft pastel flat-vector illustration for a girls’ health app, rounded friendly shapes, subtle paper grain, gentle soft shadows, Indian girls aged 10 to 13 with warm brown skin tones and varied hair, modest everyday clothing, warm and calm mood. Palette: cream #FFFAF6 background, plum #3D2C4A for lines, rose #C2456A, sky #D8ECF8, mint #D4EFE4, peach #FFE3CC, lavender #E3DAF5, butter #FFF4C7. No text, no letters, no logos, no watermarks.",
+  "gigi_block": "Gigi the mascot: a friendly 12-year-old Indian girl, warm brown skin, dark hair in two round buns, big kind eyes, soft blush pink kurta top.",
+  "sizes": {
+    "lesson_cover": "1200x520",
+    "play_art": "1080x1080",
+    "discover_icon_set": "1500x500 (split into 3)",
+    "chapter_banner": "1200x800",
+    "badge_medal": "800x800 transparent"
+  },
+  "assets": [
+    {
+      "id": "L1.1-A",
+      "purpose": "lesson_cover",
+      "owner": "l1-1",
+      "prompt": "A moonlit meadow at dusk with a glowing crescent moon whose four quarters are tinted in four pastel colours, tiny flowers in a circle on the grass, Gigi sitting cross-legged pointing up at the moon",
+      "file_url": null
+    },
+    {
+      "id": "L1.1-B",
+      "purpose": "play_art",
+      "owner": "l1-1",
+      "prompt": "A round moon dial game board seen from above, four empty curved slots around it, small floating sparkles, sky-blue and lavender tones",
+      "file_url": null
+    },
+    {
+      "id": "L1.1-C",
+      "purpose": "discover_icon_set",
+      "owner": "l1-1",
+      "prompt": "Three small card icons as a set: a tiny egg with a sparkle, a girl dancing joyfully, a crescent moon with a loop arrow",
+      "file_url": null
+    },
+    {
+      "id": "L1.2-A",
+      "purpose": "lesson_cover",
+      "owner": "l1-2",
+      "prompt": "A cheerful travel-passport themed scene: an open pastel passport with blank stamp circles, a winding path with 8 little signposts, Gigi carrying a small backpack",
+      "file_url": null
+    },
+    {
+      "id": "L1.2-B",
+      "purpose": "play_art",
+      "owner": "l1-2",
+      "prompt": "Eight round passport stamp icons in a matching set, each a simple symbol: flower bud, ruler, curved line, droplet, heart wave, sparkle, calendar, smile",
+      "file_url": null
+    },
+    {
+      "id": "L1.2-C",
+      "purpose": "discover_icon_set",
+      "owner": "l1-2",
+      "prompt": "Three small card icons: a clock with a flower, a measuring ruler with a growing sprout, a water droplet with a sparkle",
+      "file_url": null
+    },
+    {
+      "id": "L1.3-A",
+      "purpose": "lesson_cover",
+      "owner": "l1-3",
+      "prompt": "A cosy detective desk with a magnifying glass, a notebook, a small calendar and a cup of chai, soft sky-blue light, Gigi wearing a playful detective cap",
+      "file_url": null
+    },
+    {
+      "id": "L1.3-B",
+      "purpose": "play_art",
+      "owner": "l1-3",
+      "prompt": "Six case-file folders fanned out on a desk, each with a different pastel colour tab, a magnifying glass on top",
+      "file_url": null
+    },
+    {
+      "id": "L1.3-C",
+      "purpose": "discover_icon_set",
+      "owner": "l1-3",
+      "prompt": "Three small card icons: a clean water droplet with a shield, a pickle jar with a crossed-out sad face, a coin beside a small droplet",
+      "file_url": null
+    },
+    {
+      "id": "L2.1-A",
+      "purpose": "lesson_cover",
+      "owner": "l2-1",
+      "prompt": "A bright, clean bathroom shelf in mint tones with a towel, plain soap, cotton underwear folded neatly and a small clock, sunlight through a window, Gigi smiling with a fresh towel",
+      "file_url": null
+    },
+    {
+      "id": "L2.1-B",
+      "purpose": "play_art",
+      "owner": "l2-1",
+      "prompt": "A round care clock face divided into four soft pastel sections (sun, clock hand, moon, crossed circle) with tiny habit icons around it",
+      "file_url": null
+    },
+    {
+      "id": "L2.1-C",
+      "purpose": "discover_icon_set",
+      "owner": "l2-1",
+      "prompt": "Three small card icons: a green leaf with tiny friendly dots, a water droplet over a bathtub, a light bulb with a soft glow",
+      "file_url": null
+    },
+    {
+      "id": "L2.2-A",
+      "purpose": "lesson_cover",
+      "owner": "l2-2",
+      "prompt": "A friendly “matchmaker” scene: four girls of different looks side by side, each holding a different pastel box (pad, cup, cloth pad, period underwear) shown as simple abstract shapes, no brand marks",
+      "file_url": null
+    },
+    {
+      "id": "L2.2-B",
+      "purpose": "play_art",
+      "owner": "l2-2",
+      "prompt": "Four product cards in a row as simple flat icons: a pad, a menstrual cup, a folded cloth pad, a pair of period underwear, mint and peach tones",
+      "file_url": null
+    },
+    {
+      "id": "L2.2-C",
+      "purpose": "discover_icon_set",
+      "owner": "l2-2",
+      "prompt": "Three small card icons: a leaf with a recycle loop, a heart with a small sparkle, a light bulb over folded underwear",
+      "file_url": null
+    },
+    {
+      "id": "L2.3-A",
+      "purpose": "lesson_cover",
+      "owner": "l2-3",
+      "prompt": "A step-by-step bathroom scene: hand washing at a sink, a small covered bin with a foot pedal, a wrapped paper parcel, cloth pads drying on a line in sunshine, Gigi giving a thumbs up",
+      "file_url": null
+    },
+    {
+      "id": "L2.3-B",
+      "purpose": "play_art",
+      "owner": "l2-3",
+      "prompt": "Seven numbered-shape step tiles in a row with icons only (hands under tap, wrapper, roll, bin, pad, hands), no digits or text",
+      "file_url": null
+    },
+    {
+      "id": "L2.3-C",
+      "purpose": "discover_icon_set",
+      "owner": "l2-3",
+      "prompt": "Three small card icons: a worker’s glove with a heart, a toilet with a no sign, a small zip pouch",
+      "file_url": null
+    },
+    {
+      "id": "L2.4-A",
+      "purpose": "lesson_cover",
+      "owner": "l2-4",
+      "prompt": "A school corridor with a clean girls’ toilet sign shown only as a pictogram, a girl walking confidently with a small pouch, friends chatting kindly, soft mint light",
+      "file_url": null
+    },
+    {
+      "id": "L2.4-B",
+      "purpose": "play_art",
+      "owner": "l2-4",
+      "prompt": "An open zip pouch from above with neatly arranged items: pads, a tissue pack, a folded spare underwear, a small sanitiser bottle, a disposal bag",
+      "file_url": null
+    },
+    {
+      "id": "L2.4-C",
+      "purpose": "discover_icon_set",
+      "owner": "l2-4",
+      "prompt": "Three small card icons: a calendar with a star, two kids (boy and girl) with a heart, a speech bubble with a hand raised",
+      "file_url": null
+    },
+    {
+      "id": "L3.1-A",
+      "purpose": "lesson_cover",
+      "owner": "l3-1",
+      "prompt": "Rolling peach hills at sunset with a cosy blanket picnic, a warm water bottle, a cup of warm water, Gigi stretching gently in a child’s-pose yoga move",
+      "file_url": null
+    },
+    {
+      "id": "L3.1-B",
+      "purpose": "play_art",
+      "owner": "l3-1",
+      "prompt": "A simple, modest front-facing body outline of a girl in a loose kurta with four soft glowing circles (head, upper back, tummy, lower belly), surrounded by six toolbox icons",
+      "file_url": null
+    },
+    {
+      "id": "L3.1-C",
+      "purpose": "discover_icon_set",
+      "owner": "l3-1",
+      "prompt": "Three small card icons: a heart with soft waves, a speech bubble with a small cross, a water droplet with a puffy cloud",
+      "file_url": null
+    },
+    {
+      "id": "L3.2-A",
+      "purpose": "lesson_cover",
+      "owner": "l3-2",
+      "prompt": "A friendly doctor’s room: a smiling woman doctor in a white coat, a mother and daughter seated together, a simple uterus-shaped illustration poster on the wall drawn as abstract shapes, peach tones",
+      "file_url": null
+    },
+    {
+      "id": "L3.2-B",
+      "purpose": "play_art",
+      "owner": "l3-2",
+      "prompt": "Two sorting baskets, one mint with a tick symbol and one peach with a plus symbol, with blank clue cards floating between them",
+      "file_url": null
+    },
+    {
+      "id": "L3.2-C",
+      "purpose": "discover_icon_set",
+      "owner": "l3-2",
+      "prompt": "Three small card icons: a heart with a ribbon, a speech bubble with a small heart, a stethoscope with a sparkle",
+      "file_url": null
+    },
+    {
+      "id": "L3.3-A",
+      "purpose": "lesson_cover",
+      "owner": "l3-3",
+      "prompt": "A playful “defender” scene: Gigi holding a glowing sky-blue shield as cute cartoon germs bounce off it, a cotton underwear icon and a water droplet floating nearby",
+      "file_url": null
+    },
+    {
+      "id": "L3.3-B",
+      "purpose": "play_art",
+      "owner": "l3-3",
+      "prompt": "A shield on one side and a cluster of small cartoon germs on the other, with habit icons (cotton, pad, droplet, towel) in between",
+      "file_url": null
+    },
+    {
+      "id": "L3.3-C",
+      "purpose": "discover_icon_set",
+      "owner": "l3-3",
+      "prompt": "Three small card icons: friendly round bacteria guards with tiny shields, a speech bubble with a heart, a light bulb with a droplet",
+      "file_url": null
+    },
+    {
+      "id": "L4.1-A",
+      "purpose": "lesson_cover",
+      "owner": "l4-1",
+      "prompt": "A school courtyard where a girl sits alone and two classmates walk over smiling to include her, a third girl showing a teacher her phone, soft lavender tones",
+      "file_url": null
+    },
+    {
+      "id": "L4.1-B",
+      "purpose": "play_art",
+      "owner": "l4-1",
+      "prompt": "Four moment cards as simple scenes: a phone with chat bubbles, a lunch table, a hurt face with a kind hand on the shoulder, a game controller with a lock",
+      "file_url": null
+    },
+    {
+      "id": "L4.1-C",
+      "purpose": "discover_icon_set",
+      "owner": "l4-1",
+      "prompt": "Three small card icons: a star with a hand, a speech bubble with a check, a shield with a phone",
+      "file_url": null
+    },
+    {
+      "id": "L4.2-A",
+      "purpose": "lesson_cover",
+      "owner": "l4-2",
+      "prompt": "A calm lavender valley with a girl standing tall inside a soft glowing circle (her personal space bubble), three trusted adults (mother, grandmother, teacher) waiting nearby with open, friendly body language",
+      "file_url": null
+    },
+    {
+      "id": "L4.2-B",
+      "purpose": "play_art",
+      "owner": "l4-2",
+      "prompt": "Three gentle sorting zones: a mint zone with a high-five icon, a butter-yellow zone with a raised palm, a lavender zone with a shield, no people",
+      "file_url": null
+    },
+    {
+      "id": "L4.2-C",
+      "purpose": "discover_icon_set",
+      "owner": "l4-2",
+      "prompt": "Three small card icons: a heart held in two hands, a speech bubble with a shield, a wrapped birthday gift next to a lock with a question mark",
+      "file_url": null
+    },
+    {
+      "id": "L4.3-A",
+      "purpose": "lesson_cover",
+      "owner": "l4-3",
+      "prompt": "A warm, child-friendly scene of a girl holding a glowing shield with a small scale-of-justice symbol, a kind woman officer and a mother beside her, lavender and butter tones, nothing frightening",
+      "file_url": null
+    },
+    {
+      "id": "L4.3-B",
+      "purpose": "play_art",
+      "owner": "l4-3",
+      "prompt": "Six collectible rights cards fanned out, each with one simple icon: shield, two children, heart, lock, little house, telephone",
+      "file_url": null
+    },
+    {
+      "id": "L4.3-C",
+      "purpose": "discover_icon_set",
+      "owner": "l4-3",
+      "prompt": "Three small card icons: a shield with a star, a speech bubble with a telephone, an old-style telephone with a heart",
+      "file_url": null
+    },
+    {
+      "id": "L4.4-A",
+      "purpose": "lesson_cover",
+      "owner": "l4-4",
+      "prompt": "Two friends laughing on a bench under a tree, one waving a small green flag, a red flag fluttering gently far in the distance, lavender and mint tones",
+      "file_url": null
+    },
+    {
+      "id": "L4.4-B",
+      "purpose": "play_art",
+      "owner": "l4-4",
+      "prompt": "A green flag and a red flag crossed, with small friendship icons around them (heart, speech bubbles, a handshake)",
+      "file_url": null
+    },
+    {
+      "id": "L4.4-C",
+      "purpose": "discover_icon_set",
+      "owner": "l4-4",
+      "prompt": "Three small card icons: two speech bubbles with “I” shape abstract, two hearts overlapping, a light bulb with a smile",
+      "file_url": null
+    },
+    {
+      "id": "L4.5-A",
+      "purpose": "lesson_cover",
+      "owner": "l4-5",
+      "prompt": "A garden of mood flowers in different pastel colours, Gigi kneeling and smiling as a big flower opens with her breath, soft sunlight, lavender valley",
+      "file_url": null
+    },
+    {
+      "id": "L4.5-B",
+      "purpose": "play_art",
+      "owner": "l4-5",
+      "prompt": "A single large breathing flower with petals that open and close, shown in two states side by side",
+      "file_url": null
+    },
+    {
+      "id": "L4.5-C",
+      "purpose": "discover_icon_set",
+      "owner": "l4-5",
+      "prompt": "Three small card icons: a leaf with a breath swirl, a single teardrop with a heart, a heart with a small sun",
+      "file_url": null
+    },
+    {
+      "id": "C1-A",
+      "purpose": "chapter_banner",
+      "owner": "ch1",
+      "prompt": "Chapter banner: Moon Meadow, a dreamy night meadow with a big pastel moon, fireflies and a winding stone path, Gigi waving",
+      "file_url": null
+    },
+    {
+      "id": "C1-B",
+      "purpose": "badge_medal",
+      "owner": "ch1",
+      "prompt": "Chapter badge medal: Cycle Explorer, a round sky-blue medal with a crescent moon and three tiny stars, dashed white rim",
+      "file_url": null
+    },
+    {
+      "id": "C2-A",
+      "purpose": "chapter_banner",
+      "owner": "ch2",
+      "prompt": "Chapter banner: Care Cove, a calm mint seaside cove with a little hut, shells and a care kit on the sand, Gigi with a small pouch",
+      "file_url": null
+    },
+    {
+      "id": "C2-B",
+      "purpose": "badge_medal",
+      "owner": "ch2",
+      "prompt": "Chapter badge medal: Care Captain, a round mint medal with a leaf and a little captain’s hat, dashed white rim",
+      "file_url": null
+    },
+    {
+      "id": "C3-A",
+      "purpose": "chapter_banner",
+      "owner": "ch3",
+      "prompt": "Chapter banner: Comfort Hills, soft peach hills at sunset with a cosy blanket, a warm bottle and a kite, Gigi relaxing",
+      "file_url": null
+    },
+    {
+      "id": "C3-B",
+      "purpose": "badge_medal",
+      "owner": "ch3",
+      "prompt": "Chapter badge medal: Body Listener, a round peach medal with a heart and soft sound waves, dashed white rim",
+      "file_url": null
+    },
+    {
+      "id": "C4-A",
+      "purpose": "chapter_banner",
+      "owner": "ch4",
+      "prompt": "Chapter banner: Brave Heart Valley, a gentle lavender valley with a glowing heart-shaped lake, friends walking together, Gigi in front",
+      "file_url": null
+    },
+    {
+      "id": "C4-B",
+      "purpose": "badge_medal",
+      "owner": "ch4",
+      "prompt": "Chapter badge medal: Brave Heart, a round lavender medal with a shield and a heart inside, dashed white rim",
+      "file_url": null
+    }
+  ]
+}

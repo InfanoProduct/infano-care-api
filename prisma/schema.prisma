@@ -44,6 +44,10 @@ model User {
   whatsappWeeklySummary     Boolean                  @default(true)
   whatsappLessonNudge       Boolean                  @default(true)
   whatsappNudgeTime         String?                  @default("6:30 PM")
+  pinAskMode                String                   @default("always")
+  notifyOrderUpdates        Boolean                  @default(true)
+  improveCourseOptIn        Boolean                  @default(true)
+  communityWaitlist         Boolean                  @default(false)
   learners                  LearnerProfile[]         @relation("ParentLearners")
   tempPasswordExpiresAt     DateTime?
   articleBookmarks          ArticleBookmark[]
@@ -134,21 +138,27 @@ model Profile {
 }
 
 model LearnerProfile {
-  id               String    @id @default(uuid())
+  id               String                  @id @default(uuid())
   parentId         String
   name             String
-  age              String    @default("11")
+  age              String                  @default("11")
   periodStatus     String?
-  worries          String[]  @default([])
+  worries          String[]                @default([])
   avatar           String?
-  flowersCount     Int       @default(0)
-  petalsCount      Int       @default(0)
-  streakDays       Int       @default(0)
-  completedLessons String[]  @default([])
+  flowersCount     Int                     @default(0)
+  petalsCount      Int                     @default(0)
+  streakDays       Int                     @default(0)
+  completedLessons String[]                @default([])
   lastActiveAt     DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  parent           User      @relation("ParentLearners", fields: [parentId], references: [id], onDelete: Cascade)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  parent           User                    @relation("ParentLearners", fields: [parentId], references: [id], onDelete: Cascade)
+  lessonProgress   LearnerLessonProgress[]
+  activityResults  LearnerActivityResult[]
+  checkinAttempts  LearnerCheckinAttempt[]
+  badgeAwards      LearnerBadgeAward[]
+  petalLedger      LearnerPetalLedger[]
+  journalEntries   LearnerJournalEntry[]
 
   @@index([parentId])
 }
@@ -2138,4 +2148,289 @@ enum SosStatus {
 enum LmsChapterType {
   VIDEO
   ASSESSMENT
+}
+
+// ── Interactive HerNext Course Module (Seeded + Runtime Progress) ─────────────
+
+model Course {
+  id                String          @id
+  title             String
+  audience          String
+  videoLanguage     String          @default("Hinglish")
+  captionLanguage   String          @default("en")
+  activityLanguage  String          @default("en")
+  chapterCount      Int             @default(4)
+  lessonCount       Int             @default(15)
+  unlockRule        String          @default("sequential")
+  parentPreview     String          @default("all_lessons")
+  lessonSteps       Json            @default("[]")
+  playUnlockRule    Json            @default("{}")
+  certificateConfig Json            @default("{}")
+  version           String          @default("2026-11-11")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  chapters          CourseChapter[]
+  checkins          CourseCheckin[]
+}
+
+model CourseChapter {
+  id             String         @id
+  courseId       String
+  number         Int
+  worldName      String
+  theme          String
+  sortOrder      Int
+  colors         Json           @default("{}")
+  iconSvgPath    String
+  expert         Json           @default("{}")
+  unlockRequires String?
+  calmMode       Boolean        @default(false)
+  contentStatus  String         @default("medical_review_pending")
+  images         Json           @default("{}")
+  checkinId      String?
+  badgeId        String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  course         Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons        CourseLesson[]
+  checkin        CourseCheckin?
+
+  @@index([courseId])
+}
+
+model CourseLesson {
+  id             String                  @id
+  code           String
+  chapterId      String
+  sortOrder      Int
+  orderInChapter Int
+  title          String
+  tagline        String
+  contentStatus  String                  @default("medical_review_pending")
+  calmMode       Boolean                 @default(false)
+  unlockRequires String?
+  freePreview    Boolean                 @default(false)
+  video          Json                    @default("{}")
+  topics         Json                    @default("[]")
+  pauseAndThink  Json                    @default("[]")
+  discoverCards  Json                    @default("[]")
+  reflect        Json                    @default("{}")
+  completion     Json                    @default("{}")
+  imageIds       Json                    @default("{}")
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  chapter        CourseChapter           @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  activity       CourseActivity?
+  progress       LearnerLessonProgress[]
+
+  @@index([chapterId])
+}
+
+model CourseActivity {
+  id               String                  @id
+  lessonId         String                  @unique
+  name             String
+  estMinutes       Int                     @default(3)
+  petalsOnComplete Int                     @default(10)
+  engine           String
+  instructions     String                  @default("")
+  config           Json                    @default("{}")
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  lesson           CourseLesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  results          LearnerActivityResult[]
+}
+
+model CourseCheckin {
+  id                String                  @id
+  courseId          String
+  chapterId         String?                 @unique
+  title             String
+  questionCount     Int                     @default(10)
+  passMark          Int                     @default(7)
+  timer             Boolean                 @default(false)
+  lives             Boolean                 @default(false)
+  hintsReducePetals Boolean                 @default(false)
+  badgeOnPass       String?
+  perfectScoreBadge String?
+  failTitle         String                  @default("Almost there!")
+  reviewLinks       Json                    @default("[]")
+  questions         Json                    @default("[]")
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  course            Course                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapter           CourseChapter?          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  attempts          LearnerCheckinAttempt[]
+}
+
+model CourseBadge {
+  id                String              @id
+  name              String
+  type              String
+  hiddenUntilEarned Boolean             @default(false)
+  description       String
+  rule              Json                @default("{}")
+  sortOrder         Int                 @default(0)
+  petalsOnAward     Int                 @default(0)
+  imageId           String?
+  shownToParent     Boolean             @default(true)
+  unlocksShopItem   String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  awards            LearnerBadgeAward[]
+}
+
+model CourseShopItem {
+  id                String   @id
+  category          String
+  name              String
+  pricePetals       Int      @default(0)
+  requiresBadgeId   String?
+  freeOnSignup      Boolean  @default(false)
+  placeableInGarden Boolean  @default(true)
+  imageId           String?
+  sortOrder         Int      @default(0)
+  metadata          Json     @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model CourseCopyPool {
+  id        String   @id
+  data      Json     @default("{}")
+  updatedAt DateTime @updatedAt
+}
+
+model LearnerLessonProgress {
+  id                String         @id @default(uuid())
+  learnerId         String
+  lessonId          String
+  watchPositionS    Int            @default(0)
+  watchPercent      Int            @default(0)
+  stepsDone         String[]       @default([])
+  pauseThinkAnswers Json           @default("{}")
+  reflectAnswers    Json           @default("{}")
+  bustedMyths       String[]       @default([])
+  completedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  learner           LearnerProfile @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  lesson            CourseLesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, lessonId])
+  @@index([learnerId])
+}
+
+model LearnerActivityResult {
+  id          String         @id @default(uuid())
+  learnerId   String
+  activityId  String
+  score       Int            @default(0)
+  flags       String[]       @default([])
+  completedAt DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  learner     LearnerProfile @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  activity    CourseActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, activityId])
+  @@index([learnerId])
+}
+
+model LearnerCheckinAttempt {
+  id        String         @id @default(uuid())
+  learnerId String
+  checkinId String
+  answers   Json           @default("{}")
+  score     Int
+  passed    Boolean
+  createdAt DateTime       @default(now())
+  learner   LearnerProfile @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  checkin   CourseCheckin  @relation(fields: [checkinId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId, checkinId])
+}
+
+model LearnerBadgeAward {
+  id               String         @id @default(uuid())
+  learnerId        String
+  badgeId          String
+  sharedWithParent Boolean        @default(false)
+  awardedAt        DateTime       @default(now())
+  learner          LearnerProfile @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  badge            CourseBadge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, badgeId])
+  @@index([learnerId])
+}
+
+model LearnerPetalLedger {
+  id        String         @id @default(uuid())
+  learnerId String
+  ruleId    String
+  delta     Int
+  refId     String?
+  createdAt DateTime       @default(now())
+  learner   LearnerProfile @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId])
+  @@index([learnerId, ruleId, refId])
+}
+
+model LearnerJournalEntry {
+  id           String         @id @default(uuid())
+  learnerId    String
+  lessonId     String?
+  chapterTitle String         @default("MY REFLECTIONS")
+  chapterColor String         @default("#5A4385")
+  prompt       String?
+  text         String
+  stickerIndex Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  learner      LearnerProfile @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId])
+}
+
+model OrderRefundRequest {
+  id            String   @id @default(uuid())
+  orderId       String
+  userId        String
+  referenceCode String   @unique
+  reason        String
+  feedback      String?
+  dataOption    String   @default("keep")
+  amount        Float    @default(0)
+  status        String   @default("REQUESTED")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([orderId])
+}
+
+model OrderIssueReport {
+  id            String   @id @default(uuid())
+  orderId       String
+  userId        String
+  referenceCode String   @unique
+  issueType     String
+  notes         String?
+  status        String   @default("OPEN")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([orderId])
+}
+
+model ParentConcern {
+  id        String   @id @default(uuid())
+  userId    String
+  learnerId String?
+  message   String
+  status    String   @default("RECEIVED")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

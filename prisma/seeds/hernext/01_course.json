@@ -1,0 +1,42 @@
+{
+  "id": "hernext-foundation",
+  "title": "Girlhood: HerNext (Foundation)",
+  "audience": "Girls aged 9 to 15, with a parent",
+  "video_language": "Hinglish",
+  "caption_language": "en",
+  "activity_language": "en",
+  "chapter_count": 4,
+  "lesson_count": 15,
+  "unlock_rule": "sequential",
+  "parent_preview": "all_lessons",
+  "lesson_steps": [
+    "watch",
+    "play",
+    "discover",
+    "reflect"
+  ],
+  "play_unlock_rule": {
+    "step": "play",
+    "requires": "watch",
+    "min_watch_percent": 80
+  },
+  "certificate": {
+    "id": "certificate-of-confidence",
+    "title": "Certificate of Confidence",
+    "requires": [
+      "all_chapter_badges",
+      "bloom_challenge"
+    ],
+    "fields": [
+      "learner_first_name",
+      "completion_date",
+      "chapter_badges",
+      "expert_signature"
+    ],
+    "formats": [
+      "image",
+      "pdf"
+    ]
+  },
+  "version": "2026-11-11"
+}

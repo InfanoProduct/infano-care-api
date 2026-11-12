@@ -1,0 +1,274 @@
+[
+  {
+    "id": "badge-seedling",
+    "name": "Seedling",
+    "type": "journey",
+    "hidden_until_earned": false,
+    "description": "Plants her first seed (onboarding)",
+    "rule": {
+      "event": "onboarding_completed"
+    },
+    "sort_order": 1,
+    "petals_on_award": 0,
+    "image_id": "BADGE-01",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-first-bloom",
+    "name": "First Bloom",
+    "type": "journey",
+    "hidden_until_earned": false,
+    "description": "Finishes her first lesson",
+    "rule": {
+      "event": "lesson_completed",
+      "count": 1
+    },
+    "sort_order": 2,
+    "petals_on_award": 0,
+    "image_id": "BADGE-02",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-half-garden",
+    "name": "Half Garden",
+    "type": "journey",
+    "hidden_until_earned": false,
+    "description": "Finishes 8 lessons",
+    "rule": {
+      "event": "lesson_completed",
+      "count": 8
+    },
+    "sort_order": 3,
+    "petals_on_award": 0,
+    "image_id": "BADGE-03",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-full-bloom",
+    "name": "Full Bloom",
+    "type": "journey",
+    "hidden_until_earned": false,
+    "description": "Finishes all 15 lessons",
+    "rule": {
+      "event": "lesson_completed",
+      "count": 15
+    },
+    "sort_order": 4,
+    "petals_on_award": 0,
+    "image_id": "BADGE-04",
+    "shown_to_parent": true,
+    "unlocks_shop_item": "deco-rainbow"
+  },
+  {
+    "id": "badge-cycle-explorer",
+    "name": "Cycle Explorer",
+    "type": "chapter",
+    "hidden_until_earned": false,
+    "description": "Passes Chapter 1 check-in",
+    "rule": {
+      "event": "checkin_passed",
+      "checkin_id": "checkin-ch1"
+    },
+    "sort_order": 5,
+    "petals_on_award": 50,
+    "image_id": "BADGE-05",
+    "shown_to_parent": true,
+    "unlocks_shop_item": "deco-lantern"
+  },
+  {
+    "id": "badge-care-captain",
+    "name": "Care Captain",
+    "type": "chapter",
+    "hidden_until_earned": false,
+    "description": "Passes Chapter 2 check-in",
+    "rule": {
+      "event": "checkin_passed",
+      "checkin_id": "checkin-ch2"
+    },
+    "sort_order": 6,
+    "petals_on_award": 50,
+    "image_id": "BADGE-06",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-body-listener",
+    "name": "Body Listener",
+    "type": "chapter",
+    "hidden_until_earned": false,
+    "description": "Passes Chapter 3 check-in",
+    "rule": {
+      "event": "checkin_passed",
+      "checkin_id": "checkin-ch3"
+    },
+    "sort_order": 7,
+    "petals_on_award": 50,
+    "image_id": "BADGE-07",
+    "shown_to_parent": true,
+    "unlocks_shop_item": "pot-lotus"
+  },
+  {
+    "id": "badge-brave-heart",
+    "name": "Brave Heart",
+    "type": "chapter",
+    "hidden_until_earned": false,
+    "description": "Passes Chapter 4 check-in",
+    "rule": {
+      "event": "checkin_passed",
+      "checkin_id": "checkin-ch4"
+    },
+    "sort_order": 8,
+    "petals_on_award": 50,
+    "image_id": "BADGE-08",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-myth-buster",
+    "name": "Myth Buster",
+    "type": "skill",
+    "hidden_until_earned": false,
+    "description": "Busts 20 myths across the app",
+    "rule": {
+      "event": "myth_busted",
+      "count": 20
+    },
+    "sort_order": 9,
+    "petals_on_award": 0,
+    "image_id": "BADGE-09",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-quiz-whiz",
+    "name": "Quiz Whiz",
+    "type": "skill",
+    "hidden_until_earned": false,
+    "description": "Scores 10/10 on any check-in",
+    "rule": {
+      "event": "checkin_score",
+      "score": 10
+    },
+    "sort_order": 10,
+    "petals_on_award": 0,
+    "image_id": "BADGE-10",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-kit-packer",
+    "name": "Kit Packer",
+    "type": "skill",
+    "hidden_until_earned": false,
+    "description": "Finds the best path in School Day Surprise",
+    "rule": {
+      "event": "activity_flag",
+      "activity_id": "act-l2-4",
+      "flag": "used_kit"
+    },
+    "sort_order": 11,
+    "petals_on_award": 0,
+    "image_id": "BADGE-11",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-calm-breather",
+    "name": "Calm Breather",
+    "type": "skill",
+    "hidden_until_earned": false,
+    "description": "Completes 5 Breathing Flower sessions",
+    "rule": {
+      "event": "breathing_session_completed",
+      "count": 5
+    },
+    "sort_order": 12,
+    "petals_on_award": 0,
+    "image_id": "BADGE-12",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-deep-thinker",
+    "name": "Deep Thinker",
+    "type": "skill",
+    "hidden_until_earned": false,
+    "description": "Answers every Pause & think in a chapter",
+    "rule": {
+      "event": "pause_think_all_answered_in_chapter",
+      "count": 1
+    },
+    "sort_order": 13,
+    "petals_on_award": 0,
+    "image_id": "BADGE-13",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-reflective-writer",
+    "name": "Reflective Writer",
+    "type": "skill",
+    "hidden_until_earned": false,
+    "description": "Writes 5 journal entries",
+    "rule": {
+      "event": "journal_entry_saved",
+      "count": 5
+    },
+    "sort_order": 14,
+    "petals_on_award": 0,
+    "image_id": "BADGE-14",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-steady-learner",
+    "name": "Steady Learner",
+    "type": "skill",
+    "hidden_until_earned": false,
+    "description": "Learns on 3 different days in one week",
+    "rule": {
+      "event": "distinct_learning_days_in_week",
+      "count": 3
+    },
+    "sort_order": 15,
+    "petals_on_award": 0,
+    "image_id": "BADGE-15",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-diary-keeper",
+    "name": "Diary Keeper",
+    "type": "secret",
+    "hidden_until_earned": true,
+    "description": "Checks in to her diary on 7 days",
+    "rule": {
+      "event": "diary_checkin_day",
+      "count": 7
+    },
+    "sort_order": 16,
+    "petals_on_award": 0,
+    "image_id": "BADGE-16",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-gigis-friend",
+    "name": "Gigi's Friend",
+    "type": "secret",
+    "hidden_until_earned": true,
+    "description": "Taps Gigi 10 times on the map",
+    "rule": {
+      "event": "gigi_tapped",
+      "count": 10
+    },
+    "sort_order": 17,
+    "petals_on_award": 0,
+    "image_id": "BADGE-17",
+    "shown_to_parent": true
+  },
+  {
+    "id": "badge-festival-star",
+    "name": "Festival Star",
+    "type": "secret",
+    "hidden_until_earned": true,
+    "description": "Completes the Bloom Challenge",
+    "rule": {
+      "event": "bloom_challenge_completed"
+    },
+    "sort_order": 18,
+    "petals_on_award": 0,
+    "image_id": "BADGE-18",
+    "shown_to_parent": true
+  }
+]

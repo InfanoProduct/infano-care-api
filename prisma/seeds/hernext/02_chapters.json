@@ -1,0 +1,149 @@
+[
+  {
+    "id": "ch1",
+    "number": 1,
+    "world_name": "Moon Meadow",
+    "theme": "Understanding Menstruation",
+    "sort_order": 1,
+    "colors": {
+      "background": "#D8ECF8",
+      "ink": "#2F6494",
+      "accent": "#8EBFE0",
+      "accent_light": "#B7D8EF",
+      "soft": "#E3F0FA"
+    },
+    "icon_svg_path": "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z",
+    "expert": {
+      "name": "Dr. Meera Iyer [placeholder]",
+      "role": "Gynaecologist",
+      "photo_url": null
+    },
+    "lesson_ids": [
+      "l1-1",
+      "l1-2",
+      "l1-3"
+    ],
+    "checkin_id": "checkin-ch1",
+    "badge_id": "badge-cycle-explorer",
+    "unlock": {
+      "requires": null
+    },
+    "calm_mode": false,
+    "content_status": "medical_review_pending",
+    "images": {
+      "banner": "C1-A",
+      "badge_medal": "C1-B"
+    }
+  },
+  {
+    "id": "ch2",
+    "number": 2,
+    "world_name": "Care Cove",
+    "theme": "Menstrual Hygiene",
+    "sort_order": 2,
+    "colors": {
+      "background": "#D4EFE4",
+      "ink": "#24735A",
+      "accent": "#7FC3A3",
+      "accent_light": "#A8D8BE",
+      "soft": "#E6F5EE"
+    },
+    "icon_svg_path": "M5 19c0-8 6-14 14-14 0 8-6 14-14 14zM5 19l7-7",
+    "expert": {
+      "name": "Dr. Meera Iyer [placeholder]",
+      "role": "Gynaecologist",
+      "photo_url": null
+    },
+    "lesson_ids": [
+      "l2-1",
+      "l2-2",
+      "l2-3",
+      "l2-4"
+    ],
+    "checkin_id": "checkin-ch2",
+    "badge_id": "badge-care-captain",
+    "unlock": {
+      "requires": "checkin-ch1_passed"
+    },
+    "calm_mode": false,
+    "content_status": "medical_review_pending",
+    "images": {
+      "banner": "C2-A",
+      "badge_medal": "C2-B"
+    }
+  },
+  {
+    "id": "ch3",
+    "number": 3,
+    "world_name": "Comfort Hills",
+    "theme": "Discomfort, Disorders and Infections",
+    "sort_order": 3,
+    "colors": {
+      "background": "#FFE3CC",
+      "ink": "#9A4A16",
+      "accent": "#F0AF7E",
+      "accent_light": "#F7CDAA",
+      "soft": "#FFF1E6"
+    },
+    "icon_svg_path": "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z",
+    "expert": {
+      "name": "Dr. Meera Iyer [placeholder]",
+      "role": "Gynaecologist",
+      "photo_url": null
+    },
+    "lesson_ids": [
+      "l3-1",
+      "l3-2",
+      "l3-3"
+    ],
+    "checkin_id": "checkin-ch3",
+    "badge_id": "badge-body-listener",
+    "unlock": {
+      "requires": "checkin-ch2_passed"
+    },
+    "calm_mode": false,
+    "content_status": "medical_review_pending",
+    "images": {
+      "banner": "C3-A",
+      "badge_medal": "C3-B"
+    }
+  },
+  {
+    "id": "ch4",
+    "number": 4,
+    "world_name": "Brave Heart Valley",
+    "theme": "Safety and Wellbeing",
+    "sort_order": 4,
+    "colors": {
+      "background": "#E3DAF5",
+      "ink": "#5A4385",
+      "accent": "#A992D6",
+      "accent_light": "#C9B6EC",
+      "soft": "#F1ECFA"
+    },
+    "icon_svg_path": "M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z",
+    "expert": {
+      "name": "Ms. Kavya Rao [placeholder]",
+      "role": "Child psychologist",
+      "photo_url": null
+    },
+    "lesson_ids": [
+      "l4-1",
+      "l4-2",
+      "l4-3",
+      "l4-4",
+      "l4-5"
+    ],
+    "checkin_id": "checkin-ch4",
+    "badge_id": "badge-brave-heart",
+    "unlock": {
+      "requires": "checkin-ch3_passed"
+    },
+    "calm_mode": true,
+    "content_status": "child_safety_review_pending",
+    "images": {
+      "banner": "C4-A",
+      "badge_medal": "C4-B"
+    }
+  }
+]

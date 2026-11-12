@@ -13,7 +13,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed:lms": "tsx --env-file=.env src/modules/lms/lms.seed.ts"
+    "seed:lms": "tsx --env-file=.env src/modules/lms/lms.seed.ts",
+    "seed:course": "tsx --env-file=.env src/modules/course/course.seed.ts"
   },
   "dependencies": {
     "@paypal/paypal-server-sdk": "^2.5.0",

@@ -1,0 +1,47 @@
+{
+  "talk_to_someone": {
+    "available_in": [
+      "journal",
+      "diary",
+      "worry_jar",
+      "chapter 4 screens"
+    ],
+    "entries": [
+      {
+        "id": "tell_parent",
+        "type": "in_person",
+        "title": "Tell Mom in person",
+        "body": "Find a quiet moment and say: “Mom, can we talk? Something’s on my mind.”"
+      },
+      {
+        "id": "safe_circle",
+        "type": "safe_circle_list",
+        "title": "My Safe Circle"
+      },
+      {
+        "id": "child_helpline",
+        "type": "phone",
+        "title": "Child Helpline 1098",
+        "number": "1098",
+        "body": "Free, day and night, for children"
+      },
+      {
+        "id": "emergency",
+        "type": "phone",
+        "title": "Emergency",
+        "number": "112",
+        "body": "If you are in danger right now"
+      },
+      {
+        "id": "counsellor",
+        "type": "private_message",
+        "title": "Send a private note to Infano’s counsellor"
+      }
+    ]
+  },
+  "parent_concern": {
+    "title": "Share a concern privately",
+    "whatsapp": "+919243019243",
+    "email": "connect@infano.care"
+  }
+}

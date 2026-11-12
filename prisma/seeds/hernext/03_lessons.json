@@ -1,0 +1,3986 @@
+[
+  {
+    "id": "l1-1",
+    "code": "1.1",
+    "chapter_id": "ch1",
+    "sort_order": 1,
+    "order_in_chapter": 1,
+    "title": "The Menstrual Cycle",
+    "tagline": "A month-long story your body tells",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": null
+    },
+    "free_preview": true,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 920,
+      "duration_label": "15:20",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L1.1-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "What is a period, and why does it happen?",
+        "caption": "Every month, the uterus builds a soft, cosy lining."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 200,
+        "start_label": "3:20",
+        "title": "Four phases: a month-long moon story",
+        "caption": "Period, egg growing, egg release, lining waits."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 430,
+        "start_label": "7:10",
+        "title": "Hormones: your body’s messengers",
+        "caption": "Oestrogen and progesterone rise and fall like tides."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 650,
+        "start_label": "10:50",
+        "title": "How long is a cycle? Every body differs",
+        "caption": "For teens, 21 to 45 days is common."
+      },
+      {
+        "id": "t5",
+        "start_seconds": 790,
+        "start_label": "13:10",
+        "title": "Tracking your cycle like a pro",
+        "caption": "A simple diary helps you notice your own rhythm."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Which phase comes right after the period?",
+        "options": [
+          {
+            "id": "a",
+            "text": "The egg starts growing"
+          },
+          {
+            "id": "b",
+            "text": "The egg is released"
+          },
+          {
+            "id": "c",
+            "text": "The lining waits"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "After the period, the follicular phase begins and a new egg starts growing in the ovary.",
+        "at_seconds": 430,
+        "at_label": "7:10",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Which hormone helps build the cosy lining?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Oestrogen"
+          },
+          {
+            "id": "b",
+            "text": "Adrenaline"
+          },
+          {
+            "id": "c",
+            "text": "Insulin"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Oestrogen rises in the first half and builds the lining. Progesterone keeps it ready in the second half.",
+        "at_seconds": 650,
+        "at_label": "10:50",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "For most teens, how long is one cycle?",
+        "options": [
+          {
+            "id": "a",
+            "text": "About 1 week"
+          },
+          {
+            "id": "b",
+            "text": "About 21 to 45 days"
+          },
+          {
+            "id": "c",
+            "text": "About 3 months"
+          }
+        ],
+        "correct_option_id": "b",
+        "explanation": "For teens, 21 to 45 days is common while the body finds its rhythm.",
+        "at_seconds": 790,
+        "at_label": "13:10",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l1-1",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "A girl is born with all the eggs she will ever have.",
+        "verdict": null,
+        "back": "That’s about 1 to 2 million at birth! Only around 400 are ever released in a lifetime.",
+        "icon": "egg",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“You shouldn’t exercise or play during your period.”",
+        "verdict": "Myth!",
+        "back": "Gentle movement often eases cramps. Dance, play, stretch, whatever feels good for you.",
+        "icon": "heart",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "Why is it called a cycle?",
+        "verdict": "Aha!",
+        "back": "Because it goes round and round and starts again, a bit like the moon’s phases. That’s why your Play activity was a moon!",
+        "icon": "moon",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "Before today I thought periods were… Now I know…",
+      "sentence_starters": [
+        "I used to think…",
+        "Now I know…",
+        "I’m curious about…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "The period is when…",
+          "options": [
+            {
+              "id": "a",
+              "text": "the lining leaves the body"
+            },
+            {
+              "id": "b",
+              "text": "an egg grows"
+            },
+            {
+              "id": "c",
+              "text": "nothing happens"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Yes, the lining gently leaves the body. That’s day 1 of a new cycle."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Every girl’s cycle is exactly 28 days.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False! Cycles vary, especially in the first couple of years."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "Which phase comes right after the egg is released?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Lining waits (luteal)"
+            },
+            {
+              "id": "b",
+              "text": "Period"
+            },
+            {
+              "id": "c",
+              "text": "Egg growing"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "The luteal phase: the lining waits, just in case."
+        }
+      ],
+      "summary": "3 things you know now: periods are part of a cycle, cycles vary, and tracking helps."
+    },
+    "completion": {
+      "flower_colors": [
+        "#8EBFE0",
+        "#B7D8EF"
+      ],
+      "badge_id": "badge-first-bloom",
+      "next": {
+        "type": "lesson",
+        "id": "l1-2"
+      }
+    },
+    "image_ids": [
+      "L1.1-A",
+      "L1.1-B",
+      "L1.1-C"
+    ]
+  },
+  {
+    "id": "l1-2",
+    "code": "1.2",
+    "chapter_id": "ch1",
+    "sort_order": 2,
+    "order_in_chapter": 2,
+    "title": "Menstruation and Puberty",
+    "tagline": "Your body’s big upgrade",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "l1-1_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 880,
+      "duration_label": "14:40",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L1.2-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "Menarche: your very first period",
+        "caption": "Most girls get their first period between 9 and 15."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 170,
+        "start_label": "2:50",
+        "title": "Puberty: the big upgrade",
+        "caption": "Breasts, body hair, height and shape change in their own order."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 430,
+        "start_label": "7:10",
+        "title": "Skin, sweat and smart care",
+        "caption": "Hormones wake up sweat and oil glands. A daily wash helps."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 560,
+        "start_label": "9:20",
+        "title": "Mood swings: oestrogen and progesterone at work",
+        "caption": "When hormones shift, feelings can shift too."
+      },
+      {
+        "id": "t5",
+        "start_seconds": 730,
+        "start_label": "12:10",
+        "title": "Irregular periods in the first years",
+        "caption": "It can take 1 to 2 years for cycles to settle."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Which is often one of the first signs of puberty?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Breast buds"
+          },
+          {
+            "id": "b",
+            "text": "Losing baby teeth"
+          },
+          {
+            "id": "c",
+            "text": "Grey hair"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Breast buds often appear a year or two before the first period.",
+        "at_seconds": 430,
+        "at_label": "7:10",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Why can moods swing during puberty?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Hormones like oestrogen and progesterone are changing"
+          },
+          {
+            "id": "b",
+            "text": "Something is wrong with me"
+          },
+          {
+            "id": "c",
+            "text": "Eating too many sweets"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Changing hormone levels affect feelings. It’s normal, and talking helps.",
+        "at_seconds": 730,
+        "at_label": "12:10",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "Your period skips a month in the first year. That’s…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Usually normal while the body settles"
+          },
+          {
+            "id": "b",
+            "text": "Always a sign of illness"
+          },
+          {
+            "id": "c",
+            "text": "Impossible"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Cycles often take 1 to 2 years to settle. If you’re worried, tell a grown-up.",
+        "at_seconds": 850,
+        "at_label": "14:10",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l1-2",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "Most girls in India get their first period around 12 or 13.",
+        "verdict": null,
+        "back": "But anywhere from 9 to 15 is normal. Your body has its own clock.",
+        "icon": "clock",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Once your periods start, you stop growing taller.”",
+        "verdict": "Myth!",
+        "back": "Growth slows down, but most girls still grow a few more centimetres after their first period.",
+        "icon": "ruler",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "Why do I sweat more now?",
+        "verdict": "Aha!",
+        "back": "Puberty wakes up special sweat glands under the arms. A daily bath and fresh clothes keep you feeling fresh.",
+        "icon": "drop",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "Which change am I most curious (or nervous) about, and why?",
+      "sentence_starters": [
+        "I’m curious about…",
+        "One thing that feels new is…",
+        "I’d like to ask Mom about…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "What is menarche?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A girl’s very first period"
+            },
+            {
+              "id": "b",
+              "text": "The last period"
+            },
+            {
+              "id": "c",
+              "text": "A hormone"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Menarche is the first period, a big milestone of puberty."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Every girl goes through puberty changes in the same order.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False! The order and timing are different for everyone."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "Which two hormones can affect your mood?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Oestrogen and progesterone"
+            },
+            {
+              "id": "b",
+              "text": "Vitamin C and iron"
+            },
+            {
+              "id": "c",
+              "text": "Sugar and salt"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Oestrogen and progesterone rise and fall through the cycle."
+        }
+      ],
+      "summary": "3 things you know now: menarche is your first period, puberty has its own order for everyone, and mood swings are hormones at work."
+    },
+    "completion": {
+      "flower_colors": [
+        "#8EBFE0",
+        "#B7D8EF"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l1-3"
+      }
+    },
+    "image_ids": [
+      "L1.2-A",
+      "L1.2-B",
+      "L1.2-C"
+    ]
+  },
+  {
+    "id": "l1-3",
+    "code": "1.3",
+    "chapter_id": "ch1",
+    "sort_order": 3,
+    "order_in_chapter": 3,
+    "title": "Flow and Irregularities",
+    "tagline": "Become a Flow Detective",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "l1-2_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 840,
+      "duration_label": "14:00",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L1.3-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "Light, medium, heavy: types of flow",
+        "caption": "Flow often changes from day to day."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 240,
+        "start_label": "4:00",
+        "title": "How much is normal?",
+        "caption": "Usually about 2 to 3 tablespoons over a whole period."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 400,
+        "start_label": "6:40",
+        "title": "Why periods change: stress, weight, hormones",
+        "caption": "Exams, illness, big weight changes and hormones can shift your cycle."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 620,
+        "start_label": "10:20",
+        "title": "Myths and facts",
+        "caption": "Let’s bust a few myths you may have heard."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Day 1 is heavy and day 5 is very light. Is that normal?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Yes, flow changes day to day"
+          },
+          {
+            "id": "b",
+            "text": "No, flow should be the same every day"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Most periods start heavier and get lighter.",
+        "at_seconds": 240,
+        "at_label": "4:00",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Which is a sign to tell a grown-up?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Soaking a pad every 1 to 2 hours"
+          },
+          {
+            "id": "b",
+            "text": "A light flow on the last day"
+          },
+          {
+            "id": "c",
+            "text": "Brownish blood at the end"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Soaking through a pad every 1 to 2 hours, or bleeding more than 7 days, is worth checking with a doctor.",
+        "at_seconds": 400,
+        "at_label": "6:40",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "Which can make a period come late?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Exam stress"
+          },
+          {
+            "id": "b",
+            "text": "Wearing blue"
+          },
+          {
+            "id": "c",
+            "text": "Eating curd"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Stress hormones can delay ovulation, so the period comes later.",
+        "at_seconds": 620,
+        "at_label": "10:20",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l1-3",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "Period blood is not “dirty” blood.",
+        "verdict": null,
+        "back": "It’s blood plus the soft uterus lining, and it’s just as clean as blood from a scraped knee.",
+        "icon": "drop",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“During your period you’ll spoil pickle if you touch it.”",
+        "verdict": "Myth!",
+        "back": "Periods can’t spoil food. This belief has no science behind it at all.",
+        "icon": "jar",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "Why are there sometimes small clots?",
+        "verdict": "Aha!",
+        "back": "Small jelly-like clots on heavy days are common. Clots bigger than a ₹5 coin are worth mentioning to a doctor.",
+        "icon": "coin",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "A myth I heard about periods was… and the truth is…",
+      "sentence_starters": [
+        "Someone once told me…",
+        "The truth is…",
+        "I’ll tell my friends that…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "Which is a light flow?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A few spots on the pad"
+            },
+            {
+              "id": "b",
+              "text": "Soaking a pad every hour"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "A few spots is light. Soaking a pad hourly is very heavy."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Stress can change when your period comes.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "True. Stress hormones can delay a period."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "Bleeding for more than how many days is worth checking?",
+          "options": [
+            {
+              "id": "a",
+              "text": "3 days"
+            },
+            {
+              "id": "b",
+              "text": "7 days"
+            },
+            {
+              "id": "c",
+              "text": "1 day"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "More than 7 days is a reason to see a doctor."
+        }
+      ],
+      "summary": "3 things you know now: flow changes day to day, stress can shift your cycle, and myths are just myths."
+    },
+    "completion": {
+      "flower_colors": [
+        "#8EBFE0",
+        "#B7D8EF"
+      ],
+      "badge_id": "badge-myth-buster",
+      "next": {
+        "type": "checkin",
+        "id": "checkin-ch1"
+      }
+    },
+    "image_ids": [
+      "L1.3-A",
+      "L1.3-B",
+      "L1.3-C"
+    ]
+  },
+  {
+    "id": "l2-1",
+    "code": "2.1",
+    "chapter_id": "ch2",
+    "sort_order": 4,
+    "order_in_chapter": 1,
+    "title": "Importance of Hygiene",
+    "tagline": "Fresh, clean and comfy",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "checkin-ch1_passed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 870,
+      "duration_label": "14:30",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L2.1-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "Why period care keeps your whole body healthy",
+        "caption": "Clean habits keep germs away and keep you comfortable."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 260,
+        "start_label": "4:20",
+        "title": "Infections: vaginitis and UTIs",
+        "caption": "Germs can cause itching or burning. Simple habits prevent most of them."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 520,
+        "start_label": "8:40",
+        "title": "Front to back, and other smart habits",
+        "caption": "Always wipe front to back, and change pads on time."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 680,
+        "start_label": "11:20",
+        "title": "Discomfort and odour: what’s normal",
+        "caption": "A mild smell is normal. Changing on time keeps you fresh."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "How often should you change a pad?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Every 4 to 6 hours, sooner if full"
+          },
+          {
+            "id": "b",
+            "text": "Once a day"
+          },
+          {
+            "id": "c",
+            "text": "Only when it leaks"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Every 4 to 6 hours keeps germs and smell away.",
+        "at_seconds": 260,
+        "at_label": "4:20",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Which way should you wipe?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Front to back"
+          },
+          {
+            "id": "b",
+            "text": "Back to front"
+          },
+          {
+            "id": "c",
+            "text": "It doesn’t matter"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Front to back keeps germs from the back passage away from the vagina and urinary opening.",
+        "at_seconds": 520,
+        "at_label": "8:40",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "Your period has a mild smell. What helps?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Change on time and wash outside with plain water"
+          },
+          {
+            "id": "b",
+            "text": "Spray perfume down there"
+          },
+          {
+            "id": "c",
+            "text": "Wash inside with soap"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "The vagina cleans itself. Plain water outside is enough; scented products irritate.",
+        "at_seconds": 680,
+        "at_label": "11:20",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l2-1",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "The vagina cleans itself!",
+        "verdict": null,
+        "back": "Good bacteria called lactobacilli keep it healthy. Plain water on the outside is all you need.",
+        "icon": "leaf",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“You shouldn’t bathe or wash your hair during your period.”",
+        "verdict": "Myth!",
+        "back": "A warm bath keeps you fresh and can even ease cramps.",
+        "icon": "drop",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "Why does period blood smell a little?",
+        "verdict": "Aha!",
+        "back": "When blood meets air it gets a mild smell. Changing on time keeps it fresh. A strong fishy smell with itching is a reason to tell a grown-up.",
+        "icon": "bulb",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "My fresh-and-comfy plan for my next period is…",
+      "sentence_starters": [
+        "Every morning I’ll…",
+        "At school I’ll…",
+        "I’ll skip…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "How often should you change a pad?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Every 4 to 6 hours"
+            },
+            {
+              "id": "b",
+              "text": "Once a day"
+            },
+            {
+              "id": "c",
+              "text": "Once a week"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Every 4 to 6 hours, sooner if it’s full."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Scented sprays are good for the vagina.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False. They can irritate and upset its balance."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "A urinary tract infection (UTI) can cause…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Burning when you pee"
+            },
+            {
+              "id": "b",
+              "text": "Longer hair"
+            },
+            {
+              "id": "c",
+              "text": "A runny nose"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Burning or needing to pee often are signs. Tell a grown-up."
+        }
+      ],
+      "summary": "3 things you know now: change on time, wipe front to back, and plain water is enough."
+    },
+    "completion": {
+      "flower_colors": [
+        "#7FC3A3",
+        "#A8D8BE"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l2-2"
+      }
+    },
+    "image_ids": [
+      "L2.1-A",
+      "L2.1-B",
+      "L2.1-C"
+    ]
+  },
+  {
+    "id": "l2-2",
+    "code": "2.2",
+    "chapter_id": "ch2",
+    "sort_order": 5,
+    "order_in_chapter": 2,
+    "title": "Menstrual Products & Sustainability",
+    "tagline": "Find your perfect match",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "l2-1_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 900,
+      "duration_label": "15:00",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L2.2-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "Sanitary pads: the classic choice",
+        "caption": "Pads stick to your underwear and come in many sizes."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 210,
+        "start_label": "3:30",
+        "title": "Tampons: worn inside",
+        "caption": "A tampon is worn inside and changed every 4 to 8 hours."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 400,
+        "start_label": "6:40",
+        "title": "Menstrual cups: reusable and eco",
+        "caption": "A soft silicone cup collects flow and can last for years."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 590,
+        "start_label": "9:50",
+        "title": "Cloth pads and period underwear",
+        "caption": "Washable options cut down on waste."
+      },
+      {
+        "id": "t5",
+        "start_seconds": 720,
+        "start_label": "12:00",
+        "title": "Pros and cons: what suits you?",
+        "caption": "There’s no single best product, only the best one for you."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "How often should a tampon be changed?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Every 4 to 8 hours"
+          },
+          {
+            "id": "b",
+            "text": "Once a day"
+          },
+          {
+            "id": "c",
+            "text": "Once a week"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Never leave a tampon in for more than 8 hours.",
+        "at_seconds": 400,
+        "at_label": "6:40",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Which products can be reused?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Menstrual cups and cloth pads"
+          },
+          {
+            "id": "b",
+            "text": "Disposable pads"
+          },
+          {
+            "id": "c",
+            "text": "Tampons"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Cups and cloth pads can be washed and used again.",
+        "at_seconds": 720,
+        "at_label": "12:00",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "Which product is best for everyone?",
+        "options": [
+          {
+            "id": "a",
+            "text": "None! Choose what suits you"
+          },
+          {
+            "id": "b",
+            "text": "Only pads"
+          },
+          {
+            "id": "c",
+            "text": "Only cups"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Comfort, activity, budget and the planet all matter. Try and decide.",
+        "at_seconds": 860,
+        "at_label": "14:20",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l2-2",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "One girl may use 10,000 or more disposable pads in her lifetime.",
+        "verdict": null,
+        "back": "Most contain plastic that can take hundreds of years to break down. Reusables help cut that waste.",
+        "icon": "leaf",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Girls can’t use tampons or cups until they’re grown up.”",
+        "verdict": "Myth!",
+        "back": "Teens can use them too, when they feel ready and know how. Many girls start with pads first.",
+        "icon": "heart",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "What is period underwear?",
+        "verdict": "Aha!",
+        "back": "Underwear with soft absorbent layers built in. Wear, rinse, wash and reuse.",
+        "icon": "bulb",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "If I could design my dream period product, it would…",
+      "sentence_starters": [
+        "It would be…",
+        "It would help with…",
+        "The product I’d try first is…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "Which product is worn inside the body?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Tampon"
+            },
+            {
+              "id": "b",
+              "text": "Pad"
+            },
+            {
+              "id": "c",
+              "text": "Panty liner"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Tampons (and cups) are worn inside."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Reusable products help reduce waste.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "True! A cup or cloth pad replaces hundreds of disposables."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "A tampon should never stay in longer than…",
+          "options": [
+            {
+              "id": "a",
+              "text": "8 hours"
+            },
+            {
+              "id": "b",
+              "text": "2 days"
+            },
+            {
+              "id": "c",
+              "text": "1 week"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "8 hours at most, to stay safe."
+        }
+      ],
+      "summary": "3 things you know now: there’s a product for every need, reusables cut waste, and changing on time keeps you safe."
+    },
+    "completion": {
+      "flower_colors": [
+        "#7FC3A3",
+        "#A8D8BE"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l2-3"
+      }
+    },
+    "image_ids": [
+      "L2.2-A",
+      "L2.2-B",
+      "L2.2-C"
+    ]
+  },
+  {
+    "id": "l2-3",
+    "code": "2.3",
+    "chapter_id": "ch2",
+    "sort_order": 6,
+    "order_in_chapter": 3,
+    "title": "Usage and Disposal",
+    "tagline": "Use it well, wrap it right",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "l2-2_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 860,
+      "duration_label": "14:20",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L2.3-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "Using a pad, step by step",
+        "caption": "Peel, stick, and change every 4 to 6 hours."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 200,
+        "start_label": "3:20",
+        "title": "Tampons and cups: using them safely",
+        "caption": "Clean hands first, always. Read the leaflet with a grown-up."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 420,
+        "start_label": "7:00",
+        "title": "Caring for cloth pads",
+        "caption": "Rinse in cold water, wash with soap, dry in the sun."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 560,
+        "start_label": "9:20",
+        "title": "Wrap it, bin it, never flush it",
+        "caption": "Wrap used pads in paper or a disposal bag and put them in the bin."
+      },
+      {
+        "id": "t5",
+        "start_seconds": 720,
+        "start_label": "12:00",
+        "title": "Cleaning a cup between periods",
+        "caption": "Boil your cup at the end of each period."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "What’s the first step before changing any product?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Wash your hands"
+          },
+          {
+            "id": "b",
+            "text": "Run back to class"
+          },
+          {
+            "id": "c",
+            "text": "Spray perfume"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Clean hands keep germs away from your body.",
+        "at_seconds": 420,
+        "at_label": "7:00",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Where should cloth pads dry?",
+        "options": [
+          {
+            "id": "a",
+            "text": "In sunlight"
+          },
+          {
+            "id": "b",
+            "text": "Hidden in a damp corner"
+          },
+          {
+            "id": "c",
+            "text": "In a closed plastic bag"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Sunlight helps kill germs. There’s nothing to hide!",
+        "at_seconds": 560,
+        "at_label": "9:20",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "Can you flush a used pad down the toilet?",
+        "options": [
+          {
+            "id": "a",
+            "text": "No, wrap it and bin it"
+          },
+          {
+            "id": "b",
+            "text": "Yes, always"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Pads block pipes and harm rivers. Wrap and bin.",
+        "at_seconds": 720,
+        "at_label": "12:00",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l2-3",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "Wrapping used pads keeps sanitation workers safe.",
+        "verdict": null,
+        "back": "India’s waste rules ask us to wrap sanitary waste in paper or a pouch before it goes in the bin.",
+        "icon": "leaf",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“It’s fine to flush a pad if you’re in a hurry.”",
+        "verdict": "Myth!",
+        "back": "Pads swell up and block pipes. Always wrap and bin, even in a hurry.",
+        "icon": "drop",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "What if there’s no bin in the toilet?",
+        "verdict": "Aha!",
+        "back": "Wrap it well, pop it in a small disposal bag from your pouch, and bin it later.",
+        "icon": "bulb",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "What would make changing at school easier for me?",
+      "sentence_starters": [
+        "It would help if…",
+        "I’ll keep in my pouch…",
+        "I could ask…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "The first step of any change is…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Wash your hands"
+            },
+            {
+              "id": "b",
+              "text": "Flush"
+            },
+            {
+              "id": "c",
+              "text": "Throw it out of the window"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Clean hands first, always."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Pads can be flushed.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False! Wrap and bin."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "Cloth pads should dry…",
+          "options": [
+            {
+              "id": "a",
+              "text": "In the sunlight"
+            },
+            {
+              "id": "b",
+              "text": "In a dark cupboard"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Sunlight helps kill germs."
+        }
+      ],
+      "summary": "3 things you know now: clean hands first, wrap and bin, and sunshine for cloth pads."
+    },
+    "completion": {
+      "flower_colors": [
+        "#7FC3A3",
+        "#A8D8BE"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l2-4"
+      }
+    },
+    "image_ids": [
+      "L2.3-A",
+      "L2.3-B",
+      "L2.3-C"
+    ]
+  },
+  {
+    "id": "l2-4",
+    "code": "2.4",
+    "chapter_id": "ch2",
+    "sort_order": 7,
+    "order_in_chapter": 4,
+    "title": "Hygiene in Public",
+    "tagline": "Period-proud, anywhere",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "l2-3_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 900,
+      "duration_label": "15:00",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L2.4-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "Why is there stigma around periods?",
+        "caption": "Silence and old myths make periods feel secret. They don’t need to be."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 280,
+        "start_label": "4:40",
+        "title": "Finding clean, private toilets",
+        "caption": "Know the clean toilets at school and when travelling."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 520,
+        "start_label": "8:40",
+        "title": "Your school-day period kit",
+        "caption": "Pads, a disposal bag, tissues, spare underwear and sanitiser."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 680,
+        "start_label": "11:20",
+        "title": "Making public places period-friendly",
+        "caption": "Bins, water, soap and pad machines help everyone."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Why do many people feel shy about periods?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Old silence and myths"
+          },
+          {
+            "id": "b",
+            "text": "Periods are dirty"
+          },
+          {
+            "id": "c",
+            "text": "Only some girls get them"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Periods are natural. Talking openly breaks the stigma.",
+        "at_seconds": 280,
+        "at_label": "4:40",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "No clean toilet at the bus stand. What helps?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Plan a clean stop, carry wipes and a disposal bag"
+          },
+          {
+            "id": "b",
+            "text": "Never change your pad"
+          },
+          {
+            "id": "c",
+            "text": "Skip water all day"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "A little planning goes a long way. Keep drinking water!",
+        "at_seconds": 520,
+        "at_label": "8:40",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "What makes a school period-friendly?",
+        "options": [
+          {
+            "id": "a",
+            "text": "A covered bin, water and soap in girls’ toilets"
+          },
+          {
+            "id": "b",
+            "text": "Hiding pads in the office"
+          },
+          {
+            "id": "c",
+            "text": "Not talking about it"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Simple facilities help every girl stay in class.",
+        "at_seconds": 680,
+        "at_label": "11:20",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l2-4",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "28 May is Menstrual Hygiene Day.",
+        "verdict": null,
+        "back": "People around the world use it to talk openly about periods and better toilets for girls.",
+        "icon": "star",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Boys shouldn’t learn about periods.”",
+        "verdict": "Myth!",
+        "back": "When everyone understands periods, there’s less teasing and more support.",
+        "icon": "heart",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "How can I ask a teacher without feeling shy?",
+        "verdict": "Try this!",
+        "back": "“Ma’am, I need to use the washroom, it’s urgent.” You don’t have to explain more.",
+        "icon": "bubble",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "One thing I’d change at my school to make periods easier is…",
+      "sentence_starters": [
+        "I wish my school had…",
+        "I could help by…",
+        "I’d tell my friends…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "What should go in a school-day kit?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Pads, disposal bag, spare underwear"
+            },
+            {
+              "id": "b",
+              "text": "Only a phone"
+            },
+            {
+              "id": "c",
+              "text": "Nothing"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "A small pouch keeps you ready."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Periods are something to be ashamed of.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False! Periods are a normal part of growing up."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "A period-friendly toilet has…",
+          "options": [
+            {
+              "id": "a",
+              "text": "A covered bin, water and soap"
+            },
+            {
+              "id": "b",
+              "text": "No lock"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Privacy, water, soap and a bin."
+        }
+      ],
+      "summary": "3 things you know now: periods aren’t a secret, a little kit keeps you ready, and good toilets help everyone."
+    },
+    "completion": {
+      "flower_colors": [
+        "#7FC3A3",
+        "#A8D8BE"
+      ],
+      "badge_id": "badge-kit-packer",
+      "next": {
+        "type": "checkin",
+        "id": "checkin-ch2"
+      }
+    },
+    "image_ids": [
+      "L2.4-A",
+      "L2.4-B",
+      "L2.4-C"
+    ]
+  },
+  {
+    "id": "l3-1",
+    "code": "3.1",
+    "chapter_id": "ch3",
+    "sort_order": 8,
+    "order_in_chapter": 1,
+    "title": "Understanding Discomfort",
+    "tagline": "Listen to what your body says",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "checkin-ch2_passed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 880,
+      "duration_label": "14:40",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L3.1-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "What is menstrual discomfort?",
+        "caption": "Many girls feel some discomfort around their period. You’re not alone."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 200,
+        "start_label": "3:20",
+        "title": "Cramps, bloating, back pain and tiredness",
+        "caption": "Cramps feel like a squeeze in the lower tummy."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 420,
+        "start_label": "7:00",
+        "title": "Why it happens: hormones and squeezes",
+        "caption": "Chemicals called prostaglandins make the uterus squeeze to let the lining out."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 620,
+        "start_label": "10:20",
+        "title": "Why some girls feel more than others",
+        "caption": "Genes, flow, stress, sleep and activity all play a part."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Where are cramps usually felt?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Lower tummy, sometimes back and thighs"
+          },
+          {
+            "id": "b",
+            "text": "In your ears"
+          },
+          {
+            "id": "c",
+            "text": "In your fingers"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "The uterus sits low in the tummy, so that’s where the squeeze is felt.",
+        "at_seconds": 420,
+        "at_label": "7:00",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "What makes the uterus squeeze?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Prostaglandins, a body chemical"
+          },
+          {
+            "id": "b",
+            "text": "Eating ice cream"
+          },
+          {
+            "id": "c",
+            "text": "Walking too much"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Prostaglandins rise at the start of a period. More of them can mean stronger cramps.",
+        "at_seconds": 620,
+        "at_label": "10:20",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "Your friend’s cramps are stronger than yours. That means…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Every body is different"
+          },
+          {
+            "id": "b",
+            "text": "She is pretending"
+          },
+          {
+            "id": "c",
+            "text": "You are doing something wrong"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Discomfort varies a lot. Be kind to her, and to yourself.",
+        "at_seconds": 780,
+        "at_label": "13:00",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l3-1",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "More than half of teen girls get period cramps.",
+        "verdict": null,
+        "back": "Discomfort is common, and there are many ways to ease it.",
+        "icon": "heart",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Pain that makes you miss school every month is just normal.”",
+        "verdict": "Myth!",
+        "back": "Strong pain is worth checking with a doctor. You don’t have to just put up with it.",
+        "icon": "bubble",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "Why do I feel puffy before my period?",
+        "verdict": "Aha!",
+        "back": "Hormones make the body hold a bit more water. Drinking water and fewer salty snacks can help.",
+        "icon": "drop",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "When I feel discomfort, the thing that helps me most is… (or I’ll try…)",
+      "sentence_starters": [
+        "What helps me is…",
+        "Next time I’ll try…",
+        "I’ll tell Mom if…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "What can ease cramps?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A warm water bottle"
+            },
+            {
+              "id": "b",
+              "text": "Skipping meals"
+            },
+            {
+              "id": "c",
+              "text": "Holding your breath"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Warmth relaxes the muscles."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Every girl feels the same amount of discomfort.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False. It varies a lot from girl to girl."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "When should you tell a grown-up?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Pain stops you from going to school"
+            },
+            {
+              "id": "b",
+              "text": "A mild twinge on day 1"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Strong pain deserves a doctor’s help."
+        }
+      ],
+      "summary": "3 things you know now: discomfort is common, warmth, movement and rest help, and strong pain needs a doctor."
+    },
+    "completion": {
+      "flower_colors": [
+        "#F0AF7E",
+        "#F7CDAA"
+      ],
+      "badge_id": "badge-half-garden",
+      "next": {
+        "type": "lesson",
+        "id": "l3-2"
+      }
+    },
+    "image_ids": [
+      "L3.1-A",
+      "L3.1-B",
+      "L3.1-C"
+    ]
+  },
+  {
+    "id": "l3-2",
+    "code": "3.2",
+    "chapter_id": "ch3",
+    "sort_order": 9,
+    "order_in_chapter": 2,
+    "title": "Menstrual Disorders",
+    "tagline": "When to ask a doctor",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "l3-1_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 940,
+      "duration_label": "15:40",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L3.2-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "What’s happening inside: a quick tour",
+        "caption": "The uterus, ovaries and hormones work as a team."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 170,
+        "start_label": "2:50",
+        "title": "Endometriosis: tissue in the wrong place",
+        "caption": "Tissue like the lining grows outside the uterus and can cause strong pain."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 380,
+        "start_label": "6:20",
+        "title": "PCOS: when hormones get out of balance",
+        "caption": "It can cause irregular periods, acne or extra hair."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 590,
+        "start_label": "9:50",
+        "title": "Menorrhagia: very heavy bleeding",
+        "caption": "Soaking a pad every 1 to 2 hours is a reason to see a doctor."
+      },
+      {
+        "id": "t5",
+        "start_seconds": 740,
+        "start_label": "12:20",
+        "title": "Amenorrhea: when periods don’t come",
+        "caption": "No period by 15, or missing 3 in a row, is worth checking."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Strong period pain from endometriosis is…",
+        "options": [
+          {
+            "id": "a",
+            "text": "A reason to see a doctor"
+          },
+          {
+            "id": "b",
+            "text": "Something to hide"
+          },
+          {
+            "id": "c",
+            "text": "Caused by spicy food"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Doctors can find the cause and help. Never suffer in silence.",
+        "at_seconds": 380,
+        "at_label": "6:20",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Which can be a sign of PCOS?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Periods very far apart, plus acne or extra hair"
+          },
+          {
+            "id": "b",
+            "text": "A light flow on day 5"
+          },
+          {
+            "id": "c",
+            "text": "Feeling sleepy at night"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "PCOS is common and can be managed with a doctor’s help.",
+        "at_seconds": 590,
+        "at_label": "9:50",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "If periods haven’t started by 15, you should…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Tell a grown-up and see a doctor"
+          },
+          {
+            "id": "b",
+            "text": "Worry alone"
+          },
+          {
+            "id": "c",
+            "text": "Do nothing"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "A check-up gives answers, and usually peace of mind.",
+        "at_seconds": 740,
+        "at_label": "12:20",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l3-2",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "About 1 in 10 girls and women have PCOS.",
+        "verdict": null,
+        "back": "It’s common, and with the right care, girls with PCOS live full, happy lives.",
+        "icon": "heart",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“If you have a menstrual disorder, you did something wrong.”",
+        "verdict": "Myth!",
+        "back": "These conditions are nobody’s fault. Doctors can help you feel better.",
+        "icon": "bubble",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "What happens at a doctor’s check-up?",
+        "verdict": "Aha!",
+        "back": "The doctor asks questions, may gently press on your tummy, and sometimes does an ultrasound scan. Mom or a trusted adult can stay with you.",
+        "icon": "bulb",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "If I ever felt something wasn’t right with my period, I would tell…",
+      "sentence_starters": [
+        "I would tell…",
+        "I’d say…",
+        "It would help if…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "Menorrhagia means…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Very heavy bleeding"
+            },
+            {
+              "id": "b",
+              "text": "No periods"
+            },
+            {
+              "id": "c",
+              "text": "A short cycle"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Very heavy or long bleeding."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Menstrual disorders are always the girl’s fault.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False. They’re nobody’s fault."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "Amenorrhea means…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Periods not coming"
+            },
+            {
+              "id": "b",
+              "text": "Very heavy periods"
+            },
+            {
+              "id": "c",
+              "text": "Strong cramps"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Periods that don’t start, or stop."
+        }
+      ],
+      "summary": "3 things you know now: strong pain isn’t something to hide, very heavy or missing periods need a doctor, and it’s never your fault."
+    },
+    "completion": {
+      "flower_colors": [
+        "#F0AF7E",
+        "#F7CDAA"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l3-3"
+      }
+    },
+    "image_ids": [
+      "L3.2-A",
+      "L3.2-B",
+      "L3.2-C"
+    ]
+  },
+  {
+    "id": "l3-3",
+    "code": "3.3",
+    "chapter_id": "ch3",
+    "sort_order": 10,
+    "order_in_chapter": 3,
+    "title": "Menstrual Infections",
+    "tagline": "Become a Germ Defender",
+    "content_status": "medical_review_pending",
+    "calm_mode": false,
+    "unlock": {
+      "requires": "l3-2_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 820,
+      "duration_label": "13:40",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Dr. Meera Iyer [placeholder]",
+        "role": "Gynaecologist"
+      },
+      "poster_image": "L3.3-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "What is a vaginal infection?",
+        "caption": "Sometimes the balance of good and bad germs changes."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 200,
+        "start_label": "3:20",
+        "title": "Bacterial vaginosis: signs to notice",
+        "caption": "A thin grey-white discharge with a fishy smell."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 380,
+        "start_label": "6:20",
+        "title": "Yeast infections: itchy and uncomfortable",
+        "caption": "Thick white discharge and itching."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 560,
+        "start_label": "9:20",
+        "title": "What to do if you notice symptoms",
+        "caption": "Tell a grown-up and see a doctor. Don’t treat it yourself."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Some clear or white discharge is…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Normal, it keeps the vagina healthy"
+          },
+          {
+            "id": "b",
+            "text": "Always an infection"
+          },
+          {
+            "id": "c",
+            "text": "Dirty"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Healthy discharge is the vagina’s way of cleaning itself.",
+        "at_seconds": 380,
+        "at_label": "6:20",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Which is a sign of a yeast infection?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Thick white discharge and itching"
+          },
+          {
+            "id": "b",
+            "text": "A new haircut"
+          },
+          {
+            "id": "c",
+            "text": "Feeling hungry"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Itching and thick white discharge are typical. A doctor can treat it easily.",
+        "at_seconds": 560,
+        "at_label": "9:20",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "You notice itching and a strange smell. What should you do?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Tell a grown-up and see a doctor"
+          },
+          {
+            "id": "b",
+            "text": "Use a scented wash"
+          },
+          {
+            "id": "c",
+            "text": "Hide it and hope"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Infections are common and treatable. Telling is the fastest way to feel better.",
+        "at_seconds": 700,
+        "at_label": "11:40",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l3-3",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "Good bacteria called lactobacilli are your body’s guards.",
+        "verdict": null,
+        "back": "They keep the vagina slightly acidic, so harmful germs find it hard to grow.",
+        "icon": "leaf",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Only girls who aren’t clean get infections.”",
+        "verdict": "Myth!",
+        "back": "Anyone can get one. Infections are common, treatable and nothing to be ashamed of.",
+        "icon": "bubble",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "Is discharge before my first period normal?",
+        "verdict": "Yes!",
+        "back": "White or clear discharge often starts 6 to 12 months before the first period. It’s a sign your body is getting ready.",
+        "icon": "bulb",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "My top 3 Germ Defender habits are…",
+      "sentence_starters": [
+        "Every day I’ll…",
+        "I’ll never…",
+        "If something feels itchy I’ll…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "Which underwear is best?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Cotton"
+            },
+            {
+              "id": "b",
+              "text": "Tight nylon"
+            },
+            {
+              "id": "c",
+              "text": "Damp swimsuit"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Cotton lets the skin breathe."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Infections are common and can be treated.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "True. A doctor can help quickly."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "If you notice itching, you should…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Tell a grown-up"
+            },
+            {
+              "id": "b",
+              "text": "Use perfume"
+            },
+            {
+              "id": "c",
+              "text": "Ignore it for months"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Telling is the fastest way to feel better."
+        }
+      ],
+      "summary": "3 things you know now: some discharge is normal, simple habits keep germs away, and if something feels wrong, you tell."
+    },
+    "completion": {
+      "flower_colors": [
+        "#F0AF7E",
+        "#F7CDAA"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "checkin",
+        "id": "checkin-ch3"
+      }
+    },
+    "image_ids": [
+      "L3.3-A",
+      "L3.3-B",
+      "L3.3-C"
+    ]
+  },
+  {
+    "id": "l4-1",
+    "code": "4.1",
+    "chapter_id": "ch4",
+    "sort_order": 11,
+    "order_in_chapter": 1,
+    "title": "Safe School Environment",
+    "tagline": "Be an upstander",
+    "content_status": "child_safety_review_pending",
+    "calm_mode": true,
+    "unlock": {
+      "requires": "checkin-ch3_passed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 900,
+      "duration_label": "15:00",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Ms. Kavya Rao [placeholder]",
+        "role": "Child psychologist"
+      },
+      "poster_image": "L4.1-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "What is bullying?",
+        "caption": "Bullying is hurting someone again and again, on purpose."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 200,
+        "start_label": "3:20",
+        "title": "Cyberbullying: when it happens online",
+        "caption": "Mean messages, edited photos or leaving someone out of a group chat."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 400,
+        "start_label": "6:40",
+        "title": "How bullying hurts",
+        "caption": "It can affect sleep, mood, marks and confidence."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 590,
+        "start_label": "9:50",
+        "title": "Be an upstander: safe ways to help",
+        "caption": "Stand with the person, don’t join in, tell a trusted adult."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Which is cyberbullying?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Sharing an edited photo to make fun of someone"
+          },
+          {
+            "id": "b",
+            "text": "Sending a birthday wish"
+          },
+          {
+            "id": "c",
+            "text": "Asking for homework help"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Using phones or apps to hurt someone again and again is cyberbullying.",
+        "at_seconds": 400,
+        "at_label": "6:40",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Being bullied can affect…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Mood, sleep and schoolwork"
+          },
+          {
+            "id": "b",
+            "text": "Nothing at all"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Bullying hurts on the inside too. That’s why it matters to speak up.",
+        "at_seconds": 590,
+        "at_label": "9:50",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "What’s a safe way to help?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Tell a trusted adult and be kind to the person"
+          },
+          {
+            "id": "b",
+            "text": "Forward the mean message"
+          },
+          {
+            "id": "c",
+            "text": "Laugh along"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Upstanders help safely. You don’t have to fix it alone.",
+        "at_seconds": 760,
+        "at_label": "12:40",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l4-1",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "When another child steps in, bullying often stops in under 10 seconds.",
+        "verdict": null,
+        "back": "Upstanders are powerful, especially when they stay safe and get an adult’s help.",
+        "icon": "star",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Telling an adult about bullying is snitching.”",
+        "verdict": "Myth!",
+        "back": "Telling is getting help. Adults can do things kids can’t.",
+        "icon": "bubble",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "What can I do if I’m bullied online?",
+        "verdict": "Try this!",
+        "back": "Don’t reply. Take a screenshot, block, and show a trusted adult. You can report it in the app too.",
+        "icon": "shield",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "A time I was kind, or wish I had been, was…",
+      "sentence_starters": [
+        "I helped when…",
+        "Next time I’ll…",
+        "I felt…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "Bullying is…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Hurting someone again and again on purpose"
+            },
+            {
+              "id": "b",
+              "text": "One friendly joke"
+            },
+            {
+              "id": "c",
+              "text": "A disagreement"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Repeated, on purpose and hurtful."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Forwarding a mean meme is a way of joining in.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "True. Not sharing stops it spreading."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "An upstander…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Helps safely and tells an adult"
+            },
+            {
+              "id": "b",
+              "text": "Watches and laughs"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Upstanders help without putting themselves in danger."
+        }
+      ],
+      "summary": "3 things you know now: bullying is repeated and hurtful, upstanders include and tell, and it’s never the target’s fault."
+    },
+    "completion": {
+      "flower_colors": [
+        "#A992D6",
+        "#C9B6EC"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l4-2"
+      }
+    },
+    "image_ids": [
+      "L4.1-A",
+      "L4.1-B",
+      "L4.1-C"
+    ]
+  },
+  {
+    "id": "l4-2",
+    "code": "4.2",
+    "chapter_id": "ch4",
+    "sort_order": 12,
+    "order_in_chapter": 2,
+    "title": "Abuse and Touch",
+    "tagline": "My body, my rules",
+    "content_status": "child_safety_review_pending",
+    "calm_mode": true,
+    "unlock": {
+      "requires": "l4-1_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 960,
+      "duration_label": "16:00",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Ms. Kavya Rao [placeholder]",
+        "role": "Child psychologist"
+      },
+      "poster_image": "L4.2-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "What does abuse mean?",
+        "caption": "Abuse is when someone hurts a child on purpose, in their body or their feelings."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 220,
+        "start_label": "3:40",
+        "title": "Physical, emotional and sexual abuse",
+        "caption": "Hitting, scaring, or touching private parts are never okay."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 430,
+        "start_label": "7:10",
+        "title": "Noticing the signs",
+        "caption": "Feeling scared, confused or asked to keep a secret are signs to tell."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 620,
+        "start_label": "10:20",
+        "title": "Healthy boundaries and consent",
+        "caption": "You can say no to any touch, even from someone you know."
+      },
+      {
+        "id": "t5",
+        "start_seconds": 780,
+        "start_label": "13:00",
+        "title": "How to tell and report",
+        "caption": "Keep telling until someone helps. Call 1098 or 112."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Your private parts are the parts covered by…",
+        "options": [
+          {
+            "id": "a",
+            "text": "A swimsuit"
+          },
+          {
+            "id": "b",
+            "text": "A hat"
+          },
+          {
+            "id": "c",
+            "text": "Socks"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "The swimsuit rule: nobody should touch or ask to see these parts, except a doctor checking you with a parent there, or to keep you clean and healthy when you are little.",
+        "at_seconds": 430,
+        "at_label": "7:10",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Someone asks you to keep a touch secret. You should…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Tell a trusted adult"
+          },
+          {
+            "id": "b",
+            "text": "Keep the secret"
+          },
+          {
+            "id": "c",
+            "text": "Feel it’s your fault"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Touch should never be a secret. Telling is always right.",
+        "at_seconds": 620,
+        "at_label": "10:20",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "If the first adult doesn’t listen, you…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Keep telling until someone helps"
+          },
+          {
+            "id": "b",
+            "text": "Give up"
+          },
+          {
+            "id": "c",
+            "text": "Stay quiet"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Tell another trusted adult, or call 1098. You deserve to be heard.",
+        "at_seconds": 780,
+        "at_label": "13:00",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l4-2",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "It is never a child’s fault if someone touches them in an unsafe way.",
+        "verdict": null,
+        "back": "Not ever. The grown-up is always responsible.",
+        "icon": "heart",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Only strangers can hurt children.”",
+        "verdict": "Myth!",
+        "back": "Sometimes it can be someone a child knows. That’s why every child can say no and tell, about anyone.",
+        "icon": "bubble",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "What’s the difference between a surprise and a secret?",
+        "verdict": "Aha!",
+        "back": "A surprise is fun and is shared soon, like a birthday gift. A secret that makes you feel worried should always be told.",
+        "icon": "gift",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "My Safe Circle: 3 grown-ups I can always tell are…",
+      "sentence_starters": [
+        "At home…",
+        "At school…",
+        "Someone else I trust…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": true,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "The swimsuit rule is about…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Private parts"
+            },
+            {
+              "id": "b",
+              "text": "Swimming lessons"
+            },
+            {
+              "id": "c",
+              "text": "Wearing sunscreen"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Private parts are private."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "If someone I know touches me unsafely, it’s my fault.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False. It’s never the child’s fault."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "No, Go, …",
+          "options": [
+            {
+              "id": "a",
+              "text": "Tell"
+            },
+            {
+              "id": "b",
+              "text": "Hide"
+            },
+            {
+              "id": "c",
+              "text": "Forget"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "No, Go, Tell, and keep telling."
+        }
+      ],
+      "summary": "3 things you know now: your body belongs to you, safe touch is never secret, and you can always tell."
+    },
+    "completion": {
+      "flower_colors": [
+        "#A992D6",
+        "#C9B6EC"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l4-3"
+      }
+    },
+    "image_ids": [
+      "L4.2-A",
+      "L4.2-B",
+      "L4.2-C"
+    ]
+  },
+  {
+    "id": "l4-3",
+    "code": "4.3",
+    "chapter_id": "ch4",
+    "sort_order": 13,
+    "order_in_chapter": 3,
+    "title": "The POCSO Act",
+    "tagline": "The law that protects you",
+    "content_status": "child_safety_review_pending",
+    "calm_mode": true,
+    "unlock": {
+      "requires": "l4-2_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 840,
+      "duration_label": "14:00",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Ms. Kavya Rao [placeholder]",
+        "role": "Child psychologist"
+      },
+      "poster_image": "L4.3-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "What is the POCSO Act?",
+        "caption": "A law made in 2012 to protect children from sexual abuse."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 230,
+        "start_label": "3:50",
+        "title": "Who is protected?",
+        "caption": "Every child under 18, girls and boys."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 420,
+        "start_label": "7:00",
+        "title": "Consent and the age of consent",
+        "caption": "Under 18, the law protects you, even if someone says you agreed."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 600,
+        "start_label": "10:00",
+        "title": "Your rights if you speak up",
+        "caption": "Your name stays private, and special courts are child-friendly."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Who does the POCSO Act protect?",
+        "options": [
+          {
+            "id": "a",
+            "text": "Every child under 18, any gender"
+          },
+          {
+            "id": "b",
+            "text": "Only girls"
+          },
+          {
+            "id": "c",
+            "text": "Only adults"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Every child in India under 18 is protected.",
+        "at_seconds": 420,
+        "at_label": "7:00",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Under POCSO, a child is anyone under…",
+        "options": [
+          {
+            "id": "a",
+            "text": "18"
+          },
+          {
+            "id": "b",
+            "text": "12"
+          },
+          {
+            "id": "c",
+            "text": "21"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Anyone under 18 is a child under this law.",
+        "at_seconds": 600,
+        "at_label": "10:00",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "If a child reports abuse, their name…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Is kept private"
+          },
+          {
+            "id": "b",
+            "text": "Is printed in the news"
+          },
+          {
+            "id": "c",
+            "text": "Is shared at school"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "The law says a child’s identity must be protected.",
+        "at_seconds": 740,
+        "at_label": "12:20",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l4-3",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "POCSO stands for Protection of Children from Sexual Offences.",
+        "verdict": null,
+        "back": "It became law in India in 2012 to keep children safe.",
+        "icon": "shield",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Only the police can report abuse.”",
+        "verdict": "Myth!",
+        "back": "Anyone can report, including a child, a parent or a teacher.",
+        "icon": "bubble",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "What is 1098?",
+        "verdict": "Aha!",
+        "back": "It’s India’s free Child Helpline, open day and night. Anyone can call for a child who needs help.",
+        "icon": "phone",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "One thing I learned about my rights is…",
+      "sentence_starters": [
+        "I didn’t know that…",
+        "It makes me feel…",
+        "I’d tell a friend that…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "POCSO protects children under…",
+          "options": [
+            {
+              "id": "a",
+              "text": "18"
+            },
+            {
+              "id": "b",
+              "text": "10"
+            },
+            {
+              "id": "c",
+              "text": "25"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Every child under 18."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Only girls are protected by POCSO.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False. Every child is protected."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "Who can report abuse?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Anyone, including a child"
+            },
+            {
+              "id": "b",
+              "text": "Only the police"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Anyone can report."
+        }
+      ],
+      "summary": "3 things you know now: the law protects every child under 18, it’s never the child’s fault, and anyone can report."
+    },
+    "completion": {
+      "flower_colors": [
+        "#A992D6",
+        "#C9B6EC"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l4-4"
+      }
+    },
+    "image_ids": [
+      "L4.3-A",
+      "L4.3-B",
+      "L4.3-C"
+    ]
+  },
+  {
+    "id": "l4-4",
+    "code": "4.4",
+    "chapter_id": "ch4",
+    "sort_order": 14,
+    "order_in_chapter": 4,
+    "title": "Nurturing Positive Relationships",
+    "tagline": "Green flags only",
+    "content_status": "child_safety_review_pending",
+    "calm_mode": true,
+    "unlock": {
+      "requires": "l4-3_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 900,
+      "duration_label": "15:00",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Ms. Kavya Rao [placeholder]",
+        "role": "Child psychologist"
+      },
+      "poster_image": "L4.4-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "What makes a good friend?",
+        "caption": "Good friends are kind, honest and respect your choices."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 220,
+        "start_label": "3:40",
+        "title": "Speak up: being assertive",
+        "caption": "Say what you need, calmly and clearly: “I feel… when… I need…”"
+      },
+      {
+        "id": "t3",
+        "start_seconds": 440,
+        "start_label": "7:20",
+        "title": "Handling disagreements kindly",
+        "caption": "Cool down, listen, find a fix together."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 640,
+        "start_label": "10:40",
+        "title": "Self-esteem: liking who you are",
+        "caption": "You are more than your looks or your marks."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "Which is an assertive way to say it?",
+        "options": [
+          {
+            "id": "a",
+            "text": "“I feel upset when you read my diary. Please ask first.”"
+          },
+          {
+            "id": "b",
+            "text": "“You’re the worst!”"
+          },
+          {
+            "id": "c",
+            "text": "Say nothing and stay upset"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Calm, clear and kind. That’s assertive.",
+        "at_seconds": 440,
+        "at_label": "7:20",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "In a fight with a friend, a good first step is…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Take a breath and cool down"
+          },
+          {
+            "id": "b",
+            "text": "Post about it online"
+          },
+          {
+            "id": "c",
+            "text": "Never talk again"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "A calm mind finds better words.",
+        "at_seconds": 640,
+        "at_label": "10:40",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "Self-esteem means…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Valuing yourself as you are"
+          },
+          {
+            "id": "b",
+            "text": "Being better than everyone"
+          },
+          {
+            "id": "c",
+            "text": "Never making mistakes"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "You’re worthy, mistakes and all.",
+        "at_seconds": 780,
+        "at_label": "13:00",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l4-4",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "Starting with “I feel” helps people listen instead of argue.",
+        "verdict": null,
+        "back": "“I” messages share your feelings without blaming, so the other person doesn’t feel attacked.",
+        "icon": "bubble",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Good friends never fight.”",
+        "verdict": "Myth!",
+        "back": "Even best friends disagree. What matters is how you sort it out.",
+        "icon": "heart",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "How do I say no without losing a friend?",
+        "verdict": "Try this!",
+        "back": "“No thanks, but let’s do something else together.” Real friends respect a no.",
+        "icon": "bulb",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "Three things I like about myself are…",
+      "sentence_starters": [
+        "I’m good at…",
+        "My friends like that I…",
+        "I’m proud that I…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "An assertive message starts with…",
+          "options": [
+            {
+              "id": "a",
+              "text": "“I feel…”"
+            },
+            {
+              "id": "b",
+              "text": "“You always…”"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "“I feel…” shares without blaming."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "A good friend respects your no.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "True. Always."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "A red flag in a friendship is…",
+          "options": [
+            {
+              "id": "a",
+              "text": "Pressuring you"
+            },
+            {
+              "id": "b",
+              "text": "Listening to you"
+            },
+            {
+              "id": "c",
+              "text": "Saying sorry"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Pressure isn’t friendship."
+        }
+      ],
+      "summary": "3 things you know now: green flags are kindness and respect, “I feel… when… I need…” helps you speak up, and you are worth liking."
+    },
+    "completion": {
+      "flower_colors": [
+        "#A992D6",
+        "#C9B6EC"
+      ],
+      "badge_id": null,
+      "next": {
+        "type": "lesson",
+        "id": "l4-5"
+      }
+    },
+    "image_ids": [
+      "L4.4-A",
+      "L4.4-B",
+      "L4.4-C"
+    ]
+  },
+  {
+    "id": "l4-5",
+    "code": "4.5",
+    "chapter_id": "ch4",
+    "sort_order": 15,
+    "order_in_chapter": 5,
+    "title": "Emotional Wellbeing",
+    "tagline": "Every feeling is welcome",
+    "content_status": "child_safety_review_pending",
+    "calm_mode": true,
+    "unlock": {
+      "requires": "l4-4_completed"
+    },
+    "free_preview": false,
+    "video": {
+      "provider": "[video host]",
+      "video_id": null,
+      "url": null,
+      "duration_seconds": 920,
+      "duration_label": "15:20",
+      "language": "hi-en",
+      "captions": [
+        {
+          "lang": "en",
+          "url": null
+        }
+      ],
+      "expert": {
+        "name": "Ms. Kavya Rao [placeholder]",
+        "role": "Child psychologist"
+      },
+      "poster_image": "L4.5-A",
+      "timestamps_status": "estimated: replace with final edit times"
+    },
+    "topics": [
+      {
+        "id": "t1",
+        "start_seconds": 0,
+        "start_label": "0:00",
+        "title": "Naming and sharing your feelings",
+        "caption": "When you name a feeling, it gets a little smaller."
+      },
+      {
+        "id": "t2",
+        "start_seconds": 220,
+        "start_label": "3:40",
+        "title": "Coping with stress and big feelings",
+        "caption": "Breathe, move, talk, write. Find what works for you."
+      },
+      {
+        "id": "t3",
+        "start_seconds": 460,
+        "start_label": "7:40",
+        "title": "Empathy: feeling with others",
+        "caption": "Imagine how someone else feels, and be kind."
+      },
+      {
+        "id": "t4",
+        "start_seconds": 660,
+        "start_label": "11:00",
+        "title": "Bouncing back from setbacks",
+        "caption": "Mistakes help you grow. Try again, a little differently."
+      }
+    ],
+    "pause_and_think": [
+      {
+        "id": "pt1",
+        "type": "single_choice",
+        "prompt": "A good first step with a big feeling is…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Name it: “I feel nervous”"
+          },
+          {
+            "id": "b",
+            "text": "Pretend it isn’t there"
+          },
+          {
+            "id": "c",
+            "text": "Shout at someone"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Naming a feeling calms the brain’s alarm.",
+        "at_seconds": 460,
+        "at_label": "7:40",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt2",
+        "type": "single_choice",
+        "prompt": "Empathy means…",
+        "options": [
+          {
+            "id": "a",
+            "text": "Understanding how someone else feels"
+          },
+          {
+            "id": "b",
+            "text": "Always agreeing"
+          },
+          {
+            "id": "c",
+            "text": "Feeling sorry for yourself"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Stepping into someone else’s shoes.",
+        "at_seconds": 660,
+        "at_label": "11:00",
+        "skippable": true,
+        "reward": "sparkle"
+      },
+      {
+        "id": "pt3",
+        "type": "single_choice",
+        "prompt": "You didn’t make the team. A growth thought is…",
+        "options": [
+          {
+            "id": "a",
+            "text": "“I can practise and try again”"
+          },
+          {
+            "id": "b",
+            "text": "“I’m useless”"
+          },
+          {
+            "id": "c",
+            "text": "“I’ll never try anything”"
+          }
+        ],
+        "correct_option_id": "a",
+        "explanation": "Setbacks are steps, not stops.",
+        "at_seconds": 800,
+        "at_label": "13:20",
+        "skippable": true,
+        "reward": "sparkle"
+      }
+    ],
+    "activity_id": "act-l4-5",
+    "discover_cards": [
+      {
+        "id": "d1",
+        "kind": "fact",
+        "label": "SCIENCE FACT",
+        "front": "Breathing out slowly tells your body it’s safe.",
+        "verdict": null,
+        "back": "Long out-breaths slow your heartbeat and calm your nerves within a minute.",
+        "icon": "leaf",
+        "tap_to_reveal": false,
+        "counts_as_myth_busted": false
+      },
+      {
+        "id": "d2",
+        "kind": "myth",
+        "label": "MYTH OR FACT?",
+        "front": "“Strong girls don’t cry.”",
+        "verdict": "Myth!",
+        "back": "Crying is a healthy way to let feelings out. Brave people feel things too.",
+        "icon": "drop",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": true
+      },
+      {
+        "id": "d3",
+        "kind": "gigi_wonders",
+        "label": "GIGI WONDERS",
+        "front": "What if I feel sad for a long time?",
+        "verdict": "Aha!",
+        "back": "If sadness stays for weeks, tell a trusted adult or a counsellor. Asking for help is strong.",
+        "icon": "heart",
+        "tap_to_reveal": true,
+        "counts_as_myth_busted": false
+      }
+    ],
+    "reflect": {
+      "journal_prompt": "Today I feel… and one thing that helps me is…",
+      "sentence_starters": [
+        "Today I feel…",
+        "What helps me is…",
+        "I’m proud I…"
+      ],
+      "saves_to": "journal",
+      "saves_to_safe_circle": false,
+      "quick_check": [
+        {
+          "id": "qc1",
+          "type": "single_choice",
+          "prompt": "Naming a feeling makes it…",
+          "options": [
+            {
+              "id": "a",
+              "text": "A little smaller"
+            },
+            {
+              "id": "b",
+              "text": "Much bigger"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Putting it into words calms it."
+        },
+        {
+          "id": "qc2",
+          "type": "true_false",
+          "prompt": "Asking for help is a sign of weakness.",
+          "options": [
+            {
+              "id": "a",
+              "text": "True"
+            },
+            {
+              "id": "b",
+              "text": "False"
+            }
+          ],
+          "correct_option_id": "b",
+          "explanation": "False. It’s a sign of strength."
+        },
+        {
+          "id": "qc3",
+          "type": "single_choice",
+          "prompt": "After a setback, a growth thought is…",
+          "options": [
+            {
+              "id": "a",
+              "text": "“I can try again”"
+            },
+            {
+              "id": "b",
+              "text": "“I’m bad at everything”"
+            }
+          ],
+          "correct_option_id": "a",
+          "explanation": "Growth thoughts help you bounce back."
+        }
+      ],
+      "summary": "3 things you know now: every feeling is welcome, you have tools to calm big ones, and setbacks help you grow."
+    },
+    "completion": {
+      "flower_colors": [
+        "#A992D6",
+        "#C9B6EC"
+      ],
+      "badge_id": "badge-full-bloom",
+      "next": {
+        "type": "checkin",
+        "id": "checkin-ch4"
+      }
+    },
+    "image_ids": [
+      "L4.5-A",
+      "L4.5-B",
+      "L4.5-C"
+    ]
+  }
+]

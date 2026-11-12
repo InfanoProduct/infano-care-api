@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { ParentController } from "./parent.controller.js";
+import { ParentSpaceController } from "./parent-space.controller.js";
 import { requireAuth } from "../../common/middleware/requireAuth.js";
 
 const router = Router();
@@ -37,5 +38,20 @@ router.patch("/expert-sessions/:id/reschedule", ParentController.rescheduleExper
 router.get("/bookmarks", ParentController.getBookmarks);
 router.post("/resources/:id/bookmark", ParentController.bookmarkResource);
 router.delete("/resources/:id/bookmark", ParentController.unbookmarkResource);
+
+// Parent Space Orders, Refunds, Settings & Help (auth required)
+router.get("/orders-summary", ParentSpaceController.getOrdersSummary);
+router.post("/orders/:orderId/refund", ParentSpaceController.requestRefund);
+router.post("/orders/:orderId/report", ParentSpaceController.reportOrderIssue);
+router.patch("/orders/:orderId/address", ParentSpaceController.updateOrderAddress);
+
+router.get("/settings", ParentSpaceController.getSettings);
+router.patch("/settings", ParentSpaceController.updateSettings);
+router.post("/settings/change-pin", ParentSpaceController.changePin);
+router.patch("/learners/:learnerId", ParentSpaceController.updateLearner);
+router.delete("/learners/:learnerId/health-answers", ParentSpaceController.clearHealthAnswers);
+router.delete("/learners/:learnerId", ParentSpaceController.deleteLearner);
+
+router.post("/support/concern", ParentSpaceController.submitConcern);
 
 export default router;

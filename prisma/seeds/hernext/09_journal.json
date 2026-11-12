@@ -1,0 +1,90 @@
+{
+  "prompt_of_the_day": [
+    "Before today I thought periods were… Now I know…",
+    "Which change am I most curious (or nervous) about, and why?",
+    "A myth I heard about periods was… and the truth is…",
+    "My fresh-and-comfy plan for my next period is…",
+    "If I could design my dream period product, it would…",
+    "What would make changing at school easier for me?",
+    "One thing I’d change at my school to make periods easier is…",
+    "When I feel discomfort, the thing that helps me most is… (or I’ll try…)",
+    "If I ever felt something wasn’t right with my period, I would tell…",
+    "My top 3 Germ Defender habits are…",
+    "A time I was kind, or wish I had been, was…",
+    "My Safe Circle: 3 grown-ups I can always tell are…",
+    "One thing I learned about my rights is…",
+    "Three things I like about myself are…",
+    "Today I feel… and one thing that helps me is…",
+    "What’s one thing that made you smile this week?",
+    "What’s something you’re proud of today?",
+    "Who made you feel good this week, and how?",
+    "If your mood was weather today, what would it be?",
+    "What’s one kind thing you could do tomorrow?"
+  ],
+  "sentence_starters_default": [
+    "I smiled when…",
+    "Today my body felt…",
+    "I’m proud that…"
+  ],
+  "stickers": [
+    {
+      "id": "sun",
+      "bg": "#FFF4C7"
+    },
+    {
+      "id": "heart",
+      "bg": "#F9D5D3"
+    },
+    {
+      "id": "star",
+      "bg": "#D8ECF8"
+    },
+    {
+      "id": "moon",
+      "bg": "#E3DAF5"
+    },
+    {
+      "id": "leaf",
+      "bg": "#D4EFE4"
+    },
+    {
+      "id": "cloud",
+      "bg": "#FFE3CC"
+    }
+  ],
+  "lock": {
+    "optional": true,
+    "code_length": 4,
+    "separate_from_parent_pin": true,
+    "reset": "parent_phone_otp_unlocks_without_revealing_entries"
+  },
+  "worry_jar": {
+    "actions": [
+      "let_go",
+      "want_help"
+    ],
+    "let_go_effect": "sparkle",
+    "want_help_opens": "talk_to_someone",
+    "show_count": true,
+    "count_is_score": false,
+    "placeholder": "What if my period starts during the sports day race?"
+  },
+  "safe_circle": {
+    "max_people": 5,
+    "fields": [
+      "name",
+      "relationship",
+      "phone_optional"
+    ],
+    "created_in": [
+      "lesson l4-2 reflect",
+      "checkin-ch4 unscored question"
+    ],
+    "editable_in": "journal"
+  },
+  "privacy": {
+    "visible_to": "learner_only",
+    "parent_can_see": false,
+    "automatic_scanning": false
+  }
+}

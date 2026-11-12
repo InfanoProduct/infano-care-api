@@ -1,0 +1,1400 @@
+[
+  {
+    "id": "act-l1-1",
+    "lesson_id": "l1-1",
+    "name": "Build-a-Cycle Moon",
+    "est_minutes": 3,
+    "petals_on_complete": 10,
+    "engine": "cycle_moon",
+    "instructions": "Tap a petal, then tap its place on the moon. Start at the top right and go round.",
+    "config": {
+      "slots": [
+        {
+          "id": "period",
+          "label": "Period",
+          "days": "Days 1 to 5",
+          "color": "#F9D5D3",
+          "position": "top_right",
+          "fact": "The cosy lining gently leaves the body. That’s your period!",
+          "hint": "The cycle starts with the period, at the top right."
+        },
+        {
+          "id": "grow",
+          "label": "Egg growing",
+          "days": "Days 6 to 13",
+          "color": "#D4EFE4",
+          "position": "bottom_right",
+          "fact": "A new egg grows inside the ovary, and a fresh lining starts to build.",
+          "hint": "After the period, something starts to grow."
+        },
+        {
+          "id": "release",
+          "label": "Egg released",
+          "days": "Around day 14",
+          "color": "#FFF4C7",
+          "position": "bottom_left",
+          "fact": "The ovary releases the egg. This is called ovulation.",
+          "hint": "Halfway round, the egg is let go."
+        },
+        {
+          "id": "wait",
+          "label": "Lining waiting",
+          "days": "Days 15 to 28",
+          "color": "#E3DAF5",
+          "position": "top_left",
+          "fact": "The lining waits. If it isn’t needed, the cycle begins again.",
+          "hint": "Last comes the waiting part, before it all starts again."
+        }
+      ],
+      "correct_order": [
+        "period",
+        "grow",
+        "release",
+        "wait"
+      ],
+      "footnote": "Days shown for a 28-day cycle. Every body has its own rhythm.",
+      "done_title": "You built the cycle!",
+      "done_line": "The moon turns once for every cycle, just like your body."
+    }
+  },
+  {
+    "id": "act-l1-2",
+    "lesson_id": "l1-2",
+    "name": "Puberty Passport",
+    "est_minutes": 4,
+    "petals_on_complete": 10,
+    "engine": "flip_collect",
+    "config": {
+      "instructions": "Every girl travels through puberty in her own order. Tap each stop, read what happens, and stamp your passport.",
+      "done_title": "Passport complete!",
+      "done_line": "8 of 8 stamps. Remember: everyone visits these stops in her own order and her own time.",
+      "calm_mode": false,
+      "collect_unit": "stamps",
+      "cards": [
+        {
+          "id": "c1",
+          "name": "Breast buds",
+          "icon_svg_path": "M8 14a4 4 0 1 0 8 0M12 4v4",
+          "back": "Small, tender bumps under the nipples are often the first sign. One side may grow first, that’s okay.",
+          "tip": "A soft cotton slip or starter bra can feel comfy."
+        },
+        {
+          "id": "c2",
+          "name": "Body hair",
+          "icon_svg_path": "M6 18c2-6 4-9 6-12M12 18c1-5 3-8 5-10M3 18c1-3 2-5 4-7",
+          "back": "Hair grows under the arms, on the legs and around the private parts.",
+          "tip": "Removing it is your choice, never a must."
+        },
+        {
+          "id": "c3",
+          "name": "Growth spurt",
+          "icon_svg_path": "M12 21V5M7 10l5-5 5 5M5 21h14",
+          "back": "You may grow several centimetres in a year. Clothes suddenly feel short!",
+          "tip": "Good sleep and food help growing bones."
+        },
+        {
+          "id": "c4",
+          "name": "New shape",
+          "icon_svg_path": "M8 3c-2 4 2 6 0 9s2 6 0 9M16 3c2 4-2 6 0 9s-2 6 0 9",
+          "back": "Hips widen and the body gets softer curves. Every shape is a healthy shape.",
+          "tip": "Compare less, celebrate more."
+        },
+        {
+          "id": "c5",
+          "name": "Skin and sweat",
+          "icon_svg_path": "M12 3c3 4 5 7 5 10a5 5 0 0 1-10 0c0-3 2-6 5-10z",
+          "back": "Oil and sweat glands wake up, so pimples and body odour can appear.",
+          "tip": "Wash your face twice a day and bathe daily."
+        },
+        {
+          "id": "c6",
+          "name": "First period",
+          "icon_svg_path": "M12 3c3 4 5 7 5 10a5 5 0 0 1-10 0c0-3 2-6 5-10zM12 13v3",
+          "back": "Menarche usually comes about 2 years after breast buds start, often between 9 and 15.",
+          "tip": "Keep a pad in your bag once breast buds appear."
+        },
+        {
+          "id": "c7",
+          "name": "Big feelings",
+          "icon_svg_path": "M4 15c2-3 4-3 6 0s4 3 6 0 4-3 4-3M4 9c2-3 4-3 6 0s4 3 6 0 4-3 4-3",
+          "back": "Oestrogen and progesterone can make feelings go up and down quickly.",
+          "tip": "Name the feeling, then breathe or talk."
+        },
+        {
+          "id": "c8",
+          "name": "Irregular at first",
+          "icon_svg_path": "M4 12h3l2-5 3 10 2-5h6",
+          "back": "Periods can be far apart or close together for the first 1 to 2 years.",
+          "tip": "Track it in your Diary to spot your rhythm."
+        }
+      ]
+    }
+  },
+  {
+    "id": "act-l1-3",
+    "lesson_id": "l1-3",
+    "name": "Flow Detective",
+    "est_minutes": 4,
+    "petals_on_complete": 10,
+    "engine": "scenario",
+    "config": {
+      "instructions": "Six case files have landed on your desk. Read each clue and crack the case.",
+      "done_title": "All cases cracked!",
+      "done_line": "You read the clues like a pro. Flow changes, stress can shift it, and heavy or long periods mean tell a grown-up.",
+      "calm_mode": false,
+      "score_unit": "badges",
+      "case_label": "CASE",
+      "cases": [
+        {
+          "id": "s1",
+          "who": "Sana, day 5",
+          "scene": "Sana sees just a few brownish spots on her pad.",
+          "question": "What kind of flow is this?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Light"
+            },
+            {
+              "id": "b",
+              "text": "Medium"
+            },
+            {
+              "id": "c",
+              "text": "Heavy"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "Light flow. Brown blood is simply older blood, totally normal at the start or end."
+        },
+        {
+          "id": "s2",
+          "who": "Mira, day 2",
+          "scene": "Mira changes a well-used pad every 4 to 5 hours.",
+          "question": "What kind of flow is this?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Light"
+            },
+            {
+              "id": "b",
+              "text": "Medium"
+            },
+            {
+              "id": "c",
+              "text": "Heavy"
+            }
+          ],
+          "correct_option_id": "b",
+          "feedback": "Medium flow, and she’s changing on time. Case closed!"
+        },
+        {
+          "id": "s3",
+          "who": "Tara, day 1",
+          "scene": "Tara soaks through a pad every hour for several hours and feels dizzy.",
+          "question": "What should Tara do?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Ignore it, it’s normal"
+            },
+            {
+              "id": "b",
+              "text": "Tell a grown-up and see a doctor"
+            },
+            {
+              "id": "c",
+              "text": "Just wear two pads"
+            }
+          ],
+          "correct_option_id": "b",
+          "feedback": "Very heavy flow with dizziness needs a doctor. Telling a grown-up is the brave, smart move."
+        },
+        {
+          "id": "s4",
+          "who": "Anu, exam week",
+          "scene": "Anu’s period came 10 days late during board-exam week.",
+          "question": "What’s the likely clue?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Stress can delay a period"
+            },
+            {
+              "id": "b",
+              "text": "She must be very ill"
+            },
+            {
+              "id": "c",
+              "text": "Periods never change"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "Stress can shift the cycle. If it keeps happening, she can check with a doctor."
+        },
+        {
+          "id": "s5",
+          "who": "Ira, day 9",
+          "scene": "Ira’s period has now lasted 9 days.",
+          "question": "What should Ira do?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Nothing, ever"
+            },
+            {
+              "id": "b",
+              "text": "Tell a grown-up: more than 7 days is worth checking"
+            }
+          ],
+          "correct_option_id": "b",
+          "feedback": "Periods usually last 2 to 7 days. Longer is a good reason to see a doctor."
+        },
+        {
+          "id": "s6",
+          "who": "Neha, day 3",
+          "scene": "Neha’s aunt says she must not bathe during her period.",
+          "question": "Myth or fact?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Myth: a warm bath helps"
+            },
+            {
+              "id": "b",
+              "text": "Fact: never bathe"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "Myth busted! A warm bath keeps you fresh and can ease cramps."
+        }
+      ]
+    }
+  },
+  {
+    "id": "act-l2-1",
+    "lesson_id": "l2-1",
+    "name": "My Care Clock",
+    "est_minutes": 3,
+    "petals_on_complete": 10,
+    "engine": "sort",
+    "config": {
+      "instructions": "Build your care clock! Tap the right time for each habit, and catch the ones to skip.",
+      "done_title": "Your care clock is ticking!",
+      "done_line": "Daily freshness, on-time changes, a night pad, and no perfumes. That’s a Care Captain routine.",
+      "calm_mode": false,
+      "buckets": [
+        {
+          "id": "b0",
+          "name": "Every day",
+          "bg": "#FFF4C7",
+          "ink": "#8A6410",
+          "icon_svg_path": "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v3M12 19v3M2 12h3M19 12h3"
+        },
+        {
+          "id": "b1",
+          "name": "Every change",
+          "bg": "#D4EFE4",
+          "ink": "#24735A",
+          "icon_svg_path": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"
+        },
+        {
+          "id": "b2",
+          "name": "Before bed",
+          "bg": "#E3DAF5",
+          "ink": "#5A4385",
+          "icon_svg_path": "M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10z"
+        },
+        {
+          "id": "b3",
+          "name": "Skip it!",
+          "bg": "#F9D5D3",
+          "ink": "#A8365A",
+          "icon_svg_path": "M6 6l12 12M18 6L6 18"
+        }
+      ],
+      "items": [
+        {
+          "id": "i1",
+          "text": "Bath, and wash outside with plain water",
+          "correct_bucket_id": "b0",
+          "explanation": "A daily bath keeps you fresh. Water outside is all you need."
+        },
+        {
+          "id": "i2",
+          "text": "Put on fresh cotton underwear",
+          "correct_bucket_id": "b0",
+          "explanation": "Cotton lets skin breathe, so germs don’t grow."
+        },
+        {
+          "id": "i3",
+          "text": "Change my pad (every 4 to 6 hours)",
+          "correct_bucket_id": "b1",
+          "explanation": "On-time changes stop smell, rashes and germs."
+        },
+        {
+          "id": "i4",
+          "text": "Wash my hands before and after",
+          "correct_bucket_id": "b1",
+          "explanation": "Clean hands, clean change."
+        },
+        {
+          "id": "i5",
+          "text": "Wipe from front to back",
+          "correct_bucket_id": "b1",
+          "explanation": "Every time you use the toilet, too."
+        },
+        {
+          "id": "i6",
+          "text": "Wear a fresh, longer pad for the night",
+          "correct_bucket_id": "b2",
+          "explanation": "Night pads are longer, so you can sleep without worry."
+        },
+        {
+          "id": "i7",
+          "text": "Spray perfume down there",
+          "correct_bucket_id": "b3",
+          "explanation": "Scents irritate delicate skin. Skip it!"
+        },
+        {
+          "id": "i8",
+          "text": "Wash inside the vagina with soap",
+          "correct_bucket_id": "b3",
+          "explanation": "The vagina cleans itself. Soap inside upsets its balance."
+        },
+        {
+          "id": "i9",
+          "text": "Wear the same pad all day",
+          "correct_bucket_id": "b3",
+          "explanation": "Germs grow in a used pad. Change every 4 to 6 hours."
+        }
+      ],
+      "outro_steps": []
+    }
+  },
+  {
+    "id": "act-l2-2",
+    "lesson_id": "l2-2",
+    "name": "Product Matchmaker",
+    "est_minutes": 4,
+    "petals_on_complete": 10,
+    "engine": "scenario",
+    "config": {
+      "instructions": "Four friends need help choosing a period product. Read about each one and make the match.",
+      "done_title": "Perfect matches!",
+      "done_line": "Every product has pros and cons. The best one is the one that suits your body, your day and your planet.",
+      "calm_mode": false,
+      "score_unit": "matches",
+      "case_label": "FRIEND",
+      "cases": [
+        {
+          "id": "s1",
+          "who": "Zoya, 10",
+          "scene": "Zoya expects her first period soon and wants something simple to start with.",
+          "question": "What would you suggest?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Disposable pads"
+            },
+            {
+              "id": "b",
+              "text": "A menstrual cup"
+            },
+            {
+              "id": "c",
+              "text": "A tampon"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "Pads are easy and a great first choice. Pros: simple, many sizes. Cons: single use, so more waste."
+        },
+        {
+          "id": "s2",
+          "who": "Diya, 13",
+          "scene": "Diya swims for her school team and has a meet during her period.",
+          "question": "What could work in the pool?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A tampon or a cup"
+            },
+            {
+              "id": "b",
+              "text": "A cloth pad"
+            },
+            {
+              "id": "c",
+              "text": "A disposable pad"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "Pads don’t work in water. Tampons or cups can, once she’s comfortable and has asked a grown-up."
+        },
+        {
+          "id": "s3",
+          "who": "Meher, 12",
+          "scene": "Meher loves the planet and wants less waste.",
+          "question": "Which match fits Meher?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A cup or cloth pads"
+            },
+            {
+              "id": "b",
+              "text": "Extra disposable pads"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "One cup can last years. Pros: less waste, saves money. Cons: needs practice and washing."
+        },
+        {
+          "id": "s4",
+          "who": "Kiara, 11",
+          "scene": "Kiara has a 2-hour bus ride on a heavy-flow day.",
+          "question": "What should she pack?",
+          "options": [
+            {
+              "id": "a",
+              "text": "A long heavy-flow pad, plus a spare"
+            },
+            {
+              "id": "b",
+              "text": "One thin panty liner"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "Heavy days need higher absorbency, and a spare in the pouch means no worries."
+        }
+      ]
+    }
+  },
+  {
+    "id": "act-l2-3",
+    "lesson_id": "l2-3",
+    "name": "Wrap It Right",
+    "est_minutes": 3,
+    "petals_on_complete": 10,
+    "engine": "sequence",
+    "config": {
+      "instructions": "Tap the steps in the right order. Two rounds: changing a pad, then caring for a cloth pad.",
+      "done_title": "Wrapped right!",
+      "done_line": "Clean hands, wrap and bin, never flush, and sunshine for cloth pads.",
+      "calm_mode": false,
+      "rounds": [
+        {
+          "id": "r1",
+          "name": "Change a pad",
+          "steps_in_order": [
+            "Wash your hands",
+            "Open the new pad’s wrapper",
+            "Remove the used pad",
+            "Roll it up in the wrapper or paper",
+            "Put it in the bin",
+            "Stick the new pad in place",
+            "Wash your hands again"
+          ],
+          "display_order": [
+            4,
+            0,
+            6,
+            2,
+            5,
+            1,
+            3
+          ]
+        },
+        {
+          "id": "r2",
+          "name": "Care for a cloth pad",
+          "steps_in_order": [
+            "Rinse in cold water",
+            "Wash with soap",
+            "Dry in the sunlight",
+            "Fold and keep in a clean pouch"
+          ],
+          "display_order": [
+            2,
+            0,
+            3,
+            1
+          ]
+        }
+      ],
+      "wrong_hint": "Not yet! Think about what has to happen before that."
+    }
+  },
+  {
+    "id": "act-l2-4",
+    "lesson_id": "l2-4",
+    "name": "School Day Surprise",
+    "est_minutes": 4,
+    "petals_on_complete": 10,
+    "engine": "branching_story",
+    "instructions": "A branching story, then pack your own school pouch.",
+    "config": {
+      "start_node": "start",
+      "nodes": [
+        {
+          "id": "start",
+          "panel": 1,
+          "text": "Maths class, second period. Aanya feels something different… she thinks her period has started!",
+          "ask": "What should Aanya do?",
+          "choices": [
+            {
+              "label": "Whisper to her friend Zoya",
+              "next": "friend"
+            },
+            {
+              "label": "Raise her hand to use the washroom",
+              "next": "ask"
+            },
+            {
+              "label": "Wait quietly for the bell",
+              "next": "wait"
+            }
+          ]
+        },
+        {
+          "id": "friend",
+          "panel": 2,
+          "text": "Zoya smiles: \"Happens to all of us! Let’s tell Ms. Kapoor together.\"",
+          "ask": "What next?",
+          "choices": [
+            {
+              "label": "Go to the teacher together",
+              "next": "teacher"
+            }
+          ]
+        },
+        {
+          "id": "wait",
+          "panel": 2,
+          "text": "The bell is still 30 minutes away. Aanya feels a bit worried.",
+          "gigi": "Your body is never a disturbance. It’s always okay to step out.",
+          "ask": "What will she do?",
+          "choices": [
+            {
+              "label": "Ask to step out",
+              "next": "ask"
+            }
+          ]
+        },
+        {
+          "id": "teacher",
+          "panel": 3,
+          "text": "Ms. Kapoor nods kindly and lets her go. No questions, no fuss.",
+          "ask": "Off she goes!",
+          "choices": [
+            {
+              "label": "Head to the washroom",
+              "next": "washroom"
+            }
+          ]
+        },
+        {
+          "id": "ask",
+          "panel": 3,
+          "text": "\"May I use the washroom, please?\" The teacher says yes with a smile.",
+          "ask": "Off she goes!",
+          "choices": [
+            {
+              "label": "Head to the washroom",
+              "next": "washroom"
+            }
+          ]
+        },
+        {
+          "id": "washroom",
+          "panel": 4,
+          "text": "In the washroom, Aanya takes a deep breath. She’s got this.",
+          "ask": "What does she use?",
+          "choices": [
+            {
+              "label": "The emergency pouch in her bag",
+              "next": "endKit",
+              "sets_flag": "used_kit"
+            },
+            {
+              "label": "Visit the school nurse",
+              "next": "endNurse"
+            }
+          ]
+        },
+        {
+          "id": "endKit",
+          "panel": 5,
+          "text": "Fresh pad, wrap the used one, bin it, wash hands. Back in class in 5 minutes, feeling proud!",
+          "ask": "One last thing…",
+          "choices": [
+            {
+              "label": "Pack my own pouch",
+              "next": "pack"
+            }
+          ]
+        },
+        {
+          "id": "endNurse",
+          "panel": 5,
+          "text": "The nurse has pads ready and a kind smile. Next time, a pouch in her bag will make it even easier.",
+          "ask": "One last thing…",
+          "choices": [
+            {
+              "label": "Pack my own pouch",
+              "next": "pack"
+            }
+          ]
+        }
+      ],
+      "pack": {
+        "required_count": 5,
+        "items": [
+          {
+            "label": "Sanitary pads",
+            "correct": true
+          },
+          {
+            "label": "Spare underwear",
+            "correct": true
+          },
+          {
+            "label": "Wipes",
+            "correct": true
+          },
+          {
+            "label": "Paper bag",
+            "correct": true
+          },
+          {
+            "label": "Small snack",
+            "correct": true
+          },
+          {
+            "label": "Perfume",
+            "correct": false
+          },
+          {
+            "label": "Lip gloss",
+            "correct": false
+          },
+          {
+            "label": "Comic book",
+            "correct": false
+          }
+        ],
+        "correct_msg": "Good pick!",
+        "wrong_msg": "That one can stay at home."
+      },
+      "awards": [
+        {
+          "badge_id": "badge-kit-packer",
+          "when_flag": "used_kit"
+        }
+      ],
+      "end": {
+        "with_flag": {
+          "title": "Kit Packer badge!",
+          "line": "You planned ahead and handled it like a pro."
+        },
+        "without_flag": {
+          "title": "Story complete!",
+          "line": "Asking for help is brave. Try the story again to find the bonus badge!"
+        }
+      }
+    }
+  },
+  {
+    "id": "act-l3-1",
+    "lesson_id": "l3-1",
+    "name": "Comfort Toolbox",
+    "est_minutes": 4,
+    "petals_on_complete": 10,
+    "engine": "body_hotspot",
+    "config": {
+      "instructions": "Gigi’s body map is glowing in 4 places. Tap a spot, then pick the comfort tools that help.",
+      "done_title": "Toolbox ready!",
+      "done_line": "Warmth, movement, water and rest. You know what helps your body feel better.",
+      "calm_mode": false,
+      "tools": [
+        {
+          "id": "t1",
+          "name": "Warm water bottle",
+          "icon_svg_path": "M8 4h8v3H8zM6 9h12v9a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z"
+        },
+        {
+          "id": "t2",
+          "name": "Gentle stretch",
+          "icon_svg_path": "M12 5a2 2 0 1 0 0 .1M5 20l4-6 3 2 3-2 4 6M12 8v8"
+        },
+        {
+          "id": "t3",
+          "name": "Sip warm water",
+          "icon_svg_path": "M6 8h12l-1 12H7zM9 4c0 2 2 2 2 4M13 4c0 2 2 2 2 4"
+        },
+        {
+          "id": "t4",
+          "name": "Rest or nap",
+          "icon_svg_path": "M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10z"
+        },
+        {
+          "id": "t5",
+          "name": "Short walk",
+          "icon_svg_path": "M13 4a2 2 0 1 0 0 .1M10 21l2-6 3 3v3M9 11l3-3 3 3 3 1M12 8l-2 7"
+        },
+        {
+          "id": "t6",
+          "name": "Fewer salty snacks",
+          "icon_svg_path": "M5 12h14M7 8h10M9 16h6"
+        }
+      ],
+      "spots": [
+        {
+          "id": "p1",
+          "name": "Tummy cramps",
+          "x_percent": 50,
+          "y_percent": 54,
+          "helpful_tool_ids": [
+            "t1",
+            "t2",
+            "t5"
+          ],
+          "min_correct_to_soothe": 2,
+          "tip": "Warmth relaxes the squeezing muscles, and gentle movement helps too."
+        },
+        {
+          "id": "p2",
+          "name": "Lower back ache",
+          "x_percent": 25,
+          "y_percent": 40,
+          "helpful_tool_ids": [
+            "t1",
+            "t2",
+            "t4"
+          ],
+          "min_correct_to_soothe": 2,
+          "tip": "A warm bottle on the back and a cat-cow stretch can ease it."
+        },
+        {
+          "id": "p3",
+          "name": "Bloated belly",
+          "x_percent": 73,
+          "y_percent": 68,
+          "helpful_tool_ids": [
+            "t3",
+            "t6",
+            "t5"
+          ],
+          "min_correct_to_soothe": 2,
+          "tip": "Water and less salt help your body let go of extra water."
+        },
+        {
+          "id": "p4",
+          "name": "Feeling tired",
+          "x_percent": 50,
+          "y_percent": 7,
+          "helpful_tool_ids": [
+            "t4",
+            "t3",
+            "t5"
+          ],
+          "min_correct_to_soothe": 2,
+          "tip": "Rest, water and a little fresh air can recharge you."
+        }
+      ],
+      "warning": "Tell a grown-up if pain stops you from going to school, or if it doesn’t get better. Medicine only with a parent or doctor."
+    }
+  },
+  {
+    "id": "act-l3-2",
+    "lesson_id": "l3-2",
+    "name": "Symptom Sorter",
+    "est_minutes": 3,
+    "petals_on_complete": 10,
+    "engine": "sort",
+    "config": {
+      "instructions": "Sort each clue. Is it usually normal, or a sign to tell a grown-up and see a doctor?",
+      "done_title": "Sorted, Doctor Detective!",
+      "done_line": "You can spot what’s usually normal and what needs a doctor. And remember: you can tell a grown-up about anything.",
+      "calm_mode": false,
+      "buckets": [
+        {
+          "id": "b0",
+          "name": "Usually normal",
+          "bg": "#D4EFE4",
+          "ink": "#24735A",
+          "icon_svg_path": "M5 12l5 5 9-10"
+        },
+        {
+          "id": "b1",
+          "name": "See a doctor",
+          "bg": "#FFE3CC",
+          "ink": "#9A4A16",
+          "icon_svg_path": "M12 3v18M3 12h18"
+        }
+      ],
+      "items": [
+        {
+          "id": "i1",
+          "text": "Mild cramps on day 1 or 2",
+          "correct_bucket_id": "b0",
+          "explanation": "Common, and warmth or a stretch helps."
+        },
+        {
+          "id": "i2",
+          "text": "Cycles of 25 to 40 days in the first year",
+          "correct_bucket_id": "b0",
+          "explanation": "Normal while your body settles."
+        },
+        {
+          "id": "i3",
+          "text": "Feeling a bit tired during your period",
+          "correct_bucket_id": "b0",
+          "explanation": "Common. Rest and water help."
+        },
+        {
+          "id": "i4",
+          "text": "Pain so strong you miss school every month",
+          "correct_bucket_id": "b1",
+          "explanation": "This could be endometriosis or something else a doctor can treat."
+        },
+        {
+          "id": "i5",
+          "text": "Soaking a pad every 1 to 2 hours",
+          "correct_bucket_id": "b1",
+          "explanation": "That’s menorrhagia, very heavy bleeding. A doctor can help."
+        },
+        {
+          "id": "i6",
+          "text": "No period by age 15",
+          "correct_bucket_id": "b1",
+          "explanation": "That’s called primary amenorrhea. A check-up gives answers."
+        },
+        {
+          "id": "i7",
+          "text": "Periods stop for 3 months after being regular",
+          "correct_bucket_id": "b1",
+          "explanation": "Worth checking, even if you feel fine."
+        },
+        {
+          "id": "i8",
+          "text": "Very irregular periods with lots of acne or extra hair",
+          "correct_bucket_id": "b1",
+          "explanation": "These can be signs of PCOS, which a doctor can manage."
+        }
+      ],
+      "outro_steps": []
+    }
+  },
+  {
+    "id": "act-l3-3",
+    "lesson_id": "l3-3",
+    "name": "Germ Defender",
+    "est_minutes": 3,
+    "petals_on_complete": 10,
+    "engine": "sort",
+    "config": {
+      "instructions": "Germs are knocking! Decide which habits shield you and which ones let germs in.",
+      "done_title": "Germs defended!",
+      "done_line": "Cotton, on-time changes, front to back and dry skin. And if something itches or smells strange, you tell.",
+      "calm_mode": false,
+      "buckets": [
+        {
+          "id": "b0",
+          "name": "Shields me",
+          "bg": "#D8ECF8",
+          "ink": "#2F6494",
+          "icon_svg_path": "M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"
+        },
+        {
+          "id": "b1",
+          "name": "Lets germs in",
+          "bg": "#F9D5D3",
+          "ink": "#A8365A",
+          "icon_svg_path": "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"
+        }
+      ],
+      "items": [
+        {
+          "id": "i1",
+          "text": "Cotton underwear",
+          "correct_bucket_id": "b0",
+          "explanation": "Cotton breathes, so germs can’t settle in."
+        },
+        {
+          "id": "i2",
+          "text": "Changing pads every 4 to 6 hours",
+          "correct_bucket_id": "b0",
+          "explanation": "Fresh pads, fewer germs."
+        },
+        {
+          "id": "i3",
+          "text": "Wiping front to back",
+          "correct_bucket_id": "b0",
+          "explanation": "Keeps germs from the back passage away."
+        },
+        {
+          "id": "i4",
+          "text": "Drying well after a bath",
+          "correct_bucket_id": "b0",
+          "explanation": "Germs love damp places."
+        },
+        {
+          "id": "i5",
+          "text": "Telling a grown-up about itching",
+          "correct_bucket_id": "b0",
+          "explanation": "The fastest way to get treated."
+        },
+        {
+          "id": "i6",
+          "text": "Scented sprays and washes",
+          "correct_bucket_id": "b1",
+          "explanation": "They upset the good bacteria."
+        },
+        {
+          "id": "i7",
+          "text": "Sitting in a wet swimsuit for hours",
+          "correct_bucket_id": "b1",
+          "explanation": "Damp, tight clothes help yeast grow. Change soon after swimming."
+        },
+        {
+          "id": "i8",
+          "text": "Washing inside the vagina (douching)",
+          "correct_bucket_id": "b1",
+          "explanation": "It washes away the good bacteria that protect you."
+        }
+      ],
+      "outro_steps": []
+    }
+  },
+  {
+    "id": "act-l4-1",
+    "lesson_id": "l4-1",
+    "name": "Upstander Choices",
+    "est_minutes": 4,
+    "petals_on_complete": 10,
+    "engine": "scenario",
+    "config": {
+      "instructions": "Four moments at school and online. What would an upstander do?",
+      "done_title": "Upstander unlocked!",
+      "done_line": "You don’t join in, you include, and you tell. That’s how safe schools are built.",
+      "calm_mode": true,
+      "score_unit": "hearts",
+      "case_label": "MOMENT",
+      "cases": [
+        {
+          "id": "s1",
+          "who": "Class group chat",
+          "scene": "Someone posts a meme making fun of Riya’s teeth. Everyone is sending laughing faces.",
+          "question": "What would an upstander do?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Forward it"
+            },
+            {
+              "id": "b",
+              "text": "Don’t share it, send Riya something kind, tell a teacher"
+            },
+            {
+              "id": "c",
+              "text": "Add a joke too"
+            }
+          ],
+          "correct_option_id": "b",
+          "feedback": "Not sharing stops it spreading. A kind message and an adult’s help make a big difference."
+        },
+        {
+          "id": "s2",
+          "who": "Lunch break",
+          "scene": "A group won’t let Ananya sit with them, again and again.",
+          "question": "What could you do?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Invite Ananya to sit with you"
+            },
+            {
+              "id": "b",
+              "text": "Laugh along"
+            },
+            {
+              "id": "c",
+              "text": "Post about it"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "Including someone is a quiet, powerful way to stand up."
+        },
+        {
+          "id": "s3",
+          "who": "It’s happening to you",
+          "scene": "Someone keeps calling you names and it really hurts.",
+          "question": "What’s a good step?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Tell a trusted adult"
+            },
+            {
+              "id": "b",
+              "text": "Keep it secret forever"
+            },
+            {
+              "id": "c",
+              "text": "Call them names back"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "It’s not your fault. Telling isn’t tattling, it’s getting help."
+        },
+        {
+          "id": "s4",
+          "who": "Online game",
+          "scene": "A stranger in a game chat asks for your photo and your school name.",
+          "question": "What should you do?",
+          "options": [
+            {
+              "id": "a",
+              "text": "Don’t reply, block, and tell a grown-up"
+            },
+            {
+              "id": "b",
+              "text": "Send it, they seem nice"
+            },
+            {
+              "id": "c",
+              "text": "Keep it a secret"
+            }
+          ],
+          "correct_option_id": "a",
+          "feedback": "Never share photos or personal details with strangers online. Block and tell."
+        }
+      ]
+    }
+  },
+  {
+    "id": "act-l4-2",
+    "lesson_id": "l4-2",
+    "name": "No, Go, Tell",
+    "est_minutes": 4,
+    "petals_on_complete": 10,
+    "engine": "sort",
+    "config": {
+      "instructions": "Sort each moment calmly. Take your time, there’s no timer here.",
+      "done_title": "You know your boundaries",
+      "done_line": "Safe touch is never secret. You can say no, and you can always tell.",
+      "calm_mode": true,
+      "buckets": [
+        {
+          "id": "b0",
+          "name": "Safe and okay",
+          "bg": "#D4EFE4",
+          "ink": "#24735A",
+          "icon_svg_path": "M5 12l5 5 9-10"
+        },
+        {
+          "id": "b1",
+          "name": "I can say no",
+          "bg": "#FFF4C7",
+          "ink": "#8A6410",
+          "icon_svg_path": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM6 6l12 12"
+        },
+        {
+          "id": "b2",
+          "name": "No, Go, Tell",
+          "bg": "#E3DAF5",
+          "ink": "#5A4385",
+          "icon_svg_path": "M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"
+        }
+      ],
+      "items": [
+        {
+          "id": "i1",
+          "text": "A high five from a friend",
+          "correct_bucket_id": "b0",
+          "explanation": "A friendly touch you’re happy with is safe."
+        },
+        {
+          "id": "i2",
+          "text": "A hug from Nani that you like",
+          "correct_bucket_id": "b0",
+          "explanation": "Safe touch feels good and is never secret."
+        },
+        {
+          "id": "i3",
+          "text": "A doctor’s check-up with Mom in the room",
+          "correct_bucket_id": "b0",
+          "explanation": "A doctor may need to check you, with a parent there."
+        },
+        {
+          "id": "i4",
+          "text": "A hug from a relative that you don’t want",
+          "correct_bucket_id": "b1",
+          "explanation": "You can say, “I’d like a high five instead.” Your body, your choice."
+        },
+        {
+          "id": "i5",
+          "text": "A friend keeps tickling after you said stop",
+          "correct_bucket_id": "b1",
+          "explanation": "Stop means stop. Say no firmly, and tell an adult if it continues."
+        },
+        {
+          "id": "i6",
+          "text": "Someone touches the parts a swimsuit covers",
+          "correct_bucket_id": "b2",
+          "explanation": "Say NO, GO away, and TELL a trusted adult. It’s never your fault."
+        },
+        {
+          "id": "i7",
+          "text": "An adult says, “This touch is our little secret”",
+          "correct_bucket_id": "b2",
+          "explanation": "Touch should never be a secret. Tell someone you trust."
+        },
+        {
+          "id": "i8",
+          "text": "Someone shows you pictures that make you uncomfortable",
+          "correct_bucket_id": "b2",
+          "explanation": "That’s not okay. Leave and tell a trusted adult."
+        }
+      ],
+      "outro_steps": [
+        "Say NO, loudly and clearly",
+        "GO to a safe place",
+        "TELL a trusted adult, and keep telling"
+      ]
+    }
+  },
+  {
+    "id": "act-l4-3",
+    "lesson_id": "l4-3",
+    "name": "Know Your Rights",
+    "est_minutes": 3,
+    "petals_on_complete": 10,
+    "engine": "flip_collect",
+    "config": {
+      "instructions": "Collect your 6 rights cards. Tap each one to learn what the law promises you.",
+      "done_title": "All 6 rights collected",
+      "done_line": "The law is on your side. You are protected, you will be believed, and help is one call away.",
+      "calm_mode": true,
+      "collect_unit": "cards",
+      "cards": [
+        {
+          "id": "c1",
+          "name": "Protected till 18",
+          "icon_svg_path": "M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z",
+          "back": "POCSO protects every child in India under 18 years.",
+          "tip": "That includes you, and your friends."
+        },
+        {
+          "id": "c2",
+          "name": "Every child",
+          "icon_svg_path": "M8 8a3 3 0 1 0 0 .1M16 8a3 3 0 1 0 0 .1M3 20c0-4 2-6 5-6s5 2 5 6M11 20c0-4 2-6 5-6s5 2 5 6",
+          "back": "Girls, boys, every child is protected the same way.",
+          "tip": "Nobody is left out."
+        },
+        {
+          "id": "c3",
+          "name": "Never your fault",
+          "icon_svg_path": "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z",
+          "back": "Under 18, the law says a child cannot agree to sexual acts. The adult is always responsible.",
+          "tip": "Even if someone says “you said yes”."
+        },
+        {
+          "id": "c4",
+          "name": "Name kept private",
+          "icon_svg_path": "M5 11h14v10H5zM8 11V8a4 4 0 0 1 8 0v3",
+          "back": "A child’s name, photo or school can’t be shared in the news.",
+          "tip": "Speaking up stays private."
+        },
+        {
+          "id": "c5",
+          "name": "Child-friendly help",
+          "icon_svg_path": "M4 20h16M6 20V10l6-5 6 5v10M10 20v-5h4v5",
+          "back": "Special courts and trained officers make it easier to speak. A trusted adult can stay with you.",
+          "tip": "You’ll be listened to gently."
+        },
+        {
+          "id": "c6",
+          "name": "Anyone can report",
+          "icon_svg_path": "M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z",
+          "back": "A child, parent, teacher or neighbour can call 1098 or 112, or go to the police.",
+          "tip": "Telling is always allowed."
+        }
+      ]
+    }
+  },
+  {
+    "id": "act-l4-4",
+    "lesson_id": "l4-4",
+    "name": "Green Flag, Red Flag",
+    "est_minutes": 3,
+    "petals_on_complete": 10,
+    "engine": "sort",
+    "config": {
+      "instructions": "Is it a green flag (healthy) or a red flag (not okay) in a friendship? Wave the right flag!",
+      "done_title": "Flag expert!",
+      "done_line": "Keep the green flags close. For red flags, use your “I feel… when… I need…” words, and talk to a trusted adult.",
+      "calm_mode": true,
+      "buckets": [
+        {
+          "id": "b0",
+          "name": "Green flag",
+          "bg": "#D4EFE4",
+          "ink": "#24735A",
+          "icon_svg_path": "M5 21V4M5 4h11l-2 4 2 4H5"
+        },
+        {
+          "id": "b1",
+          "name": "Red flag",
+          "bg": "#F9D5D3",
+          "ink": "#A8365A",
+          "icon_svg_path": "M5 21V4M5 4h11l-2 4 2 4H5"
+        }
+      ],
+      "items": [
+        {
+          "id": "i1",
+          "text": "Celebrates when you do well",
+          "correct_bucket_id": "b0",
+          "explanation": "Real friends cheer for you."
+        },
+        {
+          "id": "i2",
+          "text": "Says sorry after hurting you",
+          "correct_bucket_id": "b0",
+          "explanation": "Owning mistakes builds trust."
+        },
+        {
+          "id": "i3",
+          "text": "Respects it when you say no",
+          "correct_bucket_id": "b0",
+          "explanation": "A no should be accepted, every time."
+        },
+        {
+          "id": "i4",
+          "text": "Listens when you talk",
+          "correct_bucket_id": "b0",
+          "explanation": "Feeling heard is a sign of a good friendship."
+        },
+        {
+          "id": "i5",
+          "text": "Makes fun of you in front of others",
+          "correct_bucket_id": "b1",
+          "explanation": "Jokes that hurt aren’t jokes."
+        },
+        {
+          "id": "i6",
+          "text": "Pressures you to do things you don’t want",
+          "correct_bucket_id": "b1",
+          "explanation": "Good friends never push you."
+        },
+        {
+          "id": "i7",
+          "text": "Gets angry when you have other friends",
+          "correct_bucket_id": "b1",
+          "explanation": "You can have many friends."
+        },
+        {
+          "id": "i8",
+          "text": "Shares your private chats",
+          "correct_bucket_id": "b1",
+          "explanation": "Breaking trust is a red flag."
+        }
+      ],
+      "outro_steps": [
+        "I feel… (name the feeling)",
+        "when… (say what happened)",
+        "I need… (ask for what would help)"
+      ]
+    }
+  },
+  {
+    "id": "act-l4-5",
+    "lesson_id": "l4-5",
+    "name": "Mood Garden",
+    "est_minutes": 4,
+    "petals_on_complete": 10,
+    "engine": "mood_garden",
+    "instructions": "Pick a mood flower, choose a coping tool, then breathe with the flower.",
+    "config": {
+      "moods": [
+        {
+          "id": "happy",
+          "label": "Happy",
+          "color": "#FFE08A",
+          "line": "Yay! Happy feelings are worth noticing too.",
+          "tools": [
+            "Share it with someone you love",
+            "Write it in your journal",
+            "Do a little happy dance"
+          ]
+        },
+        {
+          "id": "calm",
+          "label": "Calm",
+          "color": "#A8D8BE",
+          "line": "Calm is a lovely place to be.",
+          "tools": [
+            "Notice 3 things you can see",
+            "Enjoy the quiet for a minute",
+            "Keep doing what you love"
+          ]
+        },
+        {
+          "id": "tired",
+          "label": "Tired",
+          "color": "#C2B0E6",
+          "line": "Tired bodies need kindness.",
+          "tools": [
+            "Rest your eyes for 5 minutes",
+            "Drink a glass of water",
+            "Go to bed a little earlier"
+          ]
+        },
+        {
+          "id": "crampy",
+          "label": "Crampy",
+          "color": "#F7CDAA",
+          "line": "Cramps are no fun. Let’s be gentle.",
+          "tools": [
+            "A warm water bottle",
+            "A gentle stretch",
+            "Tell a grown-up if it hurts a lot"
+          ]
+        },
+        {
+          "id": "worried",
+          "label": "Worried",
+          "color": "#B7D8EF",
+          "line": "Worries feel big. You don’t have to carry them alone.",
+          "tools": [
+            "Talk to someone in your Safe Circle",
+            "Put it in your Worry Jar",
+            "Breathe slowly with the flower"
+          ]
+        },
+        {
+          "id": "grumpy",
+          "label": "Grumpy",
+          "color": "#F4A3B4",
+          "line": "Grumpy happens to everyone. It will pass.",
+          "tools": [
+            "Take a short walk",
+            "Squeeze a pillow tight",
+            "Say what’s bugging you out loud"
+          ]
+        }
+      ],
+      "breathing": {
+        "inhale_seconds": 4,
+        "exhale_seconds": 6,
+        "rounds": 5
+      },
+      "counts_toward_badge": "badge-calm-breather",
+      "done_title": "Beautifully done.",
+      "done_line": "Notice how you feel now."
+    }
+  }
+]
