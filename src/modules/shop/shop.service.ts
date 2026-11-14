@@ -24,6 +24,68 @@ const razorpay = new Razorpay({
 
 const GST_RATE = 0.05; // 5% for books
 
+function getPhoneMatchVariants(phone?: string | null): string[] {
+  if (!phone) return [];
+
+  const candidates = new Set<string>();
+  const cleaned = String(phone).replace(/[^\d+]/g, '').trim();
+  if (!cleaned) return [];
+
+  const normalized = normalizePhone(cleaned);
+  if (normalized) candidates.add(normalized);
+
+  const withoutPlus = normalized.replace(/^\+/, '');
+  if (withoutPlus) candidates.add(withoutPlus);
+
+  if (withoutPlus.startsWith('91')) {
+    const local = withoutPlus.slice(2);
+    candidates.add(local);
+    candidates.add(`+${withoutPlus}`);
+    candidates.add(`+91${local}`);
+  }
+
+  if (normalized.startsWith('+91')) {
+    const local = normalized.slice(3);
+    candidates.add(local);
+    candidates.add(`91${local}`);
+  }
+
+  return [...candidates].filter(Boolean);
+}
+
+async function resolveUserByPhone(tx: any, phone?: string | null, fallbackName?: string) {
+  const variants = getPhoneMatchVariants(phone);
+  if (variants.length === 0) return null;
+
+  const existingUser = await tx.user.findFirst({
+    where: {
+      OR: variants.map((variant) => ({ phone: variant })),
+    },
+  });
+
+  if (existingUser) return existingUser;
+
+  const normalized = normalizePhone(String(phone).trim());
+  if (!normalized) return null;
+
+  const createdUser = await tx.user.create({
+    data: {
+      phone: normalized,
+      accountStatus: 'PENDING_SETUP',
+      onboardingStep: 1,
+      role: 'PARENT',
+      profile: {
+        create: {
+          displayName: fallbackName || 'Parent',
+          totalPoints: 0,
+        },
+      },
+    },
+  });
+
+  return createdUser;
+}
+
 // Fast in-memory TTL cache for high-traffic catalog endpoints
 const cacheStore = new Map<string, { data: any; expiry: number }>();
 
@@ -174,7 +236,7 @@ export class ShopService {
     country?: string;
   }) {
     const result = await prisma.$transaction(async (tx) => {
-      // Resolve valid userId (checking if the user actually exists in DB to prevent foreign key violation)
+      // Resolve valid userId by explicit auth user first, then by canonical phone identity.
       let resolvedUserId: string | undefined = undefined;
       if (data.userId && typeof data.userId === "string" && data.userId.trim() !== "" && data.userId !== "null" && data.userId !== "undefined") {
         const userExists = await tx.user.findUnique({
@@ -182,6 +244,13 @@ export class ShopService {
         });
         if (userExists) {
           resolvedUserId = data.userId;
+        }
+      }
+
+      if (!resolvedUserId && data.guestPhone) {
+        const phoneUser = await resolveUserByPhone(tx, data.guestPhone, data.guestName || 'Parent');
+        if (phoneUser) {
+          resolvedUserId = phoneUser.id;
         }
       }
 

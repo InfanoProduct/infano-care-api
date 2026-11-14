@@ -2,6 +2,7 @@ import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
 import { ensureCourseSeeded } from "./course.seed.js";
 import { env } from "../../config/env.js";
+import { normalizePhone } from "../../common/utils/phone.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 
@@ -1019,7 +1020,14 @@ export class CourseService {
 
     const conditions: any[] = [];
     if (email) conditions.push({ email: email.trim().toLowerCase() });
-    if (phone) conditions.push({ phone: phone.trim() });
+    if (phone) {
+      const trimmedPhone = phone.trim();
+      const normalizedPhone = normalizePhone(trimmedPhone);
+      conditions.push({ phone: normalizedPhone });
+      if (normalizedPhone !== trimmedPhone) {
+        conditions.push({ phone: trimmedPhone });
+      }
+    }
 
     const user = await prisma.user.findFirst({ where: { OR: conditions } });
     if (!user) return { enrolled: false, exists: false };
@@ -1107,6 +1115,7 @@ export class CourseService {
     courseId?: string;
     amount?: number;
     currency?: string;
+    plan?: "course" | "bundle" | "reader";
   }) {
     await ensureCourseSeeded();
     const { name, email, phone } = data;
@@ -1114,10 +1123,25 @@ export class CourseService {
       throw new AppError("Name, email, and phone are required.", 400);
     }
 
-    const finalPhone = phone.trim();
+    const trimmedPhone = phone.trim();
+    const finalPhone = normalizePhone(trimmedPhone);
+    const plan = data.plan || "course";
+    if (!["course", "bundle", "reader"].includes(plan)) {
+      throw new AppError("Please select a valid course plan.", 400);
+    }
+
+    const readerStatus = await this.checkReaderStatus(finalPhone);
+    if (readerStatus.isReader && plan !== "reader") {
+      throw new AppError("Gigi book owners can purchase the course with the ₹299 reader plan.", 400);
+    }
+    if (plan === "reader" && !readerStatus.isReader) {
+      throw new AppError("A Gigi book order is required for the ₹299 reader plan.", 400);
+    }
+
+    const phoneMatches = finalPhone !== trimmedPhone ? [{ phone: finalPhone }, { phone: trimmedPhone }] : [{ phone: finalPhone }];
     let user = await prisma.user.findFirst({
       where: {
-        OR: [{ email: email.trim().toLowerCase() }, { phone: finalPhone }],
+        OR: [{ email: email.trim().toLowerCase() }, ...phoneMatches],
       },
     });
 
@@ -1162,6 +1186,12 @@ export class CourseService {
     const resolvedCurrency = (data.currency || "INR").toUpperCase();
 
     let finalPrice = data.amount;
+    if (plan === "reader") {
+      if (resolvedCurrency !== "INR") {
+        throw new AppError("The Gigi book reader price is available in INR only.", 400);
+      }
+      finalPrice = 299;
+    }
     if (!finalPrice) {
       if (resolvedCurrency === "USD") {
         finalPrice = Math.round((course.price / 83) * 100) / 100;

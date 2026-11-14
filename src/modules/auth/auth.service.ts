@@ -20,6 +20,35 @@ const ACCESS_TOKEN_TTL = "24h";
 const REFRESH_TOKEN_TTL = "30d";
 const TEMP_TOKEN_TTL = "15m";
 
+function getPhoneMatchVariants(phone?: string | null): string[] {
+  if (!phone) return [];
+
+  const cleaned = String(phone).replace(/[^\d+]/g, '').trim();
+  if (!cleaned) return [];
+
+  const normalized = normalizePhone(cleaned);
+  const variants = new Set<string>();
+  if (normalized) variants.add(normalized);
+
+  const withoutPlus = normalized.replace(/^\+/, '');
+  if (withoutPlus) {
+    variants.add(withoutPlus);
+    if (withoutPlus.startsWith('91')) {
+      variants.add(withoutPlus.slice(2));
+      variants.add(`+${withoutPlus}`);
+      variants.add(`+91${withoutPlus.slice(2)}`);
+    }
+  }
+
+  if (normalized.startsWith('+91')) {
+    const local = normalized.slice(3);
+    variants.add(local);
+    variants.add(`91${local}`);
+  }
+
+  return [...variants].filter(Boolean);
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateOtp(): string {
@@ -251,9 +280,14 @@ export class AuthService {
 
     // Link guest orders and webinar registrations to this user
     try {
+      const phoneVariants = getPhoneMatchVariants(finalPhone);
+      const orderPhoneWhere = phoneVariants.length > 0
+        ? { OR: phoneVariants.map((variant) => ({ guestPhone: variant })) }
+        : { guestPhone: finalPhone };
+
       await prisma.order.updateMany({
         where: {
-          guestPhone: finalPhone,
+          ...orderPhoneWhere,
           userId: { not: finalUser.id }
         },
         data: {
@@ -262,7 +296,7 @@ export class AuthService {
       });
       await prisma.webinarRegistration.updateMany({
         where: {
-          guestPhone: finalPhone,
+          ...orderPhoneWhere,
           userId: { not: finalUser.id }
         },
         data: {

@@ -1,5 +1,6 @@
 import { prisma } from "../../db/client.js";
 import { AppError } from "../../common/middleware/errorHandler.js";
+import { normalizePhone } from "../../common/utils/phone.js";
 
 function generateRef(prefix: string): string {
   const now = new Date();
@@ -9,9 +10,27 @@ function generateRef(prefix: string): string {
   return `${prefix}-${yy}${mm}-${rand}`;
 }
 
+function matchesGuestPhone(userPhone: string | null | undefined, guestPhone: string | null | undefined) {
+  if (!userPhone || !guestPhone) return false;
+
+  const normalizedUserPhone = normalizePhone(userPhone);
+  const normalizedGuestPhone = normalizePhone(guestPhone);
+  if (!normalizedUserPhone || !normalizedGuestPhone) return false;
+
+  return normalizedUserPhone === normalizedGuestPhone
+    || normalizedUserPhone.replace(/^\+91/, '') === normalizedGuestPhone.replace(/^\+91/, '')
+    || normalizedUserPhone === `+91${normalizedGuestPhone.replace(/^\+91/, '')}`
+    || normalizedGuestPhone === `+91${normalizedUserPhone.replace(/^\+91/, '')}`;
+}
+
 export class ParentSpaceService {
   static async getOrdersSummary(userId: string) {
-    const [orders, courseEnrollments, programEnrollments, refunds, issueReports, learners] = await Promise.all([
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+
+    const [userOrders, courseEnrollments, programEnrollments, refunds, issueReports, learners] = await Promise.all([
       prisma.order.findMany({
         where: { userId, isActive: true },
         include: { items: { include: { book: true } } },
@@ -42,6 +61,21 @@ export class ParentSpaceService {
       }),
     ]);
 
+    const guestOrders = user?.phone
+      ? await prisma.order.findMany({
+          where: { isActive: true, guestPhone: { not: null } },
+          include: { items: { include: { book: true } } },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
+
+    const matchedGuestOrders = guestOrders.filter((order) => matchesGuestPhone(user?.phone, order.guestPhone));
+    const dedupedOrders = [...userOrders, ...matchedGuestOrders].filter(
+      (order, index, arr) => arr.findIndex((candidate) => candidate.id === order.id) === index
+    );
+
+    const sortedOrders = dedupedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
     const refundByOrder: Record<string, any> = {};
     for (const r of refunds) {
       if (!refundByOrder[r.orderId]) refundByOrder[r.orderId] = r;
@@ -54,7 +88,7 @@ export class ParentSpaceService {
     }
 
     return {
-      orders: orders.map((o) => ({
+      orders: sortedOrders.map((o) => ({
         ...o,
         refundRequest: refundByOrder[o.id] || null,
         issueReports: issuesByOrder[o.id] || [],
@@ -79,22 +113,37 @@ export class ParentSpaceService {
       return existing;
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+
     // Order can be a physical Book Order or an Enrollment ID
     const order = await prisma.order.findFirst({ where: { id: orderId, userId } });
-    const courseEnr = !order ? await prisma.courseEnrollment.findFirst({ where: { id: orderId, userId } }) : null;
-    const prog = !order && !courseEnr ? await prisma.programEnrollment.findFirst({ where: { id: orderId, userId } }) : null;
+    const matchedGuestOrder = !order && user?.phone
+      ? await prisma.order.findFirst({
+          where: { id: orderId, guestPhone: { not: null } },
+          include: { items: { include: { book: true } } },
+        })
+      : null;
+    if (matchedGuestOrder && !matchesGuestPhone(user?.phone, matchedGuestOrder.guestPhone)) {
+      throw new AppError("Order not found.", 404);
+    }
+    const courseEnr = !order && !matchedGuestOrder ? await prisma.courseEnrollment.findFirst({ where: { id: orderId, userId } }) : null;
+    const prog = !order && !matchedGuestOrder && !courseEnr ? await prisma.programEnrollment.findFirst({ where: { id: orderId, userId } }) : null;
 
-    if (!order && !courseEnr && !prog) {
+    if (!order && !matchedGuestOrder && !courseEnr && !prog) {
       throw new AppError("Order not found.", 404);
     }
 
-    const createdAt = (order?.createdAt || courseEnr?.createdAt || prog?.createdAt) as Date;
+    const resolvedOrder = order || matchedGuestOrder;
+    const createdAt = (resolvedOrder?.createdAt || courseEnr?.createdAt || prog?.createdAt) as Date;
     const daysSince = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
     if (daysSince > 7) {
       throw new AppError("The 7-day happiness promise window has closed for this order.", 400);
     }
 
-    const amount = order ? order.totalAmount : courseEnr ? courseEnr.pricePaid : (prog?.pricePaid || 0);
+    const amount = resolvedOrder ? resolvedOrder.totalAmount : courseEnr ? courseEnr.pricePaid : (prog?.pricePaid || 0);
 
     const refund = await prisma.orderRefundRequest.create({
       data: {
@@ -117,8 +166,19 @@ export class ParentSpaceService {
     orderId: string,
     data: { issueType: string; notes?: string }
   ) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+
     const order = await prisma.order.findFirst({ where: { id: orderId, userId } });
-    if (!order) {
+    const matchedGuestOrder = !order && user?.phone
+      ? await prisma.order.findFirst({
+          where: { id: orderId, guestPhone: { not: null } },
+        })
+      : null;
+
+    if (!order && (!matchedGuestOrder || !matchesGuestPhone(user?.phone, matchedGuestOrder.guestPhone))) {
       throw new AppError("Order not found.", 404);
     }
 
@@ -141,16 +201,32 @@ export class ParentSpaceService {
     orderId: string,
     data: { shippingAddress: string; city: string; pincode: string; phone?: string }
   ) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+
     const order = await prisma.order.findFirst({ where: { id: orderId, userId } });
-    if (!order) {
+    const matchedGuestOrder = !order && user?.phone
+      ? await prisma.order.findFirst({
+          where: { id: orderId, guestPhone: { not: null } },
+        })
+      : null;
+
+    if (!order && (!matchedGuestOrder || !matchesGuestPhone(user?.phone, matchedGuestOrder.guestPhone))) {
       throw new AppError("Order not found.", 404);
     }
-    if (order.orderStatus !== "PLACED" && order.orderStatus !== "PROCESSING") {
+
+    const resolvedOrder = order || matchedGuestOrder;
+    if (!resolvedOrder) {
+      throw new AppError("Order not found.", 404);
+    }
+    if (resolvedOrder.orderStatus !== "PLACED" && resolvedOrder.orderStatus !== "PROCESSING") {
       throw new AppError("Address cannot be changed once the book has shipped.", 400);
     }
 
     const updated = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: resolvedOrder.id },
       data: {
         shippingAddress: data.shippingAddress,
         city: data.city,
