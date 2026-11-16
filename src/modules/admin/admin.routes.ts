@@ -68,6 +68,7 @@ router.delete("/circles/:id", AdminController.deleteCircle);
 // Enquiry Management
 router.get("/enquiries", AdminController.getEnquiries);
 router.get("/enquiries/:id", AdminController.getEnquiry);
+router.patch("/enquiries/:id", AdminController.updateEnquiry);
 
 
 // ─── Tracker Content Management ─────────────────────────────────────────────

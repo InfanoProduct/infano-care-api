@@ -57,15 +57,27 @@ export const errorHandler = (
   const statusCode = err.statusCode || 500;
   let message = err.message;
 
-  // Mask database connection/Prisma internal errors to prevent exposing raw DB logs/file paths
+  // Only classify connection failures as database outages; Prisma validation errors
+  // can indicate stale generated clients or invalid query data.
   const lowerMsg = (message || "").toLowerCase();
-  const isDbError = 
-    lowerMsg.includes("prisma") || 
+  const databaseErrorCodes = new Set([
+    "P1000",
+    "P1001",
+    "P1002",
+    "P1003",
+    "P1008",
+    "P1010",
+    "P1011",
+    "P1017",
+    "P2024",
+  ]);
+  const isDbError =
+    (typeof err.code === "string" && databaseErrorCodes.has(err.code)) ||
     lowerMsg.includes("connection closed") || 
     lowerMsg.includes("closed the connection") || 
     lowerMsg.includes("can't reach database") ||
-    lowerMsg.includes("unreachable") ||
-    (err.code && typeof err.code === "string" && (err.code.startsWith("P10") || err.code.startsWith("P20")));
+    lowerMsg.includes("connection refused") ||
+    lowerMsg.includes("timed out fetching a new connection");
 
   if (isDbError) {
     message = "Database is temporarily unreachable. Please try again in a few moments.";

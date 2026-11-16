@@ -1,6 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { AdminService } from "./admin.service.js";
 import { StorageService } from "../../common/utils/storage.js";
+import { z } from "zod";
+
+const enquiryUpdateSchema = z.object({
+  status: z.enum(["NEW", "CONTACTED", "SCHEDULED", "COMPLETED"]).optional(),
+  followUpAt: z.string().datetime().nullable().optional(),
+}).refine((data) => data.status !== undefined || data.followUpAt !== undefined, {
+  message: "At least one enquiry field must be provided",
+});
 
 export class AdminController {
   static async getStats(req: Request, res: Response, next: NextFunction) {
@@ -453,6 +461,19 @@ export class AdminController {
       if (!enquiry) return res.status(404).json({ message: "Enquiry not found" });
       res.status(200).json(enquiry);
     } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateEnquiry(req: Request, res: Response, next: NextFunction) {
+    try {
+      const updates = enquiryUpdateSchema.parse(req.body);
+      const enquiry = await AdminService.updateEnquiry(req.params.id as string, updates);
+      res.status(200).json(enquiry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0]?.message ?? "Invalid enquiry update", errors: error.errors });
+      }
       next(error);
     }
   }

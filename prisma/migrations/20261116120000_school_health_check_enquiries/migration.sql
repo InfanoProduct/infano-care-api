@@ -1,0 +1,8 @@
+ALTER TABLE "Enquiry"
+ADD COLUMN "studentCount" INTEGER,
+ADD COLUMN "board" TEXT,
+ADD COLUMN "contactRole" TEXT,
+ADD COLUMN "preferredWeek" TEXT,
+ADD COLUMN "wantsDemo" BOOLEAN,
+ADD COLUMN "status" TEXT NOT NULL DEFAULT 'NEW',
+ADD COLUMN "followUpAt" TIMESTAMP(3);

@@ -1846,6 +1846,20 @@ export class AdminService {
     });
   }
 
+  static async updateEnquiry(id: string, data: { status?: string; followUpAt?: string | null }) {
+    return prisma.enquiry.update({
+      where: { id },
+      data: {
+        status: data.status,
+        followUpAt: data.followUpAt === undefined
+          ? undefined
+          : data.followUpAt === null
+            ? null
+            : new Date(data.followUpAt),
+      },
+    });
+  }
+
   // Expert Management
   static async getExperts() {
     return prisma.user.findMany({

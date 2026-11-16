@@ -80,7 +80,7 @@ export const createOrderBodySchema = z.object({
 
   // Validate Name if provided
   if (data.guestName && data.guestName.trim().length > 0) {
-    if (!/^[a-zA-Z\s\.\'\-]{2,60}$/.test(data.guestName.trim())) {
+    if (!/^[a-zA-Z0-9\s.',\-]{2,100}$/.test(data.guestName.trim())) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Invalid name",

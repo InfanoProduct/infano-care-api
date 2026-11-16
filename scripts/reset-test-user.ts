@@ -10,7 +10,11 @@ async function safeDelete(name: string, fn: () => Promise<any>) {
 }
 
 async function main() {
-  const targetPhones = ["1234567891", "+911234567891", "911234567891"];
+  const targetPhones = [
+    "9123456781",
+    "+919123456781",
+    "919123456781"
+  ];
   console.log("==> Finding existing test user(s) with phones:", targetPhones);
 
   const existingUsers = await prisma.user.findMany({
@@ -31,7 +35,6 @@ async function main() {
     const userId = u.id;
     console.log(`Deleting all associated data for userId: ${userId} (${u.phone})...`);
 
-    // 1. Tables without onDelete: Cascade (or many-to-one without cascade)
     await safeDelete("cycleLog", () => prisma.cycleLog.deleteMany({ where: { userId } }));
     await safeDelete("userDailyQuest", () => prisma.userDailyQuest.deleteMany({ where: { userId } }));
     await safeDelete("userBadge", () => prisma.userBadge.deleteMany({ where: { userId } }));
@@ -44,7 +47,6 @@ async function main() {
     await safeDelete("moderationLog", () => prisma.moderationLog.deleteMany({ where: { moderatorId: userId } }));
     await safeDelete("subscription", () => prisma.subscription.deleteMany({ where: { userId } }));
 
-    // 2. Chat, Sessions, Appointments
     await safeDelete("chatMessage", () => prisma.chatMessage.deleteMany({ where: { session: { userId } } }));
     await safeDelete("chatSession", () => prisma.chatSession.deleteMany({ where: { userId } }));
     await safeDelete("expertChatMessage", () => prisma.expertChatMessage.deleteMany({ where: { senderId: userId } }));
@@ -53,13 +55,11 @@ async function main() {
     await safeDelete("peerLineMessage", () => prisma.peerLineMessage.deleteMany({ where: { session: { OR: [{ menteeId: userId }, { mentorId: userId }] } } }));
     await safeDelete("peerLineSession", () => prisma.peerLineSession.deleteMany({ where: { OR: [{ menteeId: userId }, { mentorId: userId }] } }));
 
-    // 3. Courses, LMS, Programs, Orders
     await safeDelete("courseEnrollment", () => prisma.courseEnrollment.deleteMany({ where: { userId } }));
     await safeDelete("programEnrollment", () => prisma.programEnrollment.deleteMany({ where: { userId } }));
     await safeDelete("order", () => prisma.order.deleteMany({ where: { userId } }));
     await safeDelete("webinarRegistration", () => prisma.webinarRegistration.deleteMany({ where: { userId } }));
 
-    // 4. Learners and sub-records
     const learners = await prisma.learnerProfile.findMany({ where: { parentId: userId }, select: { id: true } });
     const learnerIds = learners.map(l => l.id);
     if (learnerIds.length > 0) {
@@ -72,16 +72,13 @@ async function main() {
       await safeDelete("learnerProfile", () => prisma.learnerProfile.deleteMany({ where: { id: { in: learnerIds } } }));
     }
 
-    // 5. Hard delete User (Cascade takes care of Profile, Avatar, CycleProfile, Streaks, Levels, Ledgers, etc.)
     await prisma.user.delete({ where: { id: userId } });
     console.log(`==> Successfully hard-deleted user ${userId} (${u.phone})!`);
   }
 
-  // 6. Clean guest orders/webinars with the same phone
   await safeDelete("guest orders", () => prisma.order.deleteMany({ where: { guestPhone: { in: targetPhones } } }));
   await safeDelete("guest webinars", () => prisma.webinarRegistration.deleteMany({ where: { guestPhone: { in: targetPhones } } }));
 
-  // 7. Clean Redis OTP keys
   try {
     for (const phone of targetPhones) {
       await redis.del(`otp:${phone}`);
@@ -91,11 +88,10 @@ async function main() {
     console.warn("Redis cleanup skipped:", err);
   }
 
-  // 8. Recreate fresh test user
-  console.log("==> Creating fresh test user with phone +911234567891...");
+  console.log("==> Creating fresh test user with phone +919123456781...");
   const newUser = await prisma.user.create({
     data: {
-      phone: "+911234567891",
+      phone: "+919123456781",
       isTestNumber: true,
       role: "PARENT",
       accountStatus: "PENDING_SETUP",

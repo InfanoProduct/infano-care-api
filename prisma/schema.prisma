@@ -1227,11 +1227,18 @@ model Enquiry {
   schoolType     String?
   cityState      String?
   totalGirls     Int?
+  studentCount   Int?
+  board          String?
   contactName    String?
+  contactRole    String?
   email          String?
   phone          String?
   preferredTime  String?
+  preferredWeek  String?
+  wantsDemo      Boolean?
   goals          String?
+  status         String   @default("NEW")
+  followUpAt     DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   details        String?
