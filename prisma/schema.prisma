@@ -107,6 +107,9 @@ model User {
   userInventory             UserInventory[]
   joinedCircles             CommunityCircle[]        @relation("CircleMembers")
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
+
+  @@index([role, createdAt])
+  @@index([createdAt])
 }
 
 model Profile {
@@ -581,6 +584,8 @@ model ExpertSessionSchedule {
 
   @@index([userId, status])
   @@index([batchId])
+  @@index([status, programId, scheduledAt])
+  @@index([programId, createdAt(sort: Desc)])
 }
 
 model ChatSession {
@@ -931,6 +936,8 @@ model BlogPost {
   author        BlogAuthor?       @relation(fields: [authorId], references: [id])
   ctas          BlogCTA[]         @relation("PostCTAs")
   categories    BlogCategory[]    @relation("PostCategories")
+
+  @@index([isDeleted, publishedAt])
 }
 
 model BlogStats {
@@ -1021,6 +1028,8 @@ model Book {
   shippingUK  Float       @default(0)
   codChargeIN Float       @default(40)
   orderItems  OrderItem[]
+
+  @@index([createdAt])
 }
 
 model Order {
@@ -1061,6 +1070,9 @@ model Order {
   coupon            DiscountCoupon? @relation(fields: [couponId], references: [id])
   user              User?           @relation(fields: [userId], references: [id])
   items             OrderItem[]
+
+  @@index([createdAt])
+  @@index([orderStatus, createdAt])
 }
 
 model DiscountCoupon {
@@ -1278,6 +1290,8 @@ model Program {
   expertSessions ExpertSessionSchedule[]
   enrollments    ProgramEnrollment[]
   batches        ProgramBatch[]
+
+  @@index([createdAt])
 }
 
 model ProgramBatch {
@@ -1317,6 +1331,7 @@ model ProgramEnrollment {
 
   @@unique([userId, programId])
   @@index([batchId])
+  @@index([createdAt])
 }
 
 model DemoSession {
@@ -1406,6 +1421,9 @@ model School {
   students             SchoolStudent[]
   teachers             SchoolTeacher[]
   coordinators         User[]                  @relation("SchoolCoordinator")
+
+  @@index([mouSignedDate(sort: Desc)])
+  @@index([createdAt])
 }
 
 model SchoolProgramConfig {
