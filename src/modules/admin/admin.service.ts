@@ -994,8 +994,9 @@ export class AdminService {
   }
 
   static async getNextTestPhone() {
+    // Generate natural-looking 10-digit Indian numbers without continuous zeros (e.g. 9876543201..9876543299)
     for (let i = 1; i <= 9999; i++) {
-      const candidateDigits = `90000${String(i).padStart(5, "0")}`;
+      const candidateDigits = String(9876543200 + i);
       const candidateFull = `+91${candidateDigits}`;
       const exists = await prisma.user.findUnique({
         where: { phone: candidateFull },
@@ -1005,7 +1006,7 @@ export class AdminService {
         return { suggestedPhone: candidateDigits, fullPhone: candidateFull };
       }
     }
-    return { suggestedPhone: "9000099999", fullPhone: "+919000099999" };
+    return { suggestedPhone: "9876543299", fullPhone: "+919876543299" };
   }
 
   static async approvePeerApplication(userId: string) {

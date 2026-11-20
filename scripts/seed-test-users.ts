@@ -8,41 +8,22 @@ interface TestUserConfig {
 }
 
 const testAccounts: TestUserConfig[] = [
-  // 1. Valid-format Indian mobile numbers starting with 9
+  // Natural-looking 10-digit Indian mobile numbers without continuous zeros
   {
-    phone: "+919000000001",
+    phone: "+919876543201",
     parentName: "Test Parent 1",
     learnerName: "Aanya",
     learnerAge: "11",
   },
   {
-    phone: "+919000000002",
+    phone: "+919876543202",
     parentName: "Test Parent 2",
     learnerName: "Diya",
     learnerAge: "12",
   },
   {
-    phone: "+919000000003",
+    phone: "+919876543203",
     parentName: "Test Parent 3",
-    learnerName: "Rhea",
-    learnerAge: "10",
-  },
-  // 2. Exact requested numbers (+91 00000 00001..3)
-  {
-    phone: "+910000000001",
-    parentName: "Test Parent 01",
-    learnerName: "Aanya",
-    learnerAge: "11",
-  },
-  {
-    phone: "+910000000002",
-    parentName: "Test Parent 02",
-    learnerName: "Diya",
-    learnerAge: "12",
-  },
-  {
-    phone: "+910000000003",
-    parentName: "Test Parent 03",
     learnerName: "Rhea",
     learnerAge: "10",
   },
