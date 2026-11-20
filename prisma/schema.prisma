@@ -105,7 +105,6 @@ model User {
   userWeeklyChallenges      UserWeeklyChallenge[]
   coinLedger                CoinLedger[]
   userInventory             UserInventory[]
-  webinarRegistrations      WebinarRegistration[]
   joinedCircles             CommunityCircle[]        @relation("CircleMembers")
   circlesModerated          CommunityCircle[]        @relation("CircleModerators")
 }
@@ -1552,47 +1551,6 @@ model SchoolStudent {
   school           School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 }
 
-model Webinar {
-  id             String                @id @default(uuid())
-  slug           String?               @unique @default(uuid())
-  title          String
-  description    String
-  price          Float
-  date           DateTime
-  zoomLink       String?
-  isActive       Boolean               @default(true)
-  altform        String?
-  mode           WebinarMode           @default(ONLINE)
-  link           String?
-  instructor     String?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  seoDescription String?
-  seoKeywords    String?
-  seoTitle       String?
-  registrations  WebinarRegistration[]
-}
-
-model WebinarRegistration {
-  id                String        @id @default(uuid())
-  webinarId         String
-  userId            String?
-  guestName         String?
-  guestEmail        String?
-  guestPhone        String?
-  paymentStatus     PaymentStatus @default(PENDING)
-  paymentMethod     PaymentMethod @default(ONLINE)
-  razorpayOrderId   String?       @unique
-  razorpayPaymentId String?
-  razorpaySignature String?
-  amount            Float
-  currency          String        @default("INR")
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  user              User?         @relation(fields: [userId], references: [id])
-  webinar           Webinar       @relation(fields: [webinarId], references: [id], onDelete: Cascade)
-}
-
 model ExpertCalendarSettings {
   id                  String   @id @default(uuid())
   userId              String   @unique
@@ -1914,11 +1872,6 @@ enum AssetType {
   SOCIAL_PACK
   PHOTO_GALLERY
   IMPACT_VIDEO
-}
-
-enum WebinarMode {
-  ONLINE
-  OFFLINE
 }
 
 enum JournalMode {

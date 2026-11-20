@@ -23,17 +23,6 @@ export class ShopController {
     }
   }
 
-  static async getWebinarBySlug(req: Request, res: Response, next: NextFunction) {
-    try {
-      res.setHeader("Cache-Control", "no-cache, must-revalidate");
-      const webinar = await ShopService.getWebinarBySlug(req.params.slug as string);
-      if (!webinar) return res.status(404).json({ message: "Webinar not found" });
-      res.status(200).json(webinar);
-    } catch (error) {
-      next(error);
-    }
-  }
-
   static async validateCoupon(req: Request, res: Response, next: NextFunction) {
     try {
       const { code, amount } = req.body;

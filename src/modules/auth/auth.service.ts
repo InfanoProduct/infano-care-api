@@ -247,7 +247,7 @@ export class AuthService {
       finalUser = await prisma.user.create({
         data: {
           phone: finalPhone,
-          isTestNumber: false,
+          isTestNumber: isTest,
           role: "PARENT",
           accountStatus: "PENDING_SETUP",
           onboardingStep: 1,
@@ -278,7 +278,7 @@ export class AuthService {
       logger.info({ userId: finalUser.id }, "Created new user via OTP verify");
     }
 
-    // Link guest orders and webinar registrations to this user
+    // Link guest orders to this user
     try {
       const phoneVariants = getPhoneMatchVariants(finalPhone);
       const orderPhoneWhere = phoneVariants.length > 0
@@ -294,18 +294,9 @@ export class AuthService {
           userId: finalUser.id
         }
       });
-      await prisma.webinarRegistration.updateMany({
-        where: {
-          ...orderPhoneWhere,
-          userId: { not: finalUser.id }
-        },
-        data: {
-          userId: finalUser.id
-        }
-      });
-      logger.info({ userId: finalUser.id, phone: finalPhone }, "Linked guest orders/registrations to user");
+      logger.info({ userId: finalUser.id, phone: finalPhone }, "Linked guest orders to user");
     } catch (linkErr) {
-      logger.error({ err: linkErr, userId: finalUser.id }, "Failed to link guest orders/registrations during verifyOtp");
+      logger.error({ err: linkErr, userId: finalUser.id }, "Failed to link guest orders during verifyOtp");
     }
 
     const jti = crypto.randomUUID();
@@ -433,7 +424,7 @@ export class AuthService {
       logger.info({ userId: finalUser.id, email: finalEmail }, "Created new user via Email OTP verify");
     }
 
-    // Link guest orders and webinar registrations to this user
+    // Link guest orders to this user
     try {
       await prisma.order.updateMany({
         where: {
@@ -444,18 +435,9 @@ export class AuthService {
           userId: finalUser.id
         }
       });
-      await prisma.webinarRegistration.updateMany({
-        where: {
-          guestEmail: finalEmail,
-          userId: { not: finalUser.id }
-        },
-        data: {
-          userId: finalUser.id
-        }
-      });
-      logger.info({ userId: finalUser.id, email: finalEmail }, "Linked guest orders/registrations to user by email");
+      logger.info({ userId: finalUser.id, email: finalEmail }, "Linked guest orders to user by email");
     } catch (linkErr) {
-      logger.error({ err: linkErr, userId: finalUser.id }, "Failed to link guest orders/registrations during verifyEmailOtp");
+      logger.error({ err: linkErr, userId: finalUser.id }, "Failed to link guest orders during verifyEmailOtp");
     }
 
     const jti = crypto.randomUUID();

@@ -58,7 +58,6 @@ router.get("/books", ShopController.getBooks);
  *         description: Book details
  */
 router.get("/books/:id", ShopController.getBook);
-router.get("/webinars/:slug", ShopController.getWebinarBySlug);
 
 /**
  * @openapi

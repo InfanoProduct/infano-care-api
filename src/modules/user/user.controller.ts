@@ -130,9 +130,8 @@ export class UserController {
     try {
       const userId = (req as any).userId || (req as any).user?.id;
       const { role } = req.body;
-      if (!role || (role !== "TEEN" && role !== "PARENT" && role !== "PEER" && role !== "EXPERT")) {
-        throw new AppError("Invalid role specified", 400);
-      }
+      // Standard members are PARENT by default (daughters are created as learner profiles under parent)
+      const targetRole = (role === "EXPERT" || role === "PEER") ? role : "PARENT";
 
       // Enforce that a user/phone number can only have one role
       const existingUser = await prisma.user.findUnique({
@@ -149,13 +148,11 @@ export class UserController {
       }
 
       // Enforce status and step progression when a role is selected
-      const updateData: any = { role };
-      if (role === "PARENT") {
+      const updateData: any = { role: targetRole };
+      if (targetRole === "PARENT") {
         updateData.accountStatus = "ACTIVE";
         updateData.onboardingStep = 5;
         updateData.onboardingCompletedAt = new Date();
-      } else if (role === "TEEN") {
-        updateData.onboardingStep = 2; // Step 1 (Role Selection) is complete
       }
 
       const user = await prisma.user.update({

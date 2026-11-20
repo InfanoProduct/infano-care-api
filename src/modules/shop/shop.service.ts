@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { logger } from "../../config/logger.js";
 import { PaymentMethod, PaymentStatus, OrderStatus, CouponType } from "@prisma/client";
 import { normalizePhone } from "../../common/utils/phone.js";
-import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail, sendWebinarConfirmationEmail } from "../../common/services/email.service.js";
+import { sendGigiBookOrderPlacedEmail, sendGigiBookOrderShippedEmail, sendGigiBookOrderDeliveredEmail } from "../../common/services/email.service.js";
 import { sendOrderConfirmationWhatsApp, sendOrderShippedWhatsApp, sendOrderDeliveredWhatsApp } from "../../common/services/whatsapp.service.js";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -118,8 +118,7 @@ export class ShopService {
         isActive: true,
         NOT: [
           { id: { endsWith: "-private" } },
-          { id: { endsWith: "-group" } },
-          { id: { startsWith: "webinar-" } }
+          { id: { endsWith: "-group" } }
         ]
       },
     });
@@ -173,29 +172,6 @@ export class ShopService {
     setCached(cacheKey, result, 60);
     return result;
   }
-
-  static async getWebinarBySlug(slug: string) {
-    const cacheKey = `shop:webinar:${slug}`;
-    const cached = getCached<any>(cacheKey);
-    if (cached) return cached;
-
-    let result = null;
-    if (slug === 'active') {
-      result = await prisma.webinar.findFirst({
-        where: { isActive: true },
-        orderBy: { date: 'asc' }
-      });
-    } else {
-      result = await prisma.webinar.findFirst({
-        where: { slug, isActive: true },
-      });
-    }
-    if (result) {
-      setCached(cacheKey, result, 60);
-    }
-    return result;
-  }
-
 
   static async validateCoupon(code: string, amount: number) {
     const coupon = await prisma.discountCoupon.findUnique({
@@ -252,140 +228,6 @@ export class ShopService {
         if (phoneUser) {
           resolvedUserId = phoneUser.id;
         }
-      }
-
-      // Check if it's a webinar checkout
-      let isWebinarCheckout = false;
-      let resolvedWebinar = null;
-
-      if (data.items.length === 1 && data.items[0]) {
-        const item = data.items[0];
-        resolvedWebinar = await tx.webinar.findUnique({
-          where: { id: item.bookId }
-        });
-        if (!resolvedWebinar) {
-          resolvedWebinar = await tx.webinar.findUnique({
-            where: { slug: item.bookId }
-          });
-        }
-        if (resolvedWebinar || item.bookId.startsWith("webinar-")) {
-          isWebinarCheckout = true;
-        }
-      }
-
-      if (isWebinarCheckout) {
-        if (data.items.length !== 1) {
-          throw new Error("Webinar registration cannot be combined with other items.");
-        }
-        const item = data.items[0];
-        if (!item) {
-          throw new Error("No items in checkout.");
-        }
-        const webinar = resolvedWebinar || await tx.webinar.findUnique({
-          where: { id: item.bookId }
-        });
-        if (!webinar) {
-          throw new Error(`Webinar not found: ${item.bookId}`);
-        }
-        if (!webinar.isActive) {
-          throw new Error(`Webinar is not active: ${webinar.title}`);
-        }
-
-        let subtotal = webinar.price;
-        let discountAmount = 0;
-        let couponId = null;
-
-        if (data.couponCode) {
-          const { coupon, discountAmount: calculatedDiscount } = await this.validateCoupon(data.couponCode, subtotal);
-          discountAmount = calculatedDiscount;
-          couponId = coupon.id;
-
-          // For COD, increment coupon immediately.
-          if (data.paymentMethod === PaymentMethod.COD) {
-            await tx.discountCoupon.update({
-              where: { id: coupon.id },
-              data: { usedCount: { increment: 1 } }
-            });
-          }
-        }
-
-        let totalAmount = subtotal - discountAmount;
-        if (totalAmount < 0) totalAmount = 0;
-
-        const resolvedCurrency = (data.currency || "INR").toUpperCase();
-        let razorpayOrderId = null;
-        if (data.paymentMethod === PaymentMethod.ONLINE) {
-          const options = {
-            amount: Math.round(totalAmount * 100),
-            currency: resolvedCurrency,
-            receipt: `rcpt_web_${Date.now()}`,
-            notes: {
-              product_type: "digital_webinar",
-              rbi_purpose_code: "P1006",
-              webinar_id: webinar.id,
-              customer_phone: data.guestPhone || "",
-            }
-          };
-          const rpOrder = await razorpay.orders.create(options);
-          razorpayOrderId = rpOrder.id;
-        }
-
-        const registrationId = uuidv4();
-
-        const registration = await tx.webinarRegistration.create({
-          data: {
-            id: registrationId,
-            webinarId: webinar.id,
-            userId: resolvedUserId,
-            guestName: data.guestName,
-            guestEmail: data.guestEmail,
-            guestPhone: data.guestPhone,
-            paymentStatus: data.paymentMethod === PaymentMethod.COD ? PaymentStatus.COMPLETED : PaymentStatus.PENDING,
-            paymentMethod: data.paymentMethod,
-            razorpayOrderId,
-            amount: totalAmount,
-            currency: resolvedCurrency,
-          }
-        });
-
-        // Update User Profile if userId is present
-        if (resolvedUserId) {
-          const updateData: any = {
-            profile: {
-              upsert: {
-                create: { displayName: data.guestName || "User" },
-                update: { displayName: data.guestName },
-              }
-            }
-          };
-          if (data.guestEmail) {
-            const emailExists = await tx.user.findFirst({
-              where: {
-                email: data.guestEmail,
-                id: { not: resolvedUserId }
-              }
-            });
-            if (!emailExists) {
-              updateData.email = data.guestEmail;
-            }
-          }
-          await tx.user.update({
-            where: { id: resolvedUserId },
-            data: updateData
-          });
-        }
-
-        return {
-          id: registration.id,
-          totalAmount: registration.amount,
-          currency: resolvedCurrency,
-          razorpayOrderId: registration.razorpayOrderId,
-          razorpayKeyId: env.RAZORPAY_KEY_ID || "",
-          paymentMethod: registration.paymentMethod,
-          paymentStatus: registration.paymentStatus,
-          createdAt: registration.createdAt,
-          updatedAt: registration.updatedAt,
-        } as any;
       }
 
       // Parse country from input or comments
@@ -719,108 +561,23 @@ export class ShopService {
       include: { items: { include: { book: true } } }
     });
     if (!order) {
-      // Check if it's a webinar registration
-      const registration = await prisma.webinarRegistration.findUnique({
-        where: { razorpayOrderId },
-        include: { webinar: true }
+      // Check if it's a demo session booking
+      const demo = await prisma.demoSession.findUnique({
+        where: { razorpayOrderId }
       });
-      if (!registration) {
-        // Check if it's a demo session booking
-        const demo = await prisma.demoSession.findUnique({
-          where: { razorpayOrderId }
-        });
-        if (demo) {
-          if (demo.paymentStatus === PaymentStatus.COMPLETED) {
-            return demo;
-          }
-          const { ProgramsService } = await import("../programs/programs.service.js");
-          const result = await ProgramsService.verifyDemoPayment({
-            razorpayOrderId,
-            razorpayPaymentId,
-            razorpaySignature
-          });
-          return result.demo;
+      if (demo) {
+        if (demo.paymentStatus === PaymentStatus.COMPLETED) {
+          return demo;
         }
-        return null;
-      }
-
-      if (registration.paymentStatus === PaymentStatus.COMPLETED) {
-        return registration; // already completed
-      }
-
-      // Find or create user from guestPhone if userId is missing
-      let userId = registration.userId;
-      if (!userId && registration.guestPhone) {
-        const normalized = normalizePhone(registration.guestPhone);
-        let user = await prisma.user.findUnique({ where: { phone: normalized } });
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              phone: normalized,
-              accountStatus: "PENDING_SETUP",
-              onboardingStep: 1,
-              role: "PARENT",
-              profile: {
-                create: {
-                  displayName: registration.guestName || "Parent",
-                  totalPoints: 0,
-                }
-              }
-            }
-          });
-        }
-        userId = user.id;
-      }
-
-      // Update webinar registration status to COMPLETED
-      const updatedRegistration = await prisma.webinarRegistration.update({
-        where: { razorpayOrderId },
-        data: {
-          paymentStatus: PaymentStatus.COMPLETED,
+        const { ProgramsService } = await import("../programs/programs.service.js");
+        const result = await ProgramsService.verifyDemoPayment({
+          razorpayOrderId,
           razorpayPaymentId,
-          razorpaySignature,
-          userId: userId || undefined,
-        },
-        include: { webinar: true }
-      });
-
-      // Send webinar confirmation email using dynamic date & time
-      if (updatedRegistration.guestEmail) {
-        const webinar = updatedRegistration.webinar;
-        
-        // Dynamic Date & Time formatting from DB
-        const date = webinar.date;
-        const formatterDate = new Intl.DateTimeFormat('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          timeZone: 'Asia/Kolkata'
+          razorpaySignature
         });
-        const formatterTime = new Intl.DateTimeFormat('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-          timeZone: 'Asia/Kolkata'
-        });
-
-        const webinar_date = formatterDate.format(date);
-        const webinar_time = `${formatterTime.format(date)} (IST)`;
-
-        sendWebinarConfirmationEmail(updatedRegistration.guestEmail, {
-          parent_name: updatedRegistration.guestName || "Parent",
-          order_id: updatedRegistration.id.slice(0, 8).toUpperCase(),
-          webinar_date,
-          webinar_time,
-          download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
-          whatsapp_group_url: "https://chat.whatsapp.com/Hcu2sCgARbqH8PMbmW9nGv?s=cl&p=a&ilr=1&amv=1",
-          zoom_link: webinar.zoomLink || webinar.link || "https://zoom.us/j/mock-webinar-id",
-          webinar_title: webinar.title,
-          webinar_platform: webinar.mode === 'ONLINE' ? 'Zoom (Live Online Session)' : 'Offline Session'
-        }).catch(err => logger.error({ err, registrationId: updatedRegistration.id }, "[EMAIL] Failed to send webinar registration email"));
+        return result.demo;
       }
-
-      return updatedRegistration;
+      return null;
     }
 
     if (order.paymentStatus === PaymentStatus.COMPLETED) {
@@ -927,62 +684,7 @@ export class ShopService {
     }
 
     if (order.guestEmail) {
-      const containsWebinar = order.items.some((i: any) => i.bookId.startsWith("webinar-"));
-      if (containsWebinar) {
-        (async () => {
-          try {
-            const webinarItem = order.items.find((i: any) => i.bookId.startsWith("webinar-"));
-            let webinarDateStr = "Saturday, July 25, 2026";
-            let webinarTimeStr = "05:00 PM (IST)";
-            let webinarZoomLink = "https://zoom.us/j/mock-webinar-id";
-            let webinarTitle = "Decoding Her Silence Parent Webinar";
-            let webinarPlatform = "Zoom (Live Online Session)";
-
-            if (webinarItem) {
-              const webinar = await prisma.webinar.findUnique({
-                where: { id: webinarItem.bookId }
-              });
-              if (webinar) {
-                const date = webinar.date;
-                const formatterDate = new Intl.DateTimeFormat('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  timeZone: 'Asia/Kolkata'
-                });
-                const formatterTime = new Intl.DateTimeFormat('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true,
-                  timeZone: 'Asia/Kolkata'
-                });
-                webinarDateStr = formatterDate.format(date);
-                webinarTimeStr = `${formatterTime.format(date)} (IST)`;
-                webinarZoomLink = webinar.zoomLink || webinar.link || webinarZoomLink;
-                webinarTitle = webinar.title;
-                webinarPlatform = webinar.mode === 'ONLINE' ? 'Zoom (Live Online Session)' : 'Offline Session';
-              }
-            }
-
-            await sendWebinarConfirmationEmail(order.guestEmail!, {
-              parent_name: order.guestName || "Parent",
-              order_id: order.id.slice(0, 8).toUpperCase(),
-              webinar_date: webinarDateStr,
-              webinar_time: webinarTimeStr,
-              download_pdf_url: "https://api.infano.care/uploads/assets/3_Signals_Decision_Card.pdf",
-              whatsapp_group_url: "https://chat.whatsapp.com/Hcu2sCgARbqH8PMbmW9nGv?s=cl&p=a&ilr=1&amv=1",
-              zoom_link: webinarZoomLink,
-              webinar_title: webinarTitle,
-              webinar_platform: webinarPlatform
-            });
-          } catch (err) {
-            logger.error({ err, orderId: order.id }, "[EMAIL] Failed to send webinar email");
-          }
-        })();
-      } else {
-        this._sendPlacedEmail({ ...order, paymentStatus: PaymentStatus.COMPLETED });
-      }
+      this._sendPlacedEmail({ ...order, paymentStatus: PaymentStatus.COMPLETED });
     }
 
     // 2. Automatically create program enrollment if ordered item is a program
@@ -1059,14 +761,6 @@ export class ShopService {
           where: { razorpayOrderId },
           data: { paymentStatus: PaymentStatus.FAILED }
         });
-      } else {
-        const registration = await prisma.webinarRegistration.findUnique({ where: { razorpayOrderId } });
-        if (registration) {
-          await prisma.webinarRegistration.update({
-            where: { razorpayOrderId },
-            data: { paymentStatus: PaymentStatus.FAILED }
-          });
-        }
       }
       throw new Error("Payment verification failed: Invalid signature");
     }
@@ -1785,14 +1479,6 @@ export class ShopService {
           where: { razorpayOrderId },
           data: { paymentStatus: PaymentStatus.FAILED }
         });
-      } else {
-        const registration = await prisma.webinarRegistration.findUnique({ where: { razorpayOrderId } });
-        if (registration) {
-          await prisma.webinarRegistration.update({
-            where: { razorpayOrderId },
-            data: { paymentStatus: PaymentStatus.FAILED }
-          });
-        }
       }
     }
 
@@ -1826,18 +1512,9 @@ export class ShopService {
             userId
           }
         });
-        await prisma.webinarRegistration.updateMany({
-          where: {
-            OR: syncConditions,
-            userId: { not: userId }
-          },
-          data: {
-            userId
-          }
-        });
       }
     } catch (syncErr) {
-      logger.error({ err: syncErr, userId }, "Failed to sync guest orders/registrations in getUserOrders");
+      logger.error({ err: syncErr, userId }, "Failed to sync guest orders in getUserOrders");
     }
 
     const orders = await prisma.order.findMany({
@@ -1917,6 +1594,10 @@ export class ShopService {
     if (curr === "AUD") return "A$";
     if (curr === "AED") return "AED ";
     return "₹";
+  }
+
+  static async sendOrderPlacedEmail(order: any) {
+    return this._sendPlacedEmail(order);
   }
 
   private static async _sendPlacedEmail(order: any) {

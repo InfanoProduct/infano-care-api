@@ -16,10 +16,13 @@ router.use(requireAdmin);
 
 router.get("/stats", AdminController.getStats);
 router.get("/users", AdminController.getUsers);
+router.post("/users/test-user", AdminController.createTestUser);
+router.get("/users/next-test-phone", AdminController.getNextTestPhone);
 router.get("/users/:id", AdminController.getUser);
 router.get("/users/:id/overview", AdminController.getUserOverview);
 router.patch("/users/:id/status", AdminController.updateUserStatus);
 router.delete("/users/:id", AdminController.deleteUser);
+router.post("/users/:id/reset-data", AdminController.resetUserData);
 router.patch("/users/:id/approve-peer", AdminController.approvePeer);
 router.patch("/users/:id/approve-certification", AdminController.approveCertification);
 router.patch("/users/:id/unapprove-assessment", AdminController.unapproveAssessment);
@@ -51,13 +54,6 @@ router.get("/books/:id", AdminController.getBook);
 router.post("/books", AdminController.createBook);
 router.patch("/books/:id", AdminController.updateBook);
 router.delete("/books/:id", AdminController.deleteBook);
-
-// Webinar Management
-router.get("/webinars", AdminController.getWebinars);
-router.get("/webinars/:id", AdminController.getWebinar);
-router.post("/webinars", AdminController.createWebinar);
-router.patch("/webinars/:id", AdminController.updateWebinar);
-router.delete("/webinars/:id", AdminController.deleteWebinar);
 
 // Circle Management
 router.get("/circles", AdminController.getCircles);

@@ -1,4 +1,5 @@
 import { prisma } from "../../db/client.js";
+import { redis } from "../../db/redis.js";
 import { ShopService, invalidateShopCache } from "../shop/shop.service.js";
 import bcrypt from "bcryptjs";
 import { UserRole, Prisma } from "@prisma/client";
@@ -699,13 +700,18 @@ export class AdminService {
       orders: user.orders,
       journeys: journeysWithProgress,
       enquiries,
-      linkedUser: linkedUser ? {
-        id: linkedUser.id,
-        phone: linkedUser.phone,
-        email: linkedUser.email,
-        role: linkedUser.role,
-        displayName: linkedUser.profile?.displayName || 'Linked User'
-      } : null,
+      learners: learners.map(l => ({
+        id: l.id,
+        name: l.name,
+        age: l.age,
+        periodStatus: l.periodStatus,
+        flowersCount: l.flowersCount,
+        petalsCount: l.petalsCount,
+        streakDays: l.streakDays,
+        worries: l.worries,
+        createdAt: l.createdAt
+      })),
+      linkedUser: null, // Family link feature discontinued; daughters are managed as LearnerProfiles
       linkedEnrollments,
       demoSessions
     };
@@ -720,13 +726,250 @@ export class AdminService {
     });
   }
 
-  static async deleteUser(userId: string) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new Error("User not found");
-    return prisma.user.update({
+  static async cascadeDeleteUserData(userId: string, phone?: string | null, deleteUserRecord: boolean = true) {
+    const safeDelete = async (name: string, fn: () => Promise<any>) => {
+      try {
+        await fn();
+      } catch (err: any) {
+        logger.warn({ userId, name, err: err.message }, "[ADMIN DELETE] Cascade delete step warning");
+      }
+    };
+
+    // 1. Learner-related children
+    const learners = await prisma.learnerProfile.findMany({ where: { parentId: userId }, select: { id: true } });
+    const learnerIds = learners.map(l => l.id);
+    if (learnerIds.length > 0) {
+      await safeDelete("learnerLessonProgress", () => prisma.learnerLessonProgress.deleteMany({ where: { learnerId: { in: learnerIds } } }));
+      await safeDelete("learnerActivityResult", () => prisma.learnerActivityResult.deleteMany({ where: { learnerId: { in: learnerIds } } }));
+      await safeDelete("learnerCheckinAttempt", () => prisma.learnerCheckinAttempt.deleteMany({ where: { learnerId: { in: learnerIds } } }));
+      await safeDelete("learnerBadgeAward", () => prisma.learnerBadgeAward.deleteMany({ where: { learnerId: { in: learnerIds } } }));
+      await safeDelete("learnerPetalLedger", () => prisma.learnerPetalLedger.deleteMany({ where: { learnerId: { in: learnerIds } } }));
+      await safeDelete("learnerJournalEntry", () => prisma.learnerJournalEntry.deleteMany({ where: { learnerId: { in: learnerIds } } }));
+      await safeDelete("learnerProfile", () => prisma.learnerProfile.deleteMany({ where: { id: { in: learnerIds } } }));
+    }
+
+    // 2. Orders & OrderItems
+    const orders = await prisma.order.findMany({ where: { userId }, select: { id: true } });
+    const orderIds = orders.map(o => o.id);
+    if (orderIds.length > 0) {
+      await safeDelete("orderItem", () => prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } }));
+      await safeDelete("order", () => prisma.order.deleteMany({ where: { id: { in: orderIds } } }));
+    }
+
+    // 3. Chat sessions & messages
+    const chatSessions = await prisma.chatSession.findMany({ where: { userId }, select: { id: true } });
+    const chatSessionIds = chatSessions.map(c => c.id);
+    if (chatSessionIds.length > 0) {
+      await safeDelete("chatMessage", () => prisma.chatMessage.deleteMany({ where: { sessionId: { in: chatSessionIds } } }));
+      await safeDelete("chatSession", () => prisma.chatSession.deleteMany({ where: { id: { in: chatSessionIds } } }));
+    }
+
+    // 4. Expert sessions & messages
+    const expertSessions = await prisma.expertChatSession.findMany({ where: { OR: [{ userId }, { expertId: userId }] }, select: { id: true } });
+    const expertSessionIds = expertSessions.map(e => e.id);
+    if (expertSessionIds.length > 0) {
+      await safeDelete("expertChatMessage", () => prisma.expertChatMessage.deleteMany({ where: { sessionId: { in: expertSessionIds } } }));
+      await safeDelete("expertChatSession", () => prisma.expertChatSession.deleteMany({ where: { id: { in: expertSessionIds } } }));
+    }
+
+    // 5. PeerLine sessions & messages
+    const peerSessions = await prisma.peerLineSession.findMany({ where: { OR: [{ menteeId: userId }, { mentorId: userId }] }, select: { id: true } });
+    const peerSessionIds = peerSessions.map(p => p.id);
+    if (peerSessionIds.length > 0) {
+      await safeDelete("peerLineMessage", () => prisma.peerLineMessage.deleteMany({ where: { sessionId: { in: peerSessionIds } } }));
+      await safeDelete("peerLineSession", () => prisma.peerLineSession.deleteMany({ where: { id: { in: peerSessionIds } } }));
+    }
+
+    // 6. Community & Gamification
+    await safeDelete("cycleLog", () => prisma.cycleLog.deleteMany({ where: { userId } }));
+    await safeDelete("cycleRecord", () => prisma.cycleRecord.deleteMany({ where: { userId } }));
+    await safeDelete("cycleProfile", () => prisma.cycleProfile.deleteMany({ where: { userId } }));
+    await safeDelete("userDailyQuest", () => prisma.userDailyQuest.deleteMany({ where: { userId } }));
+    await safeDelete("userBadgeProgress", () => prisma.userBadgeProgress.deleteMany({ where: { userId } }));
+    await safeDelete("userBadge", () => prisma.userBadge.deleteMany({ where: { userId } }));
+    await safeDelete("userWeeklyChallenge", () => prisma.userWeeklyChallenge.deleteMany({ where: { userId } }));
+    await safeDelete("userInventory", () => prisma.userInventory.deleteMany({ where: { userId } }));
+    await safeDelete("coinLedger", () => prisma.coinLedger.deleteMany({ where: { userId } }));
+    await safeDelete("pointsLedger", () => prisma.pointsLedger.deleteMany({ where: { userId } }));
+    await safeDelete("userLevel", () => prisma.userLevel.deleteMany({ where: { userId } }));
+    await safeDelete("userStreak", () => prisma.userStreak.deleteMany({ where: { userId } }));
+    await safeDelete("userMindfulActivity", () => prisma.userMindfulActivity.deleteMany({ where: { userId } }));
+    await safeDelete("communityActivityLog", () => prisma.communityActivityLog.deleteMany({ where: { userId } }));
+    await safeDelete("communityBookmark", () => prisma.communityBookmark.deleteMany({ where: { userId } }));
+    await safeDelete("postReaction", () => prisma.postReaction.deleteMany({ where: { userId } }));
+    await safeDelete("communityReply", () => prisma.communityReply.deleteMany({ where: { authorId: userId } }));
+    await safeDelete("communityPost", () => prisma.communityPost.deleteMany({ where: { authorId: userId } }));
+    await safeDelete("moderationAppeal", () => prisma.moderationAppeal.deleteMany({ where: { authorId: userId } }));
+    await safeDelete("moderationLog", () => prisma.moderationLog.deleteMany({ where: { moderatorId: userId } }));
+
+    // 7. Enrollments, Schedules & Subscriptions
+    await safeDelete("subscription", () => prisma.subscription.deleteMany({ where: { userId } }));
+    await safeDelete("expertSessionSchedule", () => prisma.expertSessionSchedule.deleteMany({ where: { OR: [{ userId }, { expertId: userId }] } }));
+    await safeDelete("courseEnrollment", () => prisma.courseEnrollment.deleteMany({ where: { userId } }));
+    await safeDelete("programEnrollment", () => prisma.programEnrollment.deleteMany({ where: { userId } }));
+    await safeDelete("demoSession", () => prisma.demoSession.deleteMany({ where: { userId } }));
+    await safeDelete("escalationEvent", () => prisma.escalationEvent.deleteMany({ where: { userId } }));
+    await safeDelete("expertCalendarSettings", () => prisma.expertCalendarSettings.deleteMany({ where: { userId } }));
+
+    // 8. Profiles, links & user settings
+    await safeDelete("profile", () => prisma.profile.deleteMany({ where: { userId } }));
+    await safeDelete("peerApplication", () => prisma.peerApplication.deleteMany({ where: { userId } }));
+    await safeDelete("friendProfile", () => prisma.friendProfile.deleteMany({ where: { userId } }));
+    await safeDelete("journalEntry", () => prisma.journalEntry.deleteMany({ where: { userId } }));
+    await safeDelete("journalStreak", () => prisma.journalStreak.deleteMany({ where: { userId } }));
+    await safeDelete("notificationHistory", () => prisma.notificationHistory.deleteMany({ where: { userId } }));
+    await safeDelete("notificationPreferences", () => prisma.notificationPreferences.deleteMany({ where: { userId } }));
+    await safeDelete("userAvatar", () => prisma.userAvatar.deleteMany({ where: { userId } }));
+    await safeDelete("userSosPreference", () => prisma.userSosPreference.deleteMany({ where: { userId } }));
+    await safeDelete("trustedContact", () => prisma.trustedContact.deleteMany({ where: { userId } }));
+    await safeDelete("consentRequest", () => prisma.consentRequest.deleteMany({ where: { userId } }));
+    await safeDelete("parentLink", () => prisma.parentLink.deleteMany({ where: { OR: [{ parentId: userId }, { teenId: userId }, { senderId: userId }] } }));
+    await safeDelete("articleBookmark", () => prisma.articleBookmark.deleteMany({ where: { userId } }));
+    await safeDelete("personalizationProfile", () => prisma.personalizationProfile.deleteMany({ where: { userId } }));
+    await safeDelete("sosIncident", () => prisma.sosIncident.deleteMany({ where: { userId } }));
+
+    // 9. Delete or reset the User record
+    if (deleteUserRecord) {
+      await prisma.user.delete({ where: { id: userId } });
+    } else {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          accountStatus: "PENDING_SETUP",
+          onboardingStep: 0,
+          onboardingCompletedAt: null,
+          parentPin: null,
+          parentConsent: false,
+        }
+      });
+    }
+
+    // 10. Clean up Redis OTP keys if phone is known
+    const phoneToClean = phone;
+    if (phoneToClean) {
+      try {
+        await redis.del(`otp:${phoneToClean}`);
+        const rawDigits = phoneToClean.replace(/\D/g, "");
+        await redis.del(`otp:${rawDigits}`);
+        if (phoneToClean.startsWith("+91")) {
+          await redis.del(`otp:${phoneToClean.slice(3)}`);
+        }
+      } catch (err: any) {
+        logger.warn({ phone: phoneToClean, err: err?.message }, "[ADMIN DELETE] Redis clean warning");
+      }
+    }
+  }
+
+  static async resetUserData(userId: string) {
+    const user = await prisma.user.findUnique({
       where: { id: userId },
-      data: { accountStatus: 'DELETED' }
+      select: { id: true, phone: true }
     });
+    if (!user) throw new AppError("User not found", 404);
+
+    await AdminService.cascadeDeleteUserData(userId, user.phone, false);
+    return {
+      success: true,
+      message: "User data reset successfully. All profiles, progress, and orders cleared.",
+      testOtp: "0000"
+    };
+  }
+
+  static async deleteUser(userId: string, soft: boolean = false) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, phone: true }
+    });
+    if (!user) throw new AppError("User not found", 404);
+
+    if (soft) {
+      return prisma.user.update({
+        where: { id: userId },
+        data: { accountStatus: "DELETED" }
+      });
+    }
+
+    await AdminService.cascadeDeleteUserData(userId, user.phone);
+    return { success: true, message: "User deleted permanently and all associated data cleared." };
+  }
+
+  static async createTestUser(data: { phone: string; role?: string; overwriteIfExists?: boolean }) {
+    const { phone, role = "PARENT", overwriteIfExists = true } = data;
+    if (!phone) {
+      throw new AppError("Phone number is required", 400);
+    }
+
+    const finalPhone = normalizePhone(phone);
+    const pattern = /^\+(91\d{10}|1\d{10}|44\d{10,11}|65\d{8}|971\d{9}|61\d{9})$/;
+    if (!pattern.test(finalPhone)) {
+      throw new AppError("Invalid phone number pattern. Must be a valid 10-digit number.", 400);
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { phone: finalPhone },
+      select: { id: true, phone: true }
+    });
+
+    if (existing) {
+      if (!overwriteIfExists) {
+        throw new AppError(`User with phone ${finalPhone} already exists. Enable overwrite to reset.`, 409);
+      }
+      // Wipe all existing data completely
+      await AdminService.cascadeDeleteUserData(existing.id, existing.phone);
+    }
+
+    // Create fresh user with completely empty / initial state (no profile, no learners, no enrollments)
+    const user = await prisma.user.create({
+      data: {
+        phone: finalPhone,
+        isTestNumber: true,
+        role: (role as any) || "PARENT",
+        accountStatus: "PENDING_SETUP",
+        onboardingStep: 0,
+        onboardingCompletedAt: null,
+        parentPin: null,
+        parentConsent: false,
+      },
+      include: {
+        profile: true,
+        learners: true,
+        courseEnrollments: true,
+      }
+    });
+
+    // Clean Redis cache
+    try {
+      await redis.del(`otp:${finalPhone}`);
+      const rawDigits = finalPhone.replace(/\D/g, "");
+      await redis.del(`otp:${rawDigits}`);
+      if (finalPhone.startsWith("+91")) {
+        await redis.del(`otp:${finalPhone.slice(3)}`);
+      }
+    } catch (err) {
+      logger.warn({ err }, "Redis clean warning for test user");
+    }
+
+    return {
+      success: true,
+      message: "Fresh test user created successfully with no data.",
+      user,
+      testOtp: "0000"
+    };
+  }
+
+  static async getNextTestPhone() {
+    for (let i = 1; i <= 9999; i++) {
+      const candidateDigits = `90000${String(i).padStart(5, "0")}`;
+      const candidateFull = `+91${candidateDigits}`;
+      const exists = await prisma.user.findUnique({
+        where: { phone: candidateFull },
+        select: { id: true }
+      });
+      if (!exists) {
+        return { suggestedPhone: candidateDigits, fullPhone: candidateFull };
+      }
+    }
+    return { suggestedPhone: "9000099999", fullPhone: "+919000099999" };
   }
 
   static async approvePeerApplication(userId: string) {
@@ -835,9 +1078,9 @@ export class AdminService {
       }
     });
 
-    // 2. Downgrade role to PARENT or TEEN if they were PEER
+    // 2. Downgrade role to PARENT if they were PEER
     if (user.role === 'PEER') {
-      const targetRole = (user.contentTier === 'ADULT' || !user.ageAtSignup) ? 'PARENT' : 'TEEN';
+      const targetRole = 'PARENT';
       await prisma.user.update({
         where: { id: userId },
         data: { role: targetRole }
@@ -874,9 +1117,9 @@ export class AdminService {
       });
     }
 
-    // 2. Downgrade role to PARENT or TEEN
+    // 2. Downgrade role to PARENT
     if (user.role === 'PEER' || user.role === 'ADMIN' || user.role === 'EXPERT') { // ensure we just drop PEER role
-      const targetRole = (user.contentTier === 'ADULT' || !user.ageAtSignup) ? 'PARENT' : 'TEEN';
+      const targetRole = 'PARENT';
       await prisma.user.update({
         where: { id: userId },
         data: { role: targetRole }
@@ -891,7 +1134,7 @@ export class AdminService {
       });
     }
 
-    return { success: true, message: 'Peer status completely revoked (Application pending, Certification pending, Role TEEN).' };
+    return { success: true, message: 'Peer status completely revoked (Application pending, Certification pending, Role PARENT).' };
   }
 
   // Order Management
@@ -907,130 +1150,11 @@ export class AdminService {
       paymentStatus?: string;
       isActive?: boolean;
       country?: string;
-      isWebinar?: boolean;
     }
   ) {
     const skip = (page - 1) * limit;
 
-    if (filters?.isWebinar === true) {
-      const andConditions: any[] = [];
-
-      if (filters?.search) {
-        andConditions.push({
-          OR: [
-            { id: { contains: filters.search, mode: 'insensitive' } },
-            { guestName: { contains: filters.search, mode: 'insensitive' } },
-            { guestEmail: { contains: filters.search, mode: 'insensitive' } },
-            { guestPhone: { contains: filters.search, mode: 'insensitive' } },
-            { user: { username: { contains: filters.search, mode: 'insensitive' } } },
-            { user: { phone: { contains: filters.search, mode: 'insensitive' } } }
-          ]
-        });
-      }
-
-      if (filters?.paymentStatus && filters.paymentStatus !== 'ALL') {
-        andConditions.push({ paymentStatus: filters.paymentStatus });
-      }
-
-      const where = andConditions.length > 0 ? { AND: andConditions } : {};
-
-      const [registrations, total, allMatching] = await Promise.all([
-        prisma.webinarRegistration.findMany({
-          where,
-          skip,
-          take: limit,
-          include: {
-            webinar: true,
-            user: {
-              select: { phone: true, username: true }
-            }
-          },
-          orderBy: { createdAt: "desc" }
-        }),
-        prisma.webinarRegistration.count({ where }),
-        prisma.webinarRegistration.findMany({
-          where,
-          select: {
-            amount: true,
-            paymentStatus: true,
-            paymentMethod: true
-          }
-        })
-      ]);
-
-      let totalRevenue = 0;
-      let activePasses = 0;
-      let pendingPayments = 0;
-
-      for (const r of allMatching) {
-        const amt = Number(r.amount) || 0;
-        if (r.paymentStatus === 'COMPLETED') {
-          totalRevenue += amt;
-          activePasses++;
-        } else if (r.paymentStatus === 'PENDING') {
-          pendingPayments++;
-        }
-      }
-
-      const mappedOrders = registrations.map((r) => ({
-        id: r.id,
-        guestName: r.guestName,
-        guestEmail: r.guestEmail,
-        guestPhone: r.guestPhone,
-        paymentStatus: r.paymentStatus,
-        paymentMethod: r.paymentMethod,
-        totalAmount: r.amount,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-        items: [
-          {
-            bookId: r.webinarId,
-            book: {
-              id: r.webinarId,
-              title: r.webinar.title
-            }
-          }
-        ],
-        user: r.user
-      }));
-
-      return {
-        orders: mappedOrders,
-        pagination: {
-          total,
-          page,
-          limit,
-          pages: Math.ceil(total / limit)
-        },
-        stats: {
-          totalOrders: activePasses,
-          totalRevenue,
-          onlineRevenue: totalRevenue,
-          codRevenue: 0,
-          onlineCount: registrations.filter(r => r.paymentMethod === 'ONLINE').length,
-          codCount: registrations.filter(r => r.paymentMethod === 'COD').length,
-          placedCount: activePasses,
-          processingCount: 0,
-          onHoldCount: pendingPayments,
-          shippedCount: 0,
-          deliveredCount: 0,
-          failedCount: registrations.filter(r => r.paymentStatus === 'FAILED').length,
-          cancelledCount: 0
-        }
-      };
-    }
-
     const andConditions: any[] = [];
-
-    andConditions.push({
-      items: {
-        none: {
-          bookId: {
-            startsWith: 'webinar-'
-          }
-        }
-      }
-    });
 
     if (filters?.isActive !== undefined) {
       andConditions.push({ isActive: filters.isActive });
@@ -1300,44 +1424,7 @@ export class AdminService {
       }
     });
 
-    if (order) return order;
-
-    const registration = await prisma.webinarRegistration.findUnique({
-      where: { id },
-      include: {
-        webinar: true,
-        user: true
-      }
-    });
-
-    if (registration) {
-      return {
-        id: registration.id,
-        guestName: registration.guestName,
-        guestEmail: registration.guestEmail,
-        guestPhone: registration.guestPhone,
-        paymentStatus: registration.paymentStatus,
-        paymentMethod: registration.paymentMethod,
-        razorpayOrderId: registration.razorpayOrderId,
-        razorpayPaymentId: registration.razorpayPaymentId,
-        razorpaySignature: registration.razorpaySignature,
-        totalAmount: registration.amount,
-        createdAt: registration.createdAt,
-        updatedAt: registration.updatedAt,
-        items: [
-          {
-            bookId: registration.webinarId,
-            book: {
-              id: registration.webinarId,
-              title: registration.webinar.title
-            }
-          }
-        ],
-        user: registration.user
-      };
-    }
-
-    return null;
+    return order;
   }
 
   static async updateOrderStatus(id: string, status: any, awbNumber?: string) {
@@ -1533,19 +1620,12 @@ export class AdminService {
   }
 
   // Book Management
-  static async getBooks(isWebinar: boolean = false) {
+  static async getBooks() {
     const books = await prisma.book.findMany({
       where: {
-        AND: [
-          {
-            NOT: [
-              { id: { endsWith: "-private" } },
-              { id: { endsWith: "-group" } }
-            ]
-          },
-          isWebinar
-            ? { id: { startsWith: "webinar-" } }
-            : { NOT: { id: { startsWith: "webinar-" } } }
+        NOT: [
+          { id: { endsWith: "-private" } },
+          { id: { endsWith: "-group" } }
         ]
       },
       orderBy: { createdAt: "desc" }
@@ -1711,82 +1791,6 @@ export class AdminService {
   static async deleteBook(id: string) {
     invalidateShopCache();
     return prisma.book.delete({ where: { id } });
-  }
-
-  static async getWebinars() {
-    return await prisma.webinar.findMany({
-      orderBy: { createdAt: "desc" }
-    });
-  }
-
-  static async createWebinar(data: any) {
-    if (!data.slug) {
-      data.slug = data.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-      if (!data.slug) {
-        data.slug = crypto.randomUUID();
-      }
-    }
-
-    const existing = await prisma.webinar.findUnique({ where: { slug: data.slug } });
-    if (existing) {
-      data.slug = `${data.slug}-${Math.floor(Math.random() * 1000)}`;
-    }
-
-    if (data.date) {
-      data.date = new Date(data.date);
-    }
-    if (data.price !== undefined) {
-      data.price = Number(data.price);
-    }
-
-    return await prisma.webinar.create({
-      data
-    });
-  }
-
-  static async updateWebinar(idOrSlug: string, data: any) {
-    const webinar = await prisma.webinar.findFirst({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
-    });
-    if (!webinar) throw new Error("Webinar not found");
-
-    if (data.date) {
-      data.date = new Date(data.date);
-    }
-    if (data.price !== undefined) {
-      data.price = Number(data.price);
-    }
-    if (data.slug) {
-      const existing = await prisma.webinar.findUnique({ where: { slug: data.slug } });
-      if (existing && existing.id !== webinar.id) {
-        throw new Error("Webinar slug already in use");
-      }
-    }
-
-    return await prisma.webinar.update({
-      where: { id: webinar.id },
-      data
-    });
-  }
-
-  static async getWebinar(idOrSlug: string) {
-    return await prisma.webinar.findFirst({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
-    });
-  }
-
-  static async deleteWebinar(idOrSlug: string) {
-    const webinar = await prisma.webinar.findFirst({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
-    });
-    if (!webinar) throw new Error("Webinar not found");
-
-    return await prisma.webinar.delete({
-      where: { id: webinar.id }
-    });
   }
 
   // Circle Management

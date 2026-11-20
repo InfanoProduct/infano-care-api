@@ -4,36 +4,7 @@ import { logger } from "../config/logger.js";
 import { FirebaseService } from "../common/services/firebase.service.js";
 
 export function initParentJobs() {
-  // Run every hour to check for invites older than 48 hours
-  cron.schedule("0 * * * *", async () => {
-    logger.info("[CRON] Running Parent Link Reminders job...");
-    try {
-      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-
-      const pendingLinks = await prisma.parentLink.findMany({
-        where: {
-          status: "PENDING",
-          createdAt: {
-            lte: fortyEightHoursAgo
-          },
-          lastRemindedAt: null
-        }
-      });
-
-      for (const link of pendingLinks) {
-        // Here we would trigger the push notification or SMS
-        // e.g., await NotificationService.send(...)
-        logger.info(`[CRON] Sending reminder to ${link.receiverPhone} for invite from ${link.senderId}`);
-
-        await prisma.parentLink.update({
-          where: { id: link.id },
-          data: { lastRemindedAt: new Date() }
-        });
-      }
-    } catch (error) {
-      logger.error({ err: error }, "[CRON] Error in Parent Link Reminders job");
-    }
-  });
+  // Parent link reminders are deprecated as family link has been retired
 
   // Run every minute to check for expert sessions starting in 15 minutes
   let isCheckingExpertSessions = false;
@@ -158,49 +129,44 @@ export function initParentJobs() {
   cron.schedule("0 10 * * 0", async () => {
     logger.info("[CRON] Running Weekly Parent Digest job...");
     try {
-      const activeLinks = await prisma.parentLink.findMany({
-        where: {
-          status: "LINKED",
-          parentId: { not: null },
-          teenId: { not: null }
-        },
+      const learners = await prisma.learnerProfile.findMany({
         include: {
-          parent: { include: { profile: true } },
-          teen: { include: { profile: true } }
+          parent: { include: { profile: true } }
         }
       });
 
-      for (const link of activeLinks) {
-        if (!link.parentId || !link.parent || !link.teen) continue;
+      for (const learner of learners) {
+        if (!learner.parentId || !(learner as any).parent) continue;
 
-        const teenName = link.teen.profile?.displayName || link.teen.username || "your daughter";
-        const title = "📊 Weekly Family Digest Ready";
+        const parent = (learner as any).parent;
+        const teenName = learner.name || "your daughter";
+        const title = "📊 Weekly Learner Digest Ready";
         const body = `Review ${teenName}'s weekly wellness milestones and 3 suggested conversation starters for this week 💙`;
-        const deepLink = "infano://account/family";
+        const deepLink = "infano://dashboard";
         const type = "PARENT_WEEKLY_DIGEST";
 
         await prisma.notificationHistory.create({
           data: {
-            userId: link.parentId,
+            userId: learner.parentId,
             type,
             title,
             body,
             deepLink,
-            payload: { teenId: link.teenId },
+            payload: { learnerId: learner.id },
             sentAt: new Date()
           }
         });
 
-        if (link.parent.fcmToken) {
+        if (parent.fcmToken) {
           try {
-            await FirebaseService.sendPushNotification(link.parent.fcmToken, {
+            await FirebaseService.sendPushNotification(parent.fcmToken, {
               title,
               body,
               deepLink,
-              data: { notificationType: type, teenId: link.teenId || "" }
+              data: { notificationType: type, learnerId: learner.id }
             });
           } catch (err) {
-            logger.error({ err, parentId: link.parentId }, "Failed to send weekly digest push to parent");
+            logger.error({ err, parentId: learner.parentId }, "Failed to send weekly digest push to parent");
           }
         }
       }

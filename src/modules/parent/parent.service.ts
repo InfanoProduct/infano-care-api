@@ -12,165 +12,8 @@ const razorpay = new Razorpay({
 });
 
 export class ParentService {
-  static async invite(senderId: string, rawReceiverPhone: string) {
-    const receiverPhone = normalizePhone(rawReceiverPhone);
-    const sender = await prisma.user.findUnique({ 
-      where: { id: senderId },
-      include: { profile: true }
-    });
-    if (!sender) throw new Error("Sender not found");
-
-    if (sender.phone === receiverPhone) {
-      throw new Error("You cannot link with your own phone number.");
-    }
-
-    const receiver = await prisma.user.findUnique({ where: { phone: receiverPhone } });
-    if (!receiver) {
-      throw new Error("USER_NOT_FOUND");
-    }
-
-    let parentId = null;
-    let teenId = null;
-    if (sender.role === "PARENT" || sender.role === "GUARDIAN") {
-      parentId = sender.id;
-    } else if (sender.role === "TEEN") {
-      teenId = sender.id;
-    }
-    if (receiver.role === "PARENT" || receiver.role === "GUARDIAN") {
-      parentId = receiver.id;
-    } else if (receiver.role === "TEEN") {
-      teenId = receiver.id;
-    }
-    if (!parentId && !teenId) {
-      parentId = sender.id;
-      teenId = receiver.id;
-    } else if (!parentId) {
-      parentId = sender.id === teenId ? receiver.id : sender.id;
-    } else if (!teenId) {
-      teenId = sender.id === parentId ? receiver.id : sender.id;
-    }
-
-    // Check if there is an existing link where current sender is the sender, OR in the opposite direction
-    const existing = await prisma.parentLink.findFirst({
-      where: {
-        OR: [
-          { senderId, receiverPhone },
-          ...(sender.phone ? [{ senderId: receiver.id, receiverPhone: sender.phone }] : [])
-        ]
-      }
-    });
-
-    if (existing) {
-      if (existing.status === "LINKED") {
-        throw new Error("Already linked");
-      }
-      // If we are the original sender, return the pending link
-      if (existing.senderId === senderId) {
-        return existing;
-      }
-      // If the other user was the sender, this invite is an acceptance!
-      const updatedLink = await prisma.parentLink.update({
-        where: { id: existing.id },
-        data: { status: "LINKED" }
-      });
-
-      const accepterName = sender.profile?.displayName || sender.username || sender.phone;
-      const type = "linkAcceptance";
-      const title = "Link Request Accepted";
-      const body = `${accepterName} has accepted your account linking request.`;
-      const deepLink = "infano://account/family";
-
-      // 1. Create InApp Notification History for original sender
-      await prisma.notificationHistory.create({
-        data: {
-          userId: existing.senderId,
-          type,
-          title,
-          body,
-          deepLink,
-          sentAt: new Date()
-        }
-      });
-
-      // 2. Send Push Notification if FCM token is registered
-      const originalSender = await prisma.user.findUnique({
-        where: { id: existing.senderId },
-        select: { fcmToken: true, phone: true }
-      });
-      if (originalSender?.fcmToken) {
-        try {
-          await FirebaseService.sendPushNotification(originalSender.fcmToken, {
-            title,
-            body,
-            deepLink,
-            data: { notificationType: type }
-          });
-        } catch (err) {
-          console.error("Failed to send firebase push notification for link acceptance:", err);
-        }
-      }
-
-      if (originalSender?.phone) {
-        try {
-          await smsProvider.sendAlert(originalSender.phone, `Hi! ${body}`);
-        } catch (err) {
-          console.error("Failed to send SMS for link acceptance:", err);
-        }
-      }
-
-      return updatedLink;
-    }
-
-    const link = await prisma.parentLink.create({
-      data: {
-        senderId,
-        receiverPhone,
-        parentId,
-        teenId,
-        status: "PENDING"
-      }
-    });
-
-    const senderName = sender.profile?.displayName || sender.username || sender.phone;
-    const type = "linkRequest";
-    const title = "Link Request Received";
-    const body = `${senderName} wants to link accounts with you on Infano Care. Open Family Settings in your app to accept the request.`;
-    const deepLink = "infano://account/family";
-
-    // 1. Create InApp Notification History
-    await prisma.notificationHistory.create({
-      data: {
-        userId: receiver.id,
-        type,
-        title,
-        body,
-        deepLink,
-        sentAt: new Date()
-      }
-    });
-
-    // 2. Send Push Notification if FCM token is registered
-    if (receiver.fcmToken) {
-      try {
-        await FirebaseService.sendPushNotification(receiver.fcmToken, {
-          title,
-          body,
-          deepLink,
-          data: { notificationType: type }
-        });
-      } catch (err) {
-        console.error("Failed to send firebase push notification for link request:", err);
-      }
-    }
-
-    // 3. Send SMS Notification
-    try {
-      await smsProvider.sendAlert(receiverPhone, body);
-    } catch (err) {
-      console.error("Failed to send SMS for link request:", err);
-    }
-
-    return link;
+  static async invite(_senderId: string, _rawReceiverPhone: string) {
+    throw new Error("Family link is no longer supported. Daughters are now managed directly as Learner Profiles under your parent account.");
   }
 
   static async calculateWellnessScore(teenId: string): Promise<number> {
@@ -227,196 +70,27 @@ export class ParentService {
     }
   }
 
-  static async getLinks(userId: string) {
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { phone: true }
-      });
-      const userPhone = user?.phone;
-
-      const links = await prisma.parentLink.findMany({
-        where: {
-          OR: [
-            { senderId: userId },
-            { parentId: userId },
-            { teenId: userId },
-            ...(userPhone ? [{ receiverPhone: userPhone }] : [])
-          ]
-        },
-        include: {
-          parent: { include: { profile: true } },
-          teen: { include: { profile: true } },
-          sender: { include: { profile: true } }
-        },
-        orderBy: { createdAt: "desc" }
-      });
-
-      const receiverPhones = links.map(l => l.receiverPhone).filter(Boolean);
-      const receiverUsers = receiverPhones.length > 0
-        ? await prisma.user.findMany({
-            where: { phone: { in: receiverPhones } },
-            include: { profile: true }
-          })
-        : [];
-      const receiverMap = new Map(receiverUsers.map(u => [u.phone, u]));
-
-      // Calculate wellness score for each link if the requesting user is the parent
-      return await Promise.all(links.map(async (link) => {
-        let wellnessScore: number | null = null;
-        if (link.parentId === userId && link.teenId) {
-          wellnessScore = await this.calculateWellnessScore(link.teenId);
-        }
-        const receiverUser = receiverMap.get(link.receiverPhone);
-        return {
-          ...link,
-          receiver: receiverUser || (link.teenId === link.senderId ? link.parent : link.teen),
-          wellnessScore
-        };
-      }));
-    } catch (err) {
-      console.error('Failed to fetch links:', err);
-      return [];
-    }
+  static async getLinks(_userId: string) {
+    return [];
   }
 
-  static async cancelInvite(userId: string, linkId: string) {
-    const link = await prisma.parentLink.findUnique({ where: { id: linkId } });
-    if (!link) throw new Error("Link not found");
-    if (link.senderId !== userId && link.parentId !== userId && link.teenId !== userId) {
-      throw new Error("Unauthorized");
-    }
-
-    const deletedLink = await prisma.parentLink.delete({
-      where: { id: linkId }
-    });
-
-    if (link.senderId !== userId) {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { profile: true }
-      });
-      const declinerName = user?.profile?.displayName || user?.username || link.receiverPhone;
-      const type = "linkDeclined";
-      const title = "Link Request Declined";
-      const body = `${declinerName} has declined your account linking request.`;
-      const deepLink = "infano://account/family";
-
-      // 1. Create InApp Notification History
-      await prisma.notificationHistory.create({
-        data: {
-          userId: link.senderId,
-          type,
-          title,
-          body,
-          deepLink,
-          sentAt: new Date()
-        }
-      });
-
-      // 2. Send Push Notification if FCM token is registered
-      const senderUser = await prisma.user.findUnique({
-        where: { id: link.senderId },
-        select: { fcmToken: true }
-      });
-      if (senderUser?.fcmToken) {
-        try {
-          await FirebaseService.sendPushNotification(senderUser.fcmToken, {
-            title,
-            body,
-            deepLink,
-            data: { notificationType: type }
-          });
-        } catch (err) {
-          console.error("Failed to send firebase push notification for link decline:", err);
-        }
-      }
-    }
-
-    return deletedLink;
+  static async cancelInvite(_userId: string, _linkId: string) {
+    return { success: true };
   }
 
-  static async acceptInvite(userId: string, linkId: string) {
-    const link = await prisma.parentLink.findUnique({ where: { id: linkId } });
-    if (!link) throw new Error("Link not found");
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { profile: true }
-    });
-    if (!user || user.phone !== link.receiverPhone) {
-      throw new Error("Unauthorized");
-    }
-
-    let pId = link.parentId;
-    let tId = link.teenId;
-    const senderUser = await prisma.user.findUnique({ where: { id: link.senderId } });
-    if (!pId && !tId && senderUser) {
-      if (senderUser.role === "PARENT" || senderUser.role === "GUARDIAN") pId = senderUser.id;
-      else if (senderUser.role === "TEEN") tId = senderUser.id;
-
-      if (user.role === "PARENT" || user.role === "GUARDIAN") pId = user.id;
-      else if (user.role === "TEEN") tId = user.id;
-    }
-    if (!pId && senderUser) pId = senderUser.id === tId ? user.id : senderUser.id;
-    if (!tId && senderUser) tId = senderUser.id === pId ? user.id : senderUser.id;
-
-    const updatedLink = await prisma.parentLink.update({
-      where: { id: linkId },
-      data: {
-        status: "LINKED",
-        parentId: pId,
-        teenId: tId
-      }
-    });
-
-    const accepterName = user.profile?.displayName || user.username || user.phone;
-    const type = "linkAcceptance";
-    const title = "Link Request Accepted";
-    const body = `${accepterName} has accepted your account linking request.`;
-    const deepLink = "infano://account/family";
-
-    // 1. Create InApp Notification History
-    await prisma.notificationHistory.create({
-      data: {
-        userId: link.senderId,
-        type,
-        title,
-        body,
-        deepLink,
-        sentAt: new Date()
-      }
-    });
-
-    // 2. Send Push Notification if FCM token is registered
-    if (senderUser?.fcmToken) {
-      try {
-        await FirebaseService.sendPushNotification(senderUser.fcmToken, {
-          title,
-          body,
-          deepLink,
-          data: { notificationType: type }
-        });
-      } catch (err) {
-        console.error("Failed to send firebase push notification for link acceptance:", err);
-      }
-    }
-
-    // 3. Send SMS notification to sender
-    if (senderUser?.phone) {
-      try {
-        await smsProvider.sendAlert(senderUser.phone, `Hi! ${body}`);
-      } catch (err) {
-        console.error("Failed to send SMS for link acceptance:", err);
-      }
-    }
-
-    return updatedLink;
+  static async acceptInvite(_userId: string, _linkId: string) {
+    return { success: true };
   }
 
   static async getDashboardSummary(userId: string) {
-    // 1. Find linked daughter
-    const link = await prisma.parentLink.findFirst({
+    // 1. Find daughter profile directly under parent
+    const learner = await prisma.learnerProfile.findFirst({
+      where: { parentId: userId },
+      orderBy: { createdAt: "asc" }
+    });
+
+    // Fallback: check legacy parentLink if learner profile not yet created
+    const link = !learner ? await prisma.parentLink.findFirst({
       where: {
         parentId: userId,
         status: "LINKED"
@@ -428,17 +102,22 @@ export class ParentService {
           }
         }
       }
-    });
+    }) : null;
 
-    if (!link || !link.teenId) {
+    if (!learner && (!link || !link.teenId)) {
       return { isLinked: false };
     }
 
-    const teenId = link.teenId;
+    const teenId = link?.teenId;
+    const daughterName = learner?.name || link?.teen?.profile?.displayName || link?.teen?.username || "Daughter";
+
+    const learnerWhere = learner
+      ? { learnerId: learner.id }
+      : (teenId ? { learner: { parentId: teenId } } : { learner: { parentId: userId } });
 
     // 2. Active Course Chapter (latest LearnerLessonProgress)
     const activeProgress = await prisma.learnerLessonProgress.findFirst({
-      where: { learner: { parentId: teenId } },
+      where: learnerWhere,
       orderBy: { updatedAt: "desc" },
       include: {
         lesson: {
@@ -450,8 +129,9 @@ export class ParentService {
     });
 
     let activeJourney = null;
-    if (activeProgress && activeProgress.lesson && activeProgress.lesson.chapter) {
-      const chapterId = activeProgress.lesson.chapterId;
+    if (activeProgress && (activeProgress as any).lesson && (activeProgress as any).lesson.chapter) {
+      const lesson = (activeProgress as any).lesson;
+      const chapterId = lesson.chapterId;
       const totalLessons = await prisma.courseLesson.count({ where: { chapterId } });
       const completedCount = await prisma.learnerLessonProgress.count({
         where: {
@@ -463,19 +143,19 @@ export class ParentService {
       const percentComplete = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
 
       activeJourney = {
-        name: activeProgress.lesson.chapter.worldName,
+        name: lesson.chapter.worldName,
         percentComplete,
         thumbnailUrl: null
       };
     }
 
-    // 3. Mood Trend (30-day colour indicator to support 7/30 days toggle)
+    // 3. Mood Trend
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const recentLogs = await prisma.cycleLog.findMany({
       where: {
-        userId: teenId,
+        userId: teenId || userId,
         date: { gte: thirtyDaysAgo }
       },
       orderBy: { date: "asc" },
@@ -485,7 +165,7 @@ export class ParentService {
     // 4. Next Expert Session
     const nextSession = await prisma.expertSessionSchedule.findFirst({
       where: {
-        userId: teenId,
+        userId: { in: teenId ? [userId, teenId] : [userId] },
         scheduledAt: { gte: new Date() },
         status: { in: ["SCHEDULED", "RESCHEDULED"] }
       },
@@ -495,10 +175,7 @@ export class ParentService {
     // 5. Program Enrollments
     const enrollments = await prisma.programEnrollment.findMany({
       where: {
-        OR: [
-          { userId: teenId },
-          { userId } // Parent purchases
-        ],
+        userId: { in: teenId ? [userId, teenId] : [userId] },
         status: "ACTIVE",
         program: { isActive: true }
       },
@@ -512,7 +189,12 @@ export class ParentService {
 
     return {
       isLinked: true,
-      daughterName: link.teen?.profile?.displayName || link.teen?.username || "Daughter",
+      daughterName,
+      learnerId: learner?.id || null,
+      learnerAge: learner?.age || null,
+      flowersCount: learner?.flowersCount || 0,
+      petalsCount: learner?.petalsCount || 0,
+      streakDays: learner?.streakDays || 0,
       activeJourney,
       moodTrend: recentLogs,
       nextExpertSession: nextSession ? nextSession.scheduledAt : null,
@@ -521,11 +203,20 @@ export class ParentService {
     };
   }
 
-  static async getDaughterReport(parentId: string, teenId: string) {
-    const link = await prisma.parentLink.findFirst({
+  static async getDaughterReport(parentId: string, teenIdOrLearnerId: string) {
+    // 1. Try finding learner profile directly under parent
+    let learner = await prisma.learnerProfile.findFirst({
       where: {
         parentId,
-        teenId,
+        OR: [{ id: teenIdOrLearnerId }, { parentId }]
+      }
+    });
+
+    // 2. Fallback to legacy parentLink if learner profile not yet created
+    const link = !learner ? await prisma.parentLink.findFirst({
+      where: {
+        parentId,
+        teenId: teenIdOrLearnerId,
         status: "LINKED"
       },
       include: {
@@ -536,16 +227,17 @@ export class ParentService {
           }
         }
       }
-    });
+    }) : null;
 
-    if (!link || !link.teen) {
-      throw new Error("Unauthorized or no linked daughter found");
+    if (!learner && (!link || !link.teen)) {
+      throw new Error("Unauthorized or no daughter profile found");
     }
 
-    const teen = link.teen;
-    const displayName = teen.profile?.displayName || teen.username || "Daughter";
-    const avatarUrl = teen.profile?.avatarUrl || null;
-    const phone = teen.phone;
+    const teen = link?.teen;
+    const teenId = teen?.id;
+    const displayName = learner?.name || teen?.profile?.displayName || teen?.username || "Daughter";
+    const avatarUrl = teen?.profile?.avatarUrl || null;
+    const phone = teen?.phone || null;
 
     // 1. Fetch all detailed metrics in parallel
     const [
@@ -559,14 +251,16 @@ export class ParentService {
       journalEntries,
       recentCrisisAlert
     ] = await Promise.all([
-      prisma.cycleProfile.findUnique({ where: { userId: teenId } }),
-      prisma.cycleLog.findMany({
+      teenId ? prisma.cycleProfile.findUnique({ where: { userId: teenId } }) : null,
+      teenId ? prisma.cycleLog.findMany({
         where: { userId: teenId },
         orderBy: { date: "desc" },
         take: 30
-      }),
+      }) : [],
       prisma.learnerLessonProgress.findMany({
-        where: { learner: { parentId: teenId } },
+        where: learner
+          ? { learnerId: learner.id }
+          : { learner: { parentId: teenId } },
         include: {
           lesson: {
             include: { chapter: true }
@@ -576,30 +270,32 @@ export class ParentService {
         orderBy: { updatedAt: "desc" }
       }),
       prisma.learnerJournalEntry.findMany({
-        where: { learner: { parentId: teenId } },
+        where: learner
+          ? { learnerId: learner.id }
+          : { learner: { parentId: teenId } },
         orderBy: { createdAt: "desc" },
         take: 10
       }),
       prisma.programEnrollment.findMany({
         where: {
-          OR: [{ userId: teenId }, { userId: parentId }],
+          userId: { in: teenId ? [teenId, parentId] : [parentId] },
           status: "ACTIVE",
           program: { isActive: true }
         },
         include: { program: true }
       }),
       prisma.expertSessionSchedule.findMany({
-        where: { userId: teenId },
+        where: { userId: { in: teenId ? [teenId, parentId] : [parentId] } },
         include: { expert: { include: { profile: true } } },
         orderBy: { scheduledAt: "desc" },
         take: 10
       }),
-      this.calculateWellnessScore(teenId),
-      prisma.journalEntry.findMany({
+      teenId ? this.calculateWellnessScore(teenId) : 80,
+      teenId ? prisma.journalEntry.findMany({
         where: { userId: teenId },
         orderBy: { createdAt: "desc" },
         take: 5
-      }),
+      }) : [],
       prisma.notificationHistory.findFirst({
         where: {
           userId: parentId,
